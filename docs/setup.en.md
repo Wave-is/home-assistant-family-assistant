@@ -140,6 +140,20 @@ Available views: Today, Shopping, Tasks, Alarms, Rules & rewards, Conversation, 
 The card uses the HA interface language; each member can separately choose
 their bot language. UI controls are not a substitute for server authorization.
 
+## Optional MikroTik inventory
+
+Enable MikroTik in Household preferences and open its connection settings. Use
+your own RouterOS 7 HTTPS address and a dedicated `read,rest-api` account. The
+built-in read group has extra powers. An optional CA certificate can establish
+trust for your router; do not paste its private key or disable TLS verification.
+Blank password preserves the saved value, except when changing server/user.
+
+The Home network card shows devices, existing comments and HA match evidence.
+Ambiguous names require a manual choice; locally administered MAC does not prove
+an intruder. Read failures retain the last successful observation. This stage
+only reads: static conversion, Kid Control and allowlist actions are not yet
+enabled. See [network boundaries and remaining gates](network-architecture.md).
+
 ## Wake-up checks and delivery problems
 
 The Tasks card also has **Add recurring duty**. Choose one or more people, a

@@ -198,6 +198,9 @@ class Engine:
             if record["actor"] == actor_id
         ]
         if parent:
+            data["network"] = {
+                "inventory": self._state["network"].get("inventory"),
+            }
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}
                 for event in self._state["outbox"].values()

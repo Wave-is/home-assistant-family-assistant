@@ -85,7 +85,24 @@
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
       "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
       "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
-      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase.",
+      "network_url": "Use the router's HTTPS base URL without credentials, query or fragment.",
+      "network_certificate": "The router certificate is not trusted or the CA certificate is invalid. Do not disable TLS verification.",
+      "network_operation": "This RouterOS operation is not allowed.",
+      "network_response": "RouterOS returned an invalid or oversized response. Previous data was retained.",
+      "network_version": "RouterOS 7 is required for this REST connection.",
+      "network_authentication": "RouterOS rejected the username or password.",
+      "network_permission": "The RouterOS account lacks permission for this table.",
+      "network_missing": "This RouterOS table is not available on the device.",
+      "network_unreachable": "The router could not be reached. Previous data was retained.",
+      "network_timeout": "The router did not respond in time. Previous data was retained.",
+      "network_not_configured": "Enable and configure the MikroTik connection first.",
+      "network_credential_scope": "Enter the password again when changing the router URL or username.",
+      "network_connected": "RouterOS inventory was read successfully.",
+      "network_target": "The selected lease is missing, inactive or unsupported. Refresh the inventory.",
+      "network_conflict": "The lease identity, IP or server is ambiguous or changed. No further change was applied.",
+      "network_protected": "This target is protected or has no valid unicast MAC.",
+      "network_subnet": "The IP, DHCP server and interface subnet could not be verified."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -118,7 +135,8 @@
           "telegram_group": "Link the family group",
           "telegram_member": "Link a member's private chat",
           "conversation": "Language model and fallback",
-          "search": "Internet search (SearXNG)"
+          "search": "Internet search (SearXNG)",
+          "mikrotik": "MikroTik network"
         }
       },
       "member": {
@@ -152,7 +170,8 @@
           "automatic_penalties": "Enable automatic penalties",
           "daily_penalty_cap": "Maximum automatic negative points per person per day",
           "timezone": "Time zone",
-          "conversation": "Conversation"
+          "conversation": "Conversation",
+          "mikrotik": "MikroTik network"
         }
       },
       "alarm_device": {
@@ -219,6 +238,17 @@
           "clear_key": "Clear saved key",
           "allow_http": "Allow unencrypted HTTP on a trusted network"
         }
+      },
+      "mikrotik": {
+        "title": "Read your MikroTik inventory",
+        "description": "Optional RouterOS 7 HTTPS REST connection. Enable MikroTik in Household preferences too. Use your own dedicated account with read and rest-api only for inventory, not the built-in read group (it has extra powers). This step makes no router changes. A custom CA certificate may be pasted below; verification is never disabled. Do not paste a private key. Passwords stay in local HA options. Blank preserves the password; changing server or username requires entering it again.",
+        "data": {
+          "enabled": "Enable connection",
+          "url": "HTTPS router URL",
+          "username": "Dedicated username",
+          "password": "Password",
+          "ca_pem": "Optional trusted CA certificate (PEM)"
+        }
       }
     },
     "error": {
@@ -282,7 +312,24 @@
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
       "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
       "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
-      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase.",
+      "network_url": "Use the router's HTTPS base URL without credentials, query or fragment.",
+      "network_certificate": "The router certificate is not trusted or the CA certificate is invalid. Do not disable TLS verification.",
+      "network_operation": "This RouterOS operation is not allowed.",
+      "network_response": "RouterOS returned an invalid or oversized response. Previous data was retained.",
+      "network_version": "RouterOS 7 is required for this REST connection.",
+      "network_authentication": "RouterOS rejected the username or password.",
+      "network_permission": "The RouterOS account lacks permission for this table.",
+      "network_missing": "This RouterOS table is not available on the device.",
+      "network_unreachable": "The router could not be reached. Previous data was retained.",
+      "network_timeout": "The router did not respond in time. Previous data was retained.",
+      "network_not_configured": "Enable and configure the MikroTik connection first.",
+      "network_credential_scope": "Enter the password again when changing the router URL or username.",
+      "network_connected": "RouterOS inventory was read successfully.",
+      "network_target": "The selected lease is missing, inactive or unsupported. Refresh the inventory.",
+      "network_conflict": "The lease identity, IP or server is ambiguous or changed. No further change was applied.",
+      "network_protected": "This target is protected or has no valid unicast MAC.",
+      "network_subnet": "The IP, DHCP server and interface subnet could not be verified."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -522,6 +569,57 @@
     },
     "learning_limit": {
       "message": "This account reached its 200-phrase limit. Update an existing phrase."
+    },
+    "network_url": {
+      "message": "Use the router's HTTPS base URL without credentials, query or fragment."
+    },
+    "network_certificate": {
+      "message": "The router certificate is not trusted or the CA certificate is invalid. Do not disable TLS verification."
+    },
+    "network_operation": {
+      "message": "This RouterOS operation is not allowed."
+    },
+    "network_response": {
+      "message": "RouterOS returned an invalid or oversized response. Previous data was retained."
+    },
+    "network_version": {
+      "message": "RouterOS 7 is required for this REST connection."
+    },
+    "network_authentication": {
+      "message": "RouterOS rejected the username or password."
+    },
+    "network_permission": {
+      "message": "The RouterOS account lacks permission for this table."
+    },
+    "network_missing": {
+      "message": "This RouterOS table is not available on the device."
+    },
+    "network_unreachable": {
+      "message": "The router could not be reached. Previous data was retained."
+    },
+    "network_timeout": {
+      "message": "The router did not respond in time. Previous data was retained."
+    },
+    "network_not_configured": {
+      "message": "Enable and configure the MikroTik connection first."
+    },
+    "network_credential_scope": {
+      "message": "Enter the password again when changing the router URL or username."
+    },
+    "network_connected": {
+      "message": "RouterOS inventory was read successfully."
+    },
+    "network_target": {
+      "message": "The selected lease is missing, inactive or unsupported. Refresh the inventory."
+    },
+    "network_conflict": {
+      "message": "The lease identity, IP or server is ambiguous or changed. No further change was applied."
+    },
+    "network_protected": {
+      "message": "This target is protected or has no valid unicast MAC."
+    },
+    "network_subnet": {
+      "message": "The IP, DHCP server and interface subnet could not be verified."
     }
   },
   "selector": {

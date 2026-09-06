@@ -79,6 +79,29 @@ ERRORS = {
         "or date. Built-in commands cannot be "
         "replaced.",
         "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase.",
+        "network_url": "Use the router's HTTPS base URL without credentials, query or fragment.",
+        "network_certificate": "The router certificate is not trusted or the CA "
+        "certificate is invalid. Do not disable TLS "
+        "verification.",
+        "network_operation": "This RouterOS operation is not allowed.",
+        "network_response": "RouterOS returned an invalid or oversized response. "
+        "Previous data was retained.",
+        "network_version": "RouterOS 7 is required for this REST connection.",
+        "network_authentication": "RouterOS rejected the username or password.",
+        "network_permission": "The RouterOS account lacks permission for this table.",
+        "network_missing": "This RouterOS table is not available on the device.",
+        "network_unreachable": "The router could not be reached. Previous data was retained.",
+        "network_timeout": "The router did not respond in time. Previous data was retained.",
+        "network_not_configured": "Enable and configure the MikroTik connection first.",
+        "network_credential_scope": "Enter the password again when changing the "
+        "router URL or username.",
+        "network_connected": "RouterOS inventory was read successfully.",
+        "network_target": "The selected lease is missing, inactive or unsupported. "
+        "Refresh the inventory.",
+        "network_conflict": "The lease identity, IP or server is ambiguous or "
+        "changed. No further change was applied.",
+        "network_protected": "This target is protected or has no valid unicast MAC.",
+        "network_subnet": "The IP, DHCP server and interface subnet could not be verified.",
     },
     "ru": {
         "invalid_field": "Проверьте введённое значение.",
@@ -159,6 +182,30 @@ ERRORS = {
         "повторяемую команду без конкретного ID или "
         "даты. Встроенные команды нельзя заменять.",
         "learning_limit": "Для аккаунта достигнут предел 200 фраз. Измените существующую фразу.",
+        "network_url": "Укажите HTTPS-адрес роутера без пароля, параметров и фрагмента.",
+        "network_certificate": "Сертификат роутера не доверенный или CA-сертификат "
+        "неверен. Не отключайте проверку TLS.",
+        "network_operation": "Эта операция RouterOS не разрешена.",
+        "network_response": "RouterOS вернул неверный или слишком большой ответ. "
+        "Предыдущие данные сохранены.",
+        "network_version": "Для REST-подключения требуется RouterOS 7.",
+        "network_authentication": "RouterOS отклонил имя пользователя или пароль.",
+        "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
+        "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
+        "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
+        "network_timeout": "Роутер не ответил вовремя. Предыдущие данные сохранены.",
+        "network_not_configured": "Сначала настройте и включите подключение к MikroTik.",
+        "network_credential_scope": "При смене адреса роутера или пользователя "
+        "введите пароль заново.",
+        "network_connected": "Инвентарь RouterOS успешно прочитан.",
+        "network_target": "Выбранный лиз отсутствует, неактивен или не "
+        "поддерживается. Обновите инвентарь.",
+        "network_conflict": "MAC, IP или сервер лиза неоднозначны либо изменились. "
+        "Дальнейшее изменение не применено.",
+        "network_protected": "Это устройство защищено или у него нет корректного "
+        "индивидуального MAC.",
+        "network_subnet": "Не удалось проверить соответствие IP, DHCP-сервера и "
+        "подсети интерфейса.",
     },
     "uk": {
         "invalid_field": "Перевірте введене значення.",
@@ -238,5 +285,27 @@ ERRORS = {
         "повторювану команду без конкретного ID чи "
         "дати. Вбудовані команди не можна замінювати.",
         "learning_limit": "Для акаунта досягнуто межу 200 фраз. Змініть наявну фразу.",
+        "network_url": "Укажіть HTTPS-адресу роутера без пароля, параметрів і фрагмента.",
+        "network_certificate": "Сертифікат роутера не є довіреним або CA-сертифікат "
+        "хибний. Не вимикайте перевірку TLS.",
+        "network_operation": "Цю операцію RouterOS не дозволено.",
+        "network_response": "RouterOS повернув хибну або завелику відповідь. "
+        "Попередні дані збережено.",
+        "network_version": "Для REST-підключення потрібна RouterOS 7.",
+        "network_authentication": "RouterOS відхилив ім’я користувача або пароль.",
+        "network_permission": "Акаунт RouterOS не має права читання цієї таблиці.",
+        "network_missing": "Ця таблиця RouterOS недоступна на пристрої.",
+        "network_unreachable": "Роутер недоступний. Попередні дані збережено.",
+        "network_timeout": "Роутер не відповів вчасно. Попередні дані збережено.",
+        "network_not_configured": "Спочатку налаштуйте й увімкніть підключення до MikroTik.",
+        "network_credential_scope": "При зміні адреси роутера чи користувача введіть пароль знову.",
+        "network_connected": "Інвентар RouterOS успішно прочитано.",
+        "network_target": "Вибраний ліз відсутній, неактивний або не підтримується. "
+        "Оновіть інвентар.",
+        "network_conflict": "MAC, IP або сервер ліза неоднозначні чи змінилися. "
+        "Подальшу зміну не застосовано.",
+        "network_protected": "Цей пристрій захищений або не має коректного індивідуального MAC.",
+        "network_subnet": "Не вдалося перевірити відповідність IP, DHCP-сервера й "
+        "підмережі інтерфейсу.",
     },
 }

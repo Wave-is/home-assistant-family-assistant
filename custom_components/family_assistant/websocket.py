@@ -11,7 +11,7 @@ from .domain.validation import DomainError, text
 
 
 def async_register_api(hass):
-    for handler in (households, view, execute, chat):
+    for handler in (households, view, execute, chat, network_refresh):
         websocket_api.async_register_command(hass, handler)
 
 
@@ -134,3 +134,29 @@ async def chat(hass, connection, msg):
             else ("provider_timeout" if isinstance(err, TimeoutError) else "storage_error")
         )
         connection.send_error(msg["id"], code, code)
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): "family_assistant/network_refresh", vol.Required("entry_id"): str}
+)
+@websocket_api.async_response
+async def network_refresh(hass, connection, msg):
+    from .runtime import get_runtime
+
+    try:
+        runtime = get_runtime(hass, msg["entry_id"])
+        actor = runtime.engine.actor_for_ha(connection.user.id)
+        if runtime.engine.view(actor)["role"] not in {"owner", "parent"}:
+            raise DomainError("forbidden")
+        if runtime.network is None:
+            raise DomainError("network_not_configured")
+        await runtime.network.refresh()
+        if runtime.engine.actor_for_ha(connection.user.id) != actor or runtime.engine.view(actor)[
+            "role"
+        ] not in {"owner", "parent"}:
+            raise DomainError("forbidden")
+        connection.send_result(msg["id"], runtime.engine.view(actor)["network"])
+    except DomainError as err:
+        connection.send_error(msg["id"], err.code, err.code)
+    except OSError:
+        connection.send_error(msg["id"], "storage_error", "storage_error")

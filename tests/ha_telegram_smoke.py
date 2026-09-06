@@ -1,8 +1,143 @@
 """Real HA option flows and message routing with an isolated synthetic transport."""
 
 import asyncio
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
+
+
+async def run_network(hass, entry, owner, child_id):
+    from homeassistant.helpers import device_registry, entity_registry
+
+    from custom_components.family_assistant.domain.validation import DomainError
+    from custom_components.family_assistant.network.client import TABLES, RouterClient
+
+    async def options():
+        flow = await hass.config_entries.options.async_init(
+            entry.entry_id, context={"user_id": owner.id}
+        )
+        return await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"next_step_id": "mikrotik"}
+        )
+
+    tables = {
+        "resource": [{"version": "7.20.1"}],
+        "leases": [
+            {
+                ".id": "*1",
+                "mac-address": "02:11:22:33:44:55",
+                "address": "198.51.100.10",
+                "status": "bound",
+                "comment": "Existing",
+                "dynamic": "true",
+            }
+        ],
+    }
+    failure = False
+
+    async def request(_self, method, path, **_kwargs):
+        assert method == "GET"
+        if failure == "deadline":
+            raise TimeoutError
+        if failure:
+            raise DomainError("network_timeout")
+        name = next(k for k, v in TABLES.items() if v[0] == path)
+        if name in {"wifi", "wireless"}:
+            raise DomainError("network_missing")
+        return deepcopy(tables.get(name, []))
+
+    device = device_registry.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        connections={("mac", "02:11:22:33:44:55")},
+        name="Synthetic phone",
+    )
+    tracker = entity_registry.async_get(hass).async_get_or_create(
+        "device_tracker", "family_assistant", "synthetic-network-tracker", device_id=device.id
+    )
+    hass.states.async_set(
+        tracker.entity_id,
+        "home",
+        {
+            "source_type": "router",
+            "ip": "198.51.100.10",
+            "host_name": "mobile",
+            "private_unrelated": "must-not-copy",
+        },
+    )
+    engine = entry.runtime_data.engine
+    await engine.execute(
+        "owner",
+        "settings.save",
+        {
+            **engine.snapshot()["settings"],
+            "modules": [*engine.snapshot()["settings"]["modules"], "mikrotik"],
+        },
+        "network-enable",
+        datetime.now(UTC),
+    )
+    with (
+        patch.object(RouterClient, "_request", request),
+        patch(
+            "homeassistant.helpers.aiohttp_client.async_get_clientsession", return_value=object()
+        ),
+    ):
+        flow = await options()
+        config = {
+            "enabled": True,
+            "url": "https://router.example.org",
+            "username": "test-reader",
+            "password": "synthetic-only",
+            "ca_pem": "",
+        }
+        flow = await hass.config_entries.options.async_configure(flow["flow_id"], config)
+        assert flow["type"] == "create_entry", flow
+        await hass.async_block_till_done()
+        manager = entry.runtime_data.network
+        assert manager is not None
+        await manager._task
+        view = engine.view("owner")["network"]["inventory"]
+        assert view["devices"][0]["suggested_name"] == "Synthetic phone", view
+        assert view["devices"][0]["comments"] == ["Existing"]
+        assert view["capabilities"]["wifi"] == "network_missing"
+        assert "private_unrelated" not in str(view) and "password" not in str(view)
+        assert "network" not in engine.view(child_id)
+        failure = True
+        manager._last_attempt = None
+        try:
+            await manager.refresh()
+        except DomainError as err:
+            assert err.code == "network_timeout"
+        else:
+            raise AssertionError("Router failure was reported as successful")
+        assert engine.view("owner")["network"]["inventory"] == view
+        assert entry.runtime_data.health["mikrotik"] == "network_timeout"
+        # A throttled retry must not report success after a failed read.
+        for deadline in (False, True):
+            if deadline:
+                failure = "deadline"
+                manager._last_attempt = None
+            try:
+                await manager.refresh()
+            except DomainError as err:
+                assert err.code == "network_timeout"
+            else:
+                raise AssertionError("Failed/throttled inventory was reported as successful")
+        failure = False
+        flow = await options()
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {**config, "url": "https://another.example.org", "password": ""}
+        )
+        assert flow["errors"]["base"] == "network_credential_scope"
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"enabled": False}
+        )
+        assert flow["type"] == "create_entry"
+        await hass.async_block_till_done()
+        assert entry.runtime_data.network is None
+    print(
+        "PASS: real HA RouterOS options, registry MAC matching, private projections "
+        "and stale-data preservation"
+    )
 
 
 class SyntheticTelegram:

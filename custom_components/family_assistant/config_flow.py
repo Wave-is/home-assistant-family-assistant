@@ -96,6 +96,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 "telegram_member",
                 "conversation",
                 "search",
+                "mikrotik",
             ],
         )
 
@@ -107,6 +108,66 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
         return runtime, actor
+
+    async def async_step_mikrotik(self, user_input=None):
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+        from .network.client import RouterClient, certificate_context
+
+        try:
+            self._authorized_runtime()
+        except DomainError as err:
+            return self.async_abort(reason=err.code)
+        current = self.config_entry.options.get("mikrotik", {})
+        errors = {}
+        if user_input is not None:
+            config = dict(current)
+            config["enabled"] = user_input["enabled"]
+            try:
+                if config["enabled"]:
+                    if (
+                        (
+                            user_input.get("url") != current.get("url")
+                            or user_input.get("username") != current.get("username")
+                        )
+                        and current.get("password")
+                        and not user_input.get("password")
+                    ):
+                        raise DomainError("network_credential_scope")
+                    config.update(
+                        url=user_input.get("url", ""),
+                        username=user_input.get("username", ""),
+                        password=user_input.get("password") or current.get("password", ""),
+                        ca_pem=user_input.get("ca_pem", ""),
+                    )
+                    context = await self.hass.async_add_executor_job(
+                        certificate_context, config["ca_pem"]
+                    )
+                    await RouterClient(
+                        async_get_clientsession(self.hass), config, context
+                    ).inspect()
+                options = dict(self.config_entry.options)
+                options["mikrotik"] = config
+                return self.async_create_entry(title="", data=options)
+            except DomainError as err:
+                errors["base"] = err.code
+        return self.async_show_form(
+            step_id="mikrotik",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("enabled", default=current.get("enabled", False)): bool,
+                    vol.Optional("url", default=current.get("url", "")): str,
+                    vol.Optional("username", default=current.get("username", "")): str,
+                    vol.Optional("password"): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                    ),
+                    vol.Optional(
+                        "ca_pem", default=current.get("ca_pem", "")
+                    ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
+                }
+            ),
+        )
 
     async def async_step_conversation(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -399,7 +460,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "name": user_input["name"],
                         "language": user_input["language"],
                         "modules": [
-                            m for m in (*DEFAULT_MODULES, "conversation") if user_input.get(m)
+                            m
+                            for m in (*DEFAULT_MODULES, "conversation", "mikrotik")
+                            if user_input.get(m)
                         ],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
@@ -436,7 +499,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
-                        for m in (*DEFAULT_MODULES, "conversation")
+                        for m in (*DEFAULT_MODULES, "conversation", "mikrotik")
                     },
                 }
             ),

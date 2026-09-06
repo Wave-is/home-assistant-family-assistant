@@ -1,5 +1,23 @@
 import {test,expect} from "@playwright/test";
 
+test("network evidence is readable on mobile and refresh is read-only",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru");
+ await expect(page.getByText("Example phone",{exact:true})).toBeVisible();
+ await page.getByText("Совпадения в Home Assistant",{exact:true}).click();
+ await expect(page.getByText(/Точное совпадение MAC/)).toBeVisible();
+ await page.getByRole("button",{name:"Перечитать роутер",exact:true}).click();
+ expect((await page.evaluate(()=>window.calls))[0].type).toBe("family_assistant/network_refresh");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/network-mobile-ru.png",fullPage:true});
+});
+
+test("child does not see private network inventory",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&role=child");
+ await expect(page.getByText("Example phone",{exact:true})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Read router again",exact:true})).toHaveCount(0);
+});
+
 test("model interpretation stays unexecuted until the user's confirmation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto("/tests/fixtures/dashboard.html?view=today&lang=ru&proposal=1");

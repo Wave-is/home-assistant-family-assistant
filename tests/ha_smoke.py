@@ -222,6 +222,9 @@ async def main():
 
             await telegram_smoke(hass, entry, user, child_id)
             await run_websocket(hass, entry, user, child_id)
+            from ha_telegram_smoke import run_network
+
+            await run_network(hass, entry, user, child_id)
             # Reload reads the same Store; HACS code updates do not replace it.
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
@@ -285,6 +288,7 @@ async def run_websocket(hass, entry, owner, child_id):
                 if allowed:
                     assert result["result"]["role"] == ("owner" if user is owner else "child")
                     assert "telegram_id" not in str(result["result"])
+                    assert ("network" in result["result"]) == (user is owner)
                 if user is child:
                     await ws.send_json(
                         {
@@ -315,6 +319,17 @@ async def run_websocket(hass, entry, owner, child_id):
                     assert ("I'm here" if user is owner else "Я тут") in result["result"][
                         "reply"
                     ], result
+                await ws.send_json(
+                    {
+                        "id": 5,
+                        "type": "family_assistant/network_refresh",
+                        "entry_id": entry.entry_id,
+                    }
+                )
+                result = await ws.receive_json()
+                assert not result["success"] and result["error"]["code"] == (
+                    "network_not_configured" if user is owner else "forbidden"
+                )
             hass.auth.async_remove_refresh_token(refresh)
     print("PASS: actual HA WebSocket auth, household names, projections and command denial")
     release = datetime.now(UTC) + timedelta(minutes=1)

@@ -2,6 +2,7 @@
 import {ERRORS} from "./errors.js";
 const COPY = {
   en: {
+    mikrotik:"Home network",networkRefresh:"Read router again",networkReadOnly:"Inventory only. Reading never changes leases or internet access.",networkParents:"Network inventory is available to parents only.",networkObserved:"Last successful observation",networkNoData:"Configure MikroTik in integration options and enable its module.",networkSources:"Sources",networkSuggestions:"Home Assistant matches",networkProtected:"Router interface — protected",networkUnknown:"No HA match",networkPrivateMac:"Locally administered MAC: check that this Wi-Fi network uses a fixed address.",networkAmbiguous:"Several equal matches — choose manually.",networkFasttrack:"FastTrack is enabled: rate limits and filtering need topology checks.",networkIPv6:"IPv6 is enabled or its state is unknown; IPv4-only restrictions are not enough.",networkUnavailable:"Unavailable tables",exact_mac:"Exact MAC",current_tracker_ip:"Current tracker IP",hostname_only:"Hostname only",networkMultiple:"Multiple current IP addresses",
     conversation:"Family conversation",message:"Message",send:"Send",thinking:"Working on your request… Other cards remain available.",learnPhrase:"Teach a phrase",sourcePhrase:"Unrecognized phrase",canonicalPhrase:"Supported reusable command",learningHint:"Exact phrases are remembered for your account only. They never grant permissions or override built-in commands.",forgetPhrase:"Disable phrase",
     modelProposals:"Check my interpretation",confirmPlan:"Apply this plan",rejectPlan:"Cancel plan",proposalHint:"Nothing has changed yet. This plan expires at",
     advanced:"Advanced settings",
@@ -43,6 +44,7 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    mikrotik:"Домашняя сеть",networkRefresh:"Перечитать роутер",networkReadOnly:"Только инвентарь. Чтение не меняет лизы и доступ в интернет.",networkParents:"Инвентарь сети доступен только родителям.",networkObserved:"Последнее успешное наблюдение",networkNoData:"Настройте MikroTik в параметрах интеграции и включите модуль.",networkSources:"Источники",networkSuggestions:"Совпадения в Home Assistant",networkProtected:"Интерфейс роутера — защищён",networkUnknown:"Нет совпадения в HA",networkPrivateMac:"Локально назначенный MAC: проверьте, что для этой Wi-Fi-сети выбран постоянный адрес.",networkAmbiguous:"Несколько равных совпадений — нужен ручной выбор.",networkFasttrack:"FastTrack включён: ограничения скорости и фильтрацию нужно проверить с учётом топологии.",networkIPv6:"IPv6 включён или его состояние неизвестно; ограничений только IPv4 недостаточно.",networkUnavailable:"Недоступные таблицы",exact_mac:"Точное совпадение MAC",current_tracker_ip:"Текущий IP трекера",hostname_only:"Только hostname",networkMultiple:"Несколько текущих IP-адресов",
     conversation:"Семейный разговор",message:"Сообщение",send:"Отправить",thinking:"Разбираю обращение… Остальные карточки продолжают работать.",learnPhrase:"Обучить фразе",sourcePhrase:"Непонятная фраза",canonicalPhrase:"Поддерживаемая повторяемая команда",learningHint:"Точные фразы запоминаются только для вашего аккаунта. Они не дают прав и не заменяют встроенные команды.",forgetPhrase:"Отключить фразу",
     modelProposals:"Проверьте, правильно ли я понял",confirmPlan:"Выполнить план",rejectPlan:"Отменить план",proposalHint:"Пока ничего не изменено. Предложение действует до",
     advanced:"Дополнительные настройки",
@@ -84,6 +86,7 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    mikrotik:"Домашня мережа",networkRefresh:"Перечитати роутер",networkReadOnly:"Лише інвентар. Читання не змінює лізи й доступ до інтернету.",networkParents:"Інвентар мережі доступний лише батькам.",networkObserved:"Останнє успішне спостереження",networkNoData:"Налаштуйте MikroTik у параметрах інтеграції та увімкніть модуль.",networkSources:"Джерела",networkSuggestions:"Збіги в Home Assistant",networkProtected:"Інтерфейс роутера — захищений",networkUnknown:"Немає збігу в HA",networkPrivateMac:"Локально призначений MAC: перевірте, що для цієї Wi-Fi-мережі вибрано постійну адресу.",networkAmbiguous:"Кілька рівних збігів — потрібен ручний вибір.",networkFasttrack:"FastTrack увімкнено: обмеження швидкості й фільтрацію слід перевірити з урахуванням топології.",networkIPv6:"IPv6 увімкнено або його стан невідомий; обмежень лише IPv4 недостатньо.",networkUnavailable:"Недоступні таблиці",exact_mac:"Точний збіг MAC",current_tracker_ip:"Поточний IP трекера",hostname_only:"Лише hostname",networkMultiple:"Кілька поточних IP-адрес",
     conversation:"Сімейна розмова",message:"Повідомлення",send:"Надіслати",thinking:"Опрацьовую звернення… Інші картки працюють далі.",learnPhrase:"Навчити фразі",sourcePhrase:"Незрозуміла фраза",canonicalPhrase:"Підтримувана повторювана команда",learningHint:"Точні фрази запам’ятовуються лише для вашого акаунта. Вони не надають прав і не замінюють вбудовані команди.",forgetPhrase:"Вимкнути фразу",
     modelProposals:"Перевірте, чи правильно я зрозумів",confirmPlan:"Виконати план",rejectPlan:"Скасувати план",proposalHint:"Поки нічого не змінено. Пропозиція діє до",
     advanced:"Додаткові налаштування",
@@ -165,7 +168,7 @@ export class FamilyCard extends HTMLElement {
   setConfig(config) {
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
-    if (!["today","shopping","tasks","court","alarms","health","conversation"].includes(this._view)) throw new Error("Unknown Family Assistant view");
+    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
     this._entry = config.entry_id;
     this._data = null;
@@ -332,6 +335,7 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="health") {this.renderHealth(body);return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
+    if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="alarms")this.renderAlarmRuns(body);
     if(this._view==="tasks")this.renderSeries(body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
@@ -341,6 +345,34 @@ export class FamilyCard extends HTMLElement {
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
+  }
+  renderNetwork(body) {
+    if(!this.parent){body.append(el("p",this.t.networkParents,"notice"));return;}
+    body.append(el("p",this.t.networkReadOnly,"sub"));
+    const health=this._data.health?.mikrotik;if(health && health!=="network_connected"){const lang=this._config?.language || this._hass.language?.split("-")[0];body.append(el("p",(ERRORS[lang] || ERRORS.en)[health] || this.t.failure,"notice"));}
+    body.append(this.button(this.t.networkRefresh,async()=>{
+      if(this._writing)return;const generation=this._generation;this._writing=true;
+      try{await this._hass.callWS({type:"family_assistant/network_refresh",entry_id:this._entry});if(generation===this._generation)this._actionError=null;}
+      catch(error){if(generation===this._generation)this._actionError=error.code || this.t.failure;}
+      finally{this._writing=false;await this.refresh();this.render();}
+    }));
+    const inventory=this._data.network?.inventory;
+    if(!inventory){body.append(el("p",this.t.networkNoData,"empty"));return;}
+    body.append(el("p",`${this.t.networkObserved}: ${new Date(inventory.observed_at).toLocaleString(this._hass.language)}`,"sub"));
+    if(inventory.fasttrack)body.append(el("p",this.t.networkFasttrack,"notice"));
+    if(inventory.ipv6!=="disabled")body.append(el("p",this.t.networkIPv6,"notice"));
+    const missing=Object.entries(inventory.capabilities || {}).filter(([,v])=>v!=="available").map(([k])=>k);
+    if(missing.length)body.append(el("p",`${this.t.networkUnavailable}: ${missing.join(", ")}`,"sub"));
+    for(const device of inventory.devices){
+      const item=el("section",null,"item");item.append(el("strong",device.suggested_name || device.comments[0] || device.hostnames[0] || this.t.networkUnknown));
+      item.append(el("p",`${device.mac} · ${device.addresses.join(", ")}`,"sub"));
+      if(device.comments.length)item.append(el("p",device.comments.join(" · ")));
+      item.append(el("p",`${this.t.networkSources}: ${device.sources.join(", ")}`,"sub"));
+      if(device.protected)item.append(el("p",this.t.networkProtected,"notice"));
+      for(const warning of device.warnings){const key={locally_administered:"networkPrivateMac",ambiguous_identity:"networkAmbiguous",multiple_addresses:"networkMultiple"}[warning];if(key)item.append(el("p",this.t[key],"sub"));}
+      if(device.suggestions.length){const details=el("details");details.append(el("summary",this.t.networkSuggestions));for(const match of device.suggestions)details.append(el("p",`${match.name}${match.area?" · "+match.area:""} — ${match.evidence.map(e=>this.t[e] || e).join(", ")}`,"sub"));item.append(details);}
+      body.append(item);
+    }
   }
   renderConversation(body) {
     if(this._chatReply){const reply=el("div",this._chatReply,"item");reply.style.whiteSpace="pre-wrap";reply.setAttribute("aria-live","polite");body.append(reply);}
@@ -511,15 +543,15 @@ class FamilyEditor extends HTMLElement {
         for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
         input.disabled=!this._entries?.length;
       }
-      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation"]){const option=el("option",t[view]);option.value=view;input.append(option);}
-      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation"}[this._config?.type] || "today";
+      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik"]){const option=el("option",t[view]);option.value=view;input.append(option);}
+      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation","custom:family-network-card":"mikrotik"}[this._config?.type] || "today";
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
   }
 }
 customElements.define("family-assistant-card-editor",FamilyEditor);
-for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"]]){
+for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"],["family-network-card","mikrotik"]]){
   class Card extends FamilyCard {static defaultView=view;}
   customElements.define(type,Card);
   window.customCards=window.customCards || [];

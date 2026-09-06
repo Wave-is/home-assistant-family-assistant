@@ -28,6 +28,7 @@ class Runtime:
     scheduler: Any = None
     telegram: Any = None
     assistant: Any = None
+    network: Any = None
     options_lock: Any = field(default_factory=asyncio.Lock)
 
     @callback
@@ -124,12 +125,15 @@ async def async_setup_runtime(hass, entry) -> bool:
         runtime.scheduler = Scheduler(hass, entry, runtime)
         runtime.scheduler.start()
         async_configure_assistant(hass, entry)
+        await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         from .llm_api import async_register
 
         async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
     except Exception:
+        if runtime.network:
+            await runtime.network.stop()
         if runtime.telegram:
             await runtime.telegram.stop()
         if runtime.scheduler:
@@ -144,6 +148,8 @@ async def async_unload_runtime(hass, entry) -> bool:
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    if runtime.network:
+        await runtime.network.stop()
     if runtime.telegram:
         await runtime.telegram.stop()
     if runtime.scheduler:
@@ -179,6 +185,7 @@ async def async_configure_telegram(hass, entry):
 async def async_options_updated(hass, entry):
     async with entry.runtime_data.options_lock:
         async_configure_assistant(hass, entry)
+        await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         entry.runtime_data.updated()
 
@@ -202,6 +209,27 @@ def async_configure_assistant(hass, entry):
         runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
     else:
         runtime.health.pop("conversation", None)
+
+
+async def async_configure_network(hass, entry):
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    from .network.client import RouterClient, certificate_context
+    from .network.manager import NetworkManager
+
+    runtime = entry.runtime_data
+    if runtime.network:
+        await runtime.network.stop()
+        runtime.network = None
+    config = entry.options.get("mikrotik", {})
+    if config.get("enabled") and "mikrotik" in runtime.engine.snapshot()["settings"]["modules"]:
+        context = await hass.async_add_executor_job(certificate_context, config.get("ca_pem", ""))
+        runtime.network = NetworkManager(
+            hass, entry, runtime, RouterClient(async_get_clientsession(hass), config, context)
+        )
+        runtime.network.start()
+    else:
+        runtime.health.pop("mikrotik", None)
 
 
 def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
