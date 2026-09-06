@@ -94,6 +94,7 @@
       "network_authentication": "RouterOS отклонил вход. Проверьте пароль, допустимый адрес и право rest-api; RouterOS 7.20.1 также требует api.",
       "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
       "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
+      "network_rejected": "RouterOS отклонил запрос. Проверьте параметры или журнал устройства.",
       "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
       "network_timeout": "Роутер не ответил вовремя. Предыдущие данные сохранены.",
       "network_not_configured": "Сначала настройте и включите подключение к MikroTik.",
@@ -338,6 +339,7 @@
       "network_authentication": "RouterOS отклонил вход. Проверьте пароль, допустимый адрес и право rest-api; RouterOS 7.20.1 также требует api.",
       "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
       "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
+      "network_rejected": "RouterOS отклонил запрос. Проверьте параметры или журнал устройства.",
       "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
       "network_timeout": "Роутер не ответил вовремя. Предыдущие данные сохранены.",
       "network_not_configured": "Сначала настройте и включите подключение к MikroTik.",
@@ -622,6 +624,9 @@
     },
     "network_missing": {
       "message": "Эта таблица RouterOS недоступна на устройстве."
+    },
+    "network_rejected": {
+      "message": "RouterOS отклонил запрос. Проверьте параметры или журнал устройства."
     },
     "network_unreachable": {
       "message": "Роутер недоступен. Предыдущие данные сохранены."

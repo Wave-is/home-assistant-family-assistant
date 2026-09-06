@@ -25,6 +25,12 @@ if(view==="mikrotik"){data.settings.modules.push("mikrotik");data.network={inven
 window.calls=[];const card=document.createElement("family-assistant-card");card.setConfig({view,entry_id:"synthetic"});
 if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 if(query.has("kids")){data.settings.timezone="UTC";data.members[0].role="owner";data.members[1].role="child";data.kid_control={can_manage:data.role!=="child",writable:true,observed_at:"2026-09-06T08:00:00Z",plans:[],profiles:[{member:"child",name:"Child profile",device_names:["Phone"],observed:{disabled:"false",paused:"false",...Object.fromEntries(["mon","tue","wed","thu","fri","sat","sun"].map(d=>[d,"08:00-22:00"]))}}]};}
+if(query.has("kidstatus")){
+ const profile=data.kid_control.profiles[0];
+ data.settings.timezone="Europe/Kyiv";
+ profile.status={mode:"unrestricted",allows:true,next_change_at:"2026-09-07T20:00:00Z",next_allows:false,remaining_minutes:30,temporary_until:"2026-09-07T20:00:00Z",temporary_mode:"grant",valid_until:new Date(Date.now()+120000).toISOString(),reason:"fresh"};
+ if(query.get("kidstatus")==="stale"){profile.status.valid_until="2000-01-01T00:00:00Z";profile.observed.disabled="true";}
+}
 card.hass={language,callWS:async message=>{
  if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
  if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}

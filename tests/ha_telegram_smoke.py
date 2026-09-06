@@ -288,6 +288,13 @@ async def run_network(hass, entry, owner, child_id):
         assert controlled["status"] == "applied", controlled
         assert controlled["progress"]["timer_verified"] and len(timers) == 2
         assert tables["kids"][0]["disabled"] == "true"
+        assert controlled["updated_at"]
+        child_status = engine.view(child_id)["kid_control"]["profiles"][0]["status"]
+        assert child_status["reason"] == "fresh", child_status
+        assert child_status["allows"] is True and child_status["temporary_mode"] == "grant"
+        assert child_status["temporary_until"] == controlled["until"]
+        stale_view = engine.view(child_id, now=datetime.now(UTC) + timedelta(minutes=4))
+        assert stale_view["kid_control"]["profiles"][0]["status"]["allows"] is None
         count = len(writes)
         await receiver.process(update)
         assert len(writes) == count
@@ -326,7 +333,7 @@ async def run_network(hass, entry, owner, child_id):
     )
     print(
         "PASS: real HA Kid Control adoption, Telegram confirmation/replay, "
-        "scoped native guards, private result and expiry closure"
+        "scoped native guards, private result, configured status/freshness and expiry closure"
     )
 
 

@@ -261,7 +261,7 @@ class RouterClient:
                         and missing[1] in path.split("/")
                     ):
                         raise DomainError("network_missing")
-                    raise DomainError("network_unreachable")
+                    raise DomainError("network_rejected")
                 return result
         except DomainError:
             raise

@@ -115,7 +115,7 @@ def member_by_name(state: dict, value: str) -> str:
 async def route(
     engine, actor: str, content: str, operation_id: str, now: datetime, refs=(), *, fallback=None
 ) -> str:
-    view = engine.view(actor)
+    view = engine.view(actor, now=now)
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
 

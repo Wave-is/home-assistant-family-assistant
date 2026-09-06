@@ -151,7 +151,7 @@ class Engine:
                 return member["id"]
         raise DomainError("forbidden")
 
-    def view(self, actor_id: str) -> dict:
+    def view(self, actor_id: str, *, now: datetime | None = None) -> dict:
         """Return an authorized projection; never expose channel IDs or credentials."""
         actor = self._actor(actor_id)
         parent = actor["role"] in PRIVILEGED
@@ -200,7 +200,7 @@ class Engine:
             for record in self._state["memory"].get("phrases", {}).values()
             if record["actor"] == actor_id
         ]
-        data["kid_control"] = kid_plans.view(self._state, actor_id)
+        data["kid_control"] = kid_plans.view(self._state, actor_id, now)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),

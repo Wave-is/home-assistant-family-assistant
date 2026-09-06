@@ -39,16 +39,38 @@ def udp_frame(src_mac, dst_mac, src_ip, dst_ip, src_port, dst_port, data):
 
 
 def udp_payload(frame):
-    if len(frame) < 42 or frame[12:14] != b"\x08\x00" or frame[23] != 17:
+    if len(frame) < 42 or frame[12:14] != b"\x08\x00" or frame[14] >> 4 != 4 or frame[23] != 17:
         return None
     head = (frame[14] & 15) * 4
     if head < 20 or len(frame) < 14 + head + 8:
         return None
+    total = int.from_bytes(frame[16:18], "big")
+    if (
+        total < head + 8
+        or len(frame) < 14 + total
+        or int.from_bytes(frame[20:22], "big") & 0x3FFF
+        or checksum(frame[14 : 14 + head]) != 0
+    ):
+        return None
     offset = 14 + head
     src, dst, length, _ = struct.unpack("!HHHH", frame[offset : offset + 8])
-    if length < 8 or len(frame) < offset + length:
+    if length < 8 or length != total - head:
         return None
     return src, dst, frame[offset + 8 : offset + length]
+
+
+def endpoint_match(frame, source_mac, target_mac, source_ip, target_ip, ports, payload):
+    """A promiscuous emulated NIC must not count a misaddressed packet as delivery."""
+    parsed = udp_payload(frame)
+    return bool(
+        parsed
+        and frame[:6] == target_mac
+        and frame[6:12] == source_mac
+        and frame[26:30] == source_ip
+        and frame[30:34] == target_ip
+        and parsed[:2] == ports
+        and parsed[2] == payload
+    )
 
 
 def dhcp_options(payload):
@@ -144,6 +166,7 @@ async def arp_reply(link, frame, address, mac_address):
     if (
         len(frame) >= 42
         and frame[12:14] == b"\x08\x06"
+        and frame[14:20] == b"\x00\x01\x08\x00\x06\x04"
         and frame[20:22] == b"\x00\x01"
         and frame[38:42] == address
     ):
@@ -176,10 +199,17 @@ async def forwarded_probe(lan, server_link, address, *, client_mac=CLIENT_MAC):
                     key = next(k for k, value in pending.items() if value is task)
                     del pending[key]
                     received = task.result()
-                    parsed = udp_payload(received)
                     if key == "server":
                         await arp_reply(server_link, received, server_ip, SERVER_MAC)
-                        if parsed and parsed[:2] == (port, 45001) and parsed[2] == nonce:
+                        if endpoint_match(
+                            received,
+                            ROUTER_SERVER_MAC,
+                            SERVER_MAC,
+                            client_ip,
+                            server_ip,
+                            (port, 45001),
+                            nonce,
+                        ):
                             await server_link.send(
                                 udp_frame(
                                     SERVER_MAC,
@@ -193,7 +223,15 @@ async def forwarded_probe(lan, server_link, address, *, client_mac=CLIENT_MAC):
                             )
                     else:
                         await arp_reply(lan, received, client_ip, client_mac)
-                        if parsed and parsed[:2] == (45001, port) and parsed[2] == nonce:
+                        if endpoint_match(
+                            received,
+                            ROUTER_LAN_MAC,
+                            client_mac,
+                            server_ip,
+                            client_ip,
+                            (45001, port),
+                            nonce,
+                        ):
                             return True
         return False
     finally:

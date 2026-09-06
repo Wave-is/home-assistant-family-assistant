@@ -1,10 +1,11 @@
 """Parents' reviewed Kid Control commands; inventory administration stays owner-only."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from ..const import PRIVILEGED
 from ..domain.validation import DomainError, fields, text, timestamp
 from . import kids
+from .kid_observation import status as observed_status
 
 
 def can_manage(state, actor):
@@ -39,7 +40,8 @@ def public(plan):
     }
 
 
-def view(state, actor):
+def view(state, actor, now=None):
+    now = now if now is not None else datetime.now(UTC)
     network = state["network"]
     managed = can_manage(state, actor)
     profiles = []
@@ -64,6 +66,7 @@ def view(state, actor):
                 "member": binding["member"],
                 "name": binding["name"],
                 "observed": observed,
+                "status": observed_status(state, binding, observed, now),
                 "device_names": [d["name"] for d in binding["devices"]],
                 "devices": binding["devices"] if managed else [],
             }

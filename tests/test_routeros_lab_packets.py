@@ -8,6 +8,9 @@ from tests.routeros.packets import (
     checksum,
     dhcp_options,
     dhcp_request,
+    endpoint_match,
+    ip,
+    udp_frame,
     udp_payload,
 )
 
@@ -38,3 +41,42 @@ def test_truncated_packet_fixtures_are_ignored():
 def test_lab_has_no_arbitrary_socket_destination():
     with pytest.raises(ValueError, match="isolated"):
         Link(11434)
+
+
+@pytest.mark.parametrize(
+    "field", ["source_mac", "target_mac", "source_ip", "target_ip", "ports", "payload"]
+)
+def test_matching_nonce_is_not_delivery_to_a_wrong_endpoint(field):
+    expected = {
+        "source_mac": bytes.fromhex("02fa00000001"),
+        "target_mac": CLIENT_MAC,
+        "source_ip": ip("203.0.113.10"),
+        "target_ip": ip("198.51.100.10"),
+        "ports": (45001, 40001),
+        "payload": b"fresh synthetic probe",
+    }
+    frame = udp_frame(
+        expected["source_mac"],
+        expected["target_mac"],
+        expected["source_ip"],
+        expected["target_ip"],
+        *expected["ports"],
+        expected["payload"],
+    )
+    assert endpoint_match(frame, **expected)
+    wrong = {
+        **expected,
+        field: (45001, 40002) if field == "ports" else b"\x00" * len(expected[field]),
+    }
+    assert not endpoint_match(frame, **wrong)
+
+
+def test_bad_ipv4_checksum_and_fragment_are_not_valid_probe_payloads():
+    frame = bytearray(dhcp_request(12345, 1))
+    frame[24] ^= 1
+    assert udp_payload(frame) is None
+    frame = bytearray(dhcp_request(12345, 1))
+    frame[20:22] = b"\x20\x00"  # More fragments: this fixture never reassembles packets.
+    frame[24:26] = b"\x00\x00"
+    frame[24:26] = checksum(frame[14:34]).to_bytes(2, "big")
+    assert udp_payload(frame) is None

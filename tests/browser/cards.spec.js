@@ -15,7 +15,28 @@ test("parent reviews a temporary internet grant; child has status only",async({p
   await expect(page.getByRole("heading",{name:"Інтернет дітей"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Перевірити план"})).toHaveCount(0);
   await expect(page.getByText("08:00-22:00",{exact:false}).first()).not.toBeVisible();
-  await page.getByText("Розклад доступу",{exact:true}).click();
+  await page.getByText("Щотижневий розклад",{exact:true}).click();
+  await expect(page.getByText("08:00-22:00",{exact:false}).first()).toBeVisible();
+});
+
+test("child status shows configured permission and household-zone expiry in Russian",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru&kids=1&role=child&kidstatus=fresh");
+  await expect(page.getByText("По настройкам: доступ разрешён",{exact:true})).toBeVisible();
+  await expect(page.getByText("Осталось: 30 мин",{exact:true})).toBeVisible();
+  await expect(page.getByText(/Временный доступ до:.*23:00.*Europe\/Kyiv/)).toBeVisible();
+  await expect(page.getByRole("button",{name:"Проверить план"})).toHaveCount(0);
+  expect(await page.locator("body").innerText()).not.toContain("02:11");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:"test-results/kid-status-child-ru.png",fullPage:true});
+});
+
+test("stale Ukrainian child status cannot claim restrictions are disabled",async({page})=>{
+  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=uk&kids=1&role=child&kidstatus=stale");
+  await expect(page.getByText(/Статус невідомий: оновіть дані роутера/)).toBeVisible();
+  await expect(page.getByText("Обмеження вимкнено",{exact:true})).toHaveCount(0);
+  await expect(page.getByText("За налаштуваннями: доступ дозволено",{exact:true})).toHaveCount(0);
+  await page.getByText("Щотижневий розклад",{exact:true}).click();
   await expect(page.getByText("08:00-22:00",{exact:false}).first()).toBeVisible();
 });
 

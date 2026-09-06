@@ -4,7 +4,7 @@ import re
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
-from ..domain.validation import DomainError
+from ..domain.validation import DomainError, timestamp
 from ..network.kids import DAYS, minute
 from .intents import find_member
 
@@ -36,6 +36,16 @@ COPY = {
             "Temporary access requires verified expiry and restart guards on the "
             "router. A router restart ends this exception early."
         ),
+        "status_unknown": "Status unknown: refresh router data",
+        "status_allowed": "Configured access: Allowed",
+        "status_blocked": "Configured access: Blocked",
+        "next_allowed": "Next allowed",
+        "next_blocked": "Next blocked",
+        "remaining": "Remaining",
+        "temporary_expiry": "Temporary access until",
+        "temporary_pause_expiry": "Temporary pause until",
+        "min_unit": "min",
+        "weekly_schedule": "Weekly schedule",
     },
     "ru": {
         "preview": "Только проверка плана — ничего не изменено",
@@ -64,6 +74,16 @@ COPY = {
             "Временное исключение требует проверенных таймеров окончания и запуска "
             "на роутере. Перезагрузка роутера завершит исключение досрочно."
         ),
+        "status_unknown": "Статус неизвестен: обновите данные роутера",
+        "status_allowed": "По настройкам: доступ разрешён",
+        "status_blocked": "По настройкам: доступ заблокирован",
+        "next_allowed": "Следующее включение",
+        "next_blocked": "Следующая блокировка",
+        "remaining": "Осталось",
+        "temporary_expiry": "Временный доступ до",
+        "temporary_pause_expiry": "Временная пауза до",
+        "min_unit": "мин",
+        "weekly_schedule": "Еженедельное расписание",
     },
     "uk": {
         "preview": "Лише перевірка плану — нічого не змінено",
@@ -93,6 +113,16 @@ COPY = {
             "запуску на роутері. Перезавантаження роутера завершить виняток "
             "достроково."
         ),
+        "status_unknown": "Статус невідомий: оновіть дані роутера",
+        "status_allowed": "За налаштуваннями: доступ дозволено",
+        "status_blocked": "За налаштуваннями: доступ заблоковано",
+        "next_allowed": "Наступне увімкнення",
+        "next_blocked": "Наступне блокування",
+        "remaining": "Залишилося",
+        "temporary_expiry": "Тимчасовий доступ до",
+        "temporary_pause_expiry": "Тимчасова пауза до",
+        "min_unit": "хв",
+        "weekly_schedule": "Щотижневий розклад",
     },
 }
 
@@ -287,21 +317,49 @@ def status(view, member, language):
     profiles = [p for p in data["profiles"] if not member or p["member"] == member]
     if member and not profiles:
         raise DomainError("network_kid_unmanaged")
+    tz_str = view.get("settings", {}).get("timezone", "UTC")
+    tz = ZoneInfo(tz_str)
     lines = []
+    mode_labels = {
+        "schedule": t["resume"],
+        "paused": t["pause"],
+        "unrestricted": t["disabled"],
+    }
     for p in profiles:
         who = next(m["name"] for m in view["members"] if m["id"] == p["member"])
         lines.append(f"🌐 {t['profile']}: {who}")
-        current = p["observed"]
+
+        st = p.get("status")
+        is_dict = isinstance(st, dict)
+        mode = st.get("mode") if is_dict else None
+        allows = st.get("allows") if is_dict else None
+        is_known = mode in {"schedule", "paused", "unrestricted"} and isinstance(allows, bool)
+
+        if not is_known:
+            lines.append(f"⚠️ {t['status_unknown']}")
+        else:
+            lines.append(mode_labels[mode])
+            lines.append(t["status_allowed"] if allows else t["status_blocked"])
+            if allows and st.get("remaining_minutes") is not None:
+                lines.append(f"{t['remaining']}: {st['remaining_minutes']} {t['min_unit']}")
+            if st.get("next_change_at"):
+                local_next = timestamp(st["next_change_at"], "next_change_at").astimezone(tz)
+                next_label = t["next_allowed"] if st.get("next_allows") else t["next_blocked"]
+                lines.append(f"{next_label}: {local_next:%Y-%m-%d %H:%M} ({tz_str})")
+            if st.get("temporary_until"):
+                local_temp = timestamp(st["temporary_until"], "temporary_until").astimezone(tz)
+                temp_label = (
+                    t["temporary_pause_expiry"]
+                    if st.get("temporary_mode") == "timed_pause"
+                    else t["temporary_expiry"]
+                )
+                lines.append(f"{temp_label}: {local_temp:%Y-%m-%d %H:%M} ({tz_str})")
+
+        current = p.get("observed")
         if current is None:
             lines.append(t["stale"])
             continue
-        lines.append(
-            t["disabled"]
-            if current["disabled"] == "true"
-            else t["pause"]
-            if current["paused"] == "true"
-            else t["resume"]
-        )
+        lines.append(f"📅 {t['weekly_schedule']}:")
         lines.extend(
             f"{FIELDS[language]['days'][i]}: {current[d] or '—'}" for i, d in enumerate(DAYS)
         )

@@ -97,7 +97,11 @@ class NetworkManager:
 
                     def save(ctx):
                         current = ctx.state["network"][bucket][plan_id]
-                        current.update(progress=progress, status=progress["status"])
+                        current.update(
+                            progress=progress,
+                            status=progress["status"],
+                            updated_at=ctx.now.isoformat(),
+                        )
                         if (
                             progress["status"]
                             in {
@@ -126,7 +130,8 @@ class NetworkManager:
                         {
                             k: v
                             for k, v in plan.items()
-                            if k not in {"progress", "status", "notified", "dhcp_recovery"}
+                            if k
+                            not in {"progress", "status", "notified", "dhcp_recovery", "updated_at"}
                         },
                         persist,
                         lambda plan=plan, kid=kid: self._authorized(plan, kid),

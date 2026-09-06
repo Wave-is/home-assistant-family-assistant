@@ -126,8 +126,8 @@ async def test_read_failures_are_stable_and_bounded(status, body, code):
     "detail,code",
     [
         ("no such command or directory (wireless)", "network_missing"),
-        ("no such command or directory (unrelated)", "network_unreachable"),
-        ("invalid value of argument .proplist", "network_unreachable"),
+        ("no such command or directory (unrelated)", "network_rejected"),
+        ("invalid value of argument .proplist", "network_rejected"),
     ],
 )
 async def test_native_400_missing_package_is_not_a_router_outage(detail, code):
@@ -153,7 +153,7 @@ async def test_missing_optional_package_keeps_remaining_inventory():
 @pytest.mark.asyncio
 async def test_missing_command_on_write_is_not_optional_success():
     session = Session(Response(400, {"detail": "no such command or directory (make-static)"}))
-    with pytest.raises(DomainError, match="network_unreachable"):
+    with pytest.raises(DomainError, match="network_rejected"):
         await client(session, allow_write=True).make_static("*1")
 
 
@@ -172,8 +172,16 @@ async def test_native_permission_trap_is_not_a_connection_failure(status, method
     ["not enough permissions (8)", "Internal failure", "no such command or directory (wireless)"],
 )
 async def test_other_500_errors_are_not_misclassified_as_permission_or_optional(detail):
-    with pytest.raises(DomainError, match="network_unreachable"):
+    with pytest.raises(DomainError, match="network_rejected"):
         await client(Session(Response(500, {"detail": detail}))).read("wireless")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 500])
+async def test_generic_rejection_is_classified_as_network_rejected(status):
+    session = Session(Response(status, {"error": status, "message": "Failure"}))
+    with pytest.raises(DomainError, match="network_rejected"):
+        await client(session).read("leases")
 
 
 def test_mac_normalization_no_multicast():

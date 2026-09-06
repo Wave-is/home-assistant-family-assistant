@@ -108,3 +108,21 @@ errors are not silently converted into optional missing capabilities.
 
 References: [Kid Control](https://manual.mikrotik.com/docs/firewall-and-quality-of-service/kid-control/),
 [DHCP lease behavior](https://manual.mikrotik.com/docs/network-management/dhcp/).
+
+## Configured Kid Control status
+
+The authorized child/parent projection includes the last observed profile and a
+separate calculated status. This is configuration evidence, not a connectivity
+probe. The calculation uses the household time zone and verifies the sampled
+router clock against the inventory timestamp. Inventory is usable for at most
+three minutes; future/stale samples, changed membership, pending effects or
+unmodeled turbo schedules yield unknown. No historical flag is displayed as a
+current success while that status is unknown.
+
+The summary contains the next actual permission change, remaining allowed
+minutes and an independently displayed temporary exception deadline. If a grant
+ends during normal allowed hours, the next block is the schedule's closing time,
+not the grant deadline. An expired exception needs fresh evidence of restoration;
+merely reaching its deadline does not imply success. A router restart may end the
+exception early, and a fresh restored profile is shown accordingly. UTC/local
+inputs, DST folds/gaps and subsecond transition boundaries have regression tests.

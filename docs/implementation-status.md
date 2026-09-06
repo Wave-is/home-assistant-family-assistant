@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 256 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, lab fixtures, public contracts).
-- 8 frontend unit tests and 16 Chromium browser tests passed.
+- 333 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 9 frontend unit tests and 18 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -99,13 +99,28 @@ is exercised with a synthetic entity, not by replacing its service registry.
   bounded, narrow classification tests. On CHR 7.20.1 the limited account needed `api`
   in addition to `rest-api`; localized setup/error guidance records that observed caveat.
 - Mobile Russian Kid Control review and Ukrainian child-only schedule were checked.
+- Kid Control now projects configured allowed/blocked status, the next permission
+  change, remaining allowed minutes and verified temporary-mode expiry. The
+  schedule calculator covers midnight, UTC/local inputs, both DST folds and
+  subsecond instants at spring transitions. Stale/future inventory, clock mismatch,
+  unmodeled turbo schedules, pending effects and unverified expiry return unknown.
+  A deadline alone never claims that the router restored its prior configuration.
+  Telegram and the card localize this projection in RU/UK/EN and use the household
+  time zone. The card rejects an expired/malformed validity deadline. Historical
+  weekly hours remain visible without treating old paused/disabled flags as live.
+  Real HA tested the projection after a verified grant and its freshness limit;
+  the Russian mobile child view was visually inspected.
+- Routed-packet fixtures now verify Ethernet/IP endpoints, header checksum,
+  lengths and non-fragmentation in addition to ports and the fresh nonce. The
+  hardened fixture passed a complete isolated native RouterOS run.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on checkpoint 8e55a7f (run 34037789583), including
-  store-await authorization/expired-during-install faults. Every device effect
-  rechecks authority after persisting intent. The next native-lab/error-shape
-  checkpoint is not yet published at this matrix revision.
+- All five GitHub check jobs passed on checkpoint f92ec3e (run 34040075861).
+  The separate native RouterOS CI also passed (run 34040076386). Its first run
+  had timed out downloading the official image; bounded download retries fixed
+  that infrastructure issue. Every device effect rechecks authority after
+  persisting intent. The new status-display checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
