@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic routines dashboard</title>
+<style>body{margin:0;padding:16px;background:#eef3f1;font-family:system-ui}main{max-width:650px;margin:auto}</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+const params=new URLSearchParams(location.search),language=params.get("lang")||"en",child=params.has("child");
+const words={en:["Parent 1","Child 1","Morning routine","Wash","Pack bag"],ru:["Родитель 1","Ребёнок 1","Утренний распорядок","Умыться","Собрать рюкзак"],uk:["Батько 1","Дитина 1","Ранковий розпорядок","Умитися","Зібрати наплічник"]}[language];
+const step=title=>({title,offset_minutes:0,confirmation:"manual",completion_condition:null,skip_when:null,escalate_minutes:15});
+const template={id:"U000001",revision:1,title:words[2],description:"",enabled:true,assignees:["child"],rule:null,skip_when:null,steps:[step(words[3]),step(words[4])]};
+const data={revision:1,actor:child?"child":"owner",role:child?"child":"owner",settings:{name:"Example family",modules:["routines"],timezone:"Europe/Kyiv"},
+ members:[{id:"owner",name:words[0],role:"owner",active:true},{id:"child",name:words[1],role:"child",active:true}],
+ routines:{config:{modes:["normal"],entity_allowlist:["binary_sensor.synthetic_ready"],revision:0},templates:[template],presets:[],runs:[]},proposals:[]};
+if(child)data.routines.runs=[{id:"J000001",template_id:template.id,revision:2,title:words[2],member:"child",status:"active",started_at:"2026-09-06T08:00:00Z",planned_at:"2026-09-06T08:00:00Z",steps:template.steps.map((s,i)=>({...s,status:i?"pending":"active",...(i?{}:{nonce:"synthetic-fresh-first"})})),history:[]}];
+window.fixture=data;window.calls=[];window.operations=new Map();
+const card=document.createElement("family-routines-card");card.setConfig({entry_id:"synthetic",language});
+card.hass={language,callWS:async msg=>{
+ if(msg.type.endsWith("/view"))return structuredClone(data);
+ if(!msg.type.endsWith("/execute"))throw {code:"unknown_action"};
+ window.calls.push(structuredClone(msg));if(window.failCommand)throw {code:"storage_error"};
+ if(window.operations.has(msg.operation_id))return structuredClone(window.operations.get(msg.operation_id));
+ const p=msg.payload,action=msg.action.split(".")[1];let result;
+ if(action==="save"){
+  let record=data.routines.templates.find(t=>t.id===p.id);
+  if(record&&record.revision!==p.revision)throw {code:"conflict"};
+  if(!record){record={id:"U"+String(data.routines.templates.length+1).padStart(6,"0"),revision:0};data.routines.templates.push(record);}
+  Object.assign(record,p,{revision:record.revision+1});result=record;
+ }else if(action==="configure"||action==="modes"){
+  if(p.revision!==data.routines.config.revision)throw {code:"conflict"};
+  Object.assign(data.routines.config,p,{revision:p.revision+1});result=data.routines.config;
+ }else{
+  const run=data.routines.runs.find(r=>r.id===p.id);
+  if(!run||run.revision!==p.revision)throw {code:"conflict"};
+  if(action==="confirm"){
+   const current=run.steps[p.step];if(current.nonce!==p.nonce||run.member!==data.actor)throw {code:"forbidden"};
+   current.status="completed";delete current.nonce;
+   const next=run.steps.find(s=>s.status==="pending");
+   if(next){next.status="active";next.nonce="synthetic-fresh-second";}else run.status="completed";
+  }else if(action==="cancel")run.status="cancelled";
+  else if(action==="override")run.steps[p.step].status=p.outcome;
+  else throw {code:"unknown_action"};
+  run.revision++;result=run;
+ }
+ data.revision++;window.operations.set(msg.operation_id,structuredClone(result));return structuredClone(result);
+}};
+document.querySelector("main").append(card);window.card=card;
+</script></html>

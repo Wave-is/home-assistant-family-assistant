@@ -227,6 +227,10 @@ async def main():
 
             await run_network(hass, entry, user, child_id)
             # Reload reads the same Store; HACS code updates do not replace it.
+            routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
+            active_routine = next(
+                r for r in routines_before_reload.values() if r["status"] == "active"
+            )
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
@@ -267,6 +271,13 @@ async def main():
             calendar_after_reload = entry.runtime_data.engine.snapshot()["calendar"]
             assert len(calendar_after_reload) == 3
             assert not entry.runtime_data.engine.snapshot()["settings"]["calendar"]["publish_to_ha"]
+            routines_after_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
+            assert len(routines_after_reload) == 2
+            assert (
+                routines_after_reload[active_routine["id"]]["steps"][0]["nonce"]
+                == active_routine["steps"][0]["nonce"]
+            )
+            assert any(r["status"] == "completed" for r in routines_after_reload.values())
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -707,6 +718,7 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
         "PASS: actual HA WebSocket privilege reservation, parent approval, fulfillment and replay"
     )
     await verify_calendar_controls(hass, entry, owner, child, child_id, request)
+    await verify_routine_controls(hass, entry, owner, child, child_id, request)
 
 
 async def verify_calendar_controls(hass, entry, owner, child, child_id, request):
@@ -817,6 +829,104 @@ async def verify_calendar_controls(hass, entry, owner, child, child_id, request)
     assert "message" not in hass.states.get(entity_id).attributes
     assert await entity.async_get_events(hass, start, start + timedelta(days=3)) == []
     print("PASS: actual HA calendar opt-in, approval, privacy, date types, read-only and revoke")
+
+
+async def verify_routine_controls(hass, entry, owner, child, child_id, request):
+    """Actual HA state reports, authenticated ordered steps, private callbacks and reload data."""
+    from ha_telegram_smoke import SyntheticTelegram
+
+    from custom_components.family_assistant.telegram.manager import TelegramManager
+    from custom_components.family_assistant.telegram.messages import render
+    from custom_components.family_assistant.telegram.routines import callback
+
+    settings = entry.runtime_data.engine.snapshot()["settings"]
+    await request(
+        owner,
+        "settings.save",
+        {
+            "name": settings["name"],
+            "language": settings["language"],
+            "modules": [*settings["modules"], "routines"],
+        },
+    )
+    config = {"revision": 0, "entity_allowlist": ["binary_sensor.synthetic_routine"]}
+    await request(child, "routines.configure", config, error="forbidden")
+    await request(owner, "routines.configure", config)
+    condition = {
+        "kind": "entity_state",
+        "entity_id": "binary_sensor.synthetic_routine",
+        "state": "on",
+    }
+    payload = {
+        "title": "Synthetic ordered morning",
+        "assignees": [child_id],
+        "steps": [
+            {"title": "Synthetic preparation"},
+            {
+                "title": "Synthetic readiness observation",
+                "confirmation": "entity_state",
+                "completion_condition": condition,
+            },
+        ],
+    }
+    await request(child, "routines.save", payload, error="forbidden")
+    template = await request(owner, "routines.save", payload, "routine-ha-save")
+    run = await request(
+        child,
+        "routines.start",
+        {"id": template["id"], "revision": template["revision"], "member": child_id},
+    )
+    assert run["steps"][0]["status"] == "active" and run["steps"][1]["status"] == "pending"
+    snapshot = entry.runtime_data.engine.snapshot()
+    event = next(e for e in snapshot["outbox"].values() if e["key"] == "routine_step")
+    message = render(event, {"id": 12345, "language": "uk"}, snapshot)
+    encoded = message["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
+    confirmation = callback(encoded)
+    await request(owner, "routines.confirm", confirmation, error="forbidden")
+    receiver = TelegramManager(
+        hass,
+        entry,
+        entry.runtime_data,
+        SyntheticTelegram(None, None),
+        {"id": 1000, "username": "synthetic_family_bot"},
+    )
+    tg_user = snapshot["members"][child_id]["telegram_id"]
+    update = {
+        "update_id": 4900,
+        "callback_query": {
+            "id": "synthetic-routine-confirm",
+            "from": {"id": tg_user, "is_bot": False},
+            "data": encoded,
+            "message": {
+                "message_id": 6010,
+                "chat": {"id": tg_user, "type": "private"},
+                "from": {"id": 1000},
+            },
+        },
+    }
+    await receiver.process(update)
+    run = entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]
+    assert run["steps"][0]["status"] == "completed"
+    await receiver.process(update)
+    assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]] == run
+    assert run["steps"][1]["status"] == "active"
+    hass.states.async_set("binary_sensor.synthetic_routine", "unavailable")
+    await entry.runtime_data.scheduler.run(datetime.now(UTC))
+    assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]["status"] == "active"
+    hass.states.async_set("binary_sensor.synthetic_routine", "on")
+    await entry.runtime_data.scheduler.run(datetime.now(UTC))
+    assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]["status"] == "completed"
+    projected = (await request(child, "view", {}))["routines"]
+    assert "entity_allowlist" not in projected["config"]
+    assert "completion_condition" not in projected["runs"][0]["steps"][1]
+    # Leave one current manual nonce in Store and verify it survives a real entry reload.
+    active = await request(
+        child,
+        "routines.start",
+        {"id": template["id"], "revision": template["revision"], "member": child_id},
+    )
+    assert active["status"] == "active" and active["steps"][0]["nonce"]
+    print("PASS: actual HA ordered routines, approved observations, nonce replay and privacy")
 
 
 if __name__ == "__main__":

@@ -195,8 +195,23 @@ class TelegramManager:
                         if not isinstance(content, str) or len(content.encode()) > 64:
                             raise DomainError("invalid_field")
                         parts = content.rsplit(":", 2)
+                        if content.startswith("fr:"):
+                            from . import routines
+
+                            if chat.get("type") != "private":
+                                raise DomainError("forbidden")
+                            result = await engine.execute(
+                                actor,
+                                "routines.confirm",
+                                routines.callback(content),
+                                f"tg:{self.bot['id']}:{update_id}:action",
+                                now,
+                            )
+                            response = routines.summary(result, language, True)
+                            parts = None
                         if (
-                            len(parts) == 3
+                            parts is not None
+                            and len(parts) == 3
                             and parts[0] in {"fp", "fn"}
                             and parts[1] in {"confirm", "cancel"}
                         ):

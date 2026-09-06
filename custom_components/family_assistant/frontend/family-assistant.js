@@ -8,6 +8,7 @@ import {renderTaskForm} from "./task-form.js";
 import {renderCourt} from "./court-view.js";
 import {renderRewards} from "./rewards-view.js";
 import {renderCalendar} from "./calendar-view.js";
+import {renderRoutines, ROUTINES_COPY} from "./routines-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -38,7 +39,7 @@ const COPY = {
     graceMinutes:"Grace after deadline (minutes)",
     taskPenalty:"Missed task points (0 disables)",
     health:"System health",parentsOnly:"Only parents can review system delivery.",noDeliveryIssues:"No unresolved delivery problems.",uncertain:"Delivery uncertain",failed:"Delivery failed",awaiting_channel:"Waiting for a linked chat",connected:"Connected",retryDelivery:"Review and resend",resolveDelivery:"Resolve without resending",retryWarning:"Telegram may already have accepted the message. Resending can create a duplicate.",resolveWarning:"This closes the warning without resending or claiming delivery.",retryConsent:"I accept the possible duplicate",channelHint:"Link the recipient's private chat in the Telegram options.",
-    calendar: "Family calendar", today: "Family today", shopping: "Shopping", tasks: "Tasks", court: "Rules & rewards",
+    routines: "Family routines", calendar: "Family calendar", today: "Family today", shopping: "Shopping", tasks: "Tasks", court: "Rules & rewards",
     alarms:"Wake-up alarms",alarmTime:"Wake-up time",timezone:"Time zone",days:"Days",weekdays:"Weekdays",weekends:"Weekends",everyday:"Every day",profile:"Wake-up style",gentle:"Messages only",strict:"Messages and dedicated siren",alarmPenalty:"Missed wake-up points (0 disables)",alarmDeviceHint:"Assign and test a dedicated siren in integration settings. Automatic penalties require separate opt-in.",moduleOff:"This module is disabled.",first:"First wake-up check",waiting_second:"Waiting for a second check",second:"Second wake-up check",testAlarm:"Test without penalties",soundRequested:"Sound requested — check the device status",soundPaused:"Sound paused",stopAlarm:"Stop this wake-up check",enabled:"Enabled",disabled:"Disabled",enable:"Enable",disable:"Disable",testAlarmWarning:"This test starts the selected siren in strict mode. No penalty will be issued.",startTest:"Start test",alarm_missed:"Wake-up was not confirmed in time",dayNames:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
     empty: "All clear. Add something when you need it.", add: "Add", name: "Name",
     title: "What needs doing?", amount: "Amount", unit: "Unit", assignee: "Who?",
@@ -84,7 +85,7 @@ const COPY = {
     graceMinutes:"Пауза после срока (минут)",
     taskPenalty:"Баллы за пропуск задачи (0 — без штрафа)",
     health:"Состояние системы",parentsOnly:"Доставку уведомлений проверяют родители.",noDeliveryIssues:"Нет нерешённых проблем доставки.",uncertain:"Результат отправки неизвестен",failed:"Ошибка отправки",awaiting_channel:"Ожидается привязка чата",connected:"Подключён",retryDelivery:"Проверить и повторить",resolveDelivery:"Закрыть без повтора",retryWarning:"Telegram уже мог принять сообщение. Повторная отправка может создать дубликат.",resolveWarning:"Предупреждение будет закрыто без повтора и без утверждения о доставке.",retryConsent:"Понимаю, что возможен дубликат",channelHint:"Привяжите личный чат получателя в настройках Telegram.",
-    calendar: "Семейный календарь", today: "Семья сегодня", shopping: "Покупки", tasks: "Задачи", court: "Правила и поощрения",
+    routines: "Семейные рутины", calendar: "Семейный календарь", today: "Семья сегодня", shopping: "Покупки", tasks: "Задачи", court: "Правила и поощрения",
     alarms:"Будильники",alarmTime:"Время подъёма",timezone:"Часовой пояс",days:"Дни",weekdays:"Будни",weekends:"Выходные",everyday:"Каждый день",profile:"Режим пробуждения",gentle:"Только сообщения",strict:"Сообщения и отдельная сирена",alarmPenalty:"Баллы за пропуск (0 — без штрафа)",alarmDeviceHint:"Назначьте и проверьте отдельную сирену в настройках интеграции. Автоштрафы включаются отдельно.",moduleOff:"Модуль выключен.",first:"Первая проверка подъёма",waiting_second:"Ожидается повторная проверка",second:"Повторная проверка подъёма",testAlarm:"Тест без штрафов",soundRequested:"Запрошен звук — проверьте состояние устройства",soundPaused:"Звук приостановлен",stopAlarm:"Остановить проверку подъёма",enabled:"Включён",disabled:"Выключен",enable:"Включить",disable:"Выключить",testAlarmWarning:"В строгом режиме тест включит назначенную сирену. Штрафов не будет.",startTest:"Начать тест",alarm_missed:"Подъём не подтверждён вовремя",dayNames:["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
     empty: "Всё спокойно. Добавьте запись, когда понадобится.", add: "Добавить", name: "Название",
     title: "Что нужно сделать?", amount: "Количество", unit: "Единица", assignee: "Кому?",
@@ -130,7 +131,7 @@ const COPY = {
     graceMinutes:"Пауза після терміну (хвилини)",
     taskPenalty:"Бали за пропуск завдання (0 — без штрафу)",
     health:"Стан системи",parentsOnly:"Доставку сповіщень перевіряють батьки.",noDeliveryIssues:"Немає невирішених проблем доставки.",uncertain:"Результат надсилання невідомий",failed:"Помилка надсилання",awaiting_channel:"Очікується прив’язка чату",connected:"Підключено",retryDelivery:"Перевірити та повторити",resolveDelivery:"Закрити без повтору",retryWarning:"Telegram уже міг прийняти повідомлення. Повторне надсилання може створити дублікат.",resolveWarning:"Попередження буде закрито без повтору й без твердження про доставку.",retryConsent:"Розумію, що можливий дублікат",channelHint:"Прив’яжіть особистий чат отримувача в налаштуваннях Telegram.",
-    calendar: "Сімейний календар", today: "Родина сьогодні", shopping: "Покупки", tasks: "Завдання", court: "Правила та заохочення",
+    routines: "Сімейні рутини", calendar: "Сімейний календар", today: "Родина сьогодні", shopping: "Покупки", tasks: "Завдання", court: "Правила та заохочення",
     alarms:"Будильники",alarmTime:"Час підйому",timezone:"Часовий пояс",days:"Дні",weekdays:"Будні",weekends:"Вихідні",everyday:"Щодня",profile:"Режим пробудження",gentle:"Лише повідомлення",strict:"Повідомлення та окрема сирена",alarmPenalty:"Бали за пропуск (0 — без штрафу)",alarmDeviceHint:"Призначте й перевірте окрему сирену в налаштуваннях інтеграції. Автоштрафи вмикаються окремо.",moduleOff:"Модуль вимкнено.",first:"Перша перевірка підйому",waiting_second:"Очікується повторна перевірка",second:"Повторна перевірка підйому",testAlarm:"Тест без штрафів",soundRequested:"Запитано звук — перевірте стан пристрою",soundPaused:"Звук призупинено",stopAlarm:"Зупинити перевірку підйому",enabled:"Увімкнено",disabled:"Вимкнено",enable:"Увімкнути",disable:"Вимкнути",testAlarmWarning:"У суворому режимі тест увімкне призначену сирену. Штрафів не буде.",startTest:"Почати тест",alarm_missed:"Підйом не підтверджено вчасно",dayNames:["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],
     empty: "Усе спокійно. Додайте запис, коли знадобиться.", add: "Додати", name: "Назва",
     title: "Що потрібно зробити?", amount: "Кількість", unit: "Одиниця", assignee: "Кому?",
@@ -190,7 +191,7 @@ export class FamilyCard extends HTMLElement {
   setConfig(config) {
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
-    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar"].includes(this._view)) throw new Error("Unknown Family Assistant view");
+    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
     this._entry = config.entry_id;
     this._data = null;
@@ -198,7 +199,7 @@ export class FamilyCard extends HTMLElement {
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._taskItemAction=null;this._taskCreateDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
-    this._rewardDraft=null;this._calendarDraft=null;
+    this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -349,7 +350,7 @@ export class FamilyCard extends HTMLElement {
     const card=el("ha-card");root.append(card);
     const header=el("header");header.append(el("div",this._data?.settings.name || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));card.append(header);
     const body=el("div",null,"body");card.append(body);
-    if(this._actionError || this._error) {const language=this._config?.language || this._hass?.language?.split("-")[0],errors=ERRORS[language] || ERRORS.en;const notice=el("div",errors[this._actionError || this._error] || this.t.failure,"notice");notice.setAttribute("role","alert");body.append(notice);}
+    if(this._actionError || this._error) {const language=this._config?.language || this._hass?.language?.split("-")[0],errors=ERRORS[language] || ERRORS.en,code=this._actionError || this._error;const routineText=this._view==="routines" && Object.values(ROUTINES_COPY[language] || ROUTINES_COPY.en).includes(code)?code:null;const notice=el("div",errors[code] || routineText || this.t.failure,"notice");notice.setAttribute("role","alert");body.append(notice);}
     if(!this._data) {
       body.append(el("div",this._entries?.length===0 ? this.t.noHousehold : this._entries?.length>1 ? this.t.choose : this.t.loading,"empty"));
       for(const entry of this._entries || []) body.append(this.button(entry.title,()=>{this._entry=entry.entry_id;this.refresh();}));
@@ -358,6 +359,7 @@ export class FamilyCard extends HTMLElement {
     this.renderProposals(body);
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}
+    if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
@@ -610,15 +612,15 @@ class FamilyEditor extends HTMLElement {
         for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
         input.disabled=!this._entries?.length;
       }
-      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar"]){const option=el("option",t[view]);option.value=view;input.append(option);}
-      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation","custom:family-network-card":"mikrotik","custom:family-calendar-card":"calendar"}[this._config?.type] || "today";
+      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines"]){const option=el("option",t[view]);option.value=view;input.append(option);}
+      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation","custom:family-network-card":"mikrotik","custom:family-calendar-card":"calendar","custom:family-routines-card":"routines"}[this._config?.type] || "today";
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
   }
 }
 customElements.define("family-assistant-card-editor",FamilyEditor);
-for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"],["family-network-card","mikrotik"],["family-calendar-card","calendar"]]){
+for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"],["family-network-card","mikrotik"],["family-calendar-card","calendar"],["family-routines-card","routines"]]){
   class Card extends FamilyCard {static defaultView=view;}
   customElements.define(type,Card);
   window.customCards=window.customCards || [];

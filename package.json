@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/frontend.test.js tests/frontend-shopping-series.test.js tests/frontend-shopping-items.test.js tests/frontend-local-time.test.js tests/frontend-task-items.test.js tests/frontend-task-form.test.js tests/frontend-court-view.test.js tests/frontend-rewards-view.test.js tests/frontend-calendar-view.test.js",
+    "test": "node --test tests/frontend.test.js tests/frontend-shopping-series.test.js tests/frontend-shopping-items.test.js tests/frontend-local-time.test.js tests/frontend-task-items.test.js tests/frontend-task-form.test.js tests/frontend-court-view.test.js tests/frontend-rewards-view.test.js tests/frontend-calendar-view.test.js tests/frontend-routines-view.test.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

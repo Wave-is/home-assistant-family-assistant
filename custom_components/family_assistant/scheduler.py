@@ -12,6 +12,7 @@ from homeassistant.util import dt as dt_util
 
 from .alarm_devices import AlarmDevices
 from .domain.validation import DomainError
+from .routine_observations import collect as collect_routine_observations
 
 
 class Scheduler:
@@ -76,7 +77,10 @@ class Scheduler:
             return
         self._busy = True
         try:
-            if await self.runtime.engine.tick(now):
+            observations = collect_routine_observations(
+                self.runtime.engine.snapshot(), self.hass.states.get
+            )
+            if await self.runtime.engine.tick(now, routine_observations=observations):
                 self.runtime.updated()
             await self.devices.reconcile(now)
             await self.devices.close_incidents(now)

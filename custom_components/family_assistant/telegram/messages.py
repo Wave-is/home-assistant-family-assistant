@@ -4,6 +4,12 @@ from ..notifications import DeliveryError
 
 MESSAGES = {
     "en": {
+        "routine_step": "🪜 {title} · Step {step_number}: {step_title}",
+        "routine_overdue": (
+            "🪜 {member} · {title}: still waiting for {step_title}. No automatic penalty."
+        ),
+        "routine_closed": "✅ {member} · {title}: {step_title} — {outcome}.",
+        "routine_completed": "✅ Routine completed: {title}",
         "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member} requests {id} · {title}. Reserved: {cost} points. "
@@ -36,6 +42,12 @@ MESSAGES = {
         ),
     },
     "ru": {
+        "routine_step": "🪜 {title} · Шаг {step_number}: {step_title}",
+        "routine_overdue": (
+            "🪜 {member} · {title}: ещё ждём шаг «{step_title}». Автоматического штрафа нет."
+        ),
+        "routine_closed": "✅ {member} · {title}: {step_title} — {outcome}.",
+        "routine_completed": "✅ Рутина завершена: {title}",
         "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member}: заявка {id} · {title}. Резерв: {cost} баллов. Нужна проверка родителя."
@@ -70,6 +82,12 @@ MESSAGES = {
         ),
     },
     "uk": {
+        "routine_step": "🪜 {title} · Крок {step_number}: {step_title}",
+        "routine_overdue": (
+            "🪜 {member} · {title}: ще чекаємо крок «{step_title}». Автоматичного штрафу немає."
+        ),
+        "routine_closed": "✅ {member} · {title}: {step_title} — {outcome}.",
+        "routine_completed": "✅ Рутину завершено: {title}",
         "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member}: заявка {id} · {title}. Резерв: {cost} балів. Потрібна перевірка батьків."
@@ -162,6 +180,12 @@ def render(event, target, state):
         )
         data["title"] = record.get("title", record.get("name", data.get("title", "")))
         data["member"] = state["members"].get(data.get("member"), {}).get("name", "")
+        if event["key"].startswith("routine_"):
+            from .routines import COPY as ROUTINE_COPY
+
+            data["step_number"] = data.get("step", 0) + 1
+            if "outcome" in data:
+                data["outcome"] = ROUTINE_COPY.get(language, ROUTINE_COPY["en"])[data["outcome"]]
         if event["key"] == "calendar_reminder":
             from datetime import datetime
             from zoneinfo import ZoneInfo
@@ -293,6 +317,22 @@ def render(event, target, state):
         if any(len(button["callback_data"].encode()) > 64 for button in buttons):
             raise DeliveryError("notification_template_invalid")
         result["reply_markup"] = {"inline_keyboard": [buttons]}
+    if event["key"] == "routine_step" and data.get("nonce"):
+        from .routines import COPY as ROUTINE_COPY
+
+        callback_data = f"fr:{data['run_id']}:{data['step']}:{data['revision']}:{data['nonce']}"
+        if len(callback_data.encode()) > 64:
+            raise DeliveryError("notification_template_invalid")
+        result["reply_markup"] = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": ROUTINE_COPY.get(language, ROUTINE_COPY["en"])["confirm"],
+                        "callback_data": callback_data,
+                    }
+                ]
+            ]
+        }
     if event["key"] == "telegram_reply" and data.get("proposal_id"):
         proposal = state.get("proposals", {}).get(data["proposal_id"], {})
         if proposal.get("status") == "pending" and proposal.get("actor") == data["actor"]:

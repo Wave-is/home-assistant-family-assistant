@@ -20,7 +20,8 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Tasks / Задачи / Завдання](docs/tasks.md) ·
 [Court / Семейный суд / Сімейний суд](docs/court.md) ·
 [Privileges / Привилегии / Привілеї](docs/rewards.md) ·
-[Calendar / Календарь / Календар](docs/calendar.md).
+[Calendar / Календарь / Календар](docs/calendar.md),
+[Routines / Распорядки / Розпорядки](docs/routines.md).
 
 ## Development
 

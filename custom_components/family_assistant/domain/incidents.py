@@ -3,7 +3,7 @@
 from .context import Context
 
 
-def open_incident(ctx: Context, incident_id, key, data):
+def open_incident(ctx: Context, incident_id, key, data, *, recipient="family"):
     current = ctx.state["incidents"].get(incident_id)
     if current and current["state"] == "open":
         return current
@@ -11,13 +11,14 @@ def open_incident(ctx: Context, incident_id, key, data):
     notification_ctx = Context(
         ctx.state, ctx.actor, ctx.now, f"incident:{incident_id}:{generation}"
     )
-    event_id = notification_ctx.notify("family", key, data)
+    event_id = notification_ctx.notify(recipient, key, data)
     record = {
         "id": incident_id,
         "generation": generation,
         "state": "open",
         "opened_at": ctx.now.isoformat(),
         "event_id": event_id,
+        "recipient": recipient,
     }
     ctx.state["incidents"][incident_id] = record
     return record
@@ -39,4 +40,6 @@ def close_incident(ctx: Context, incident_id, key, data):
         notification_ctx = Context(
             ctx.state, ctx.actor, ctx.now, f"incident:{incident_id}:{record['generation']}:close"
         )
-        record["closure_event_id"] = notification_ctx.notify("family", key, data)
+        record["closure_event_id"] = notification_ctx.notify(
+            record.get("recipient", "family"), key, data
+        )

@@ -22,6 +22,7 @@ from . import (
     members,
     proposals,
     rewards,
+    routines,
     settings,
     shopping,
     shopping_series,
@@ -43,6 +44,7 @@ HANDLERS = {
     "conversation": proposals.handle,
     "mikrotik": network_plans.handle,
     "calendar": family_calendar.handle,
+    "routines": routines.handle,
 }
 BUCKETS = (
     "members",
@@ -58,6 +60,7 @@ BUCKETS = (
     "alarms",
     "alarm_runs",
     "routines",
+    "routine_runs",
     "calendar",
     "pantry",
     "school",
@@ -135,6 +138,8 @@ class Engine:
         self._state.setdefault("rewards", {})
         self._state.setdefault("reward_requests", {})
         self._state.setdefault("calendar", {})
+        self._state.setdefault("routines", {})
+        self._state.setdefault("routine_runs", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
         self._persist = persist
@@ -171,7 +176,7 @@ class Engine:
         parent = actor["role"] in PRIVILEGED
         data = {
             "revision": self._state["revision"],
-            "settings": self._state["settings"],
+            "settings": deepcopy(self._state["settings"]),
             "actor": actor_id,
             "role": actor["role"],
         }
@@ -179,6 +184,8 @@ class Engine:
             {k: m[k] for k in ("id", "name", "role", "language", "active", "revision")}
             for m in self._state["members"].values()
         ]
+        if not parent:
+            data["settings"].pop("routines", None)
         data["shopping"] = [
             {**item, "merge_name": shopping.normalized_name(item["name"])}
             for item in self._state["shopping"].values()
@@ -234,6 +241,8 @@ class Engine:
         data["kid_control"] = kid_plans.view(self._state, actor_id, now)
         if actor["role"] != "guest" and "calendar" in self._state["settings"]["modules"]:
             data["calendar"] = family_calendar.view(self._state, actor, now)
+        if actor["role"] != "guest" and "routines" in self._state["settings"]["modules"]:
+            data["routines"] = routines.view(self._state, actor)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -316,6 +325,7 @@ class Engine:
             else:
                 result = self._dispatch(ctx, action, payload)
             alarms.cancel_disabled(ctx)
+            routines.cancel_disabled(ctx)
             # Freeze results: the journal must not alias later state mutations.
             result = deepcopy(result)
             working["revision"] += 1
@@ -358,7 +368,7 @@ class Engine:
             if not allowed:
                 raise DomainError("forbidden")
 
-    async def tick(self, now: datetime) -> bool:
+    async def tick(self, now: datetime, *, routine_observations: dict | None = None) -> bool:
         """Internal clock, not an exposed action or a forged privileged user.
 
         Persist the complete transition and outbox before any device operation.
@@ -377,6 +387,7 @@ class Engine:
             court_weekly.tick(ctx)
             rewards.tick(ctx)
             family_calendar.tick(ctx)
+            routines.tick(ctx, routine_observations)
             if working == self._state:
                 return False
             working["revision"] += 1

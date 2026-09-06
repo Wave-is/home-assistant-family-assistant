@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 
 from ..domain.validation import DomainError
-from . import calendar, commands, rewards
+from . import calendar, commands, rewards, routines
 from .intents import find_member, parse
 from .presentation import court_stats, summary
 
@@ -140,6 +140,13 @@ async def route(
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if (
+            "template_id" in result
+            or "assignees" in result
+            and "steps" in result
+            or "modes" in result
+        ):
+            return routines.summary(result, language, private)
         if "participants" in result and "start" in result:
             return t["saved"].format(
                 id=result["id"], title=calendar.summary(result, language, private)
@@ -187,7 +194,12 @@ async def route(
     }:
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
-        return t["help"] + rewards.help_text(language) + calendar.help_text(language)
+        return (
+            t["help"]
+            + rewards.help_text(language)
+            + calendar.help_text(language)
+            + routines.help_text(language)
+        )
     from .network import parsed as parse_network
     from .network import status as network_status
 
@@ -266,7 +278,14 @@ async def route(
         return rewards.read(view, language, only_wallet=command == "/wallet")
     if command == "/calendar":
         return calendar.read(view, language, private)
+    if command == "/routines":
+        return routines.read(view, language, private)
     fields = [part.strip() for part in tail.split("|")]
+    routine_intent = routines.parsed(engine.snapshot(), view, command, fields, private)
+    if routine_intent:
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, *routine_intent)
+        )
     calendar_intent = calendar.parsed(view, command, fields)
     if calendar_intent:
         return saved(
