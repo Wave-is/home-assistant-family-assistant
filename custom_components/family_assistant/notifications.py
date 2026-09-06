@@ -129,6 +129,7 @@ class Notifications:
                 if not any(
                     t["channel"] == delivery["target"]["channel"]
                     and t["id"] == delivery["target"]["id"]
+                    and t.get("bot_id") == delivery["target"].get("bot_id")
                     for t in current_targets
                 ):
                     delivery["state"] = "superseded"

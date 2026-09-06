@@ -2,6 +2,7 @@
 
 from ..const import LANGUAGES, MODULES
 from .context import Context
+from .household import timezone
 from .validation import DomainError, enum, fields, text
 
 
@@ -12,7 +13,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     fields(
         payload,
-        {"name", "language", "modules", "automatic_penalties", "daily_penalty_cap"},
+        {"name", "language", "modules", "automatic_penalties", "daily_penalty_cap", "timezone"},
         {"name", "language", "modules"},
     )
     modules = payload["modules"]
@@ -29,6 +30,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if not isinstance(payload["automatic_penalties"], bool):
             raise DomainError("invalid_field", "automatic_penalties")
         ctx.state["settings"]["automatic_penalties"] = payload["automatic_penalties"]
+    if "timezone" in payload:
+        ctx.state["settings"]["timezone"] = timezone(payload["timezone"])
     if "daily_penalty_cap" in payload:
         value = payload["daily_penalty_cap"]
         if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= 100:

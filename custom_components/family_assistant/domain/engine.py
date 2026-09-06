@@ -10,7 +10,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from ..const import DEFAULT_MODULES, LANGUAGES, MODULES, PRIVILEGED, SCHEMA_VERSION
-from . import alarms, court, delivery, members, settings, shopping, tasks
+from . import alarms, court, delivery, household, members, settings, shopping, tasks
 from .context import Context
 from .validation import DomainError, enum, fields, text, timestamp
 
@@ -49,14 +49,20 @@ BUCKETS = (
 
 
 def new_state(
-    owner_user_id: str, name: str, language: str = "en", modules: list[str] | None = None
+    owner_user_id: str,
+    name: str,
+    language: str = "en",
+    modules: list[str] | None = None,
+    *,
+    timezone: str = "UTC",
+    template: str = "manual",
 ) -> dict:
     owner_user_id = text(owner_user_id, "ha_user_id", 128)
     enum(language, LANGUAGES, "language")
     enabled = list(DEFAULT_MODULES) if modules is None else list(modules)
     if set(enabled) - set(MODULES):
         raise DomainError("invalid_field", "modules")
-    return {
+    state = {
         **{bucket: {} for bucket in BUCKETS},
         "schema_version": SCHEMA_VERSION,
         "revision": 0,
@@ -67,11 +73,12 @@ def new_state(
             "modules": enabled,
             "automatic_penalties": False,
             "daily_penalty_cap": 1,
+            "timezone": household.timezone(timezone),
         },
         "members": {
             "owner": {
                 "id": "owner",
-                "name": "Owner",
+                "name": household.NAMES[language]["owner"],
                 "role": "owner",
                 "language": language,
                 "ha_user_id": owner_user_id,
@@ -81,6 +88,8 @@ def new_state(
             }
         },
     }
+    household.apply_template(state, template)
+    return state
 
 
 class Engine:
@@ -192,6 +201,8 @@ class Engine:
             actor = self._actor(actor_id)
             prior = self._state["processed"].get(operation_id)
             if prior:
+                if prior.get("role", actor["role"]) != actor["role"]:
+                    raise DomainError("forbidden")
                 if prior["fingerprint"] != fingerprint:
                     raise DomainError("idempotency_conflict")
                 return deepcopy(prior["result"])
@@ -230,7 +241,11 @@ class Engine:
                     "revision": working["revision"],
                 }
             )
-            working["processed"][operation_id] = {"fingerprint": fingerprint, "result": result}
+            working["processed"][operation_id] = {
+                "fingerprint": fingerprint,
+                "result": result,
+                "role": actor["role"],
+            }
             await self._persist(deepcopy(working))
             self._state = working
             return deepcopy(result)

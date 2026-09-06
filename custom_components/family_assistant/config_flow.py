@@ -11,6 +11,7 @@ from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
 from .const import DEFAULT_MODULES, DOMAIN, LANGUAGES, ROLES
+from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
 
 
@@ -38,18 +39,35 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not user_input["name"].strip() or not user_input["owner_name"].strip():
                 errors["base"] = "invalid_field"
             else:
+                try:
+                    timezone(user_input.get("timezone", self.hass.config.time_zone))
+                except DomainError:
+                    errors["timezone"] = "invalid_field"
+                if errors:
+                    return self.async_show_form(
+                        step_id="user", data_schema=self._user_schema(user_input), errors=errors
+                    )
                 self._household = {**user_input, "owner_user_id": user.id}
                 return await self.async_step_modules()
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("name", default="Family"): str,
-                    vol.Required("owner_name", default="Owner"): str,
-                    vol.Required("language", default="en"): select(LANGUAGES),
-                }
-            ),
+            data_schema=self._user_schema(user_input or {}),
             errors=errors,
+        )
+
+    def _user_schema(self, values):
+        return vol.Schema(
+            {
+                vol.Required("name", default=values.get("name", "Family")): str,
+                vol.Required("owner_name", default=values.get("owner_name", "")): str,
+                vol.Required("language", default=values.get("language", "en")): select(LANGUAGES),
+                vol.Required(
+                    "timezone", default=values.get("timezone", self.hass.config.time_zone)
+                ): str,
+                vol.Required("template", default=values.get("template", "manual")): select(
+                    TEMPLATES, "template"
+                ),
+            }
         )
 
     async def async_step_modules(self, user_input=None):
@@ -253,6 +271,12 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "modules": [m for m in DEFAULT_MODULES if user_input.get(m)],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
+                        "timezone": user_input.get(
+                            "timezone",
+                            runtime.engine.snapshot()["settings"].get(
+                                "timezone", self.hass.config.time_zone
+                            ),
+                        ),
                     },
                     f"options:{uuid.uuid4()}",
                     dt_util.utcnow(),
@@ -269,6 +293,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Required("name", default=settings["name"]): str,
                     vol.Required("language", default=settings["language"]): select(LANGUAGES),
+                    vol.Required(
+                        "timezone", default=settings.get("timezone", self.hass.config.time_zone)
+                    ): str,
                     vol.Required(
                         "automatic_penalties", default=settings.get("automatic_penalties", False)
                     ): bool,
@@ -400,6 +427,10 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             try:
                 payload = dict(user_input)
+                if "aliases" in payload:
+                    payload["aliases"] = [
+                        line.strip() for line in payload["aliases"].splitlines() if line.strip()
+                    ]
                 if self._member_id != "_new":
                     payload["id"] = self._member_id
                 if payload.get("ha_user_id") == "_none":
@@ -432,6 +463,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "ha_user_id", default=existing.get("ha_user_id") or "_none"
                     ): select(users),
                     vol.Optional("active", default=existing.get("active", True)): bool,
+                    vol.Optional(
+                        "aliases", default="\n".join(existing.get("aliases", []))
+                    ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
                 }
             ),
             errors=errors,

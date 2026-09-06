@@ -8,7 +8,7 @@ Nothing is production-ready solely because a mock test passes.
 | --- | --- | --- |
 | Clean public source and HACS structure | In progress | No public release yet |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
-| Multiple households / member administration | Implemented / HA-tested | Config/options and bound HA identity; family templates pending |
+| Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | Implemented / unit-tested | Partial purchase and approvals; recurring/media/price extensions pending |
 | Tasks, deadlines, reports and reviews | In progress | Legacy parity and media pending |
 | Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
@@ -27,7 +27,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | Planned | Schedule vs override, autonomy |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | Planned | No live legacy data modified |
-| Release CI and secret checks | In progress | Local privacy/catalog checks pass; CI configured, GitHub HACS/Hassfest run pending |
+| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
 ## Baseline, 2026-09-06
@@ -43,21 +43,27 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 86 Python tests passed (domain, device adapter, outbox, Telegram API/enrollment, public contracts).
-- 6 frontend unit tests and 8 Chromium browser tests passed.
+- 104 Python tests passed (domain, device adapter, outbox, Telegram, language/context, public contracts).
+- 7 frontend unit tests and 8 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
   continuous renewal, alternating tones, answer stops sound, Store reload/unload.
 - Real HA Telegram options, group and private enrollment, owner confirmation,
-  addressed mention reply, duplicate update and unauthorized-command rejection:
+  addressed mention reply, receipt-backed task reply context, duplicate update and unauthorized-command rejection:
   passed with a synthetic Telegram client and no network access.
+- Real HA WebSocket authentication, household listing, owner/child projections,
+  unknown-user isolation and rejected child mutation passed over container-only loopback.
+- End-of-week calendar computation, natural assignment/rescheduling, durable
+  interpretation replay and denial after role revocation are covered by tests.
+- RU/UK/EN setup guides explain own-bot setup, identity confirmation, current
+  limits, wake-up testing and delivery uncertainty. Card editor lists authorized households.
 - Mobile Ukrainian wake-up and Russian shopping screenshots visually inspected.
 - Private legacy family-only suite: 397 tests passed.
 - No production family module, Telegram bot, router or siren has been changed.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- HACS and Hassfest passed on GitHub. Frontend CI passed. The first Python CI
-  run exposed a test import-path difference; an explicit pytest root fixes it.
+- All five GitHub check jobs passed on main (run 34026374437). The initial
+  Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
@@ -67,8 +73,9 @@ service call does not prove physical sound or volume.
 
 ## Next work
 
-1. Expand deterministic language/context handling and test callback/end-to-end routing.
-2. Improve the setup guide, templates, translations and visual editors.
+1. Extend language/context coverage and the LLM/search cascade; keep calendar
+   calculations and authorization deterministic.
+2. Complete module controls, localization and automatic card resource registration.
 3. Complete recurrence, reports, rewards and module parity, then LLM/search and
    extended family modules. Keep all unmet rows visible.
 4. Implement and independently test MikroTik plans/read-back/rollback and parents'

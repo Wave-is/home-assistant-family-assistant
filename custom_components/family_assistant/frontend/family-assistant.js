@@ -319,14 +319,36 @@ export class FamilyCard extends HTMLElement {
 class FamilyEditor extends HTMLElement {
   constructor(){super();this.attachShadow({mode:"open"});}
   setConfig(config){this._config={...config};this.render();}
-  set hass(hass){this._hass=hass;this.render();}
+  set hass(hass){
+    const identity=hass.connection || hass;
+    this._hass=hass;
+    if(identity!==this._identity){this._identity=identity;this._entries=null;this.loadHouseholds(identity);}
+    if(!this.shadowRoot.activeElement)this.render();
+  }
+  async loadHouseholds(identity){
+    try{
+      const entries=await this._hass.callWS({type:"family_assistant/households"});
+      if(identity!==this._identity)return;
+      this._entries=entries;this._error=false;this.render();
+    }catch{
+      if(identity!==this._identity)return;
+      this._error=true;this.render();
+    }
+  }
   render(){
-    const t=COPY[this._hass?.language] || COPY.en;this.shadowRoot.replaceChildren(el("style",STYLES));
+    const t=COPY[this._hass?.language?.split("-")[0]] || COPY.en;this.shadowRoot.replaceChildren(el("style",STYLES));
     const form=el("div",null,"editor");this.shadowRoot.append(form);
+    if(this._error){const notice=el("div",t.failure,"notice");notice.setAttribute("role","alert");form.append(notice);}
     for(const [name,label] of [["entry_id",t.entry],["title",t.name],["view",t.view]]){
-      const wrap=el("label",label),input=el(name==="view"?"select":"input");
+      const wrap=el("label",label),input=el(name!=="title"?"select":"input");input.name=name;
+      if(name==="entry_id"){
+        const empty=el("option",this._entries?(this._entries.length?t.choose:t.noHousehold):t.loading);empty.value="";input.append(empty);
+        for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
+        input.disabled=!this._entries?.length;
+      }
       if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health"]){const option=el("option",t[view]);option.value=view;input.append(option);}
-      input.value=this._config?.[name] || (name==="view"?"today":"");wrap.append(input);form.append(wrap);
+      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health"}[this._config?.type] || "today";
+      input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
   }

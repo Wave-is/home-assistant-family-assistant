@@ -12,6 +12,7 @@ import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from aiohttp import ClientSession
 from homeassistant import bootstrap, config_entries, loader
 from homeassistant.auth.const import GROUP_ID_ADMIN
 from homeassistant.components.siren import DATA_COMPONENT, SirenEntity, SirenEntityFeature
@@ -65,6 +66,7 @@ async def main():
                     "time_zone": "UTC",
                     "country": "GB",
                 },
+                "http": {"server_host": "127.0.0.1", "server_port": 8123},
             },
             hass,
         )
@@ -81,6 +83,8 @@ async def main():
                     "name": "Synthetic family",
                     "owner_name": "Parent",
                     "language": "en",
+                    "timezone": "Europe/Berlin",
+                    "template": "pair",
                 },
             )
             assert result["step_id"] == "modules", result
@@ -127,7 +131,9 @@ async def main():
                 },
             )
             assert options["type"] == "create_entry", options
-            assert len(engine.view("owner")["members"]) == 2
+            assert len(engine.view("owner")["members"]) == 3
+            assert engine.snapshot()["settings"]["timezone"] == "Europe/Berlin"
+            assert engine.snapshot()["members"]["M000001"]["ha_user_id"] is None
             # Exercise the real core service registry with authenticated context.
             response = await hass.services.async_call(
                 "family_assistant",
@@ -215,12 +221,13 @@ async def main():
             from ha_telegram_smoke import run as telegram_smoke
 
             await telegram_smoke(hass, entry, user, child_id)
+            await run_websocket(hass, entry, user, child_id)
             # Reload reads the same Store; HACS code updates do not replace it.
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
             assert len(entry.runtime_data.engine.view("owner")["shopping"]) == 3
-            assert len(entry.runtime_data.engine.view("owner")["members"]) == 2
+            assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
             print(
@@ -229,6 +236,66 @@ async def main():
             )
         finally:
             await hass.async_stop(force=True)
+
+
+async def run_websocket(hass, entry, owner, child_id):
+    """Real HTTP/WebSocket protocol on container loopback, not handler mocks."""
+    await hass.http.start()
+    child = await hass.auth.async_create_user("Synthetic child HA user")
+    stranger = await hass.auth.async_create_user("Synthetic unlinked HA user")
+    engine = entry.runtime_data.engine
+    await engine.execute(
+        "owner",
+        "members.save",
+        {
+            "id": child_id,
+            "name": "Child",
+            "role": "child",
+            "ha_user_id": child.id,
+        },
+        "ws-bind-child",
+        datetime.now(UTC),
+    )
+    async with ClientSession() as client:
+        for user, allowed in ((owner, True), (child, True), (stranger, False)):
+            refresh = await hass.auth.async_create_refresh_token(
+                user, client_id="https://example.invalid/synthetic-client"
+            )
+            token = hass.auth.async_create_access_token(refresh)
+            async with client.ws_connect("http://127.0.0.1:8123/api/websocket") as ws:
+                assert (await ws.receive_json())["type"] == "auth_required"
+                await ws.send_json({"type": "auth", "access_token": token})
+                assert (await ws.receive_json())["type"] == "auth_ok"
+                await ws.send_json({"id": 1, "type": "family_assistant/households"})
+                result = await ws.receive_json()
+                assert result["success"]
+                assert result["result"] == (
+                    [{"entry_id": entry.entry_id, "title": entry.title}] if allowed else []
+                )
+                await ws.send_json(
+                    {"id": 2, "type": "family_assistant/view", "entry_id": entry.entry_id}
+                )
+                result = await ws.receive_json()
+                assert result["success"] == allowed
+                if allowed:
+                    assert result["result"]["role"] == ("owner" if user is owner else "child")
+                    assert "telegram_id" not in str(result["result"])
+                if user is child:
+                    await ws.send_json(
+                        {
+                            "id": 3,
+                            "type": "family_assistant/execute",
+                            "entry_id": entry.entry_id,
+                            "action": "court.award",
+                            "payload": {"member": child_id, "points": 1, "reason": "Self-award"},
+                            "operation_id": "ws-forbidden",
+                        }
+                    )
+                    result = await ws.receive_json()
+                    assert not result["success"] and result["error"]["code"] == "forbidden"
+                    assert not engine.snapshot()["court"]
+            hass.auth.async_remove_refresh_token(refresh)
+    print("PASS: actual HA WebSocket auth, household names, projections and command denial")
 
 
 if __name__ == "__main__":

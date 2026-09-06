@@ -6,6 +6,9 @@ import re
 from datetime import datetime
 
 from ..domain.validation import DomainError
+from . import commands
+from .intents import find_member, parse
+from .presentation import summary
 
 COPY = {
     "en": {
@@ -96,23 +99,22 @@ def addressed(message: dict, bot: dict) -> str | None:
 
 
 def member_by_name(state: dict, value: str) -> str:
-    lowered = value.strip().casefold()
-    matches = [
-        m["id"]
-        for m in state["members"].values()
-        if m["active"]
-        and lowered
-        in {m["id"].casefold(), m["name"].casefold(), *(a.casefold() for a in m.get("aliases", []))}
-    ]
-    if len(matches) != 1:
-        raise DomainError("unknown_member" if not matches else "ambiguous_member")
-    return matches[0]
+    return find_member(state, value)
 
 
-async def route(engine, actor: str, content: str, operation_id: str, now: datetime) -> str:
+async def route(engine, actor: str, content: str, operation_id: str, now: datetime, refs=()) -> str:
     view = engine.view(actor)
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
+
+    def saved(result):
+        return t["saved"].format(id=result["id"], title=summary(result, view, language))
+
+    prior = commands.previous(engine, actor, content, refs, operation_id)
+    if prior:
+        return saved(
+            await engine.execute(actor, prior["action"], prior["payload"], operation_id, now)
+        )
     normalized = content.casefold().strip(" .?!🙂")
     if normalized in {
         "/ping",
@@ -131,6 +133,11 @@ async def route(engine, actor: str, content: str, operation_id: str, now: dateti
         return t["help"]
     command, _, tail = content.partition(" ")
     command = command.casefold()
+    intent = (
+        parse(engine.snapshot(), view, content, now, refs) if not command.startswith("/") else None
+    )
+    if intent and intent.action.startswith("read."):
+        command = {"read.court": "/stats", "read.tasks": "/tasks"}[intent.action]
     if command in {"/shopping", "/tasks", "/stats", "/alarms"}:
         bucket = {
             "/shopping": "shopping",
@@ -144,21 +151,11 @@ async def route(engine, actor: str, content: str, operation_id: str, now: dateti
         for item in view[bucket]:
             if item.get("status") in {"archived", "cancelled", "rejected"}:
                 continue
-            if bucket == "shopping":
-                label = f"{item['name']} · {item['quantity'] - item['purchased']:g} {item['unit']}"
-            elif bucket == "tasks":
-                label = f"{item['title']} · {item['status']}"
-            elif bucket == "court":
-                name = next(m["name"] for m in view["members"] if m["id"] == item["member"])
-                reason = item.get("reason", item.get("reason_key", ""))
-                label = f"{name} · {item['points']:+d} · {reason} · {item['status']}"
-            else:
-                name = next(m["name"] for m in view["members"] if m["id"] == item["member"])
-                label = f"{name} · {item['time']} · {item['timezone']} · {item['days']}"
+            label = summary(item, view, language)
             lines.append(f"{item['id']} · {label}")
         return "\n".join(lines)[:3800] or t["empty"]
     fields = [part.strip() for part in tail.split("|")]
-    action, payload = None, None
+    action, payload = (intent.action, intent.payload) if intent else (None, None)
     if command == "/buy" and 1 <= len(fields) <= 3:
         try:
             quantity = float(fields[1].replace(",", ".")) if len(fields) > 1 else 1
@@ -181,5 +178,7 @@ async def route(engine, actor: str, content: str, operation_id: str, now: dateti
         action, payload = "tasks.complete", {"id": fields[0]}
     if action is None:
         return t["unknown"]
-    result = await engine.execute(actor, action, payload, operation_id, now)
-    return t["saved"].format(id=result["id"], title=result.get("title", result.get("name", "")))
+    result = await commands.execute(
+        engine, actor, content, refs, operation_id, now, action, payload
+    )
+    return saved(result)

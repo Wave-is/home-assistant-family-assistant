@@ -44,3 +44,15 @@ test("late response from previous household cannot replace current household",as
   card.setConfig({entry_id:"old"});card.hass={language:"en",callWS:()=>new Promise(resolve=>{finish=resolve;})};
   card.setConfig({entry_id:"new"});finish(base);await tick();assert.equal(card._data,null);
 });
+
+test("visual editor uses authorized household names, not manually entered IDs",async()=>{
+  const editor=document.createElement("family-assistant-card-editor");
+  editor.setConfig({type:"custom:family-alarms-card"});let emitted;
+  editor.addEventListener("config-changed",event=>{emitted=event.detail.config;});
+  editor.hass={language:"ru",callWS:async()=>[{entry_id:"synthetic",title:"Пример семьи"}]};
+  await tick();const household=editor.shadowRoot.querySelector('[name="entry_id"]');
+  assert.equal(household.tagName,"SELECT");assert.match(household.textContent,/Пример семьи/);
+  assert.equal(editor.shadowRoot.querySelector('[name="view"]').value,"alarms");
+  household.value="synthetic";household.dispatchEvent(new dom.window.Event("change"));
+  assert.equal(emitted.entry_id,"synthetic");assert.equal(emitted.type,"custom:family-alarms-card");
+});

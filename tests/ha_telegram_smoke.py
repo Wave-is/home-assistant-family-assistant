@@ -58,7 +58,7 @@ async def run(hass, entry, owner_user, child_id):
 
         update_id = 100
 
-        async def receive(text, *, user_id=1001, private=False):
+        async def receive(text, *, user_id=1001, private=False, reply_to=None):
             nonlocal update_id
             update_id += 1
             update = {
@@ -75,6 +75,12 @@ async def run(hass, entry, owner_user, child_id):
                     "text": text,
                 },
             }
+            if reply_to:
+                update["message"]["reply_to_message"] = {
+                    "message_id": reply_to,
+                    "from": {"id": 1000},
+                    "text": "Untrusted quote",
+                }
             await entry.runtime_data.telegram.process(update)
             return update
 
@@ -119,6 +125,24 @@ async def run(hass, entry, owner_user, child_id):
         assert any("Synthetic oranges" in event["text"] for event in SyntheticTelegram.sent)
         assert all("parse_mode" not in event for event in SyntheticTelegram.sent)
         assert engine.actor_for_telegram(1002, -10001, private=False) == child_id
+        await receive(
+            "Child задача. перенести детали, срок до конца следующей недели", private=True
+        )
+        task = next(iter(engine.snapshot()["tasks"].values()))
+        for seconds in (10, 12, 14):
+            await entry.runtime_data.telegram.notifications.run(
+                datetime.now(UTC) + timedelta(seconds=seconds)
+            )
+        receipt = next(
+            i
+            for i, sent in enumerate(SyntheticTelegram.sent, 1)
+            if "Saved:" in sent["text"] and task["id"] in sent["text"]
+        )
+        before = task["revision"]
+        await receive("установи срок завтра", private=True, reply_to=receipt)
+        assert engine.snapshot()["tasks"][task["id"]]["revision"] == before + 1
+        # A different bot's cursor must not suppress this bot's legitimate update.
+        assert str(1000) in engine.snapshot()["telegram"]["offsets"]
         flow = await options("telegram")
         flow = await submit(flow, {"enabled": False})
         assert flow["type"] == "create_entry"
@@ -126,5 +150,5 @@ async def run(hass, entry, owner_user, child_id):
         assert entry.runtime_data.telegram is None
         print(
             "PASS: real HA own-bot options, group/member enrollment, "
-            "mention reply, command replay/roles"
+            "mention/reply context, command replay/roles"
         )

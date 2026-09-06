@@ -11,6 +11,7 @@ from homeassistant.util import dt as dt_util
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
+from .context import reply_refs, result_refs
 from .enrollment import Enrollment
 from .errors import ERRORS
 from .messages import render, targets
@@ -22,9 +23,14 @@ class TelegramManager:
         self.hass, self.entry, self.runtime = hass, entry, runtime
         self.client, self.bot = client, bot
         self.enrollment = Enrollment(runtime.engine)
-        self.notifications = Notifications(runtime.engine, targets, self._send_notification)
+        self.notifications = Notifications(runtime.engine, self._targets, self._send_notification)
         self._tasks = []
         self._stopped = False
+
+    def _targets(self, event, state):
+        if event["key"] == "telegram_reply" and event["data"].get("bot_id") != self.bot["id"]:
+            return []
+        return [{**target, "bot_id": self.bot["id"]} for target in targets(event, state)]
 
     def start(self):
         self._tasks = [
@@ -62,7 +68,9 @@ class TelegramManager:
                 if self.runtime.health.get("telegram") != "connected":
                     await self.client.inspect()
                 state = self.runtime.engine.snapshot()
-                updates = await self.client.updates(state["telegram"].get("offset"))
+                updates = await self.client.updates(
+                    state["telegram"].get("offsets", {}).get(str(self.bot["id"]))
+                )
                 for update in updates:
                     await self.process(update)
                 self.runtime.health["telegram"] = "connected"
@@ -120,7 +128,7 @@ class TelegramManager:
         if type(update_id) is not int:
             return
         engine = self.runtime.engine
-        offset = engine.snapshot()["telegram"].get("offset", -1)
+        offset = engine.snapshot()["telegram"].get("offsets", {}).get(str(self.bot["id"]), -1)
         if update_id < offset:
             return
         now = dt_util.utcnow()
@@ -171,7 +179,12 @@ class TelegramManager:
                         )
                     elif (content := addressed(message, self.bot)) is not None:
                         response = await route(
-                            engine, actor, content, f"tg:{self.bot['id']}:{update_id}:action", now
+                            engine,
+                            actor,
+                            content,
+                            f"tg:{self.bot['id']}:{update_id}:action",
+                            now,
+                            reply_refs(engine.snapshot(), message, self.bot),
                         )
                 except (DomainError, ValueError) as err:
                     code = err.code if isinstance(err, DomainError) else "invalid_field"
@@ -196,8 +209,14 @@ class TelegramManager:
                             {
                                 "text": response,
                                 "actor": actor,
+                                "bot_id": self.bot["id"],
                                 "chat_id": chat["id"],
                                 "reply_to": envelope.get("message_id"),
+                                "refs": result_refs(
+                                    ctx.state["processed"]
+                                    .get(f"tg:{self.bot['id']}:{update_id}:action", {})
+                                    .get("result", {})
+                                ),
                             },
                         )
 
@@ -210,8 +229,7 @@ class TelegramManager:
                         )
 
         def advance(ctx):
-            ctx.state["telegram"]["offset"] = max(
-                ctx.state["telegram"].get("offset", -1), update_id + 1
-            )
+            offsets = ctx.state["telegram"].setdefault("offsets", {})
+            offsets[str(self.bot["id"])] = max(offsets.get(str(self.bot["id"]), -1), update_id + 1)
 
         await engine.system_update("telegram_offset", now, advance)

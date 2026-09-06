@@ -105,6 +105,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("invalid_field", "done")
             item["checklist"][index]["done"] = payload["done"]
         else:
+            if action == "accept" and item["status"] not in {"assigned", "needs_changes"}:
+                raise DomainError("invalid_transition")
+            if action == "start" and item["status"] not in {
+                "assigned",
+                "accepted",
+                "needs_changes",
+            }:
+                raise DomainError("invalid_transition")
             item["status"] = "accepted" if action == "accept" else "in_progress"
     elif action in {"complete", "request_changes"}:
         ctx.require_parent()

@@ -55,6 +55,8 @@ async def async_setup_runtime(hass, entry) -> bool:
             entry.title,
             entry.data.get("language", "en"),
             entry.data.get("modules"),
+            timezone=entry.data.get("timezone", hass.config.time_zone),
+            template=entry.data.get("template", "manual"),
         )
         state["members"]["owner"]["name"] = entry.data["owner_name"]
         for member in entry.data.get("initial_members", []):

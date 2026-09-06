@@ -12,6 +12,10 @@ The integration is designed for English, Russian and Ukrainian, configurable
 households, and independent modules. Family data and credentials are kept in
 Home Assistant storage, outside the HACS-managed code directory.
 
+Setup guides: [English](docs/setup.en.md) · [Русский](docs/setup.ru.md) ·
+[Українська](docs/setup.uk.md). The guides distinguish working features from
+pending implementation and explain how to create and link your own bot.
+
 ## Development
 
 Python 3.14.2+ is the Home Assistant test target. Pure domain tests also run on

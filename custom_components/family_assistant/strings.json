@@ -4,11 +4,13 @@
     "step": {
       "user": {
         "title": "Set up your family",
-        "description": "Choose a household name and your own display name. Your Home Assistant account becomes the owner. Telegram and other providers can be connected later.",
+        "description": "Your HA account becomes the owner. Templates add editable, unlinked placeholders; they do not grant access. Connect Telegram later in settings.",
         "data": {
           "name": "Household name",
           "owner_name": "Your name",
-          "language": "Language"
+          "language": "Language",
+          "timezone": "Time zone",
+          "template": "Family template"
         }
       },
       "modules": {
@@ -65,7 +67,10 @@
       "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted.",
       "ambiguous_member": "Several people match this name. Use a unique name or member ID.",
       "retry_confirmation_required": "Confirm that resending may create a duplicate message.",
-      "wrong_answer": "Not quite — try the current wake-up check again."
+      "wrong_answer": "Not quite — try the current wake-up check again.",
+      "context_required": "Reply to one specific task or include its ID.",
+      "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
+      "invalid_deadline": "Specify a valid future deadline with an unambiguous time."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household."
@@ -99,7 +104,8 @@
           "role": "Role",
           "language": "Language",
           "ha_user_id": "Home Assistant account",
-          "active": "Active"
+          "active": "Active",
+          "aliases": "Other names and grammatical forms (one per line)"
         }
       },
       "general": {
@@ -112,7 +118,8 @@
           "alarms": "Alarms",
           "court": "Rules and rewards",
           "automatic_penalties": "Enable automatic penalties",
-          "daily_penalty_cap": "Maximum automatic negative points per person per day"
+          "daily_penalty_cap": "Maximum automatic negative points per person per day",
+          "timezone": "Time zone"
         }
       },
       "alarm_device": {
@@ -195,7 +202,10 @@
       "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted.",
       "ambiguous_member": "Several people match this name. Use a unique name or member ID.",
       "retry_confirmation_required": "Confirm that resending may create a duplicate message.",
-      "wrong_answer": "Not quite — try the current wake-up check again."
+      "wrong_answer": "Not quite — try the current wake-up check again.",
+      "context_required": "Reply to one specific task or include its ID.",
+      "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
+      "invalid_deadline": "Specify a valid future deadline with an unambiguous time."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -361,6 +371,15 @@
     },
     "wrong_answer": {
       "message": "Not quite — try the current wake-up check again."
+    },
+    "context_required": {
+      "message": "Reply to one specific task or include its ID."
+    },
+    "ambiguous_command": {
+      "message": "The action or its target is ambiguous. Nothing was changed."
+    },
+    "invalid_deadline": {
+      "message": "Specify a valid future deadline with an unambiguous time."
     }
   },
   "selector": {
@@ -371,6 +390,14 @@
         "adult": "Adult",
         "child": "Child",
         "guest": "Guest"
+      }
+    },
+    "template": {
+      "options": {
+        "manual": "Create members manually",
+        "pair": "Couple",
+        "parents_children": "Parents and children",
+        "single_parent": "One parent and children"
       }
     }
   },

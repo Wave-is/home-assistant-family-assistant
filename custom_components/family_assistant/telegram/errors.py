@@ -48,6 +48,9 @@ ERRORS = {
         "ambiguous_member": "Several people match this name. Use a unique name or member ID.",
         "retry_confirmation_required": "Confirm that resending may create a duplicate message.",
         "wrong_answer": "Not quite — try the current wake-up check again.",
+        "context_required": "Reply to one specific task or include its ID.",
+        "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
+        "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
     },
     "ru": {
         "invalid_field": "Проверьте введённое значение.",
@@ -98,6 +101,9 @@ ERRORS = {
         "retry_confirmation_required": "Подтвердите, что повторная отправка может "
         "создать дубликат.",
         "wrong_answer": "Не совсем — попробуйте решить текущую задачу ещё раз.",
+        "context_required": "Ответьте на сообщение об одной конкретной задаче или укажите её ID.",
+        "ambiguous_command": "Действие или его объект неоднозначны. Ничего не изменено.",
+        "invalid_deadline": "Укажите корректный будущий срок с однозначным временем.",
     },
     "uk": {
         "invalid_field": "Перевірте введене значення.",
@@ -146,5 +152,9 @@ ERRORS = {
         "retry_confirmation_required": "Підтвердьте, що повторне надсилання може "
         "створити дублікат.",
         "wrong_answer": "Не зовсім — спробуйте розв’язати поточну задачу ще раз.",
+        "context_required": "Дайте відповідь на повідомлення про одне конкретне "
+        "завдання або вкажіть його ID.",
+        "ambiguous_command": "Дія або її об’єкт неоднозначні. Нічого не змінено.",
+        "invalid_deadline": "Вкажіть коректний майбутній термін з однозначним часом.",
     },
 }
