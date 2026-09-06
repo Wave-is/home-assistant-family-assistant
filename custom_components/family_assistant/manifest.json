@@ -1,0 +1,13 @@
+{
+  "domain": "family_assistant",
+  "name": "Family Assistant",
+  "codeowners": ["@Wave-is"],
+  "config_flow": true,
+  "dependencies": ["http", "websocket_api"],
+  "documentation": "https://github.com/Wave-is/home-assistant-family-assistant",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Wave-is/home-assistant-family-assistant/issues",
+  "requirements": [],
+  "version": "0.1.0-alpha.1"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "home-assistant-family-assistant",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/frontend.test.js",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "jsdom": "^26.1.0"
+  }
+}
+

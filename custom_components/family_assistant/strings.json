@@ -1,0 +1,387 @@
+{
+  "title": "Family Assistant",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up your family",
+        "description": "Choose a household name and your own display name. Your Home Assistant account becomes the owner. Telegram and other providers can be connected later.",
+        "data": {
+          "name": "Household name",
+          "owner_name": "Your name",
+          "language": "Language"
+        }
+      },
+      "modules": {
+        "title": "Choose modules",
+        "description": "Enable the modules your family needs. Settings and family data stay in Home Assistant across updates.",
+        "data": {
+          "shopping": "Shopping",
+          "tasks": "Tasks",
+          "alarms": "Alarms",
+          "court": "Rules and rewards"
+        }
+      }
+    },
+    "error": {
+      "invalid_field": "Check the entered value.",
+      "forbidden": "You do not have permission for this action.",
+      "unknown_member": "Family member not found.",
+      "not_found": "Record not found.",
+      "conflict": "This record changed. Refresh and try again.",
+      "idempotency_conflict": "This command ID was already used for a different action.",
+      "invalid_transition": "This action is not available in the current state.",
+      "duplicate_identity": "This Home Assistant account is already linked.",
+      "last_owner": "Keep at least one active owner.",
+      "unknown_action": "Unknown action.",
+      "module_disabled": "This module is disabled.",
+      "unsupported_schema": "The saved data requires a different integration version.",
+      "not_ready": "The household is not loaded.",
+      "unit_mismatch": "The purchase unit does not match the item.",
+      "command_too_large": "The command is too large.",
+      "photo_required": "A verified photo report is required.",
+      "storage_error": "Could not save the change. It was not applied.",
+      "admin_required": "A Home Assistant administrator must create the household.",
+      "alarm_already_active": "This person already has an active wake-up check.",
+      "schedule_overlap": "An enabled alarm already uses this time and these days.",
+      "challenge_expired": "This wake-up check expired. Open the latest one.",
+      "device_unavailable": "The siren is unavailable.",
+      "device_unsupported": "The siren must support both on and off.",
+      "device_confirmation_required": "Confirm the dedicated wake-up device before enabling it.",
+      "device_already_assigned": "This siren is already assigned to another person or household.",
+      "device_command_failed": "The siren did not accept the command.",
+      "scheduler_failed": "The scheduler could not complete a state transition.",
+      "telegram_invalid_token": "The bot token is invalid or revoked.",
+      "telegram_polling_conflict": "This bot is already used by another poller. Stop that consumer before connecting it here.",
+      "telegram_webhook_conflict": "This bot has an existing webhook. Remove it in its owning application before connecting.",
+      "telegram_unreachable": "Could not connect to Telegram.",
+      "telegram_timeout": "Telegram did not respond in time.",
+      "telegram_rate_limited": "Telegram asked to wait. Try again shortly.",
+      "telegram_chat_blocked": "The bot is blocked or cannot access this chat.",
+      "telegram_api_error": "Telegram could not complete the request.",
+      "telegram_bad_response": "Telegram returned an unexpected response.",
+      "telegram_not_ready": "Connect and enable your Telegram bot first.",
+      "telegram_enrollment_expired": "The enrollment code has expired or was already used. Generate a new code.",
+      "telegram_waiting": "No enrollment message received yet. Send the command and try again.",
+      "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted.",
+      "ambiguous_member": "Several people match this name. Use a unique name or member ID.",
+      "retry_confirmation_required": "Confirm that resending may create a duplicate message.",
+      "wrong_answer": "Not quite — try the current wake-up check again."
+    },
+    "abort": {
+      "admin_required": "A Home Assistant administrator must create the household."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Family settings",
+        "menu_options": {
+          "member": "Add or edit a family member",
+          "general": "Household preferences",
+          "alarm_device": "Wake-up siren",
+          "telegram": "Connect your own Telegram bot",
+          "telegram_group": "Link the family group",
+          "telegram_member": "Link a member's private chat"
+        }
+      },
+      "member": {
+        "title": "Family member",
+        "description": "Select a member to edit, or add a new person.",
+        "data": {
+          "member_id": "Family member"
+        }
+      },
+      "edit_member": {
+        "title": "Add or edit a family member",
+        "description": "Choose a name, role and optional Home Assistant account. Telegram can be linked later.",
+        "data": {
+          "name": "Name",
+          "role": "Role",
+          "language": "Language",
+          "ha_user_id": "Home Assistant account",
+          "active": "Active"
+        }
+      },
+      "general": {
+        "title": "Household preferences",
+        "data": {
+          "name": "Household name",
+          "language": "Language",
+          "shopping": "Shopping",
+          "tasks": "Tasks",
+          "alarms": "Alarms",
+          "court": "Rules and rewards",
+          "automatic_penalties": "Enable automatic penalties",
+          "daily_penalty_cap": "Maximum automatic negative points per person per day"
+        }
+      },
+      "alarm_device": {
+        "title": "Wake-up siren",
+        "description": "Assign a dedicated wake-up siren, never a fire or security alarm. Strict alarms renew sound until the member answers. Check the volume physically; HA state does not prove audible sound. Disabling removes the binding and stops sound started by Family Assistant.",
+        "data": {
+          "member": "Family member",
+          "entity_id": "Dedicated siren",
+          "volume": "Volume (0–1)",
+          "enabled": "Use this siren",
+          "confirmed": "I confirm this device may be used repeatedly as a wake-up alarm"
+        }
+      },
+      "telegram": {
+        "title": "Connect your own Telegram bot",
+        "description": "Create your own bot with @BotFather → /newbot and paste its token here. Do not reuse a bot already polled by another integration. An existing webhook is never removed automatically. Leave the token empty to keep the saved one. To disable, turn off the switch.",
+        "data": {
+          "enabled": "Use Telegram",
+          "token": "Your bot token"
+        }
+      },
+      "telegram_member": {
+        "title": "Link a member's private chat",
+        "data": {
+          "member": "Family member"
+        }
+      },
+      "telegram_wait": {
+        "title": "Send the one-time enrollment code",
+        "description": "Add your bot to the family group and send the command below, or open the personal link and press Start. Then press Submit here. The code expires in 15 minutes. No ID-discovery bot is needed.\n\n{instruction}"
+      },
+      "telegram_confirm": {
+        "title": "Confirm the detected chat",
+        "description": "Found: {name}\n\nTelegram chat ID: {id}\n\nOnly confirm if this is the intended family group or person's account. Receiving a code alone does not grant access.",
+        "data": {
+          "confirmed": "I confirm this is the correct chat or person"
+        }
+      }
+    },
+    "error": {
+      "invalid_field": "Check the entered value.",
+      "forbidden": "You do not have permission for this action.",
+      "unknown_member": "Family member not found.",
+      "not_found": "Record not found.",
+      "conflict": "This record changed. Refresh and try again.",
+      "idempotency_conflict": "This command ID was already used for a different action.",
+      "invalid_transition": "This action is not available in the current state.",
+      "duplicate_identity": "This Home Assistant account is already linked.",
+      "last_owner": "Keep at least one active owner.",
+      "unknown_action": "Unknown action.",
+      "module_disabled": "This module is disabled.",
+      "unsupported_schema": "The saved data requires a different integration version.",
+      "not_ready": "The household is not loaded.",
+      "unit_mismatch": "The purchase unit does not match the item.",
+      "command_too_large": "The command is too large.",
+      "photo_required": "A verified photo report is required.",
+      "storage_error": "Could not save the change. It was not applied.",
+      "admin_required": "A Home Assistant administrator must create the household.",
+      "alarm_already_active": "This person already has an active wake-up check.",
+      "schedule_overlap": "An enabled alarm already uses this time and these days.",
+      "challenge_expired": "This wake-up check expired. Open the latest one.",
+      "device_unavailable": "The siren is unavailable.",
+      "device_unsupported": "The siren must support both on and off.",
+      "device_confirmation_required": "Confirm the dedicated wake-up device before enabling it.",
+      "device_already_assigned": "This siren is already assigned to another person or household.",
+      "device_command_failed": "The siren did not accept the command.",
+      "scheduler_failed": "The scheduler could not complete a state transition.",
+      "telegram_invalid_token": "The bot token is invalid or revoked.",
+      "telegram_polling_conflict": "This bot is already used by another poller. Stop that consumer before connecting it here.",
+      "telegram_webhook_conflict": "This bot has an existing webhook. Remove it in its owning application before connecting.",
+      "telegram_unreachable": "Could not connect to Telegram.",
+      "telegram_timeout": "Telegram did not respond in time.",
+      "telegram_rate_limited": "Telegram asked to wait. Try again shortly.",
+      "telegram_chat_blocked": "The bot is blocked or cannot access this chat.",
+      "telegram_api_error": "Telegram could not complete the request.",
+      "telegram_bad_response": "Telegram returned an unexpected response.",
+      "telegram_not_ready": "Connect and enable your Telegram bot first.",
+      "telegram_enrollment_expired": "The enrollment code has expired or was already used. Generate a new code.",
+      "telegram_waiting": "No enrollment message received yet. Send the command and try again.",
+      "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted.",
+      "ambiguous_member": "Several people match this name. Use a unique name or member ID.",
+      "retry_confirmation_required": "Confirm that resending may create a duplicate message.",
+      "wrong_answer": "Not quite — try the current wake-up check again."
+    },
+    "abort": {
+      "forbidden": "You do not have permission for this action.",
+      "not_ready": "The household is not loaded.",
+      "telegram_not_ready": "Connect and enable your Telegram bot first.",
+      "telegram_enrollment_expired": "The enrollment code has expired or was already used. Generate a new code.",
+      "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pending_actions": {
+        "name": "Open tasks"
+      }
+    }
+  },
+  "services": {
+    "execute": {
+      "name": "Run a family action",
+      "description": "Execute a permitted action as the calling Home Assistant user. Reuse the operation ID when retrying the same request.",
+      "fields": {
+        "entry_id": {
+          "name": "Household"
+        },
+        "action": {
+          "name": "Action"
+        },
+        "operation_id": {
+          "name": "Unique operation ID"
+        },
+        "payload": {
+          "name": "Action fields"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_field": {
+      "message": "Check the entered value."
+    },
+    "forbidden": {
+      "message": "You do not have permission for this action."
+    },
+    "unknown_member": {
+      "message": "Family member not found."
+    },
+    "not_found": {
+      "message": "Record not found."
+    },
+    "conflict": {
+      "message": "This record changed. Refresh and try again."
+    },
+    "idempotency_conflict": {
+      "message": "This command ID was already used for a different action."
+    },
+    "invalid_transition": {
+      "message": "This action is not available in the current state."
+    },
+    "duplicate_identity": {
+      "message": "This Home Assistant account is already linked."
+    },
+    "last_owner": {
+      "message": "Keep at least one active owner."
+    },
+    "unknown_action": {
+      "message": "Unknown action."
+    },
+    "module_disabled": {
+      "message": "This module is disabled."
+    },
+    "unsupported_schema": {
+      "message": "The saved data requires a different integration version."
+    },
+    "not_ready": {
+      "message": "The household is not loaded."
+    },
+    "unit_mismatch": {
+      "message": "The purchase unit does not match the item."
+    },
+    "command_too_large": {
+      "message": "The command is too large."
+    },
+    "photo_required": {
+      "message": "A verified photo report is required."
+    },
+    "storage_error": {
+      "message": "Could not save the change. It was not applied."
+    },
+    "admin_required": {
+      "message": "A Home Assistant administrator must create the household."
+    },
+    "alarm_already_active": {
+      "message": "This person already has an active wake-up check."
+    },
+    "schedule_overlap": {
+      "message": "An enabled alarm already uses this time and these days."
+    },
+    "challenge_expired": {
+      "message": "This wake-up check expired. Open the latest one."
+    },
+    "device_unavailable": {
+      "message": "The siren is unavailable."
+    },
+    "device_unsupported": {
+      "message": "The siren must support both on and off."
+    },
+    "device_confirmation_required": {
+      "message": "Confirm the dedicated wake-up device before enabling it."
+    },
+    "device_already_assigned": {
+      "message": "This siren is already assigned to another person or household."
+    },
+    "device_command_failed": {
+      "message": "The siren did not accept the command."
+    },
+    "scheduler_failed": {
+      "message": "The scheduler could not complete a state transition."
+    },
+    "telegram_invalid_token": {
+      "message": "The bot token is invalid or revoked."
+    },
+    "telegram_polling_conflict": {
+      "message": "This bot is already used by another poller. Stop that consumer before connecting it here."
+    },
+    "telegram_webhook_conflict": {
+      "message": "This bot has an existing webhook. Remove it in its owning application before connecting."
+    },
+    "telegram_unreachable": {
+      "message": "Could not connect to Telegram."
+    },
+    "telegram_timeout": {
+      "message": "Telegram did not respond in time."
+    },
+    "telegram_rate_limited": {
+      "message": "Telegram asked to wait. Try again shortly."
+    },
+    "telegram_chat_blocked": {
+      "message": "The bot is blocked or cannot access this chat."
+    },
+    "telegram_api_error": {
+      "message": "Telegram could not complete the request."
+    },
+    "telegram_bad_response": {
+      "message": "Telegram returned an unexpected response."
+    },
+    "telegram_not_ready": {
+      "message": "Connect and enable your Telegram bot first."
+    },
+    "telegram_enrollment_expired": {
+      "message": "The enrollment code has expired or was already used. Generate a new code."
+    },
+    "telegram_waiting": {
+      "message": "No enrollment message received yet. Send the command and try again."
+    },
+    "telegram_not_confirmed": {
+      "message": "The detected chat was not confirmed. No access was granted."
+    },
+    "ambiguous_member": {
+      "message": "Several people match this name. Use a unique name or member ID."
+    },
+    "retry_confirmation_required": {
+      "message": "Confirm that resending may create a duplicate message."
+    },
+    "wrong_answer": {
+      "message": "Not quite — try the current wake-up check again."
+    }
+  },
+  "selector": {
+    "role": {
+      "options": {
+        "owner": "Owner",
+        "parent": "Parent",
+        "adult": "Adult",
+        "child": "Child",
+        "guest": "Guest"
+      }
+    }
+  },
+  "issues": {
+    "telegram_attention": {
+      "title": "Telegram needs attention",
+      "description": "Check the Family Assistant health panel and the Telegram options. The token may be revoked, another poller may use the same bot, or a webhook may exist. Family Assistant does not remove other applications' webhooks."
+    },
+    "delivery_attention": {
+      "title": "A notification needs review",
+      "description": "Some notifications failed or have an uncertain delivery result. Telegram may already have accepted a message before the connection timed out. Family Assistant will not blindly resend it. Review delivery details in the health panel."
+    }
+  }
+}

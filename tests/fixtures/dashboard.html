@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Assistant synthetic dashboard</title>
+<style>
+body{margin:0;background:#eef3f1;font-family:system-ui;padding:28px;color:#19332f}main{max-width:620px;margin:auto}
+body.dark{background:#142320;--ha-card-background:#20342e;--primary-text-color:#eaf4ec;--secondary-text-color:#a8bdb4;--divider-color:#3b5148}
+@media(max-width:420px){body{padding:12px}}
+</style>
+<main id="cards"></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+const query=new URLSearchParams(location.search),view=query.get("view") || "shopping",language=query.get("lang") || "en";
+document.documentElement.lang=language;if(query.has("dark"))document.body.classList.add("dark");
+const data={revision:1,settings:{name:{ru:"Наша семья",uk:"Наша родина",en:"Our family"}[language],modules:["shopping","tasks","court","alarms"]},actor:query.get("role")==="child"?"child":"owner",role:query.get("role") || "owner",
+members:[{id:"owner",name:{en:"Parent 1",ru:"Родитель 1",uk:"Батько 1"}[language],active:true},{id:"child",name:{en:"Child 1",ru:"Ребёнок 1",uk:"Дитина 1"}[language],active:true}],
+shopping:[{id:"S000001",name:{en:"Apples",ru:"Яблоки",uk:"Яблука"}[language],quantity:3,purchased:1,unit:"kg",status:"approved",revision:1},{id:"S000002",name:{en:"Watercolour set",ru:"Набор акварели",uk:"Набір акварелі"}[language],quantity:1,purchased:0,unit:"",status:"pending",revision:1}],
+tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растения",uk:"Полити рослини"}[language],assignee:"child",status:"assigned",due_at:"2026-09-10T17:00:00Z",revision:1}],
+court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
+data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
+data.alarm_runs=query.has("ringing")?[{id:"W000001",member:"child",stage:"first",siren_desired:true,test:true,challenge:{nonce:"synthetic-nonce",question:"3 + 4",choices:[5,7,9,6]}}]:[];
+data.health={telegram:"connected"};data.delivery_issues=[{id:"synthetic-delivery",recipient:"child",key:"task_assigned",state:"uncertain",created_at:"2026-09-06T08:00:00Z",attempts:1}];
+window.calls=[];const card=document.createElement("family-assistant-card");card.setConfig({view,entry_id:"synthetic"});
+card.hass={language,callWS:async message=>{
+ if(message.type.endsWith("/execute")){
+   window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+   if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
+   return {id:"S000003"};
+ }
+ return structuredClone(data);
+}};
+document.getElementById("cards").append(card);
+</script></html>

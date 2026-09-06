@@ -1,0 +1,20 @@
+execute:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: family_assistant
+    action:
+      required: true
+      selector:
+        text:
+    operation_id:
+      required: true
+      selector:
+        text:
+    payload:
+      required: false
+      selector:
+        object:
+
