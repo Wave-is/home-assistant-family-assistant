@@ -127,7 +127,11 @@ async def test_disabled_series_and_exception_date_stay_quiet(engine, now):
             "child", "tasks.series_enable", {"id": duty["id"], "enabled": True}, "bad", now
         )
     await engine.execute(
-        "parent", "tasks.series_enable", {"id": duty["id"], "enabled": False}, "off", now
+        "parent",
+        "tasks.series_enable",
+        {"id": duty["id"], "revision": duty["revision"], "enabled": False},
+        "off",
+        now,
     )
     assert not await engine.tick(now + timedelta(days=1))
 

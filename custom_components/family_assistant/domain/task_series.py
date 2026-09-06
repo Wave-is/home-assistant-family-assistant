@@ -11,10 +11,12 @@ from .validation import DomainError, fields, text, timestamp
 def handle(ctx, action, payload):
     ctx.require_parent()
     if action == "series_enable":
-        fields(payload, {"id", "enabled", "revision"}, {"id", "enabled"})
-        item = ctx.record("task_series", payload["id"], payload.get("revision"))
+        fields(payload, {"id", "enabled", "revision"}, {"id", "enabled", "revision"})
+        if type(payload["revision"]) is not int or payload["revision"] < 1:
+            raise DomainError("invalid_field", "revision")
         if type(payload["enabled"]) is not bool:
             raise DomainError("invalid_field", "enabled")
+        item = ctx.record("task_series", payload["id"], payload["revision"])
         item["enabled"] = payload["enabled"]
         item["effective_at"] = ctx.now.isoformat()
         return ctx.touch(item)
@@ -39,6 +41,16 @@ def handle(ctx, action, payload):
         },
         {"title", "assignees", "rule", "due_time"},
     )
+    series_id = payload.get("id")
+    revision = payload.get("revision")
+    if "id" in payload:
+        if type(revision) is not int or revision < 1:
+            raise DomainError("invalid_field", "revision")
+        existing = ctx.record("task_series", series_id, revision)
+    else:
+        if "revision" in payload:
+            raise DomainError("invalid_field", "revision")
+        existing = {}
     members = payload["assignees"]
     if (
         not isinstance(members, list)
@@ -48,25 +60,22 @@ def handle(ctx, action, payload):
     ):
         raise DomainError("invalid_field", "assignees")
     for member in members:
-        ctx.member(member)
-    rotation, enabled = payload.get("rotation", False), payload.get("enabled", True)
+        if ctx.member(member)["role"] == "guest":
+            raise DomainError("invalid_field", "assignees")
+    rotation = payload.get("rotation", existing.get("rotation", False))
+    enabled = payload.get("enabled", existing.get("enabled", True))
     if type(rotation) is not bool or type(enabled) is not bool:
         raise DomainError("invalid_field", "enabled")
-    existing = (
-        ctx.record("task_series", payload["id"], payload.get("revision"))
-        if payload.get("id")
-        else {}
-    )
-    report_type = payload.get("report_type", "text")
+    report_type = payload.get("report_type", existing.get("report_type", "text"))
     if report_type not in {"text", "photo", "none"}:
         raise DomainError("invalid_field", "report_type")
-    checklist = payload.get("checklist", [])
+    checklist = payload.get("checklist", existing.get("checklist", []))
     if not isinstance(checklist, list) or len(checklist) > 50:
         raise DomainError("invalid_field", "checklist")
     item = {
         **existing,
         "id": existing.get("id") or ctx.identifier("D"),
-        "creator": ctx.actor_id,
+        "creator": existing.get("creator", ctx.actor_id),
         "title": text(payload["title"], "title"),
         "assignees": list(members),
         "rotation": rotation,
@@ -104,7 +113,10 @@ def tick(ctx):
             if occurrence_id in series["occurrences"]:
                 continue
             available = [
-                m for m in series["assignees"] if ctx.state["members"].get(m, {}).get("active")
+                m
+                for m in series["assignees"]
+                if ctx.state["members"].get(m, {}).get("active")
+                and ctx.state["members"][m]["role"] != "guest"
             ]
             if not available:
                 continue

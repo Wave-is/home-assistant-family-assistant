@@ -3,6 +3,8 @@ import {ERRORS} from "./errors.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive} from "./shopping-items.js";
+import {renderTaskItem,renderTaskArchive} from "./task-items.js";
+import {renderTaskForm} from "./task-form.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -152,12 +154,12 @@ const STYLES = `
   .body{padding:18px 24px 24px}.row{display:flex;align-items:center;gap:10px}.grow{flex:1;min-width:0}.sub{font-size:12px;color:var(--secondary-text-color,#657d80);margin-top:6px}
   .list{display:grid;gap:10px;margin:0;padding:0;list-style:none}.item{padding:14px;border:1px solid var(--divider-color,#e3ebe9);border-radius:14px;overflow-wrap:anywhere}
   .item strong{font-size:15px}.badge{display:inline-block;border-radius:8px;background:rgba(19,146,127,.09);padding:3px 6px;margin:5px 4px 0 0;font-size:11px}
-  button,input,select{font:inherit} button{border:1px solid var(--divider-color,#dfe9e7);border-radius:10px;padding:9px 12px;cursor:pointer;background:var(--ha-card-background,#fff);color:inherit;min-height:40px}
+  button,input,select,textarea{font:inherit} button{border:1px solid var(--divider-color,#dfe9e7);border-radius:10px;padding:9px 12px;cursor:pointer;background:var(--ha-card-background,#fff);color:inherit;min-height:40px}
   button:hover{background:rgba(19,146,127,.1)}button.primary{background:#087f70;color:white;border-color:#087f70}button:disabled{opacity:.5;cursor:wait}
-  button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #55bcba;outline-offset:2px}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #55bcba;outline-offset:2px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{padding:28px 8px;text-align:center;color:var(--secondary-text-color,#657d80)}
   form{display:grid;gap:12px;margin:0 0 18px}label{display:grid;gap:5px;font-size:12px;color:var(--secondary-text-color,#657d80)}
-  input,select{width:100%;min-width:0;border:1px solid var(--divider-color,#d3dfdd);border-radius:10px;padding:10px;background:var(--ha-card-background,#fff);color:var(--primary-text-color,#182c32);font-size:14px}
+  input,select,textarea{width:100%;min-width:0;border:1px solid var(--divider-color,#d3dfdd);border-radius:10px;padding:10px;background:var(--ha-card-background,#fff);color:var(--primary-text-color,#182c32);font-size:14px}textarea{resize:vertical}
   .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
   .metric{background:rgba(19,146,127,.07);padding:14px 8px;border-radius:14px;text-align:center}.metric b{display:block;font-size:25px}.metric span{font-size:11px}
   .notice{padding:12px;border-radius:12px;margin-bottom:12px;background:rgba(238,150,60,.14);font-size:13px}
@@ -165,10 +167,10 @@ const STYLES = `
   fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:10px;margin:0;min-width:0}
   legend{font-size:12px;color:var(--secondary-text-color,#657d80);padding:0 5px}
   label:has(input[type=checkbox]){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px;min-height:36px}
-  label.check:has(input[type=checkbox]){flex-direction:row;align-items:flex-start;padding-top:8px}
+  label.check:has(input[type=checkbox]){flex-direction:row;justify-content:flex-start;align-items:flex-start;padding-top:8px}
   input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:0;padding:0;margin:0;accent-color:#087f70}
   details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
-  .item>details{margin-top:12px}.shopping-archive{margin-top:16px}.shopping-archive>ul{margin-top:12px}
+  .item>details{margin-top:12px}.shopping-archive,.tasks-archive{margin-top:16px}.shopping-archive>ul,.tasks-archive>ul{margin-top:12px}.item>form{margin-top:14px}
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
@@ -191,6 +193,7 @@ export class FamilyCard extends HTMLElement {
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
+    this._taskItemAction=null;this._taskCreateDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -236,7 +239,8 @@ export class FamilyCard extends HTMLElement {
   }
   memberSelect(form) {
     const wrap=el("label",this.t.assignee); const select=el("select"); select.name="assignee";
-    const members=this._data.members.filter(m=>m.active && (this.parent || m.id===this._data.actor));
+    select.setAttribute("aria-label",this.t.assignee);
+    const members=this._data.members.filter(m=>m.active && m.role!=="guest" && (this.parent || m.id===this._data.actor));
     for(const member of members) { const option=el("option",member.name);option.value=member.id;select.append(option); }
     wrap.append(select);form.append(wrap);return select;
   }
@@ -255,16 +259,13 @@ export class FamilyCard extends HTMLElement {
     finally {this._writing=false;await this.refresh();this.render();}
   }
   form() {
+    if(this._view==="tasks")return renderTaskForm(this);
     const form=el("form");
     if(this._view==="shopping") {
       this.input(form,"name",this.t.name);
       const fields=el("div",null,"fields");form.append(fields);
       const amount=this.input(fields,"quantity",this.t.amount,"number","1");amount.min="0.001";amount.step="any";
       this.input(fields,"unit",this.t.unit,"text","",false).placeholder=this.t.unitPlaceholder;
-    } else if(this._view==="tasks") {
-      this.input(form,"title",this.t.title);this.memberSelect(form);
-      this.input(form,"due_at",this.t.due,"datetime-local","",false);
-      this.deadlinePolicy(form);
     } else if(this._view==="alarms") {
       this.memberSelect(form);
       this.input(form,"name",this.t.name,"text","",false);
@@ -285,7 +286,6 @@ export class FamilyCard extends HTMLElement {
     form.addEventListener("submit",event=>{
       event.preventDefault();const values=Object.fromEntries(new FormData(form));
       if(this._view==="shopping") this.command("shopping.add",{...values,quantity:Number(values.quantity)});
-      if(this._view==="tasks") { if(values.due_at)values.due_at=new Date(values.due_at).toISOString();else delete values.due_at;for(const key of ["reminder_minutes","grace_minutes","penalty"])if(key in values)values[key]=Number(values[key]);this.command("tasks.create",values); }
       if(this._view==="court") this.command("court.award",{member:values.assignee,points:Number(values.points),reason:values.reason});
       if(this._view==="alarms") this.command("alarms.save",{member:values.assignee,name:values.name,time:values.time,timezone:values.timezone,days:values.days==="weekdays"?[0,1,2,3,4]:values.days==="weekends"?[5,6]:[0,1,2,3,4,5,6],profile:values.profile,penalty:Number(values.penalty)});
     });return form;
@@ -299,7 +299,7 @@ export class FamilyCard extends HTMLElement {
     const form=el("form");this.input(form,"title",this.t.title);
     const advanced=el("details"),advancedBody=el("div",null,"advanced");advanced.append(el("summary",this.t.advanced),advancedBody);
     const people=el("fieldset");people.append(el("legend",this.t.assignee));form.append(people);
-    for(const member of this._data.members.filter(m=>m.active)){
+    for(const member of this._data.members.filter(m=>m.active && m.role!=="guest")){
       const label=el("label",member.name),box=el("input");box.type="checkbox";box.name="assignees";box.value=member.id;label.append(box);people.append(label);
     }
     const rotation=el("label",this.t.rotation),box=el("input");box.type="checkbox";box.name="rotation";rotation.append(box);form.append(rotation);
@@ -360,13 +360,14 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="tasks")this.renderSeries(body);
     if(this._view==="shopping")renderShoppingSeries(this,body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
-    if(!["court","alarms"].includes(this._view) || this.parent) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
+    if(this._data.role!=="guest" && (!["court","alarms"].includes(this._view) || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
     body.append(toolbar);if(this._form)body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);
-    for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);
+    for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):this._view==="tasks"?!["completed","cancelled","archived"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
     if(this._view==="shopping")renderShoppingArchive(this,body);
+    if(this._view==="tasks")renderTaskArchive(this,body);
   }
   renderNetwork(body) {
     renderKids(this,body);
@@ -544,6 +545,7 @@ export class FamilyCard extends HTMLElement {
     }
   }
   renderItem(list,item) {
+    if(this._view==="tasks")return renderTaskItem(this,list,item);
     if(this._view==="shopping"){renderShoppingItem(this,list,item);return;}
     const row=el("li",null,"item");list.append(row);
     row.append(el("strong",item.name || item.title || item.reason || this.t[item.reason_key] || (this._view==="alarms"?item.time:"")));
@@ -562,13 +564,6 @@ export class FamilyCard extends HTMLElement {
       actions.append(this.button(this.t.testAlarm,()=>{
         const confirm=el("div",this.t.testAlarmWarning,"notice");
         confirm.append(this.button(this.t.startTest,()=>this.command("alarms.test",{id:item.id}),true));actions.replaceChildren(confirm);
-      }));
-    }
-    if(this._view==="tasks" && !["completed","cancelled","archived"].includes(item.status)){
-      if(this.parent) actions.append(this.button(this.t.complete,()=>command("tasks.complete")));
-      else if(item.assignee===this._data.actor && item.status!=="submitted") actions.append(this.button(this.t.report,()=>{
-        const form=el("form");this.input(form,"report",this.t.reportLabel);const send=el("button",this.t.save,"primary");send.type="submit";form.append(send);
-        form.addEventListener("submit",event=>{event.preventDefault();command("tasks.submit",Object.fromEntries(new FormData(form)));});actions.replaceChildren(form);
       }));
     }
     if(this._view==="court" && this.parent && item.status==="active")actions.append(this.button(this.t.reverse,()=>{

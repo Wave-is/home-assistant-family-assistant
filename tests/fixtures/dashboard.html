@@ -18,6 +18,11 @@ tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растен�
 court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
 data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
 data.shopping_series=[];
+data.members[0].role="owner";data.members[1].role="child";
+if(query.has("taskedit")) {
+ data.settings.timezone="Europe/Berlin";
+ Object.assign(data.tasks[0],{creator:"owner",report_type:"text",report:null,checklist:[{text:{ru:"Проверить почву",uk:"Перевірити ґрунт",en:"Check soil"}[language],done:false}],deadline_policy:{reminder_minutes:60,grace_minutes:30,penalty:0}});
+}
 if(query.has("shoppingmerge")){
  data.shopping.push({...data.shopping[0],id:"S000003",quantity:2,purchased:0,revision:3});
  for(const item of data.shopping)item.history=[{at:"2026-09-06T08:00:00Z",actor:"owner",action:"add",detail:{quantity:item.quantity,unit:item.unit}}];
@@ -43,6 +48,19 @@ card.hass={language,callWS:async message=>{
  if(message.type.endsWith("/execute")){
    window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
+   if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,checklist:message.payload.checklist.map(text=>({text,done:false}))});
+   if(message.action.startsWith("tasks.") && message.action!=="tasks.create" && !message.action.includes("series_")){
+     const item=data.tasks.find(t=>t.id===message.payload.id),p=message.payload;
+     if(p.revision!==item.revision)throw {code:"revision_conflict"};
+     if(message.action==="tasks.check")item.checklist[p.checklist_index].done=p.done;
+     if(message.action==="tasks.revise"){
+       for(const key of ["title","due_at","assignee"])if(key in p)item[key]=p[key];
+       for(const key of ["reminder_minutes","grace_minutes","penalty"])if(key in p)item.deadline_policy[key]=p[key];
+     }
+     const statuses={"tasks.accept":"accepted","tasks.start":"in_progress","tasks.submit":"submitted","tasks.request_changes":"needs_changes","tasks.complete":"completed","tasks.cancel":"cancelled","tasks.archive":"archived"};
+     if(message.action in statuses)item.status=statuses[message.action];
+     if("report" in p)item.report=p.report;if("note" in p)item.review_note=p.note;item.revision++;
+   }
    if(message.action==="shopping.purchase"){
      const item=data.shopping.find(i=>i.id===message.payload.id),amount=message.payload.quantity ?? item.quantity-item.purchased;
      item.purchased+=amount;item.revision++;

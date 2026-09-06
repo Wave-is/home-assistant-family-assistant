@@ -26,10 +26,12 @@ def policy(ctx, payload, previous=None):
     return result
 
 
-def close(ctx, item):
+def close(ctx, item, *, assignment=False):
     stale_keys = {"task_reminder"}
-    if item["status"] in {"submitted", "completed", "cancelled", "archived"}:
+    if assignment or item["status"] in {"submitted", "completed", "cancelled", "archived"}:
         stale_keys.add("task_assigned")
+    if item["status"] in {"completed", "cancelled", "archived"} or assignment:
+        stale_keys.add("task_review")
     for event in ctx.state["outbox"].values():
         if (
             event["key"] in stale_keys

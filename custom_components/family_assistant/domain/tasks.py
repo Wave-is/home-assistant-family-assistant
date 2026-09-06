@@ -7,6 +7,20 @@ from .context import Context
 from .validation import DomainError, fields, text, timestamp
 
 FINAL = {"completed", "cancelled", "archived"}
+ACTION_FIELDS = {
+    "revise": {"title", "due_at", "assignee", "reminder_minutes", "grace_minutes", "penalty"},
+    "submit": {"report"},
+    "check": {"checklist_index", "done"},
+    "request_changes": {"note"},
+    **{key: set() for key in ("accept", "start", "complete", "cancel", "archive")},
+}
+
+
+def assignee_member(ctx, member_id):
+    member = ctx.member(member_id)
+    if member["role"] == "guest":
+        raise DomainError("invalid_field", "assignee")
+    return member
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -31,7 +45,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             },
             {"title", "assignee"},
         )
-        assignee = ctx.member(payload["assignee"])
+        assignee = assignee_member(ctx, payload["assignee"])
         if not ctx.privileged and assignee["id"] != ctx.actor_id:
             raise DomainError("forbidden")
         due = payload.get("due_at")
@@ -59,30 +73,19 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
         ctx.notify(assignee["id"], "task_assigned", {"id": item["id"]})
         return item
-    fields(
-        payload,
-        {
-            "id",
-            "revision",
-            "title",
-            "due_at",
-            "assignee",
-            "report",
-            "note",
-            "checklist_index",
-            "done",
-            "reminder_minutes",
-            "grace_minutes",
-            "penalty",
-        },
-        {"id"},
-    )
+    if action not in ACTION_FIELDS:
+        raise DomainError("unknown_action")
+    fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id"})
+    if "revision" in payload and (type(payload["revision"]) is not int or payload["revision"] < 1):
+        raise DomainError("invalid_field", "revision")
     item = ctx.record("tasks", payload["id"], payload.get("revision"))
     own = item["assignee"] == ctx.actor_id
     if not ctx.privileged and not own:
         raise DomainError("forbidden")
     if action == "archive":
         ctx.require_parent()
+        if item["status"] == "archived":
+            raise DomainError("invalid_transition")
         item["previous_status"] = item["status"]
         item["status"] = "archived"
     elif item["status"] in FINAL:
@@ -95,13 +98,32 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if "title" in payload:
             item["title"] = text(payload["title"], "title")
         if "due_at" in payload:
-            task_events.close(ctx, item)
-            item["due_at"] = timestamp(payload["due_at"], "due_at").isoformat()
+            new_due = (
+                timestamp(payload["due_at"], "due_at") if payload["due_at"] is not None else None
+            )
+            old_due = timestamp(item["due_at"], "due_at") if item.get("due_at") else None
+            if new_due != old_due:
+                task_events.close(ctx, item)
+                item["due_at"] = new_due.isoformat() if new_due else None
         if "assignee" in payload:
             ctx.require_parent()
-            task_events.close(ctx, item)
-            item["assignee"] = ctx.member(payload["assignee"])["id"]
-            item["status"] = "assigned"
+            new_assignee = assignee_member(ctx, payload["assignee"])["id"]
+            if new_assignee != item["assignee"]:
+                task_events.close(ctx, item, assignment=True)
+                if item.get("report") is not None:
+                    item.setdefault("previous_reports", []).append(
+                        {
+                            "assignee": item["assignee"],
+                            "report": item["report"],
+                            "review_note": item.get("review_note"),
+                            "reassigned_at": ctx.now.isoformat(),
+                        }
+                    )
+                item["assignee"] = new_assignee
+                item["status"] = "assigned"
+                item["report"] = None
+                item.pop("review_note", None)
+                ctx.notify(new_assignee, "task_assigned", {"id": item["id"]})
         item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
     elif action in {"accept", "start", "submit", "check"}:
         if not own and not ctx.privileged:

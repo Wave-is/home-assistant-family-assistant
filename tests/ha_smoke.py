@@ -238,6 +238,14 @@ async def main():
             )
             assert merge_target["quantity"] == 3 and merge_target["purchased"] == 0.5
             assert len(entry.runtime_data.engine.view("owner")["shopping_series"]) == 1
+            edited_task = next(
+                task
+                for task in entry.runtime_data.engine.view("owner")["tasks"]
+                if task["title"] == "Synthetic reviewed task"
+            )
+            assert edited_task["status"] == "completed" and edited_task["due_at"] is None
+            assert edited_task["checklist"] == [{"text": "Synthetic step", "done": True}]
+            assert edited_task["report"] == "Synthetic corrected report"
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -441,6 +449,101 @@ async def run_websocket(hass, entry, owner, child_id):
     )
     assert engine.snapshot()["shopping"][original["id"]]["status"] == "merged"
     print("PASS: HA atomic shopping merge preserved partial quantities, history and replay")
+    await verify_task_controls(hass, entry, owner, child_id)
+
+
+async def verify_task_controls(hass, entry, owner, child_id):
+    """Dashboard-shaped task mutations through actual authenticated HA WebSocket."""
+    refresh = await hass.auth.async_create_refresh_token(
+        owner, client_id="https://example.invalid/task-smoke"
+    )
+    try:
+        async with ClientSession() as client:
+            async with client.ws_connect("http://127.0.0.1:8123/api/websocket") as ws:
+                assert (await ws.receive_json())["type"] == "auth_required"
+                await ws.send_json(
+                    {"type": "auth", "access_token": hass.auth.async_create_access_token(refresh)}
+                )
+                assert (await ws.receive_json())["type"] == "auth_ok"
+                sequence = 0
+
+                async def command(action, payload, operation=None):
+                    nonlocal sequence
+                    sequence += 1
+                    await ws.send_json(
+                        {
+                            "id": sequence,
+                            "type": "family_assistant/execute",
+                            "entry_id": entry.entry_id,
+                            "action": "tasks." + action,
+                            "payload": payload,
+                            "operation_id": operation or f"task-smoke-{sequence}",
+                        }
+                    )
+                    response = await ws.receive_json()
+                    assert response["success"], response
+                    return response["result"]
+
+                item = await command(
+                    "create",
+                    {
+                        "title": "Synthetic reviewed task",
+                        "assignee": child_id,
+                        "due_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+                        "checklist": ["Synthetic step"],
+                        "report_type": "text",
+                    },
+                )
+                item = await command(
+                    "check",
+                    {
+                        "id": item["id"],
+                        "revision": item["revision"],
+                        "checklist_index": 0,
+                        "done": True,
+                    },
+                )
+                item = await command("start", {"id": item["id"], "revision": item["revision"]})
+                payload = {
+                    "id": item["id"],
+                    "revision": item["revision"],
+                    "due_at": None,
+                    "assignee": child_id,
+                }
+                item = await command("revise", payload, "task-smoke-revise")
+                assert item["status"] == "in_progress" and item["due_at"] is None
+                assert await command("revise", payload, "task-smoke-revise") == item
+                item = await command(
+                    "submit",
+                    {
+                        "id": item["id"],
+                        "revision": item["revision"],
+                        "report": "Synthetic first report",
+                    },
+                )
+                assert item["status"] == "submitted"
+                item = await command(
+                    "request_changes",
+                    {
+                        "id": item["id"],
+                        "revision": item["revision"],
+                        "note": "Synthetic review note",
+                    },
+                )
+                assert item["status"] == "needs_changes"
+                item = await command(
+                    "submit",
+                    {
+                        "id": item["id"],
+                        "revision": item["revision"],
+                        "report": "Synthetic corrected report",
+                    },
+                )
+                item = await command("complete", {"id": item["id"], "revision": item["revision"]})
+                assert item["status"] == "completed" and item["checklist"][0]["done"]
+    finally:
+        hass.auth.async_remove_refresh_token(refresh)
+    print("PASS: actual HA WebSocket task checklist/edit/clear/replay/report/review/completion")
 
 
 if __name__ == "__main__":
