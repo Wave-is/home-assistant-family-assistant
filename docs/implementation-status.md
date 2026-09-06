@@ -43,7 +43,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 235 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, public contracts).
+- 241 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, public contracts).
 - 8 frontend unit tests and 16 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
@@ -90,8 +90,10 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on the lease checkpoint (run 34033811284).
-  The current Kid Control block awaits its own pushed CI run. The initial
+- All five GitHub check jobs passed on the Kid Control checkpoint (run 34037456767).
+  Subsequent store-await authorization/expired-during-install fault tests also
+  pass locally; every device effect rechecks authority after persisting intent.
+  The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 

@@ -50,6 +50,7 @@ class KidExecutor:
             if not rows:
                 self.progress["phase"] = "installing_timer"
                 await self.save()
+                self.authorize()
                 try:
                     await self.client.install_kid_timer(self.plan, spec["name"])
                 except DomainError:
@@ -69,6 +70,7 @@ class KidExecutor:
             if rows:
                 if len(rows) != 1 or not kid_timer.matches(rows[0], spec):
                     raise DomainError("network_conflict")
+                self.authorize()
                 try:
                     await self.client.remove_kid_timer(rows[0][".id"], spec["name"])
                 except DomainError:
@@ -93,6 +95,7 @@ class KidExecutor:
             await self.save()
             error = None
             self.deadline()
+            self.authorize()
             try:
                 await self.client.set_kid_profile(self.plan["binding"]["profile_id"], patch)
             except DomainError as err:
@@ -105,6 +108,7 @@ class KidExecutor:
             await self.save()
             error = None
             self.deadline()
+            self.authorize()
             try:
                 await self.client.pause_kid(
                     self.plan["binding"]["profile_id"], desired["paused"] == "true"

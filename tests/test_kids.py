@@ -330,3 +330,47 @@ async def test_delegation_revocation_rejects_exact_replay_without_role_change(en
     )
     with pytest.raises(DomainError, match="forbidden"):
         await engine.execute("adult", "mikrotik.kid_plan", payload, "adult-preview", now)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "phase,mode,options",
+    [
+        ("installing_timer", "grant", {"minutes": 30}),
+        ("patching", "schedule", {"schedule": {"mon": "09:00-20:00"}}),
+        ("toggling", "pause", {}),
+    ],
+)
+async def test_revocation_during_store_await_prevents_next_effect(now, phase, mode, options):
+    router, journal = Router(now), Journal()
+    allowed = True
+
+    async def persist(progress):
+        nonlocal allowed
+        await journal.save(progress)
+        if progress.get("phase") == phase:
+            allowed = False
+
+    result = await KidExecutor(
+        router, plan(router, now, mode, **options), persist, lambda: allowed, clock=lambda: now
+    ).run(now)
+    assert result["status"] == "review_required" and not router.calls
+
+
+@pytest.mark.asyncio
+async def test_expired_during_timer_install_never_opens_access(now):
+    router, journal = Router(now), Journal()
+    current = now
+
+    async def persist(progress):
+        nonlocal current
+        await journal.save(progress)
+        if progress.get("timer_verified"):
+            current = now + timedelta(minutes=2)
+
+    result = await KidExecutor(
+        router, plan(router, now, "grant", minutes=1), persist, lambda: True, clock=lambda: current
+    ).run(now)
+    assert result["status"] == "rolled_back" and result["failure"] == "proposal_expired"
+    assert all(call[0] in {"timer", "remove-timer"} for call in router.calls)
+    assert not router.timers

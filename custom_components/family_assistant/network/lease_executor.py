@@ -138,6 +138,7 @@ class LeaseExecutor:
         if yes(row.get("dynamic")):
             step["phase"] = "converting"
             await self._save()
+            self._authorize()
             error = None
             try:
                 await self.client.make_static(row[".id"])
@@ -152,6 +153,7 @@ class LeaseExecutor:
         if row.get("comment", "") != target["comment"]:
             step["phase"] = "commenting"
             await self._save()
+            self._authorize()
             error = None
             try:
                 await self.client.set_comment(row[".id"], target["comment"])
@@ -195,6 +197,7 @@ class LeaseExecutor:
                     elif target["convert"]:
                         step["phase"] = "removing"
                         await self._save()
+                        self._authorize()
                         try:
                             await self.client.remove_reservation(row[".id"])
                         except DomainError:
@@ -212,6 +215,7 @@ class LeaseExecutor:
                     else:
                         step["phase"] = "restoring_comment"
                         await self._save()
+                        self._authorize()
                         try:
                             await self.client.set_comment(
                                 row[".id"], target["before"].get("comment", "")

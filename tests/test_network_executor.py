@@ -85,6 +85,24 @@ def plan(router, now):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("dynamic,phase", [(True, "converting"), (False, "commenting")])
+async def test_permission_revoked_while_persisting_intent_stops_write(now, dynamic, phase):
+    router, journal = Router(dynamic=dynamic), Journal()
+    authorized = True
+
+    async def persist(progress):
+        nonlocal authorized
+        await journal.save(progress)
+        if progress["targets"][0]["phase"] == phase:
+            authorized = False
+
+    result = await LeaseExecutor(router, plan(router, now), persist, lambda: authorized).run(
+        now, dhcp_recovery=True
+    )
+    assert result["status"] == "review_required" and not router.calls
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("failure", [None, "static-timeout", "comment-timeout"])
 async def test_readback_success_even_when_transport_loses_reply(now, failure):
     router, journal = Router(), Journal()
