@@ -229,7 +229,14 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
-            assert len(entry.runtime_data.engine.view("owner")["shopping"]) == 4
+            shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
+            assert len(shopping_after_reload) == 5
+            merged_source = next(p for p in shopping_after_reload if p["status"] == "merged")
+            assert merged_source["history"][-1]["action"] == "merge"
+            merge_target = next(
+                p for p in shopping_after_reload if p["id"] == merged_source["merged_into"]
+            )
+            assert merge_target["quantity"] == 3 and merge_target["purchased"] == 0.5
             assert len(entry.runtime_data.engine.view("owner")["shopping_series"]) == 1
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
@@ -394,6 +401,46 @@ async def run_websocket(hass, entry, owner, child_id):
         == 1
     )
     print("PASS: HA scheduler generated one separate recurring purchase without duplicate replay")
+    manual = await engine.execute(
+        "owner",
+        "shopping.add",
+        {"name": "Synthetic recurring milk", "unit": "l"},
+        "smoke-shopping-manual",
+        datetime.now(UTC),
+    )
+    original = purchases[0]
+    partial = await engine.execute(
+        "owner",
+        "shopping.purchase",
+        {"id": original["id"], "revision": original["revision"], "quantity": 0.5},
+        "smoke-shopping-partial",
+        datetime.now(UTC),
+    )
+    merge_payload = {
+        "id": manual["id"],
+        "revision": manual["revision"],
+        "sources": [{"id": original["id"], "revision": partial["revision"]}],
+    }
+    merged = await engine.execute(
+        "owner",
+        "shopping.merge",
+        merge_payload,
+        "smoke-shopping-merge",
+        datetime.now(UTC),
+    )
+    assert merged["quantity"] == 3 and merged["purchased"] == 0.5
+    assert (
+        await engine.execute(
+            "owner",
+            "shopping.merge",
+            merge_payload,
+            "smoke-shopping-merge",
+            datetime.now(UTC),
+        )
+        == merged
+    )
+    assert engine.snapshot()["shopping"][original["id"]]["status"] == "merged"
+    print("PASS: HA atomic shopping merge preserved partial quantities, history and replay")
 
 
 if __name__ == "__main__":

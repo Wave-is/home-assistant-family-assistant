@@ -1,5 +1,49 @@
 import {test,expect} from "@playwright/test";
 
+test("Russian shopping merge is reviewed and keeps source history",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=ru&shoppingmerge=1");
+  const active=page.locator(".body > ul.list > li.item");
+  const target=active.first();
+  await target.getByRole("button",{name:"Объединить",exact:true}).click();
+  await target.getByRole("checkbox").check();
+  expect(await page.evaluate(()=>window.calls.length)).toBe(0);
+  await target.locator(".notice").getByRole("button",{name:"Объединить",exact:true}).click();
+  await expect(target.getByText(/Исходные пункты: Яблоки/)).toBeVisible();
+  expect(await page.evaluate(()=>window.calls.length)).toBe(0);
+  await page.screenshot({path:"test-results/shopping-merge-review-ru.png",fullPage:true});
+  await target.getByRole("button",{name:"Подтвердить объединение",exact:true}).click();
+  expect((await page.evaluate(()=>window.calls))[0].payload).toEqual({id:"S000003",revision:3,sources:[{id:"S000001",revision:1}]});
+  await expect(active).toHaveCount(2);
+  await expect(target.getByText(/Количество: 5 kg · Куплено: 1 kg · Осталось: 4 kg/)).toBeVisible();
+  await page.locator("details.shopping-archive > summary").click();
+  await expect(page.locator("details.shopping-archive .badge")).toHaveText("Объединено");
+  await target.locator("details > summary").click();
+  await expect(target.getByText(/Объединены элементы в этот пункт/)).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("Ukrainian partial purchase preserves failed payload and retries once",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=uk");
+  await page.getByRole("button",{name:"Часткова покупка",exact:true}).click();
+  const form=page.locator(".body > ul.list > li.item form");
+  await form.getByLabel("Кількість",{exact:true}).fill("0.75");
+  await page.evaluate(()=>window.failCommand=true);
+  await form.getByRole("button",{name:"Зберегти",exact:true}).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(form.getByLabel("Кількість",{exact:true})).toHaveValue("0.75");
+  await expect(form.getByLabel("Кількість",{exact:true})).toBeDisabled();
+  await page.evaluate(()=>window.failCommand=false);
+  await form.getByRole("button",{name:"Повторити",exact:true}).click();
+  await expect(form).toHaveCount(0);
+  const calls=await page.evaluate(()=>window.calls);
+  expect(calls).toHaveLength(2);expect(calls[0]).toEqual(calls[1]);
+  expect(calls[0].payload).toEqual({id:"S000001",revision:1,quantity:0.75,unit:"kg"});
+  await expect(page.getByText(/Куплено: 1.75 kg/)).toBeVisible();
+  await page.screenshot({path:"test-results/shopping-partial-uk.png",fullPage:true});
+});
+
 test("parent creates a recurring purchase from a Russian mobile card",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=ru");
@@ -165,7 +209,7 @@ test("parent adds an item using the Russian mobile card",async({page})=>{
 test("a failed action remains visible after a successful refresh",async({page})=>{
  await page.goto("/tests/fixtures/dashboard.html?view=shopping");
  await page.evaluate(()=>window.failCommand=true);
- await page.getByRole("button",{name:"Bought",exact:true}).click();
+ await page.getByRole("button",{name:"Bought remaining",exact:true}).click();
  await expect(page.getByRole("alert")).toHaveText("Could not save the change. It was not applied.");
 });
 for(const lang of ["en","ru","uk"]){

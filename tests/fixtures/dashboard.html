@@ -18,6 +18,10 @@ tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растен�
 court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
 data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
 data.shopping_series=[];
+if(query.has("shoppingmerge")){
+ data.shopping.push({...data.shopping[0],id:"S000003",quantity:2,purchased:0,revision:3});
+ for(const item of data.shopping)item.history=[{at:"2026-09-06T08:00:00Z",actor:"owner",action:"add",detail:{quantity:item.quantity,unit:item.unit}}];
+}
 if(query.has("shoppingseries"))data.shopping_series=[{id:"B000001",revision:3,name:"Молоко",quantity:2,unit:"л",buyer:"child",note:"",category:"",store:"",enabled:true,rule:{frequency:"weekly",interval:1,start_date:"2026-09-01",time:"08:00",timezone:"Europe/Kyiv",weekdays:[0,4],month_day:1,until:null,exceptions:["2026-12-25"],catchup_hours:24}}];
 data.alarm_runs=query.has("ringing")?[{id:"W000001",member:"child",stage:"first",siren_desired:true,test:true,challenge:{nonce:"synthetic-nonce",question:"3 + 4",choices:[5,7,9,6]}}]:[];
 data.health={telegram:"connected"};data.delivery_issues=[{id:"synthetic-delivery",recipient:"child",key:"task_assigned",state:"uncertain",created_at:"2026-09-06T08:00:00Z",attempts:1}];
@@ -39,6 +43,17 @@ card.hass={language,callWS:async message=>{
  if(message.type.endsWith("/execute")){
    window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
+   if(message.action==="shopping.purchase"){
+     const item=data.shopping.find(i=>i.id===message.payload.id),amount=message.payload.quantity ?? item.quantity-item.purchased;
+     item.purchased+=amount;item.revision++;
+     if(item.purchased>=item.quantity)item.status="purchased";
+     (item.history??=[]).push({at:"2026-09-06T09:00:00Z",actor:"owner",action:"purchase",detail:{amount,purchased:item.purchased,remaining:item.quantity-item.purchased}});
+   }
+   if(message.action==="shopping.merge"){
+     const target=data.shopping.find(i=>i.id===message.payload.id);
+     for(const ref of message.payload.sources){const source=data.shopping.find(i=>i.id===ref.id);target.quantity+=source.quantity;target.purchased+=source.purchased;source.status="merged";source.merged_into=target.id;source.revision++;(source.history??=[]).push({at:"2026-09-06T09:00:00Z",actor:"owner",action:"merge",detail:{merged_into:target.id}});}
+     target.revision++;(target.history??=[]).push({at:"2026-09-06T09:00:00Z",actor:"owner",action:"merge",detail:{sources:message.payload.sources.map(s=>s.id),quantity:target.quantity,purchased:target.purchased}});
+   }
    if(message.action==="shopping.series_save"){
      const idx=data.shopping_series.findIndex(s=>s.id===message.payload.id);
      const item={...message.payload,id:message.payload.id || "B000001",revision:idx>=0?data.shopping_series[idx].revision+1:1};

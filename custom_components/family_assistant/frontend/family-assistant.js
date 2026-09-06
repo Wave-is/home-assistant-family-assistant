@@ -2,6 +2,7 @@
 import {ERRORS} from "./errors.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
+import {renderShoppingItem,renderShoppingArchive} from "./shopping-items.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -167,6 +168,7 @@ const STYLES = `
   label.check:has(input[type=checkbox]){flex-direction:row;align-items:flex-start;padding-top:8px}
   input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:0;padding:0;margin:0;accent-color:#087f70}
   details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
+  .item>details{margin-top:12px}.shopping-archive{margin-top:16px}.shopping-archive>ul{margin-top:12px}
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
@@ -188,6 +190,7 @@ export class FamilyCard extends HTMLElement {
     this._entry = config.entry_id;
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
+    this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -239,6 +242,7 @@ export class FamilyCard extends HTMLElement {
   }
   async command(action,payload) {
     if (this._writing) return;
+    const generation=this._generation;
     const fingerprint=JSON.stringify([this._entry,action,payload]);
     if(this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:crypto.randomUUID()};
     this._writing=true;
@@ -246,8 +250,8 @@ export class FamilyCard extends HTMLElement {
     try {
       const result=await this._hass.callWS({type:"family_assistant/execute",entry_id:this._entry,
         action,payload,operation_id:this._pending.id});
-      this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;this._form=null;this._seriesForm=null;
-    } catch(error) {this._actionError=error.code || this.t.failure;}
+      if(generation===this._generation){this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;this._form=null;this._seriesForm=null;}
+    } catch(error) {if(generation===this._generation)this._actionError=error.code || this.t.failure;}
     finally {this._writing=false;await this.refresh();this.render();}
   }
   form() {
@@ -360,8 +364,9 @@ export class FamilyCard extends HTMLElement {
     body.append(toolbar);if(this._form)body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);
-    for(const item of items.filter(i=>i.status!=="archived").slice().reverse())this.renderItem(list,item);
+    for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
+    if(this._view==="shopping")renderShoppingArchive(this,body);
   }
   renderNetwork(body) {
     renderKids(this,body);
@@ -539,6 +544,7 @@ export class FamilyCard extends HTMLElement {
     }
   }
   renderItem(list,item) {
+    if(this._view==="shopping"){renderShoppingItem(this,list,item);return;}
     const row=el("li",null,"item");list.append(row);
     row.append(el("strong",item.name || item.title || item.reason || this.t[item.reason_key] || (this._view==="alarms"?item.time:"")));
     const meta=el("div",null,"sub");
@@ -557,10 +563,6 @@ export class FamilyCard extends HTMLElement {
         const confirm=el("div",this.t.testAlarmWarning,"notice");
         confirm.append(this.button(this.t.startTest,()=>this.command("alarms.test",{id:item.id}),true));actions.replaceChildren(confirm);
       }));
-    }
-    if(this._view==="shopping"){
-      if(item.status==="approved" && this._data.role!=="guest")actions.append(this.button(this.t.buy,()=>command("shopping.purchase")));
-      if(item.status==="pending" && this.parent)actions.append(this.button(this.t.approve,()=>command("shopping.approve")));
     }
     if(this._view==="tasks" && !["completed","cancelled","archived"].includes(item.status)){
       if(this.parent) actions.append(this.button(this.t.complete,()=>command("tasks.complete")));

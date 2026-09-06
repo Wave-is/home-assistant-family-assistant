@@ -15,7 +15,8 @@ COPY = {
         "alive": "👋 I'm here. Lists, tasks and alarms work without an AI model.",
         "help": (
             "Family Assistant\n/ping — check the bot\n/shopping — shopping list\n"
-            "/buy item | quantity | unit\n/bought S000001\n/tasks — tasks\n/task "
+            "/buy item | quantity | unit\n/bought S000001 | optional purchased quantity\n"
+            "/tasks — tasks\n/task "
             "member | task title\n/done T000001 | report\n/approve T000001 — "
             "parent confirmation\n/alarms — wake-up checks\n/stats — scores and "
             "reasons\n/internet member — Kid Control status\n/netpause member\n"
@@ -40,7 +41,8 @@ COPY = {
         "alive": "👋 Я тут. Списки, задачи и будильники работают без языковой модели.",
         "help": (
             "Family Assistant\n/ping — проверить бота\n/shopping — покупки\n/buy "
-            "товар | количество | единица\n/bought S000001 — куплено\n/tasks — "
+            "товар | количество | единица\n/bought S000001 | количество (необязательно) — куплено\n"
+            "/tasks — "
             "задачи\n/task участник | задача\n/done T000001 | отчёт\n/approve "
             "T000001 — подтверждение родителя\n/alarms — проверки подъёма\n"
             "/stats — баллы и причины\nПодтверждайте подъём свежими кнопками "
@@ -64,7 +66,8 @@ COPY = {
         "alive": "👋 Я тут. Списки, завдання та будильники працюють без мовної моделі.",
         "help": (
             "Family Assistant\n/ping — перевірити бота\n/shopping — покупки\n/buy "
-            "товар | кількість | одиниця\n/bought S000001 — куплено\n/tasks — "
+            "товар | кількість | одиниця\n/bought S000001 | кількість (необов’язково) — куплено\n"
+            "/tasks — "
             "завдання\n/task учасник | завдання\n/done T000001 | звіт\n/approve "
             "T000001 — підтвердження батьків\n/alarms — перевірки підйому\n"
             "/stats — бали та причини\nПідтверджуйте підйом свіжими кнопками "
@@ -223,7 +226,9 @@ async def route(
             raise DomainError("module_disabled")
         lines = []
         for item in view[bucket]:
-            if item.get("status") in {"archived", "cancelled", "rejected"}:
+            if item.get("status") in {"archived", "cancelled", "rejected", "merged"}:
+                continue
+            if bucket == "shopping" and item.get("status") == "purchased":
                 continue
             label = summary(item, view, language)
             lines.append(f"{item['id']} · {label}")
@@ -239,8 +244,13 @@ async def route(
             "shopping.add",
             {"name": fields[0], "quantity": quantity, "unit": fields[2] if len(fields) > 2 else ""},
         )
-    elif command == "/bought" and len(fields) == 1:
+    elif command == "/bought" and len(fields) in {1, 2}:
         action, payload = "shopping.purchase", {"id": fields[0]}
+        if len(fields) == 2:
+            try:
+                payload["quantity"] = float(fields[1].replace(",", "."))
+            except ValueError:
+                raise DomainError("invalid_field", "quantity") from None
     elif command == "/task" and len(fields) == 2:
         action, payload = (
             "tasks.create",

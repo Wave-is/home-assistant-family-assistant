@@ -9,7 +9,7 @@ Nothing is production-ready solely because a mock test passes.
 | Clean public source and HACS structure | In progress | No public release yet |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
-| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items and parent editor; merging/media/price/history extensions pending |
+| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, per-item history and archive; metadata/media/price/pantry extensions pending |
 | Tasks, deadlines, reports and reviews | In progress | Text lifecycle, repeat duties/rotation, reminders, paired overdue incidents and opt-in idempotent penalties tested; legacy parity and media pending |
 | Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 357 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 25 frontend unit tests and 20 Chromium browser tests passed.
+- 396 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, shopping merge/history and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 40 frontend unit tests and 22 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -75,6 +75,19 @@ is exercised with a synthetic entity, not by replacing its service registry.
   with a stable retry payload. Household changes clear private drafts. The real
   HA scheduler generated exactly one approved purchase and Store reload retained it.
   The Russian mobile recurring-purchase form was visually inspected.
+- Shopping duplicate merge requires a parent, explicit selected sources, strict
+  revisions for every item, matching units/metadata and approved open status.
+  Quantities are conserved at six-decimal precision; original source records and
+  append-only history remain. Merged recurrence provenance is followed through
+  chains, so an unfinished merged item still suppresses the next occurrence.
+  Archive cannot destroy that provenance. Existing records without history work;
+  malformed history is rejected without overwriting it. Actual HA merge/replay and
+  Store reload passed. RU/UK/EN cards include partial purchase, review/confirmation,
+  failed-payload retry, history pagination and a collapsed archive. Russian merge
+  review and Ukrainian partial purchase were browser-tested and visually inspected.
+  Telegram supports partial `/bought` and omits merged/finished items from the active
+  shopping list. Non-finite command data is rejected before persisting interpretation.
+  Late command responses cannot replace another household's status or drafts.
 - Real HA model options/fallback, persisted nonblocking Telegram inbox, proposal
   confirmation buttons, authenticated Assist and actor/session receipt context passed.
 - Mobile Russian model-plan confirmation visually inspected; no command before confirmation.
@@ -127,11 +140,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on checkpoint 18df770 (run 34041486164).
+- All five GitHub check jobs passed on checkpoint ed47f66 (run 34042705899).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
-  persisting intent. The recurring-purchase checkpoint is locally verified here.
+  persisting intent. The shopping merge/history checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
@@ -157,7 +170,7 @@ service call does not prove physical sound or volume.
 ## Open engineering gates (not release-ready)
 
 - Some controls are still API-only: advanced alarm exceptions/delay fields,
-  per-item partial buying, task checklists/revision, appeals.
+  task checklists/revision, appeals.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

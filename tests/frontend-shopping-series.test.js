@@ -432,11 +432,9 @@ test("explanation notice regarding unfinished purchases and no duplicate additio
   const body = document.createElement("div");
   renderShoppingSeries(card, body);
 
-  assert.match(
-    body.textContent,
-    /Новая позиция не создается, пока в списке остаётся незавершённая покупка этой серии/
-  );
-  assert.match(body.textContent, /Добавленные вручную покупки с таким же названием не объединяются/);
+  assert.ok(body.textContent.includes(SHOPPING_SERIES_COPY.ru.duplicateNotice));
+  assert.match(body.textContent, /автоматически не объединяются/);
+  assert.equal(body.querySelector("details").open,false);
 });
 
 test("form validation rejects invalid numeric inputs and invalid rules", () => {

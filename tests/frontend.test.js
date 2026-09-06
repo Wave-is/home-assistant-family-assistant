@@ -58,11 +58,26 @@ test("changing household clears private recurring-shopping drafts",()=>{
   card._shoppingSeriesFormOpen=true;
   card._shoppingSeriesEditingItem={id:"B1",name:"Private old household"};
   card._shoppingSeriesDraft={name:"Private draft"};
+  card._shoppingItemAction={itemId:"Private old item",frozenPayload:{revision:1}};
   card.setConfig({entry_id:"new"});
   assert.equal(card._shoppingSeriesFormOpen,false);
   assert.equal(card._shoppingSeriesEditingItem,null);
   assert.equal(card._shoppingSeriesDraft,null);
+  assert.equal(card._shoppingItemAction,null);
   assert.doesNotMatch(card.shadowRoot.textContent,/Private/);
+});
+
+test("late command error cannot overwrite the new household's status",async()=>{
+  const card=document.createElement("family-shopping-card");let fail;
+  card.setConfig({entry_id:"old"});
+  card.hass={language:"en",callWS:message=>message.type.endsWith("/execute")?new Promise((_,reject)=>{fail=reject;}):Promise.resolve(base)};
+  await tick();
+  const inFlight=card.command("shopping.add",{name:"Private old item"});
+  card.setConfig({entry_id:"new"});
+  card._actionError="new-household-status";
+  fail({code:"old-household-error"});await inFlight;
+  assert.equal(card._actionError,"new-household-status");
+  assert.doesNotMatch(card.shadowRoot.textContent,/Private old item|old-household-error/);
 });
 
 test("visual editor uses authorized household names, not manually entered IDs",async()=>{

@@ -110,6 +110,19 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     return item
 
 
+def _open_descendant(items: dict, item: dict) -> bool:
+    """Merged records retain provenance; follow their live target without cycles."""
+    seen = set()
+    while item.get("status") == "merged":
+        target = item.get("merged_into")
+        if not isinstance(target, str) or target in seen or target not in items:
+            # Corrupt/partial legacy provenance needs review, not more purchases.
+            return True
+        seen.add(target)
+        item = items[target]
+    return item.get("status") in {"pending", "approved"}
+
+
 def tick(ctx: Context) -> None:
     if "shopping" not in ctx.state["settings"]["modules"]:
         return
@@ -142,10 +155,9 @@ def tick(ctx: Context) -> None:
             # Check open items for this series to prevent accumulation
             has_open_item = False
             for item in ctx.state["shopping"].values():
-                if item.get("series_id") == series["id"] and item.get("status") in {
-                    "pending",
-                    "approved",
-                }:
+                if item.get("series_id") == series["id"] and _open_descendant(
+                    ctx.state["shopping"], item
+                ):
                     has_open_item = True
                     break
 

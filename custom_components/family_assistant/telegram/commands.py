@@ -3,7 +3,7 @@
 import hashlib
 import json
 
-from ..domain.validation import DomainError
+from ..domain.validation import DomainError, text
 
 
 def signature(actor, content, refs):
@@ -21,6 +21,21 @@ def previous(engine, actor, content, refs, operation_id):
 
 
 async def execute(engine, actor, content, refs, operation_id, now, action, payload):
+    # A plan is persisted before the domain command. Reject non-JSON numbers
+    # here too, so a failed command cannot poison the household's stored data.
+    engine.view(actor)
+    text(operation_id, "operation_id", 180)
+    if not isinstance(payload, dict):
+        raise DomainError("invalid_field", "payload")
+    try:
+        encoded = json.dumps(
+            [actor, action, payload], sort_keys=True, ensure_ascii=False, allow_nan=False
+        )
+    except (TypeError, ValueError):
+        raise DomainError("invalid_field", "payload") from None
+    if len(encoded) > 20000:
+        raise DomainError("command_too_large")
+
     def save(ctx):
         plans = ctx.state["telegram"].setdefault("plans", {})
         fingerprint = signature(actor, content, refs)

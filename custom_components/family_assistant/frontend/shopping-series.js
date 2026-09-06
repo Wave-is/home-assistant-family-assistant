@@ -3,6 +3,7 @@
 export const SHOPPING_SERIES_COPY = {
   en: {
     title: "Recurring shopping",
+    help: "How recurring items work",
     addSeries: "Add recurring item",
     editSeries: "Edit recurring item",
     recurring: "Recurring",
@@ -38,7 +39,7 @@ export const SHOPPING_SERIES_COPY = {
     disable: "Disable",
     enabled: "Enabled",
     disabled: "Disabled",
-    duplicateNotice: "No duplicate item will be added while an unfinished purchase from the same series is still open (including partially purchased items). Manual shopping items with the same name are tracked separately and not merged.",
+    duplicateNotice: "No new item is added while an unfinished purchase from the same series is open, including partial or merged purchases. Manual same-name items are not automatically merged.",
     validationRequired: "Please enter a valid name.",
     validationQuantity: "Quantity must be between 0.001 and 1000000.",
     validationInterval: "Interval must be an integer between 1 and 52.",
@@ -49,6 +50,7 @@ export const SHOPPING_SERIES_COPY = {
   },
   ru: {
     title: "Регулярные покупки",
+    help: "Как работают повторы",
     addSeries: "Добавить регулярную покупку",
     editSeries: "Изменить регулярную покупку",
     recurring: "Регулярно",
@@ -84,7 +86,7 @@ export const SHOPPING_SERIES_COPY = {
     disable: "Выключить",
     enabled: "Включено",
     disabled: "Выключено",
-    duplicateNotice: "Новая позиция не создается, пока в списке остаётся незавершённая покупка этой серии (включая частичные покупки). Добавленные вручную покупки с таким же названием не объединяются.",
+    duplicateNotice: "Новая позиция не создаётся, пока покупка этой серии не завершена, в том числе после частичной покупки или объединения. Ручные позиции с одинаковым названием автоматически не объединяются.",
     validationRequired: "Пожалуйста, укажите название.",
     validationQuantity: "Количество должно быть от 0.001 до 1000000.",
     validationInterval: "Интервал должен быть целым числом от 1 до 52.",
@@ -95,6 +97,7 @@ export const SHOPPING_SERIES_COPY = {
   },
   uk: {
     title: "Регулярні покупки",
+    help: "Як працюють повтори",
     addSeries: "Додати регулярну покупку",
     editSeries: "Редагувати регулярну покупку",
     recurring: "Регулярно",
@@ -130,7 +133,7 @@ export const SHOPPING_SERIES_COPY = {
     disable: "Вимкнути",
     enabled: "Увімкнено",
     disabled: "Вимкнено",
-    duplicateNotice: "Новий пункт не додається, доки відкрита незавершена покупка з цієї ж серії (зокрема частково куплені товари). Додані вручну покупки з такою ж назвою ведуться окремо й не об’єднуються.",
+    duplicateNotice: "Новий пункт не додається, доки покупку цієї серії не завершено, зокрема після часткової покупки або об’єднання. Ручні пункти з однаковою назвою автоматично не об’єднуються.",
     validationRequired: "Будь ласка, вкажіть назву.",
     validationQuantity: "Кількість має бути від 0.001 до 1000000.",
     validationInterval: "Інтервал має бути цілим числом від 1 до 52.",
@@ -196,7 +199,9 @@ export function renderShoppingSeries(card, body) {
   }
   container.append(header);
 
-  container.append(el("p", t.duplicateNotice, "notice"));
+  const help=el("details");
+  help.append(el("summary",t.help),el("p",t.duplicateNotice,"sub"));
+  container.append(help);
 
   if (isParent && card._shoppingSeriesFormOpen) {
     const editing = card._shoppingSeriesDraft || card._shoppingSeriesEditingItem || null;
@@ -205,7 +210,7 @@ export function renderShoppingSeries(card, body) {
   }
 
   if (seriesList.length === 0) {
-    container.append(el("div", t.empty, "empty"));
+    container.append(el("p", t.empty, "sub"));
   } else {
     const list = el("div", null, "list");
     for (const item of seriesList) {

@@ -1,6 +1,25 @@
-# Recurring shopping / Регулярные покупки / Регулярні покупки
+# Shopping / Покупки / Покупки
 
 ## English
+
+Use **Bought remaining** to record the full remaining quantity, or **Partial
+purchase** for an amount bought now. Quantities use six-decimal precision. Parents
+can approve/reject children's suggestions and archive items without deleting them.
+
+**Merge items** lets a parent select up to 19 approved open duplicates into the
+current item. Names match ignoring case and repeated whitespace; units, category,
+store, note and buyer must match exactly. Review the totals and confirm. Pending
+suggestions cannot bypass approval. A concurrent change rejects the stale preview.
+Source records remain in the archive with links and their history, not duplicate
+active purchases. A merged recurring item still suppresses repeats until completed.
+
+**Item history** shows who recorded each change and when, newest first, with more
+entries available on demand. Old records do not get invented past events. **Archived
+& Completed Items** contains bought, rejected, archived and merged records. A failed
+partial/merge attempt retains its exact payload for retry; cancel/reopen to change
+the values or review a conflict. Telegram: `/bought S000001 | 0.5` records a partial
+purchase; omitting the quantity records the remaining amount. The module only
+records purchases made by people; it does not place an order or spend money.
 
 In the Shopping card, a parent or owner can select **Add recurring item**.
 Enter the item, quantity/unit, optional buyer and release schedule. Daily, weekly
@@ -26,6 +45,26 @@ HA storage, outside HACS-managed source files. No real shopping purchase is plac
 
 ## Русский
 
+**Куплено: весь остаток** отмечает полную покупку, **Частичная покупка** — количество,
+купленное сейчас. Точность количества — шесть знаков после запятой. Родители могут
+одобрять/отклонять предложения детей и отправлять записи в архив без удаления.
+
+Кнопка **Объединить** позволяет выбрать до 19 согласованных незавершённых дублей
+в текущую позицию. Регистр и лишние пробелы в названии не важны, но единицы,
+категория, магазин, комментарий и покупатель должны совпадать точно. Проверьте
+итоговые количества и подтвердите. Ожидающие одобрения предложения объединять
+нельзя. Конкурирующее изменение отклонит устаревший просмотр. Исходные записи
+останутся в архиве с историей; незавершённая объединённая регулярная покупка
+по-прежнему не создаст новый повтор.
+
+**История изменений** показывает автора и время, начиная с последних записей;
+старые записи доступны по кнопке. Прошлые события не выдумываются. Купленные,
+отклонённые и объединённые позиции находятся в **Архиве и завершённых покупках**.
+При ошибке сохраняется точная команда для повторной попытки. Чтобы изменить её
+или пересмотреть конфликт, отмените форму и откройте заново. В Telegram команда
+`/bought S000001 | 0.5` отмечает частичную покупку; без количества — весь остаток.
+Интеграция только ведёт учёт, а не покупает товары и не тратит деньги.
+
 Родитель или владелец выбирает **Добавить регулярную покупку** в карточке покупок.
 Укажите товар, количество/единицу, необязательного покупателя и расписание.
 Доступны ежедневный, еженедельный и ежемесячный повтор. В дополнительных параметрах —
@@ -49,6 +88,24 @@ HA storage, outside HACS-managed source files. No real shopping purchase is plac
 заменяются обновлением HACS. Система ведёт список, а не оформляет заказ в магазине.
 
 ## Українська
+
+**Куплено: увесь залишок** позначає повну покупку, **Часткова покупка** — кількість,
+куплену зараз. Точність кількості — шість знаків після коми. Батьки можуть
+схвалювати/відхиляти пропозиції дітей та архівувати записи без видалення.
+
+**Об'єднати** дозволяє обрати до 19 погоджених незавершених дублів у поточний пункт.
+Регістр і зайві пробіли в назві не важливі, але одиниці, категорія, магазин, примітка
+й покупець мають збігатися точно. Перевірте підсумки й підтвердьте. Пропозиції без
+схвалення об'єднувати не можна. Конкурентна зміна відхилить застарілий перегляд.
+Вихідні записи лишаються в архіві з історією. Незавершена об'єднана регулярна
+покупка й надалі стримує створення наступного повтору.
+
+**Історія змін** показує автора й час, починаючи з останніх записів; старі записи
+доступні за кнопкою. Минулі події не вигадуються. Куплені, відхилені й об'єднані
+пункти містяться в **Архіві і завершених покупках**. Після помилки точна команда
+зберігається для повтору; щоб змінити її чи переглянути конфлікт, скасуйте форму
+й відкрийте знову. У Telegram `/bought S000001 | 0.5` позначає часткову покупку;
+без кількості — увесь залишок. Інтеграція веде облік, а не купує товари й не витрачає гроші.
 
 Батьки або власник обирають **Додати регулярну покупку** в картці покупок.
 Укажіть товар, кількість/одиницю, необов’язкового покупця й розклад. Доступні

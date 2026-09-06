@@ -16,7 +16,7 @@ Setup guides: [English](docs/setup.en.md) · [Русский](docs/setup.ru.md) 
 [Українська](docs/setup.uk.md). The guides distinguish working features from
 pending implementation and explain how to create and link your own bot.
 
-Module guide: [Recurring shopping / Регулярные покупки / Регулярні покупки](docs/shopping.md).
+Module guide: [Shopping / Покупки / Покупки](docs/shopping.md).
 
 ## Development
 

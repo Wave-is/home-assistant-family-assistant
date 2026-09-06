@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/frontend.test.js tests/frontend-shopping-series.test.js",
+    "test": "node --test tests/frontend.test.js tests/frontend-shopping-series.test.js tests/frontend-shopping-items.test.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

@@ -168,7 +168,10 @@ class Engine:
             {k: m[k] for k in ("id", "name", "role", "language", "active", "revision")}
             for m in self._state["members"].values()
         ]
-        data["shopping"] = list(self._state["shopping"].values())
+        data["shopping"] = [
+            {**item, "merge_name": shopping.normalized_name(item["name"])}
+            for item in self._state["shopping"].values()
+        ]
         for bucket, owner_field in (
             ("tasks", "assignee"),
             ("court", "member"),
