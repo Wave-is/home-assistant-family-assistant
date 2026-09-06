@@ -34,8 +34,9 @@ are enabled, parent-initiated calculation followed by explicit review and
 acceptance creates approved shopping list entries only (see
 [meal-shopping.md](meal-shopping.md)). Private notes are never copied, only one
 accepted transfer is permitted per plan ID, and later amendments to shopping
-must be done manually. Private preferences, recipe providers and allergy checks
-remain separate implementation gates. An ingredient list is not a statement
+must be done manually. [Private preferences](dietary-profiles.md) have a separate
+consent-controlled section in this card and are never copied into meal records.
+Recipe providers remain a separate gate. An ingredient list is not a statement
 that a meal is safe for someone with an allergy; no such inference is made.
 
 ## Русский
@@ -63,9 +64,10 @@ that a meal is safe for someone with an allergy; no such inference is made.
 подтверждением создаёт только согласованные позиции в списке покупок (см.
 [meal-shopping.md](meal-shopping.md)). Приватные заметки не копируются, для
 одного идентификатора плана допускается только один принятый перенос, а все
-последующие изменения вносятся в список покупок вручную. Приватные
-предпочтения, источники рецептов и проверки аллергенов остаются отдельными
-этапами реализации. Список ингредиентов не подтверждает безопасность блюда
+последующие изменения вносятся в список покупок вручную. [Приватные
+предпочтения](dietary-profiles.md) находятся в отдельном разделе карточки с
+управлением согласием и не копируются в меню. Источники рецептов остаются отдельным
+этапом. Список ингредиентов не подтверждает безопасность блюда
 при аллергии.
 
 ## Українська
@@ -93,8 +95,9 @@ that a meal is safe for someone with an allergy; no such inference is made.
 створює лише погоджені позиції в списку покупок (див.
 [meal-shopping.md](meal-shopping.md)). Приватні примітки не копіюються, для
 одного ідентифікатора плану дозволено лише одне прийняте перенесення, а будь-які
-подальші зміни вносяться до списку покупок вручну. Приватні вподобання, джерела
-рецептів і перевірки алергенів залишаються окремими етапами реалізації. Перелік
+подальші зміни вносяться до списку покупок вручну. [Приватні вподобання](dietary-profiles.md)
+розміщені в окремому розділі картки з керуванням згодою й не копіюються до меню.
+Джерела рецептів залишаються окремим етапом. Перелік
 інгредієнтів не підтверджує безпечність страви за наявності алергії.
 
 ## API contract

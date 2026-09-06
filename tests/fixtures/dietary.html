@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic dietary dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const actor = query.get("actor") || "adult";
+    const members = [
+      {
+        id: "parent",
+        name: "Parent",
+        role: "parent",
+        active: true,
+        revision: 1,
+      },
+      { id: "adult", name: "Alex", role: "adult", active: true, revision: 1 },
+      { id: "child", name: "Sam", role: "child", active: true, revision: 1 },
+    ];
+    const records = {
+      adult: {
+        member_id: "adult",
+        status: "active",
+        revision: 1,
+        management: "self",
+        share_with_parents: false,
+        likes: ["Apples"],
+        dislikes: [],
+        avoid: ["Nuts"],
+        allergy_note: "SYNTHETIC_ADULT_PRIVATE_NOTE",
+      },
+      child: {
+        member_id: "child",
+        status: "active",
+        revision: 1,
+        management: "parent_child",
+        share_with_parents: false,
+        likes: ["Pears"],
+        dislikes: [],
+        avoid: [],
+        allergy_note: "",
+      },
+    };
+    window.fixture = {
+      revision: 1,
+      actor,
+      role: actor,
+      settings: {
+        name: "Example family",
+        modules: ["pantry", "shopping"],
+        timezone: "Europe/Kyiv",
+      },
+      members,
+      pantry: { items: [], suggestions: [], meal_plans: [], meal_shopping: [] },
+    };
+    window.records = records;
+    window.calls = [];
+    const receipts = new Map();
+    const row = (id, canEdit, canShare) => ({
+      ...(records[id] || { member_id: id, status: "missing" }),
+      can_edit: canEdit,
+      can_share: canShare && records[id]?.status === "active",
+    });
+    const projection = () => {
+      const data = structuredClone(window.fixture);
+      const adult = ["owner", "parent", "adult"].includes(data.role);
+      data.pantry.dietary_profiles = {
+        self: row(data.actor, adult, adult),
+        managed_children:
+          data.role === "parent" ? [row("child", true, false)] : [],
+        shared_adults:
+          data.role === "parent" && records.adult.share_with_parents
+            ? [row("adult", false, false)]
+            : [],
+      };
+      return structuredClone(data);
+    };
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type !== "family_assistant/execute")
+          throw { code: "unknown_action" };
+        window.calls.push(structuredClone(message));
+        if (receipts.has(message.operation_id))
+          return structuredClone(receipts.get(message.operation_id));
+        const p = message.payload,
+          current = records[p.member_id];
+        if (current && p.revision !== current.revision)
+          throw { code: "conflict" };
+        const parentChild =
+          window.fixture.role === "parent" && p.member_id === "child";
+        const self =
+          window.fixture.actor === p.member_id &&
+          ["adult", "parent"].includes(window.fixture.role);
+        if (!self && !parentChild) throw { code: "forbidden" };
+        if (message.action === "pantry.dietary_save")
+          records[p.member_id] = {
+            ...p,
+            revision: (current?.revision || 0) + 1,
+            status: "active",
+            management: parentChild ? "parent_child" : "self",
+            share_with_parents: current?.share_with_parents || false,
+          };
+        else if (message.action === "pantry.dietary_access_set" && self) {
+          const member = window.fixture.members.find(
+            (m) => m.id === p.member_id,
+          );
+          if (
+            !Number.isSafeInteger(p.member_revision) ||
+            p.member_revision !== member.revision
+          )
+            throw { code: "conflict" };
+          Object.assign(current, {
+            share_with_parents: p.share_with_parents,
+            revision: current.revision + 1,
+          });
+        } else if (message.action === "pantry.dietary_clear")
+          records[p.member_id] = {
+            member_id: p.member_id,
+            revision: current.revision + 1,
+            status: "cleared",
+            management: current.management,
+          };
+        else throw { code: "unknown_action" };
+        window.fixture.revision += 1;
+        const item = records[p.member_id];
+        const result = {
+          member_id: item.member_id,
+          revision: item.revision,
+          status: item.status,
+        };
+        receipts.set(message.operation_id, structuredClone(result));
+        if (window.loseResponse) {
+          window.loseResponse = false;
+          throw { code: "storage_error" };
+        }
+        return result;
+      },
+    };
+    const card = document.createElement("family-meals-card");
+    card.setConfig({ entry_id: "synthetic", language });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+  </script>
+</html>

@@ -232,6 +232,7 @@ async def main():
             from ha_pantry_expiry_smoke import verify_pantry_expiry
 
             await verify_pantry_expiry(hass, user)
+            dietary_expected = entry.runtime_data.engine.snapshot()["dietary_profiles"]
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(
@@ -240,6 +241,10 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
+            assert entry.runtime_data.engine.snapshot()["dietary_profiles"] == dietary_expected
+            from ha_dietary_smoke import verify_dietary_reload
+
+            verify_dietary_reload(entry, dietary_expected)
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
             assert len(shopping_after_reload) == 8
             pantry_after_reload = entry.runtime_data.engine.snapshot()["pantry"]
@@ -296,7 +301,8 @@ async def main():
                 == active_routine["steps"][0]["nonce"]
             )
             assert any(r["status"] == "completed" for r in routines_after_reload.values())
-            assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
+            # The private dietary scenario adds one separately authenticated adult.
+            assert len(entry.runtime_data.engine.view("owner")["members"]) == 4
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
             from homeassistant.helpers import llm
@@ -746,6 +752,9 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     from ha_meal_shopping_smoke import verify_meal_shopping
 
     await verify_meal_shopping(hass, entry, owner, child, request)
+    from ha_dietary_smoke import verify_dietary_controls
+
+    await verify_dietary_controls(hass, entry, owner, child, child_id, request)
 
 
 async def verify_pantry_controls(hass, entry, owner, child, request):

@@ -21,8 +21,8 @@ Nothing is production-ready solely because a mock test passes.
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
-| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders and localized cards; preferences pending |
-| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer and localized card; preferences and recipe providers pending |
+| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
+| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and localized card; recipe providers pending |
 | School, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
@@ -46,8 +46,29 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1034 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 225 frontend unit tests and 65 Chromium browser tests passed.
+- 1177 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 234 frontend unit tests and 69 Chromium browser tests passed.
+- Dietary profiles are isolated local records with manual likes/dislikes/avoid labels
+  and an optional allergy note, not a safety assessment or ingredient classifier.
+  Adults manage their own initially private profile; other parents receive read-only
+  access only after explicit consent. Current member versions bind that consent,
+  preventing role round trips or a member edit between review and execution from
+  granting unintended access. The access command freezes both profile and member
+  revisions. Parent-managed child records retain their management provenance; role
+  changes never expose formerly self-managed adult notes. Clear removes current
+  content but retains a versioned tombstone against stale recreation; no claim is
+  made about erasing backups or previously read information.
+  Opaque receipts keep notes out of audit/processed results, outbox, Telegram,
+  LLM/search, entity attributes, diagnostics and meal/shopping records. Strict
+  versions/limits, replay, Store failure, batches, concurrency and revocation are
+  tested. Actual HA exercised separate identities, consent/revoke, role roundtrip,
+  membership change before execution, real ReadFamily and diagnostics/entity
+  canaries, and private Store reload. The additional synthetic adult required an
+  explicit four-member fixture assertion; the first run's old count was corrected.
+  The card freezes exact named reviews and operation IDs, discards revoked drafts,
+  and forces private DOM refresh even when an unrelated form has focus. RU mobile
+  review and UK child screenshots were inspected; duplicated old profile values
+  beneath the review were removed. See [dietary profile guide](dietary-profiles.md).
 - Pantry expiry reminders are owner opt-in (off by default, lead window 0–30 days).
   The scheduler creates at most one reminder per item revision after 09:00 in the
   household timezone, only for positive active stock within the recorded date window.
@@ -98,8 +119,9 @@ is exercised with a synthetic entity, not by replacing its service registry.
   history labels and mobile ingredient layout were refined after visual review.
   Russian mobile editing/publication and Ukrainian child screenshots were inspected;
   the oversized remove-meal button was corrected and the full browser suite rerun.
-  See [weekly menu guide](meals.md). Preferences, recipe providers and allergy
-  checks are not yet implemented; reviewed shopping linkage is described above.
+  See [weekly menu guide](meals.md). Consent-controlled manual preferences are
+  covered above; recipe providers remain pending. No allergy-safety assessment
+  is claimed. Reviewed shopping linkage is described above.
 - Existing shopping/task/court/alarm/member edits now require strict current
   revisions. A shared validator rejects missing/malformed versions; read-only
   Context lookups remain distinct from explicit null. Member edits cannot silently
@@ -128,8 +150,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   mobile editor, Ukrainian child view and English review were visually inspected.
   Actual HA exercised authenticated actions, scheduler dedup, private views and
   Store reload. General options now preserve unshown module flags and expose routines
-  and pantry. Expiry alerts are covered above; menu profiles and automatic orders
-  are not claimed.
+  and pantry. Expiry alerts and private dietary profiles are covered above;
+  automatic orders are not claimed.
 - An actual-HA privacy test falsely rejected legitimate timestamps containing
   `02:11` as a MAC prefix. It now checks complete synthetic identifiers and forbidden
   fields, with positive leak-detection and real-projection timestamp regressions.
@@ -334,7 +356,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   e0ae29e (run 34060586354) and strict-command revision checkpoint
   544ac8c (run 34061803612), followed by weekly menus
   161b4d5 (run 34062734832) and menu shopping transfers
-  657540d (run 34063962083).
+  657540d (run 34063962083), then expiry reminders
+  ad3fd17 (run 34064991218).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

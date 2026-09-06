@@ -25,6 +25,7 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Pantry / Запасы / Запаси](docs/pantry.md) ·
 [Expiry reminders / Напоминания о сроках / Нагадування про строки](docs/pantry-expiry.md) ·
 [Weekly menu / Меню на неделю / Меню на тиждень](docs/meals.md) ·
+[Dietary profiles / Пищевые предпочтения / Харчові вподобання](docs/dietary-profiles.md) ·
 [Menu shopping / Покупки по меню / Покупки за меню](docs/meal-shopping.md).
 
 ## Development

@@ -17,6 +17,7 @@ from . import (
     court,
     court_weekly,
     delivery,
+    dietary_profiles,
     family_calendar,
     household,
     members,
@@ -65,6 +66,7 @@ BUCKETS = (
     "routine_runs",
     "calendar",
     "pantry",
+    "dietary_profiles",
     "school",
     "maintenance",
     "polls",
@@ -307,7 +309,7 @@ class Engine:
                     raise DomainError("forbidden")
                 if prior["fingerprint"] != fingerprint:
                     raise DomainError("idempotency_conflict")
-                self._replay_scope(actor_id, action, payload, prior["result"])
+                self._replay_scope(actor_id, action, payload, prior["result"], now)
                 return deepcopy(prior["result"])
             working = deepcopy(self._state)
             ctx = Context(working, actor, now, operation_id)
@@ -354,11 +356,11 @@ class Engine:
             self._state = working
             return deepcopy(result)
 
-    def _replay_scope(self, actor_id, action, payload, result):
+    def _replay_scope(self, actor_id, action, payload, result, now):
         """A saved receipt never restores a disabled module or revoked scope."""
         if action == "batch":
             for command, item in zip(payload["commands"], result["items"], strict=True):
-                self._replay_scope(actor_id, command["action"], command["payload"], item)
+                self._replay_scope(actor_id, command["action"], command["payload"], item, now)
             return
         module = action.split(".", 1)[0]
         if (
@@ -368,6 +370,12 @@ class Engine:
             raise DomainError("module_disabled")
         if module == "routines":
             routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
+        elif action.startswith("pantry.dietary_"):
+            dietary_profiles.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "dietary-replay"),
+                action.split(".", 1)[1],
+                payload,
+            )
         elif action in {
             "pantry.suggestion_accept",
             "pantry.meal_shop_prepare",

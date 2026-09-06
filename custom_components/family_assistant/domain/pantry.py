@@ -7,7 +7,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from ..const import PRIVILEGED
-from . import meal_plans, meal_shopping, pantry_expiry, shopping
+from . import dietary_profiles, meal_plans, meal_shopping, pantry_expiry, shopping
 from .context import Context
 from .validation import DomainError, fields, number, text, timestamp
 
@@ -312,6 +312,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     """Apply one pantry command without external side effects."""
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
+    if action.startswith("dietary_"):
+        return dietary_profiles.handle(ctx, action, payload)
     if action.startswith("meal_shop_"):
         return meal_shopping.handle(ctx, action, payload)
     if action.startswith("meal_"):
@@ -437,4 +439,5 @@ def view(state: dict, actor: dict, now: datetime | None = None) -> dict:
         "suggestions": suggestions,
         "meal_plans": meal_plans.view(state, actor),
         "meal_shopping": meal_shopping.view(state, actor),
+        "dietary_profiles": dietary_profiles.view(state, actor),
     }
