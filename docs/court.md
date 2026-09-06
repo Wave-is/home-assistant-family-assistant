@@ -17,7 +17,7 @@ Family Court provides auditable point awards and deductions with revision histor
 - **Appeals & Reversals**: Children can appeal their own active records with a reason. Parents can reverse an active record directly or resolve an appeal (`uphold` or `reverse`) with a mandatory reason.
 - **Independent Review**: Optional owner setting (`second_adult_review`) requires an independent adult who is neither the original record author nor the appellant. Requires at least 2 active privileged adults.
 - **Immutable History**: Original records are never deleted. Status changes (reversals, appeal resolutions) append revision metadata and replay atomically.
-- **Scope & Future Features**: No rewards store or configurable penalty consequences are implemented yet.
+- **Privileges**: The development build includes a [parent-defined privilege catalog](rewards.md) with reserved points and approvals. Automatic device consequences remain unimplemented.
 
 ### Weekly Reports
 
@@ -50,7 +50,7 @@ Family Court provides auditable point awards and deductions with revision histor
 - **Апелляция и отмена**: Ребенок может подать апелляцию на свою активную запись с причиной. Родитель может напрямую отменить запись (`reverse`) или разрешить апелляцию (`uphold` или `reverse`) с обязательным обоснованием.
 - **Независимая проверка**: Опция владельца требует независимого взрослого (не автора записи и не автора апелляции). Требуется минимум 2 активных родителя/владельца.
 - **Неизменяемость**: Исходные записи не удаляются; история сохраняется через атомарные ревизии.
-- **Ограничения**: Магазин наград и настраиваемые штрафные санкции еще не реализованы.
+- **Привилегии**: В разработке уже есть [каталог семейных привилегий](rewards.md) с резервом баллов и одобрением родителей. Автоматическое применение последствий к устройствам ещё не реализовано.
 
 ### Еженедельные отчеты
 
@@ -82,7 +82,7 @@ Family Court provides auditable point awards and deductions with revision histor
 - **Апеляція та скасування**: Дитина може подати апеляцію на свій активний запис із зазначенням причини. Батьки можуть скасувати запис (`reverse`) або вирішити апеляцію (`uphold` чи `reverse`) з обов'язковим обґрунтуванням.
 - **Незалежний перегляд**: Опція власника вимагає незалежного дорослого (не автора запису і не автора апеляції). Потрібно щонайменше 2 активних дорослих із привілеями.
 - **Незмінність**: Первинні записи ніколи не видаляються; зміни фіксуються через атомарне відтворення ревізій.
-- **Межі функціоналу**: Магазин нагород та налаштовувані штрафні санкції ще не реалізовані.
+- **Привілеї**: Версія в розробці вже містить [каталог сімейних привілеїв](rewards.md) із резервом балів і схваленням батьків. Автоматичне застосування наслідків до пристроїв ще не реалізоване.
 
 ### Щотижневі звіти
 

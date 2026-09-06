@@ -20,6 +20,7 @@ from . import (
     household,
     members,
     proposals,
+    rewards,
     settings,
     shopping,
     shopping_series,
@@ -50,6 +51,8 @@ BUCKETS = (
     "incidents",
     "court",
     "court_reports",
+    "rewards",
+    "reward_requests",
     "alarms",
     "alarm_runs",
     "routines",
@@ -127,6 +130,8 @@ class Engine:
         self._state.setdefault("shopping_series", {})
         self._state.setdefault("incidents", {})
         self._state.setdefault("court_reports", {})
+        self._state.setdefault("rewards", {})
+        self._state.setdefault("reward_requests", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
         self._persist = persist
@@ -189,6 +194,7 @@ class Engine:
         if actor["role"] == "guest":
             data["shopping"] = []
         elif "court" in self._state["settings"]["modules"]:
+            data["rewards"] = rewards.view(self._state, actor)
             data["court_summary"] = court_weekly.view(self._state, data["court"], now)
             if parent:
                 data["court_config"] = court_weekly.configuration(self._state)
@@ -364,6 +370,7 @@ class Engine:
             shopping_series.tick(ctx)
             task_events.tick(ctx)
             court_weekly.tick(ctx)
+            rewards.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

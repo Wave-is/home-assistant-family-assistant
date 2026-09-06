@@ -91,7 +91,9 @@ export const ERRORS = {
     "network_clock": "Router clock or time zone differs from this household. Check its clock/NTP before changing schedules.",
     "network_kid_membership": "The entire profile membership must match the explicitly selected devices. Disabled, dynamic or changed members require review.",
     "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
-    "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled."
+    "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
+    "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
+    "reward_expired": "This privilege request expired. Submit a new request."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -184,7 +186,9 @@ export const ERRORS = {
     "network_clock": "Часы или часовой пояс роутера не совпадают с семьёй. Проверьте часы/NTP перед изменением расписания.",
     "network_kid_membership": "Полный состав профиля должен совпадать с выбранными устройствами. Отключённые, динамические и изменённые записи требуют проверки.",
     "network_kid_unmanaged": "Сначала владелец должен явно передать профиль ребёнка и его устройства RouterOS под управление.",
-    "network_timer_required": "Нужен проверенный таймер окончания и запуска в RouterOS 7.16+. Временный доступ не удалось безопасно включить."
+    "network_timer_required": "Нужен проверенный таймер окончания и запуска в RouterOS 7.16+. Временный доступ не удалось безопасно включить.",
+    "insufficient_points": "Недостаточно доступных баллов: действующие заявки резервируют свою стоимость.",
+    "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -277,6 +281,8 @@ export const ERRORS = {
     "network_clock": "Годинник або часовий пояс роутера відрізняється від сімейного. Перевірте час/NTP до зміни розкладу.",
     "network_kid_membership": "Повний склад профілю має відповідати вибраним пристроям. Вимкнені, динамічні та змінені записи потребують перевірки.",
     "network_kid_unmanaged": "Спочатку власник має явно передати профіль дитини та її пристрої RouterOS під керування.",
-    "network_timer_required": "Потрібен перевірений таймер завершення та запуску в RouterOS 7.16+. Тимчасовий доступ не вдалося безпечно увімкнути."
+    "network_timer_required": "Потрібен перевірений таймер завершення та запуску в RouterOS 7.16+. Тимчасовий доступ не вдалося безпечно увімкнути.",
+    "insufficient_points": "Недостатньо доступних балів: чинні заявки резервують свою вартість.",
+    "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку."
   }
 };

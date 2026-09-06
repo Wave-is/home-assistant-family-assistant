@@ -4,6 +4,12 @@ from ..notifications import DeliveryError
 
 MESSAGES = {
     "en": {
+        "reward_requested": (
+            "🎁 {member} requests {id} · {title}. Reserved: {cost} points. "
+            "Parent review is required."
+        ),
+        "reward_changed": "🎁 {id} · {title}: {status}. Reason: {reason}",
+        "reward_expired": "🎁 {id} · {title}: request expired; its reserved points are released.",
         "network_plan_finished": (
             "🌐 Network plan {id}: {status}. Details and read-back are on the Home network card."
         ),
@@ -29,6 +35,11 @@ MESSAGES = {
         ),
     },
     "ru": {
+        "reward_requested": (
+            "🎁 {member}: заявка {id} · {title}. Резерв: {cost} баллов. Нужна проверка родителя."
+        ),
+        "reward_changed": "🎁 {id} · {title}: {status}. Причина: {reason}",
+        "reward_expired": "🎁 {id} · {title}: срок заявки истёк, её резерв баллов освобождён.",
         "network_plan_finished": (
             "🌐 План сети {id}: {status}. "
             "Подробности и результат проверки — в карточке домашней сети."
@@ -57,6 +68,11 @@ MESSAGES = {
         ),
     },
     "uk": {
+        "reward_requested": (
+            "🎁 {member}: заявка {id} · {title}. Резерв: {cost} балів. Потрібна перевірка батьків."
+        ),
+        "reward_changed": "🎁 {id} · {title}: {status}. Причина: {reason}",
+        "reward_expired": "🎁 {id} · {title}: термін заявки минув, її резерв балів звільнено.",
         "network_plan_finished": (
             "🌐 План мережі {id}: {status}. "
             "Подробиці й результат перевірки — у картці домашньої мережі."
@@ -136,13 +152,38 @@ def render(event, target, state):
         record = next(
             (
                 state[bucket][record_id]
-                for bucket in ("tasks", "shopping", "court")
-                if record_id in state[bucket]
+                for bucket in ("tasks", "shopping", "court", "reward_requests")
+                if record_id in state.get(bucket, {})
             ),
             {},
         )
         data["title"] = record.get("title", record.get("name", ""))
         data["member"] = state["members"].get(data.get("member"), {}).get("name", "")
+        if event["key"] == "reward_changed":
+            labels = {
+                "en": {
+                    "approved": "approved by a parent",
+                    "rejected": "declined",
+                    "cancelled": "cancelled",
+                    "fulfilled": "marked provided by a parent",
+                    "refunded": "points refunded",
+                },
+                "ru": {
+                    "approved": "одобрено родителем",
+                    "rejected": "отклонено",
+                    "cancelled": "отменено",
+                    "fulfilled": "родитель отметил предоставление",
+                    "refunded": "баллы возвращены",
+                },
+                "uk": {
+                    "approved": "схвалено батьками",
+                    "rejected": "відхилено",
+                    "cancelled": "скасовано",
+                    "fulfilled": "батьки відзначили надання",
+                    "refunded": "бали повернено",
+                },
+            }
+            data["status"] = labels.get(language, labels["en"])[data["status"]]
         if event["key"] == "court_appeal_resolved":
             labels = {
                 "en": {"uphold": "original points upheld", "reverse": "original points reversed"},

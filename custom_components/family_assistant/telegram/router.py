@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 
 from ..domain.validation import DomainError
-from . import commands
+from . import commands, rewards
 from .intents import find_member, parse
 from .presentation import court_stats, summary
 
@@ -148,7 +148,12 @@ async def route(
             return ASSISTANT_COPY[language]["confirmed"].format(
                 result="\n".join(summary(item, view, language) for item in result["items"])
             )
-        return t["saved"].format(id=result["id"], title=summary(result, view, language))
+        title = (
+            rewards.summary(result, language)
+            if "cost" in result
+            else summary(result, view, language)
+        )
+        return t["saved"].format(id=result["id"], title=title)
 
     prior = commands.previous(engine, actor, content, refs, operation_id)
     if prior:
@@ -170,7 +175,7 @@ async def route(
     }:
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
-        return t["help"]
+        return t["help"] + rewards.help_text(language)
     from .network import parsed as parse_network
     from .network import status as network_status
 
@@ -245,7 +250,14 @@ async def route(
             label = summary(item, view, language)
             lines.append(f"{item['id']} · {label}")
         return "\n".join(lines)[:3800] or t["empty"]
+    if command in {"/rewards", "/wallet"}:
+        return rewards.read(view, language, only_wallet=command == "/wallet")
     fields = [part.strip() for part in tail.split("|")]
+    reward_intent = rewards.parsed(view, command, fields)
+    if reward_intent:
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, *reward_intent)
+        )
     action, payload = (intent.action, intent.payload) if intent else (None, None)
     if command == "/buy" and 1 <= len(fields) <= 3:
         try:

@@ -257,6 +257,13 @@ async def main():
             assert appealed["appeal"]["resolution"]["reason"] == "Synthetic independent review"
             assert len(court_after_reload["court_reports"]) == 1
             assert court_after_reload["settings"]["court"]["second_adult_review"] is True
+            reward = next(iter(court_after_reload["reward_requests"].values()))
+            assert reward["status"] == "fulfilled" and reward["cost"] == 6
+            assert [h["status"] for h in reward["history"]] == [
+                "requested",
+                "approved",
+                "fulfilled",
+            ]
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -663,6 +670,38 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     print(
         "PASS: actual HA WebSocket court configuration, child appeal, "
         "independent review, replay and weekly snapshot"
+    )
+
+    await request(
+        owner,
+        "court.award",
+        {"member": child_id, "points": 10, "reason": "Synthetic earned privilege"},
+    )
+    reward = await request(
+        owner, "court.reward_save", {"name": "Synthetic family privilege", "cost": 6}
+    )
+    reservation = {"id": reward["id"], "revision": reward["revision"]}
+    item = await request(child, "court.reward_request", reservation, "reward-smoke-reserve")
+    assert await request(child, "court.reward_request", reservation, "reward-smoke-reserve") == item
+    await request(child, "court.reward_request", reservation, error="insufficient_points")
+    projected = (await request(child, "view", {}))["rewards"]
+    assert projected["balances"][0]["available"] == 4 and projected["balances"][0]["reserved"] == 6
+    decision = {
+        "id": item["id"],
+        "revision": item["revision"],
+        "decision": "approve",
+        "reason": "Synthetic approval",
+    }
+    await request(child, "court.reward_transition", decision, error="forbidden")
+    item = await request(owner, "court.reward_transition", decision)
+    decision.update(revision=item["revision"], decision="fulfill", reason="Synthetic provided")
+    item = await request(owner, "court.reward_transition", decision, "reward-smoke-fulfill")
+    assert await request(owner, "court.reward_transition", decision, "reward-smoke-fulfill") == item
+    projected = (await request(child, "view", {}))["rewards"]
+    assert projected["balances"][0]["spent"] == 6 and projected["balances"][0]["reserved"] == 0
+    assert item["name"] == "Synthetic family privilege" and item["status"] == "fulfilled"
+    print(
+        "PASS: actual HA WebSocket privilege reservation, parent approval, fulfillment and replay"
     )
 
 

@@ -130,6 +130,8 @@ ERRORS = {
         "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer "
         "is required. Temporary access was not safely "
         "enabled.",
+        "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
+        "reward_expired": "This privilege request expired. Submit a new request.",
     },
     "ru": {
         "invalid_field": "Проверьте введённое значение.",
@@ -264,6 +266,9 @@ ERRORS = {
         "network_timer_required": "Нужен проверенный таймер окончания и запуска в "
         "RouterOS 7.16+. Временный доступ не удалось "
         "безопасно включить.",
+        "insufficient_points": "Недостаточно доступных баллов: действующие заявки "
+        "резервируют свою стоимость.",
+        "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку.",
     },
     "uk": {
         "invalid_field": "Перевірте введене значення.",
@@ -394,5 +399,8 @@ ERRORS = {
         "network_timer_required": "Потрібен перевірений таймер завершення та "
         "запуску в RouterOS 7.16+. Тимчасовий доступ не "
         "вдалося безпечно увімкнути.",
+        "insufficient_points": "Недостатньо доступних балів: чинні заявки "
+        "резервують свою вартість.",
+        "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку.",
     },
 }

@@ -115,7 +115,9 @@
       "network_clock": "Router clock or time zone differs from this household. Check its clock/NTP before changing schedules.",
       "network_kid_membership": "The entire profile membership must match the explicitly selected devices. Disabled, dynamic or changed members require review.",
       "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
-      "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled."
+      "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
+      "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
+      "reward_expired": "This privilege request expired. Submit a new request."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -360,7 +362,9 @@
       "network_clock": "Router clock or time zone differs from this household. Check its clock/NTP before changing schedules.",
       "network_kid_membership": "The entire profile membership must match the explicitly selected devices. Disabled, dynamic or changed members require review.",
       "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
-      "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled."
+      "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
+      "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
+      "reward_expired": "This privilege request expired. Submit a new request."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -690,6 +694,12 @@
     },
     "network_timer_required": {
       "message": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled."
+    },
+    "insufficient_points": {
+      "message": "Not enough available points. Existing requests reserve their cost."
+    },
+    "reward_expired": {
+      "message": "This privilege request expired. Submit a new request."
     }
   },
   "selector": {

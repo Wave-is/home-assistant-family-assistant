@@ -56,11 +56,24 @@ if(query.has("courtedit")){
   ];
   data.court_summary={start:"2026-08-31T00:00:00Z",end:"2026-09-07T00:00:00Z",timezone:"Europe/Kyiv",rows:[{member:"child",active_positives:2,active_negatives:0,total:2,reversed_count:0}]};
 }
+if(query.has("rewards")&&view==="court"){
+  data.settings.timezone="Europe/Kyiv";
+  Object.assign(data.court[0],{points:15,actor:"owner",source:"manual",created_at:"2026-09-06T08:00:00Z"});
+  data.rewards={
+    catalog:[{id:"R000001",name:"Cinema trip",cost:10,description:"Weekend movie",enabled:true,request_ttl_hours:72,eligible:[],revision:1}],
+    requests:[],
+    balances:[{member:"child",earned:15,reserved:0,spent:0,net:15,available:15},{member:"owner",earned:0,reserved:0,spent:0,net:0,available:0}]
+  };
+  window.rewardFixture=data;
+  window.rewardOperations=new Map();
+}
 card.hass={language,callWS:async message=>{
   if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
   if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
   if(message.type.endsWith("/execute")){
     window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+    if(message.action.startsWith("court.reward_")&&window.rewardOperations.has(message.operation_id))return structuredClone(window.rewardOperations.get(message.operation_id));
+    const rewardDone=result=>{window.rewardOperations.set(message.operation_id,structuredClone(result));return structuredClone(result);};
     if(message.action==="court.configure"){
       if(data.court_config && message.payload.revision!==data.court_config.revision)throw {code:"conflict"};
       data.court_config={...data.court_config,...message.payload,revision:(data.court_config?.revision ?? 0)+1};
@@ -97,6 +110,41 @@ card.hass={language,callWS:async message=>{
       rec.reversal={reason:message.payload.reason,actor:data.actor,at:new Date().toISOString()};
       rec.revision++;
       return structuredClone(rec);
+    }
+    if(message.action==="court.reward_save"){
+      const cat=data.rewards.catalog,p=message.payload;
+      if(p.id){
+        const it=cat.find(c=>c.id===p.id);if(!it||it.revision!==p.revision)throw {code:"conflict"};
+        Object.assign(it,p,{revision:it.revision+1});return rewardDone(it);
+      }
+      const item={...p,id:`R${String(cat.length+1).padStart(6,"0")}`,revision:1};
+      cat.push(item);return rewardDone(item);
+    }
+    if(message.action==="court.reward_request"){
+      const rItem=data.rewards.catalog.find(c=>c.id===message.payload.id);
+      if(!rItem||rItem.revision!==message.payload.revision)throw {code:"conflict"};
+      const prev=data.rewards.requests.find(r=>r.opId===message.operation_id);if(prev)return structuredClone(prev);
+      const req={id:`V${String(data.rewards.requests.length+1).padStart(6,"0")}`,name:rItem.name,cost:rItem.cost,description:rItem.description,member:message.payload.member,status:"requested",created_at:new Date().toISOString(),revision:1,history:[{actor:data.actor,at:new Date().toISOString(),status:"requested",reason:message.payload.note||""}],opId:message.operation_id};
+      data.rewards.requests.push(req);
+      const b=data.rewards.balances.find(x=>x.member===req.member);
+      if(b){b.reserved+=req.cost;b.net=b.earned-b.reserved-b.spent;b.available=Math.max(0,b.net);}
+      return rewardDone(req);
+    }
+    if(message.action==="court.reward_transition"){
+      const req=data.rewards.requests.find(r=>r.id===message.payload.id);
+      if(!req||req.revision!==message.payload.revision)throw {code:"conflict"};
+      if(req.transOpId===message.operation_id)return structuredClone(req);
+      const dec=message.payload.decision,stMap={approve:"approved",fulfill:"fulfilled",cancel:"cancelled",reject:"rejected",refund:"refunded"};
+      req.status=stMap[dec]||dec;req.history.push({actor:data.actor,at:new Date().toISOString(),status:req.status,reason:message.payload.reason});
+      req.revision++;req.transOpId=message.operation_id;
+      const b=data.rewards.balances.find(x=>x.member===req.member);
+      if(b){
+        if(dec==="fulfill"){b.reserved-=req.cost;b.spent+=req.cost;}
+        else if(["cancel","reject"].includes(dec)){b.reserved-=req.cost;}
+        else if(dec==="refund"){b.spent-=req.cost;}
+        b.net=b.earned-b.reserved-b.spent;b.available=Math.max(0,b.net);
+      }
+      return rewardDone(req);
     }
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
    if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,checklist:message.payload.checklist.map(text=>({text,done:false}))});

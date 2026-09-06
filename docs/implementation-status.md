@@ -11,7 +11,7 @@ Nothing is production-ready solely because a mock test passes.
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, per-item history and archive; metadata/media/price/pantry extensions pending |
 | Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text review/return/archive, strict recurring edits; legacy parity and media pending |
-| Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeal review, opt-in weekly snapshots and full court card; privilege shop and advanced consequences pending |
+| Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 443 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 88 frontend unit tests and 29 Chromium browser tests passed.
+- 494 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 98 frontend unit tests and 32 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -76,6 +76,21 @@ is exercised with a synthetic entity, not by replacing its service registry.
   Visual inspection found and fixed squeezed mobile summary labels; a geometry
   regression assertion now protects the heading. No physical or Telegram effects
   were performed against the running household.
+- Parent-defined privileges snapshot their name, description and cost when
+  requested. Requested/approved promises reserve points; fulfillment spends the
+  reservation; rejection, cancellation, expiry and refund release it without
+  rewriting court scores. Concurrent requests cannot double-spend. Negative
+  balances after score correction remain visible as debt. Catalog revisions,
+  eligibility, active roles, lifecycle/history, expiry across disabled modules,
+  Store faults and replay are unit-tested. Telegram `/rewards`, `/wallet`,
+  `/rewardadd`, `/reward` and `/rewarddecide` share the same engine and permissions.
+  Actual authenticated HA WebSocket tested reservation, insufficient funds,
+  forbidden child approval, parent approval/fulfillment, replay and Store reload.
+  RU mobile catalog edit/failed-payload retry, UK request/approval/history and
+  stale focused revisions passed in Chromium. Screenshots were visually inspected;
+  mobile catalog spacing and short price labels were corrected. Privileges do not
+  execute router, siren or arbitrary device commands. Provision is a parent's
+  recorded confirmation, not a hardware observation.
 - Recurring duty creation/rotation is browser-tested on mobile; the real HA
   scheduler generated one ordinary task instance. Daily, weekly, monthly,
   exclusions, DST, bounded catch-up and Store faults are unit-tested.
@@ -168,11 +183,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on task checkpoint 0775593 (run 34045806622).
+- All five GitHub check jobs passed on court checkpoint f7c8263 (run 34047574429).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
-  persisting intent. The court checkpoint is locally verified here.
+  persisting intent. The privilege checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.

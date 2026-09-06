@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from . import court_weekly
+from . import court_weekly, rewards
 from .context import Context
 from .validation import DomainError, fields, number, text
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
+    if action.startswith("reward_"):
+        return rewards.handle(ctx, action, payload)
     if action == "configure":
         return court_weekly.configure(ctx, payload)
     if ctx.actor["role"] == "guest":
