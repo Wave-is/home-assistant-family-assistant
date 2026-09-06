@@ -20,6 +20,7 @@ STEP_FIELDS = {
     "completion_condition",
     "skip_when",
     "escalate_minutes",
+    "assignee",
 }
 
 
@@ -103,7 +104,9 @@ def validate_allowlist(value: Any) -> list[str]:
     return result
 
 
-def _validate_step(step: Any, allowlist: list[str] | set[str] | frozenset[str]) -> dict:
+def _validate_step(
+    ctx: Context, step: Any, allowlist: list[str] | set[str] | frozenset[str]
+) -> dict:
     if not isinstance(step, dict):
         raise DomainError("invalid_field", "steps")
     fields(step, STEP_FIELDS, {"title"})
@@ -135,7 +138,17 @@ def _validate_step(step: Any, allowlist: list[str] | set[str] | frozenset[str]) 
         if type(escalate_val) is not int or not 1 <= escalate_val <= 1440:
             raise DomainError("invalid_field", "escalate_minutes")
 
-    return {
+    step_assignee: str | None = None
+    if "assignee" in step and step["assignee"] is not None:
+        raw_assignee = step["assignee"]
+        if not isinstance(raw_assignee, str):
+            raise DomainError("invalid_field", "assignee")
+        member = ctx.member(raw_assignee)
+        if member.get("role") == "guest" or not member.get("active", True):
+            raise DomainError("invalid_field", "assignee")
+        step_assignee = member["id"]
+
+    res: dict[str, Any] = {
         "title": step_title,
         "offset_minutes": offset_val,
         "confirmation": conf_val,
@@ -143,6 +156,9 @@ def _validate_step(step: Any, allowlist: list[str] | set[str] | frozenset[str]) 
         "skip_when": skip_cond,
         "escalate_minutes": escalate_val,
     }
+    if step_assignee is not None:
+        res["assignee"] = step_assignee
+    return res
 
 
 def normalize_template(
@@ -201,7 +217,7 @@ def normalize_template(
     normalized_steps = []
     prev_offset = -1
     for step in raw_steps:
-        norm_step = _validate_step(step, allowlist)
+        norm_step = _validate_step(ctx, step, allowlist)
         if norm_step["offset_minutes"] < prev_offset:
             raise DomainError("invalid_field", "offset_minutes")
         prev_offset = norm_step["offset_minutes"]

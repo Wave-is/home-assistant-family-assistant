@@ -18,7 +18,7 @@ Nothing is production-ready solely because a mock test passes.
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Ten cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines; richer editors and other module cards pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
-| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, private nonce confirmations, parent overrides, approved entity observations, three-valued conditions, modes/templates, recurrence editor and paired escalation; per-step assignees pending |
+| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step assignee handoffs, private nonce confirmations, parent overrides, approved entity observations, three-valued conditions, modes/templates, recurrence editor and paired escalation; template-level condition editor pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
@@ -44,8 +44,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 615 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/steps/observations/private commands and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 136 frontend unit tests and 41 Chromium browser tests passed.
+- 638 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 136 frontend unit tests and 46 Chromium browser tests passed.
 - Calendar and routine cards now share localized daily/weekly/monthly recurrence
   controls, strict bounded numeric/date parsing, exceptions, timezone and until.
   Calendar rule start follows event fields and rejects second-fold/subminute starts
@@ -72,8 +72,17 @@ is exercised with a synthetic entity, not by replacing its service registry.
   Visual review moved the current step ahead of templates and collapsed settings.
   An actual-card refresh regression is covered: successful commands clear drafts,
   failed ones retain the same operation/payload. Routine steps neither actuate
-  devices nor substitute for independent wake-up challenges. Per-step assignee
-  handoff and a template-level condition editor are not implemented yet.
+  devices nor substitute for independent wake-up challenges. Steps may now hand off
+  to another active non-guest member; runs snapshot that assignment. Only the current
+  assignee receives the private step notification and may confirm it. Participants
+  see shared steps, but not another person's nonce or observed HA conditions.
+  Any participant/source revocation cancels active runs. Historical command receipts
+  recheck module and run authority, including batches, rather than returning a stale
+  active nonce after revocation. Notification dispatch rechecks its persisted claim
+  and current recipient before transport begins; an in-flight network request cannot
+  be recalled. Real HA verified child-to-parent handoff, redaction, authorization,
+  replay and reload. RU editor and UK child view were visually inspected.
+  A template-level condition editor is not implemented yet.
 - Calendar commands use durable revisions and replay; child edits require renewed
   approval. Participant-only records are absent from unrelated members and group
   `/calendar` replies. Preparation reminders target participants/escort, expire
@@ -224,7 +233,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on routines checkpoint 98198a4 (run 34053522186).
+- All five GitHub check jobs passed on recurrence checkpoint 9d228a3 (run 34054509456).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
@@ -254,7 +263,7 @@ service call does not prove physical sound or volume.
 ## Open engineering gates (not release-ready)
 
 - Some controls are still API-only: advanced alarm exceptions/delay fields,
-  task-series editing, calendar/routine recurrence and calendar task links.
+  task-series editing and template-level routine conditions.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

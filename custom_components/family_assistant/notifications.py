@@ -72,6 +72,10 @@ class Notifications:
                 if claimed is None:
                     break
                 event, delivery = claimed
+                current = await self._authorize_dispatch(event["id"], delivery["id"], now)
+                if current is None:
+                    continue
+                event, delivery = current
                 try:
                     async with asyncio.timeout(15):
                         receipt = await self.send(event, delivery["target"])
@@ -88,6 +92,38 @@ class Notifications:
                     await self._finish(event["id"], delivery["id"], now, receipt=receipt)
                 count += 1
         return count
+
+    async def _authorize_dispatch(self, event_id, delivery_id, now):
+        """Recheck a persisted claim immediately before handing it to a transport.
+
+        This closes the scheduling window between claim persistence and dispatch.
+        It cannot recall a request after the transport has begun sending it.
+        """
+
+        def authorize(ctx):
+            event = ctx.state["outbox"].get(event_id)
+            if event is None or event["state"] != "sending":
+                return None
+            delivery = event.get("deliveries", {}).get(delivery_id)
+            if delivery is None or delivery["state"] != "sending":
+                return None
+            current_targets = self.resolve(deepcopy(event), deepcopy(ctx.state))
+            if not self._target_current(delivery["target"], current_targets):
+                delivery["state"] = "superseded"
+                self._aggregate(event)
+                return None
+            return deepcopy(event), deepcopy(delivery)
+
+        return await self.engine.system_update("outbox_dispatch", now, authorize)
+
+    @staticmethod
+    def _target_current(target, current_targets):
+        return any(
+            current["channel"] == target["channel"]
+            and current["id"] == target["id"]
+            and current.get("bot_id") == target.get("bot_id")
+            for current in current_targets
+        )
 
     def _claim(self, ctx):
         policy = ctx.state["settings"].get("notifications", {})
@@ -126,12 +162,7 @@ class Notifications:
                 if delivery["state"] != "pending":
                     continue
                 current_targets = self.resolve(deepcopy(event), deepcopy(ctx.state))
-                if not any(
-                    t["channel"] == delivery["target"]["channel"]
-                    and t["id"] == delivery["target"]["id"]
-                    and t.get("bot_id") == delivery["target"].get("bot_id")
-                    for t in current_targets
-                ):
+                if not self._target_current(delivery["target"], current_targets):
                     delivery["state"] = "superseded"
                     self._aggregate(event)
                     continue  # Do not disclose family data to a revoked or unlinked recipient.

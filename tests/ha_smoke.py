@@ -903,6 +903,7 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
         "entity_id": "binary_sensor.synthetic_routine",
         "state": "on",
     }
+    owner_member = entry.runtime_data.engine.actor_for_ha(owner.id)
     payload = {
         "title": "Synthetic ordered morning",
         "assignees": [child_id],
@@ -913,6 +914,7 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
                 "confirmation": "entity_state",
                 "completion_condition": condition,
             },
+            {"title": "Synthetic parent handoff", "assignee": owner_member},
         ],
     }
     await request(child, "routines.save", payload, error="forbidden")
@@ -961,10 +963,26 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
     assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]["status"] == "active"
     hass.states.async_set("binary_sensor.synthetic_routine", "on")
     await entry.runtime_data.scheduler.run(datetime.now(UTC))
-    assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]["status"] == "completed"
+    current = entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]
+    assert current["status"] == "active" and current["steps"][2]["member"] == owner_member
     projected = (await request(child, "view", {}))["routines"]
     assert "entity_allowlist" not in projected["config"]
     assert "completion_condition" not in projected["runs"][0]["steps"][1]
+    assert "nonce" not in projected["runs"][0]["steps"][2]
+    handoff = {
+        "id": current["id"],
+        "revision": current["revision"],
+        "step": 2,
+        "nonce": current["steps"][2]["nonce"],
+    }
+    await request(child, "routines.confirm", handoff, error="forbidden")
+    completed = await request(owner, "routines.confirm", handoff, "routine-parent-handoff")
+    assert completed["status"] == "completed"
+    assert await request(owner, "routines.confirm", handoff, "routine-parent-handoff") == completed
+    assert any(
+        e["recipient"] == owner_member and e["key"] == "routine_step" and e["data"]["step"] == 2
+        for e in entry.runtime_data.engine.snapshot()["outbox"].values()
+    )
     # Leave one current manual nonce in Store and verify it survives a real entry reload.
     active = await request(
         child,
@@ -972,7 +990,10 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
         {"id": template["id"], "revision": template["revision"], "member": child_id},
     )
     assert active["status"] == "active" and active["steps"][0]["nonce"]
-    print("PASS: actual HA ordered routines, approved observations, nonce replay and privacy")
+    print(
+        "PASS: actual HA ordered routines, parent handoff, approved observations, "
+        "nonce replay and privacy"
+    )
 
 
 if __name__ == "__main__":

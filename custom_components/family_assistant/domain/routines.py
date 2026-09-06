@@ -47,6 +47,21 @@ def _source_allowed(state, template):
     return creator.get("active", False) and creator.get("role") in PRIVILEGED
 
 
+def step_member(run, step):
+    """Old persisted steps inherit the run member; new runs snapshot the recipient."""
+    return step.get("member") or run["member"]
+
+
+def participants(run):
+    return {run["member"], *(step_member(run, step) for step in run["steps"])}
+
+
+def _steps_usable(state, template):
+    return all(
+        not step.get("assignee") or _usable(state, step["assignee"]) for step in template["steps"]
+    )
+
+
 def _supersede(ctx, run_id, step=None):
     for event in ctx.state["outbox"].values():
         if (
@@ -62,7 +77,7 @@ def _data(run, index):
     return {
         "run_id": run["id"],
         "title": run["title"],
-        "member": run["member"],
+        "member": step_member(run, run["steps"][index]),
         "step": index,
         "step_title": run["steps"][index]["title"],
     }
@@ -111,7 +126,7 @@ def _advance(ctx, run, observations):
             _history(ctx, run, "step_activated", step=index)
             if step["confirmation"] != "none":
                 ctx.notify(
-                    run["member"],
+                    step_member(run, step),
                     "routine_step",
                     {
                         **_data(run, index),
@@ -183,7 +198,10 @@ def _start(ctx, template, member, planned_at, observations):
         "planned_at": planned_at.astimezone(UTC).isoformat(),
         "started_at": ctx.now.isoformat(),
         "status": "active",
-        "steps": [{**deepcopy(step), "status": "pending"} for step in template["steps"]],
+        "steps": [
+            {**deepcopy(step), "member": step.get("assignee") or member, "status": "pending"}
+            for step in template["steps"]
+        ],
         "history": [],
     }
     ctx.state["routine_runs"][run["id"]] = run
@@ -198,13 +216,36 @@ def _start(ctx, template, member, planned_at, observations):
     return run
 
 
-def public_run(run, *, parent=False):
+def public_run(run, *, parent=False, actor_id=None):
     result = deepcopy(run)
     if not parent:
         for step in result["steps"]:
             step.pop("completion_condition", None)
             step.pop("skip_when", None)
+            if step_member(run, step) != actor_id:
+                step.pop("nonce", None)
     return result
+
+
+def check_replay(state, actor_id, action, result):
+    """Authorize historical receipts against the run's current security scope."""
+    if action not in {"start", "confirm", "override", "cancel"}:
+        return
+    run = state["routine_runs"].get(result["id"])
+    if run is None:
+        raise DomainError("forbidden")
+    template = state["routines"].get(run["template_id"])
+    if (
+        template is None
+        or not _source_allowed(state, template)
+        or any(not _usable(state, member) for member in participants(run))
+        or (
+            state["members"][actor_id]["role"] not in PRIVILEGED
+            and actor_id not in participants(run)
+        )
+        or run.get("cancellation_cause") == "authorization_removed"
+    ):
+        raise DomainError("forbidden")
 
 
 def _handle(ctx, action, payload):
@@ -270,9 +311,12 @@ def _handle(ctx, action, payload):
             or not _usable(ctx.state, member)
             or not template["enabled"]
             or not _source_allowed(ctx.state, template)
+            or not _steps_usable(ctx.state, template)
         ):
             raise DomainError("invalid_transition")
-        return public_run(_start(ctx, template, member, ctx.now, {}), parent=ctx.privileged)
+        return public_run(
+            _start(ctx, template, member, ctx.now, {}), parent=ctx.privileged, actor_id=ctx.actor_id
+        )
     if action not in {"confirm", "override", "cancel"}:
         raise DomainError("unknown_action")
     required = {"id", "revision"} | ({"nonce", "step"} if action == "confirm" else {"reason"})
@@ -280,7 +324,7 @@ def _handle(ctx, action, payload):
         required |= {"outcome", "step"}
     fields(payload, required, required)
     run = ctx.record("routine_runs", payload["id"], _revision(payload["revision"]))
-    if not ctx.privileged and run["member"] != ctx.actor_id:
+    if not ctx.privileged and ctx.actor_id not in participants(run):
         raise DomainError("forbidden")
     if run["status"] != "active":
         raise DomainError("invalid_transition")
@@ -297,7 +341,7 @@ def _handle(ctx, action, payload):
     if step["status"] != "active":
         raise DomainError("invalid_transition")
     if action == "confirm":
-        if run["member"] != ctx.actor_id or step["confirmation"] != "manual":
+        if step_member(run, step) != ctx.actor_id or step["confirmation"] != "manual":
             raise DomainError("forbidden")
         nonce = text(payload["nonce"], "nonce", 100)
         if not secrets.compare_digest(nonce.encode(), step.get("nonce", "").encode()):
@@ -310,7 +354,7 @@ def _handle(ctx, action, payload):
     _history(ctx, run, "step_" + outcome, reason, step=index)
     _close(ctx, run, index, outcome)
     _advance(ctx, run, {})
-    return public_run(run, parent=ctx.privileged)
+    return public_run(run, parent=ctx.privileged, actor_id=ctx.actor_id)
 
 
 def handle(ctx, action, payload):
@@ -320,8 +364,8 @@ def handle(ctx, action, payload):
         raise DomainError("command_too_large") from None
 
 
-def _cancel(ctx, run, reason):
-    run.update(status="cancelled", completed_at=ctx.now.isoformat())
+def _cancel(ctx, run, reason, *, cause="manual"):
+    run.update(status="cancelled", completed_at=ctx.now.isoformat(), cancellation_cause=cause)
     for index, step in enumerate(run["steps"]):
         step.pop("nonce", None)
         _close(ctx, run, index, "cancelled")
@@ -333,10 +377,10 @@ def cancel_disabled(ctx):
     for run in ctx.state["routine_runs"].values():
         if run["status"] == "active" and (
             "routines" not in ctx.state["settings"]["modules"]
-            or not _usable(ctx.state, run["member"])
+            or any(not _usable(ctx.state, member) for member in participants(run))
             or not _source_allowed(ctx.state, ctx.state["routines"][run["template_id"]])
         ):
-            _cancel(ctx, run, "authorization_removed")
+            _cancel(ctx, run, "authorization_removed", cause="authorization_removed")
 
 
 def tick(ctx, observations=None):
@@ -350,6 +394,7 @@ def tick(ctx, observations=None):
                 not template["enabled"]
                 or template["rule"] is None
                 or not _source_allowed(ctx.state, template)
+                or not _steps_usable(ctx.state, template)
             ):
                 continue
             for moment in recurrence.due(
@@ -397,8 +442,8 @@ def view(state, actor):
         "presets": routine_templates.templates(actor["language"]) if parent else [],
         "config": config,
         "runs": [
-            public_run(run, parent=parent)
+            public_run(run, parent=parent, actor_id=actor["id"])
             for run in state["routine_runs"].values()
-            if parent or run["member"] == actor["id"]
+            if parent or actor["id"] in participants(run)
         ],
     }

@@ -301,7 +301,7 @@ class Engine:
                     raise DomainError("forbidden")
                 if prior["fingerprint"] != fingerprint:
                     raise DomainError("idempotency_conflict")
-                self._replay_scope(actor_id, action, payload)
+                self._replay_scope(actor_id, action, payload, prior["result"])
                 return deepcopy(prior["result"])
             working = deepcopy(self._state)
             ctx = Context(working, actor, now, operation_id)
@@ -348,14 +348,21 @@ class Engine:
             self._state = working
             return deepcopy(result)
 
-    def _replay_scope(self, actor_id, action, payload):
-        """A delegated network permission can be revoked without changing role."""
+    def _replay_scope(self, actor_id, action, payload, result):
+        """A saved receipt never restores a disabled module or revoked scope."""
         if action == "batch":
-            for command in payload["commands"]:
-                self._replay_scope(actor_id, command["action"], command["payload"])
-        elif action.startswith("mikrotik."):
-            if "mikrotik" not in self._state["settings"]["modules"]:
-                raise DomainError("module_disabled")
+            for command, item in zip(payload["commands"], result["items"], strict=True):
+                self._replay_scope(actor_id, command["action"], command["payload"], item)
+            return
+        module = action.split(".", 1)[0]
+        if (
+            module not in {"members", "settings", "notifications"}
+            and module not in self._state["settings"]["modules"]
+        ):
+            raise DomainError("module_disabled")
+        if module == "routines":
+            routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
+        elif module == "mikrotik":
             kid_control = action.startswith("mikrotik.kid_") and action not in {
                 "mikrotik.kid_adopt",
                 "mikrotik.kid_permission",

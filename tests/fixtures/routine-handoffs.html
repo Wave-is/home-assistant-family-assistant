@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthetic routine handoff dashboard</title>
+<style>body{margin:0;padding:16px;background:#eef3f1;font-family:system-ui}main{max-width:650px;margin:auto}</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+const q = new URLSearchParams(location.search);
+const actor = q.get("actor") || "owner";
+const lang = q.get("lang") || "en";
+const staleTemplate = q.has("stale-template");
+const runMode = q.get("run") || "none";
+const copies = {
+  en: {owner:"Parent 1", child:"Child 1", former:"Former member", title:"Morning routine", first:"Wash", second:"Pack bag"},
+  ru: {owner:"Родитель 1", child:"Ребёнок 1", former:"Бывший участник", title:"Утренний распорядок", first:"Умыться", second:"Собрать рюкзак"},
+  uk: {owner:"Батько 1", child:"Дитина 1", former:"Колишній учасник", title:"Ранковий розпорядок", first:"Умитися", second:"Зібрати наплічник"},
+};
+const names = copies[lang] || copies.en;
+const members = [
+  {id:"owner",name:names.owner,role:"owner",active:true},
+  {id:"child",name:names.child,role:"child",active:true},
+  {id:"former",name:names.former,role:"adult",active:!staleTemplate},
+];
+const step = (title, assignee=null, status="pending") => ({title,assignee,offset_minutes:0,confirmation:"manual",completion_condition:null,skip_when:null,escalate_minutes:15,status});
+const template = {id:"U000001",revision:3,title:names.title,description:"",enabled:true,assignees:["owner","child"],rule:null,skip_when:null,steps:[step(names.first),step(names.second,staleTemplate?"former":null)]};
+const run = {
+  id:"J000001",template_id:template.id,template_revision:template.revision,revision:7,title:names.title,
+  member:"child",status:"active",started_at:"2026-09-06T08:00:00Z",planned_at:"2026-09-06T08:00:00Z",
+  steps:[{...step(names.first,null,"active"),member:"owner"},{...step(names.second,null,"pending"),member:"child"}],history:[],
+};
+run.steps[0].nonce="handoff-fresh-owner";
+const data = {revision:1,actor,role:actor === "owner" ? "owner" : "child",settings:{name:"Example family",modules:["routines"],timezone:"Europe/Kyiv"},members,routines:{config:{modes:["normal"],entity_allowlist:["binary_sensor.synthetic_ready"],revision:0},templates:[template],presets:[],runs:runMode === "none" ? [] : [run]},proposals:[]};
+window.fixture=data; window.calls=[]; window.operations=new Map();
+const clone = value => structuredClone(value);
+const activeMember = id => data.members.find(m=>m.id===id)?.active && data.members.find(m=>m.id===id)?.role !== "guest";
+const card=document.createElement("family-routines-card");
+card.setConfig({entry_id:"synthetic",language:lang});
+card.hass={language:lang,callWS:async message=>{
+  if(message.type.endsWith("/view")) return clone(data);
+  if(!message.type.endsWith("/execute")) throw {code:"unknown_action"};
+  if(window.operations.has(message.operation_id)) return clone(window.operations.get(message.operation_id));
+  const payload=message.payload;
+  const action=message.action.split(".")[1];
+  // This fixture only models the transport boundary: a role-revoked actor's
+  // stale detached action is rejected before it is counted as an accepted call.
+  if(data.role === "guest") throw {code:"forbidden"};
+  window.calls.push(clone(message));
+  let result;
+  if(action === "save") {
+    if(payload.steps.some(s=>s.assignee && !activeMember(s.assignee))) throw {code:"invalid_transition"};
+    const record=data.routines.templates.find(t=>t.id===payload.id);
+    if(!record || record.revision!==payload.revision) throw {code:"conflict"};
+    Object.assign(record,clone(payload),{revision:record.revision+1}); result=record;
+  } else if(action === "confirm") {
+    const current=data.routines.runs.find(r=>r.id===payload.id);
+    if(!current || current.revision!==payload.revision || current.steps[payload.step]?.nonce!==payload.nonce) throw {code:"conflict"};
+    const assigned=current.steps[payload.step].member || current.member;
+    if(data.actor!==assigned || !activeMember(assigned)) throw {code:"forbidden"};
+    current.steps[payload.step].status="completed"; delete current.steps[payload.step].nonce;
+    const next=current.steps.find(s=>s.status==="pending");
+    if(next){next.status="active";next.nonce="handoff-fresh-child";} else current.status="completed";
+    current.revision++; result=current;
+  } else throw {code:"unknown_action"};
+  data.revision++; window.operations.set(message.operation_id,clone(result)); return clone(result);
+}};
+document.querySelector("main").append(card); window.card=card;
+window.revokeOwner=()=>{const member=data.members.find(m=>m.id==="owner");member.active=false;member.role="guest";data.role="guest";data.revision++;};
+</script></html>

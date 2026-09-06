@@ -19,7 +19,21 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Skip Scope**: Step `skip_when` is evaluated strictly at step activation. Template-level `skip_when` is evaluated at run creation (skipping all steps if `True`).
 * **Confirmations & Overrides**: Manual steps issue a fresh plaintext nonce per activation. Nonces bind the confirmation to that exact step and run—they do not prove biometric presence or human identity (an authenticated client can automate calls). Parents can override any active step or cancel a run with a required reason. Manual overrides operate on individual runs and remain independent of recurrence rules.
 * **Edits & Lifecycle**: Template edits do not rewrite active runs. Setting `enabled: false` prevents new starts while letting active runs finish. Revoking creator permissions cancels associated active runs. Recurrence catch-up is bounded to 24h by default (0–48h max, at most 3 local dates deduplicated).
-* **Current UI Scope**: Recurrence rules can be configured directly in the template editor card via the shared recurrence form (daily/weekly/monthly, interval 1..52, start date/time/timezone, until, exception dates, catchup window). Template-level skip rules from presets/API are preserved but not edited in UI. Support for different per-step assignees is still pending.
+* **Current UI Scope**: Recurrence rules and per-step assignees are editable in the template card. Template-level skip rules from presets/API are preserved but not edited in UI.
+
+### Passing a step to another member
+
+By default, every step belongs to the member running the routine. A parent can
+choose another active non-guest family member for an individual step, such as
+checking a child's packed bag. The recipient is fixed when the run starts:
+later template edits do not redirect an already active run.
+
+All members assigned to a run can see its steps. Only the current step's member
+receives its private confirmation and can confirm it; the original run member
+cannot confirm someone else's step. Non-parent views hide other members' tokens
+and all sensor conditions. Parents retain reasoned override/cancel controls.
+Deactivating any participant or changing them to a guest cancels the active run.
+Completion is reported to the original run member, not the whole family chat.
 
 ### Dashboard Card & Telegram
 
@@ -57,7 +71,21 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Шаги и эскалация**: Шаг активируется, только когда завершены все предыдущие шаги **и** наступило время `planned_at + offset_minutes`. Таймер `escalate_minutes` отсчитывается от момента активации шага. При просрочке родители получают уведомление; сообщение о закрытии инцидента отправляется, только если оповещение уже отправлено, доставляется или его статус неопределён (неотправленные тихо заменяются).
 * **Безопасность и сенсоры**: Модуль только наблюдает и **никогда** не управляет устройствами. Штрафные баллы за задержки отсутствуют. Проверка сенсоров сравнивает состояние на точное равенство строк (не числовые пороги) по белому списку владельца (до 50 сущностей). Устаревшие (>120 с) или «будущие» (>5 с) данные дают `None`. Недоступные сущности (`unavailable`/`unknown`) дают `None`, отрицание `None` не равно `True`.
 * **Пропуск, подтверждение и переопределение**: `skip_when` шага проверяется при его активации, а `skip_when` шаблона — при старте выполнения. Для ручного шага создаётся свежий незашифрованный nonce (привязка к текущему шагу, не биометрия и не защита от автоматизации клиентом). Родитель может переопределить шаг или отменить выполнение с указанием причины. Ручные переопределения применяются к конкретному выполнению и независимы от правил повторения.
-* **Правки и UI**: Правка шаблона не перезаписывает текущие выполнения. `enabled: false` запрещает новые старты. Форма повторения (ежедневно, еженедельно, ежемесячно, интервал 1..52, дата/время/пояс начала, until, исключения, наверстывание) доступна в карточке редактора. Разные исполнители для отдельных шагов пока не поддерживаются.
+* **Правки и UI**: Правка шаблона не перезаписывает текущие выполнения. `enabled: false` запрещает новые старты. Повторения и исполнители отдельных шагов настраиваются в карточке. Условия пропуска всего шаблона пока сохраняются из пресета/API, но не редактируются в карточке.
+
+### Передача шага другому участнику
+
+По умолчанию шаг выполняет тот, для кого запущен распорядок. Родитель может
+назначить отдельный шаг другому активному участнику, кроме гостя: например,
+проверку собранного рюкзака. Исполнители фиксируются при старте; изменение
+шаблона не переназначает шаги уже начатого выполнения.
+
+Участники выполнения видят его шаги. Кнопка приходит текущему исполнителю в
+личку, и подтвердить шаг может только он. Участники без родительских прав не
+видят чужие токены и условия сенсоров. Родитель может переопределить результат
+или отменить выполнение с причиной. Деактивация любого участника или смена его
+роли на гостя отменяет активное выполнение. Итог приходит тому, для кого оно
+было запущено, а не в общий семейный чат.
 
 ### Карточка и Telegram
 
@@ -95,7 +123,21 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Кроки та ескалація**: Крок активується лише після завершення попередніх кроків **і** настання `planned_at + offset_minutes`. Таймер `escalate_minutes` рахується від активації кроку. У разі запізнення батькам відкривається інцидент; закриття сповіщається батькам, лише якщо перше сповіщення відправлено, перебуває в процесі чи має невизначений статус (невислані тихо скасовуються).
 * **Безпека та сенсори**: Модуль лише спостерігає та **ніколи** не керує приладами. Автоштрафи відсутні. Умови перевіряють строковий збіг стану (не числові пороги) за білим списком власника (до 50 сутностей). Застарілі (>120 с) чи «майбутні» (>5 с) спостереження повертають `None`. Стан `unavailable`/`unknown` дає `None`, заперечення якого ніколи не є `True`.
 * **Пропуск, підтвердження та переозначення**: `skip_when` кроку перевіряється під час його активації; `skip_when` шаблону — під час створення виконання. Ручне підтвердження використовує свіжий відкритий nonce (прив'язка до поточного кроку, а не біометрія чи захист від клієнтської автоматизації). Батьки можуть переозначити крок або скасувати рутину з причиною. Ручні переозначення стосуються окремих запусків і не залежать від правил повторення.
-* **Зміни та стан UI**: Зміна шаблону не змінює активні виконання. `enabled: false` зупиняє нові старти. Форма повторення (щодня, щотижня, щомісяця, інтервал 1..52, дата/час/пояс початку, until, винятки, наздоганяння) вбудована в картку редактора. Різні виконавці для окремих кроків усе ще в розробці.
+* **Зміни та стан UI**: Зміна шаблону не змінює активні виконання. `enabled: false` зупиняє нові старти. Повторення та виконавці окремих кроків налаштовуються в картці. Умови пропуску всього шаблону зберігаються з пресету/API, але ще не редагуються в картці.
+
+### Передавання кроку іншому учаснику
+
+За замовчуванням крок виконує учасник, для якого запущено розпорядок. Батьки
+можуть призначити окремий крок іншому активному учаснику, крім гостя: наприклад,
+перевірку зібраного наплічника. Виконавці фіксуються на початку; зміни шаблону
+не перепризначають кроки активного виконання.
+
+Учасники виконання бачать його кроки. Кнопка надходить поточному виконавцю в
+особистий чат, і підтвердити крок може лише він. Учасники без батьківських прав
+не бачать чужі токени та умови сенсорів. Батьки можуть змінити результат або
+скасувати виконання з причиною. Деактивація будь-якого учасника чи зміна його
+ролі на гостя скасовує активне виконання. Підсумок надходить первинному учаснику,
+а не в загальний сімейний чат.
 
 ### Картка та Telegram
 

@@ -5,6 +5,9 @@ import { wallTime } from "./local-time.js";
 
 export const ROUTINES_COPY = {
   en: {
+    step_assignee: "Who completes this step",
+    inherit_assignee: "The member running this routine",
+    handoff_notice: "Each step goes to its assigned member in private. Everyone assigned to this run can see its steps; only the current step’s assignee can confirm it. Parents can override with a reason.",
     recurrence_error: "Check the recurrence settings and dates.",
     title: "Family routines",
     templates_title: "Routine templates",
@@ -112,6 +115,9 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Authorization removed",
   },
   ru: {
+    step_assignee: "Кто выполняет этот шаг",
+    inherit_assignee: "Участник, для которого запущен распорядок",
+    handoff_notice: "Каждый шаг приходит исполнителю в личку. Участники выполнения видят его шаги; подтвердить текущий шаг может только его исполнитель. Родитель может переопределить результат с причиной.",
     recurrence_error: "Проверьте настройки повторения и даты.",
     title: "Семейные распорядки",
     templates_title: "Шаблоны распорядков",
@@ -219,6 +225,9 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Отозваны права",
   },
   uk: {
+    step_assignee: "Хто виконує цей крок",
+    inherit_assignee: "Учасник, для якого запущено розпорядок",
+    handoff_notice: "Кожен крок надходить виконавцю в особистий чат. Учасники виконання бачать його кроки; підтвердити поточний крок може лише його виконавець. Батьки можуть змінити результат із причиною.",
     recurrence_error: "Перевірте налаштування повторення та дати.",
     title: "Сімейні розпорядки",
     templates_title: "Шаблони розпорядків",
@@ -366,6 +375,7 @@ function clone(val) {
 
 function makeDefaultStep(offset = 0) {
   return {
+    assignee: null,
     title: "",
     raw_offset: String(offset),
     confirmation: "manual",
@@ -399,6 +409,7 @@ function buildStepFromData(s) {
   const parsedSkip = parseCondition(s.skip_when);
   const parsedComp = parseCondition(s.completion_condition);
   return {
+    assignee: s.assignee || null,
     title: s.title || "",
     raw_offset: s.offset_minutes != null ? String(s.offset_minutes) : "0",
     confirmation: s.confirmation || "manual",
@@ -883,6 +894,28 @@ export function renderRoutines(card, body) {
         sOffsetWrap.append(sOffsetInput);
         stepCard.append(sOffsetWrap);
 
+        const assigneeLabel = el("label", copy.step_assignee);
+        const assigneeSelect = el("select");
+        assigneeSelect.setAttribute("data-step-assignee", String(idx));
+        const inherit = el("option", copy.inherit_assignee); inherit.value = "";
+        assigneeSelect.append(inherit);
+        for (const member of card._data.members || []) {
+          if (!member.active || member.role === "guest") continue;
+          const option = el("option", member.name); option.value = member.id;
+          assigneeSelect.append(option);
+        }
+        if (st.assignee && !Array.from(assigneeSelect.options).some(o => o.value === st.assignee)) {
+          const missing = el("option", `${copy.unknown_member} (${st.assignee})`); missing.value = st.assignee;
+          assigneeSelect.append(missing);
+        }
+        assigneeSelect.value = st.assignee || "";
+        assigneeSelect.disabled = isFrozen || Boolean(card._writing);
+        assigneeSelect.addEventListener("change", () => {
+          if (isStale() || isFrozen || card._writing || card._routineDraft !== d) return;
+          st.assignee = assigneeSelect.value || null;
+        });
+        assigneeLabel.append(assigneeSelect); stepCard.append(assigneeLabel);
+
         // Confirmation Mode
         const sConfWrap = el("label", copy.step_confirmation);
         const sConfSelect = el("select");
@@ -1058,6 +1091,7 @@ export function renderRoutines(card, body) {
     };
     renderSteps();
     form.append(stepsBox);
+    form.append(el("p", copy.handoff_notice, "muted"));
 
     const zone = card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC";
     d.recurrence ||= makeRecurrenceDraft(d.rule || null, {
@@ -1222,12 +1256,18 @@ export function renderRoutines(card, body) {
 
           validatedSteps.push({
             title: stTitle,
+            ...(st.assignee ? {assignee: st.assignee} : {}),
             offset_minutes: offsetNum,
             confirmation: st.confirmation,
             completion_condition: compCondition,
             skip_when: skipCondition,
             escalate_minutes: escalateNum,
           });
+          if (st.assignee && !activeMembers.has(st.assignee)) {
+            card._actionError = copy.assignees_required;
+            card.render();
+            return;
+          }
         }
 
         let rule;
@@ -1425,12 +1465,13 @@ export function renderRoutines(card, body) {
         if (st.confirmation) {
           stMeta.append(el("span", copy[`confirmation_${st.confirmation}`] || st.confirmation, "badge"));
         }
+        stMeta.append(el("span", `${copy.member}: ${getMemberName(card, st.member || run.member)}`, "badge"));
         stepLi.append(stMeta);
 
         const stepActions = el("div", null, "actions");
 
         // MANUAL STEP CONFIRMATION (Assigned member only when active & nonce present)
-        if (run.member === actorId && st.status === "active" && st.confirmation === "manual" && st.nonce) {
+        if ((st.member || run.member) === actorId && st.status === "active" && st.confirmation === "manual" && st.nonce) {
           stepActions.append(
             localButton(copy.confirm_step, async () => {
               if (card._writing) return;
