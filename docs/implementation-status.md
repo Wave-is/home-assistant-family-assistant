@@ -11,7 +11,7 @@ Nothing is production-ready solely because a mock test passes.
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, per-item history and archive; metadata/media/price/pantry extensions pending |
 | Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text review/return/archive, strict recurring edits; legacy parity and media pending |
-| Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
+| Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeal review, opt-in weekly snapshots and full court card; privilege shop and advanced consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 423 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 75 frontend unit tests and 25 Chromium browser tests passed.
+- 443 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 88 frontend unit tests and 29 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -59,6 +59,23 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - RU/UK/EN setup guides explain own-bot setup, identity confirmation, current
   limits, wake-up testing and delivery uncertainty. Card editor lists authorized households.
 - Mobile Ukrainian wake-up and Russian shopping screenshots visually inspected.
+- Court cards provide original score reasons and task/wake-up IDs, current-week
+  totals, prior weekly reports, manual awards, appeals, reasoned reversal and
+  resolution, including previous appeal history. Children see only their own
+  records. Optional independent review requires another active parent/owner and
+  cannot be bypassed via direct reversal. Weekly summaries are opt-in, use the
+  household calendar week and selected boundary, survive restart and never reset
+  balances or issue penalties. Downtime produces at most the latest completed
+  period; old snapshots stay unchanged after later corrections. Half-open dates,
+  DST gaps/folds, historical zones, duplicate records, Store faults and replay are
+  unit-tested. Telegram `/stats`, `/week`, `/award`, `/appeal`, `/reverse` and
+  `/courtresolve` use the same authorized ledger. Actual authenticated HA WebSocket
+  tested three actors, stale revisions, review guards, replay and scheduler output;
+  Store reload retained the resolved appeal and report. RU mobile configuration,
+  UK child appeal, independent review and stale-form recovery passed in Chromium.
+  Visual inspection found and fixed squeezed mobile summary labels; a geometry
+  regression assertion now protects the heading. No physical or Telegram effects
+  were performed against the running household.
 - Recurring duty creation/rotation is browser-tested on mobile; the real HA
   scheduler generated one ordinary task instance. Daily, weekly, monthly,
   exclusions, DST, bounded catch-up and Store faults are unit-tested.
@@ -151,11 +168,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on checkpoint 2fc0231 (run 34044026099).
+- All five GitHub check jobs passed on task checkpoint 0775593 (run 34045806622).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
-  persisting intent. The task-editor checkpoint is locally verified here.
+  persisting intent. The court checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
@@ -180,8 +197,8 @@ service call does not prove physical sound or volume.
 
 ## Open engineering gates (not release-ready)
 
-- Some controls are still API-only: advanced alarm exceptions/delay fields,
-  task-series editing, appeals.
+- Some controls are still API-only: advanced alarm exceptions/delay fields
+  and task-series editing.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

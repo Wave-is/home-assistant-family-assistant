@@ -22,6 +22,11 @@ MESSAGES = {
         ),
         "shopping_approval": "🛒 Purchase approval requested: {id} · {title}",
         "court_appeal": "⚖️ An appeal needs a parent's review: {id}",
+        "court_appeal_resolved": "⚖️ Appeal {id}: {decision}. The reason is in the court card.",
+        "court_weekly": (
+            "⚖️ Weekly results: {period}\n{summary}\n\nBalances were not reset. "
+            "This report records the result at publication; later corrections remain in the ledger."
+        ),
     },
     "ru": {
         "network_plan_finished": (
@@ -45,6 +50,11 @@ MESSAGES = {
         ),
         "shopping_approval": "🛒 Покупка ждёт одобрения: {id} · {title}",
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
+        "court_appeal_resolved": "⚖️ Апелляция {id}: {decision}. Причина — в карточке суда.",
+        "court_weekly": (
+            "⚖️ Недельные итоги: {period}\n{summary}\n\nБаллы не обнулены. "
+            "Итог зафиксирован на момент публикации; последующие исправления остаются в журнале."
+        ),
     },
     "uk": {
         "network_plan_finished": (
@@ -70,6 +80,11 @@ MESSAGES = {
         ),
         "shopping_approval": "🛒 Покупка чекає схвалення: {id} · {title}",
         "court_appeal": "⚖️ Апеляція чекає рішення батьків: {id}",
+        "court_appeal_resolved": "⚖️ Апеляція {id}: {decision}. Причина — у картці суду.",
+        "court_weekly": (
+            "⚖️ Тижневі підсумки: {period}\n{summary}\n\nБали не обнулено. "
+            "Підсумок зафіксовано на час публікації; подальші виправлення залишаються в журналі."
+        ),
     },
 }
 
@@ -128,6 +143,41 @@ def render(event, target, state):
         )
         data["title"] = record.get("title", record.get("name", ""))
         data["member"] = state["members"].get(data.get("member"), {}).get("name", "")
+        if event["key"] == "court_appeal_resolved":
+            labels = {
+                "en": {"uphold": "original points upheld", "reverse": "original points reversed"},
+                "ru": {"uphold": "исходные баллы оставлены", "reverse": "исходные баллы отменены"},
+                "uk": {"uphold": "початкові бали залишено", "reverse": "початкові бали скасовано"},
+            }
+            data["decision"] = labels.get(language, labels["en"])[data["decision"]]
+        if event["key"] == "court_weekly":
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+
+            report = state.get("court_reports", {}).get(data["report_id"])
+            if not report:
+                raise DeliveryError("notification_template_invalid")
+            zone = ZoneInfo(report["timezone"])
+            data["period"] = (
+                " → ".join(
+                    datetime.fromisoformat(report[key]).astimezone(zone).strftime("%Y-%m-%d %H:%M")
+                    for key in ("start", "end")
+                )
+                + " · "
+                + report["timezone"]
+            )
+            rows = []
+            for row in report["rows"]:
+                name = state["members"].get(row["member"], {}).get("name", "—")
+                rows.append(
+                    f"{name}: +{row['active_positives']} / {row['active_negatives']} "
+                    f"= {row['total']:+d}"
+                )
+            data["summary"] = "\n".join(rows) or {
+                "en": "No score events in this period.",
+                "ru": "За этот период начислений нет.",
+                "uk": "За цей період нарахувань немає.",
+            }.get(language, "No score events in this period.")
         if event["key"] == "network_plan_finished":
             labels = {
                 "en": {

@@ -88,6 +88,13 @@ def summary(item, view, language):
             f"{item['points']:+d}",
             item.get("reason") or words.get(item.get("reason_key"), words["record"]),
         ]
+        detail = item.get("reason_data", {})
+        reference = detail.get("task_id") or detail.get("run_id")
+        if reference:
+            parts.append(reference)
+        task = next((t for t in view.get("tasks", []) if t["id"] == detail.get("task_id")), None)
+        if task:
+            parts.append(task["title"])
     if "days" in item:
         parts += [
             item["time"],
@@ -102,3 +109,74 @@ def summary(item, view, language):
     if "status" in item:
         parts.append(words.get(item["status"], words["record"]))
     return " · ".join(part for part in parts if part)
+
+
+def court_stats(view, language, *, weekly=False):
+    """Totals and bounded reasons come from the same authorized ledger projection."""
+    labels = {
+        "en": (
+            "Court ledger · current balances",
+            "Current week",
+            "No score events.",
+            "More records are available in the court card.",
+            "reversed",
+        ),
+        "ru": (
+            "Журнал суда · текущие балансы",
+            "Текущая неделя",
+            "Начислений нет.",
+            "Остальные записи доступны в карточке суда.",
+            "отменено",
+        ),
+        "uk": (
+            "Журнал суду · поточні баланси",
+            "Поточний тиждень",
+            "Нарахувань немає.",
+            "Решта записів доступні в картці суду.",
+            "скасовано",
+        ),
+    }
+    title, week_title, empty, more, reversed_word = labels.get(language, labels["en"])
+    records = view["court"]
+    if weekly:
+        period = view.get("court_summary")
+        if not period:
+            return empty
+        zone = ZoneInfo(period["timezone"])
+        start, end = (timestamp(period[key], key).astimezone(zone) for key in ("start", "end"))
+        title = (
+            f"{week_title}: {start:%Y-%m-%d %H:%M} → {end:%Y-%m-%d %H:%M} ({period['timezone']})"
+        )
+        ids = set(period["events"])
+        records = [record for record in records if record["id"] in ids]
+    lines = ["⚖️ " + title]
+    if not records:
+        return "\n".join(lines + [empty])
+    totals = {}
+    for item in records:
+        value = totals.setdefault(item["member"], {"positive": 0, "negative": 0, "reversed": 0})
+        if item["status"] == "reversed":
+            value["reversed"] += 1
+        elif item["points"] > 0:
+            value["positive"] += item["points"]
+        else:
+            value["negative"] += item["points"]
+    for member in view["members"]:
+        if member["id"] not in totals:
+            continue
+        value = totals[member["id"]]
+        lines.append(
+            f"{member['name']}: +{value['positive']} / {value['negative']} "
+            f"= {value['positive'] + value['negative']:+d} · {reversed_word}: {value['reversed']}"
+        )
+    for item in sorted(
+        records, key=lambda record: timestamp(record["created_at"], "created_at"), reverse=True
+    ):
+        line = f"{item['id']} · {summary(item, view, language)}"
+        if len(line) > 240:
+            line = line[:237] + "…"
+        if len("\n".join(lines)) + len(line) > 3400:
+            lines.append(more)
+            break
+        lines.append(line)
+    return "\n".join(lines)[:3800]

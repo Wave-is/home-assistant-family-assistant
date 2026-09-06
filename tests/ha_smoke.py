@@ -11,6 +11,7 @@ import shutil
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession
 from homeassistant import bootstrap, config_entries, loader
@@ -246,6 +247,16 @@ async def main():
             assert edited_task["status"] == "completed" and edited_task["due_at"] is None
             assert edited_task["checklist"] == [{"text": "Synthetic step", "done": True}]
             assert edited_task["report"] == "Synthetic corrected report"
+            court_after_reload = entry.runtime_data.engine.snapshot()
+            appealed = next(
+                c
+                for c in court_after_reload["court"].values()
+                if c.get("reason") == "Synthetic disputed score"
+            )
+            assert appealed["status"] == "reversed"
+            assert appealed["appeal"]["resolution"]["reason"] == "Synthetic independent review"
+            assert len(court_after_reload["court_reports"]) == 1
+            assert court_after_reload["settings"]["court"]["second_adult_review"] is True
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -450,6 +461,7 @@ async def run_websocket(hass, entry, owner, child_id):
     assert engine.snapshot()["shopping"][original["id"]]["status"] == "merged"
     print("PASS: HA atomic shopping merge preserved partial quantities, history and replay")
     await verify_task_controls(hass, entry, owner, child_id)
+    await verify_court_controls(hass, entry, owner, child, child_id)
 
 
 async def verify_task_controls(hass, entry, owner, child_id):
@@ -544,6 +556,114 @@ async def verify_task_controls(hass, entry, owner, child_id):
     finally:
         hass.auth.async_remove_refresh_token(refresh)
     print("PASS: actual HA WebSocket task checklist/edit/clear/replay/report/review/completion")
+
+
+async def verify_court_controls(hass, entry, owner, child, child_id):
+    """Three actual authenticated HA users, independent appeal review and scheduler."""
+    engine = entry.runtime_data.engine
+    reviewer = await hass.auth.async_create_user("Synthetic second parent")
+    reviewer_id = next(m["id"] for m in engine.view("owner")["members"] if m["role"] == "adult")
+    sequence = 0
+
+    async def request(user, action, payload, operation=None, error=None):
+        nonlocal sequence
+        sequence += 1
+        refresh = await hass.auth.async_create_refresh_token(
+            user, client_id="https://example.invalid/court-smoke"
+        )
+        try:
+            async with (
+                ClientSession() as client,
+                client.ws_connect("http://127.0.0.1:8123/api/websocket") as ws,
+            ):
+                assert (await ws.receive_json())["type"] == "auth_required"
+                await ws.send_json(
+                    {"type": "auth", "access_token": hass.auth.async_create_access_token(refresh)}
+                )
+                assert (await ws.receive_json())["type"] == "auth_ok"
+                message = {
+                    "id": 1,
+                    "type": "family_assistant/execute",
+                    "entry_id": entry.entry_id,
+                    "action": action,
+                    "payload": payload,
+                    "operation_id": operation or f"court-smoke-{sequence}",
+                }
+                if action == "view":
+                    message = {"id": 1, "type": "family_assistant/view", "entry_id": entry.entry_id}
+                await ws.send_json(message)
+                response = await ws.receive_json()
+                if error:
+                    assert not response["success"] and response["error"]["code"] == error, response
+                    return None
+                assert response["success"], response
+                return response["result"]
+        finally:
+            hass.auth.async_remove_refresh_token(refresh)
+
+    await request(
+        owner,
+        "members.save",
+        {
+            "id": reviewer_id,
+            "name": "Synthetic reviewer",
+            "role": "parent",
+            "ha_user_id": reviewer.id,
+        },
+    )
+    boundary = (datetime.now(UTC) + timedelta(minutes=2)).replace(second=0, microsecond=0)
+    local_boundary = boundary.astimezone(ZoneInfo(engine.snapshot()["settings"]["timezone"]))
+    config = {
+        "revision": 0,
+        "weekly_enabled": True,
+        "weekday": local_boundary.weekday(),
+        "time": local_boundary.strftime("%H:%M"),
+        "second_adult_review": True,
+    }
+    await request(child, "court.configure", config, error="forbidden")
+    await request(owner, "court.configure", config)
+    await request(owner, "court.configure", config, error="conflict")
+    item = await request(
+        owner,
+        "court.award",
+        {"member": child_id, "points": -2, "reason": "Synthetic disputed score"},
+    )
+    appeal = {"id": item["id"], "revision": item["revision"], "reason": "Synthetic appeal"}
+    item = await request(child, "court.appeal", appeal)
+    child_view = await request(child, "view", {})
+    assert [c["id"] for c in child_view["court"]] == [item["id"]]
+    assert "court_reports" not in child_view and "court_config" not in child_view
+    await entry.runtime_data.scheduler.run(boundary)
+    reports = engine.snapshot()["court_reports"]
+    assert len(reports) == 1
+    report = next(iter(reports.values()))
+    assert report["events"] == [item["id"]] and report["rows"][0]["total"] == -2
+    decision = {
+        "id": item["id"],
+        "revision": item["revision"],
+        "decision": "reverse",
+        "reason": "Synthetic independent review",
+    }
+    await request(child, "court.resolve_appeal", decision, error="forbidden")
+    await request(owner, "court.resolve_appeal", decision, error="forbidden")
+    await request(
+        owner,
+        "court.reverse",
+        {k: v for k, v in decision.items() if k != "decision"},
+        error="forbidden",
+    )
+    result = await request(reviewer, "court.resolve_appeal", decision, "court-smoke-resolve")
+    assert result["status"] == "reversed" and result["reason"] == "Synthetic disputed score"
+    assert (
+        await request(reviewer, "court.resolve_appeal", decision, "court-smoke-resolve") == result
+    )
+    await entry.runtime_data.scheduler.run(boundary + timedelta(seconds=30))
+    assert engine.snapshot()["court_reports"] == reports
+    assert (await request(child, "view", {}))["court_summary"]["rows"][0]["total"] == 0
+    print(
+        "PASS: actual HA WebSocket court configuration, child appeal, "
+        "independent review, replay and weekly snapshot"
+    )
 
 
 if __name__ == "__main__":

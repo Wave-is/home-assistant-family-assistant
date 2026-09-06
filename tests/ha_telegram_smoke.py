@@ -135,7 +135,8 @@ async def run_network(hass, entry, owner, child_id):
         "owner",
         "settings.save",
         {
-            **engine.snapshot()["settings"],
+            "name": engine.snapshot()["settings"]["name"],
+            "language": engine.snapshot()["settings"]["language"],
             "modules": [*engine.snapshot()["settings"]["modules"], "mikrotik"],
         },
         "network-enable",
@@ -646,7 +647,7 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
             language="en",
             agent_id=agents[0],
         )
-        assert "No records" in recalled.as_dict()["response"]["speech"]["plain"]["speech"]
+        assert "No score events" in recalled.as_dict()["response"]["speech"]["plain"]["speech"]
         await run_llm_api(hass, entry, owner)
         flow = await options("conversation")
         flow = await submit(flow, {"enabled": False, "timeout": 5})

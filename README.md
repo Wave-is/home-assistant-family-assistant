@@ -16,7 +16,9 @@ Setup guides: [English](docs/setup.en.md) · [Русский](docs/setup.ru.md) 
 [Українська](docs/setup.uk.md). The guides distinguish working features from
 pending implementation and explain how to create and link your own bot.
 
-Module guide: [Shopping / Покупки / Покупки](docs/shopping.md).
+Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
+[Tasks / Задачи / Завдання](docs/tasks.md) ·
+[Court / Семейный суд / Сімейний суд](docs/court.md).
 
 ## Development
 

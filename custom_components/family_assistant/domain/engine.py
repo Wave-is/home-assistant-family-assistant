@@ -15,6 +15,7 @@ from ..network import plans as network_plans
 from . import (
     alarms,
     court,
+    court_weekly,
     delivery,
     household,
     members,
@@ -48,6 +49,7 @@ BUCKETS = (
     "task_series",
     "incidents",
     "court",
+    "court_reports",
     "alarms",
     "alarm_runs",
     "routines",
@@ -124,6 +126,7 @@ class Engine:
         self._state.setdefault("task_series", {})
         self._state.setdefault("shopping_series", {})
         self._state.setdefault("incidents", {})
+        self._state.setdefault("court_reports", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
         self._persist = persist
@@ -185,6 +188,11 @@ class Engine:
             ]
         if actor["role"] == "guest":
             data["shopping"] = []
+        elif "court" in self._state["settings"]["modules"]:
+            data["court_summary"] = court_weekly.view(self._state, data["court"], now)
+            if parent:
+                data["court_config"] = court_weekly.configuration(self._state)
+                data["court_reports"] = list(self._state["court_reports"].values())[-12:]
         data["shopping_series"] = (
             [
                 {k: v for k, v in record.items() if k not in {"creator", "occurrences"}}
@@ -355,6 +363,7 @@ class Engine:
             task_series.tick(ctx)
             shopping_series.tick(ctx)
             task_events.tick(ctx)
+            court_weekly.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

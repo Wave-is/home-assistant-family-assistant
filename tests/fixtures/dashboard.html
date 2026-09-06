@@ -42,11 +42,62 @@ if(query.has("kidstatus")){
  profile.status={mode:"unrestricted",allows:true,next_change_at:"2026-09-07T20:00:00Z",next_allows:false,remaining_minutes:30,temporary_until:"2026-09-07T20:00:00Z",temporary_mode:"grant",valid_until:new Date(Date.now()+120000).toISOString(),reason:"fresh"};
  if(query.get("kidstatus")==="stale"){profile.status.valid_until="2000-01-01T00:00:00Z";profile.observed.disabled="true";}
 }
+if(query.has("courtedit")){
+  data.settings.timezone="Europe/Kyiv";
+  window.courtFixture=data;
+  data.members=[
+    {id:"owner",name:{en:"Parent 1",ru:"Родитель 1",uk:"Батько 1"}[language],active:true,role:"owner"},
+    {id:"parent2",name:{en:"Parent 2",ru:"Родитель 2",uk:"Батько 2"}[language],active:true,role:"parent"},
+    {id:"child",name:{en:"Child 1",ru:"Ребёнок 1",uk:"Дитина 1"}[language],active:true,role:"child"}
+  ];
+  data.court_config={revision:1,weekly_enabled:false,weekday:0,time:"00:00",second_adult_review:false};
+  data.court=[
+    {id:"C000001",member:"child",actor:"owner",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1,source:"manual",created_at:"2026-09-06T08:00:00Z"}
+  ];
+  data.court_summary={start:"2026-08-31T00:00:00Z",end:"2026-09-07T00:00:00Z",timezone:"Europe/Kyiv",rows:[{member:"child",active_positives:2,active_negatives:0,total:2,reversed_count:0}]};
+}
 card.hass={language,callWS:async message=>{
- if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
- if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
- if(message.type.endsWith("/execute")){
-   window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+  if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
+  if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
+  if(message.type.endsWith("/execute")){
+    window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+    if(message.action==="court.configure"){
+      if(data.court_config && message.payload.revision!==data.court_config.revision)throw {code:"conflict"};
+      data.court_config={...data.court_config,...message.payload,revision:(data.court_config?.revision ?? 0)+1};
+      return structuredClone(data.court_config);
+    }
+    if(message.action==="court.award"){
+      const rec={id:`C${String(data.court.length+1).padStart(6,"0")}`,member:message.payload.member,points:message.payload.points,reason:message.payload.reason,actor:data.actor,created_at:new Date().toISOString(),status:"active",source:"manual",revision:1};
+      data.court.push(rec);
+      return rec;
+    }
+    if(message.action==="court.appeal"){
+      const rec=data.court.find(c=>c.id===message.payload.id);
+      if(rec.revision!==message.payload.revision)throw {code:"conflict"};
+      rec.appeal={reason:message.payload.reason,actor:data.actor,at:new Date().toISOString(),status:"pending"};
+      rec.revision++;
+      return structuredClone(rec);
+    }
+    if(message.action==="court.resolve_appeal"){
+      const rec=data.court.find(c=>c.id===message.payload.id);
+      if(rec.revision!==message.payload.revision)throw {code:"conflict"};
+      const resolution={reason:message.payload.reason,actor:data.actor,at:new Date().toISOString()};
+      if(message.payload.decision==="reverse"){
+        rec.status="reversed";
+        rec.reversal=resolution;
+      }
+      if(rec.appeal)rec.appeal={...rec.appeal,status:"resolved",decision:message.payload.decision,resolution};
+      rec.revision++;
+      return structuredClone(rec);
+    }
+    if(message.action==="court.reverse"){
+      const rec=data.court.find(c=>c.id===message.payload.id);
+      if(rec.revision!==message.payload.revision)throw {code:"conflict"};
+      rec.status="reversed";
+      rec.reversal={reason:message.payload.reason,actor:data.actor,at:new Date().toISOString()};
+      rec.revision++;
+      return structuredClone(rec);
+    }
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
    if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,checklist:message.payload.checklist.map(text=>({text,done:false}))});
    if(message.action.startsWith("tasks.") && message.action!=="tasks.create" && !message.action.includes("series_")){

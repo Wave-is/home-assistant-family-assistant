@@ -30,7 +30,7 @@ test("shopping names never become HTML",async()=>{
 test("child does not get parent approval controls",async()=>{
   const card=document.createElement("family-court-card");card.setConfig({entry_id:"demo"});
   card.hass={language:"uk",callWS:async()=>({...base,role:"child",actor:"child",court:[{id:"C1",member:"child",reason:"Example",points:1,status:"active"}]})};
-  await tick();assert.equal(card.shadowRoot.querySelectorAll("button").length,0);
+  await tick();assert.deepEqual([...card.shadowRoot.querySelectorAll("button")].map(b=>b.textContent),["Оскаржити"]);
 });
 test("unlinked household shows onboarding hint",async()=>{
   const card=document.createElement("family-shopping-card");card.setConfig({});

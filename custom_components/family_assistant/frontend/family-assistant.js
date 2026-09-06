@@ -5,6 +5,7 @@ import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive} from "./shopping-items.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
+import {renderCourt} from "./court-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -194,6 +195,7 @@ export class FamilyCard extends HTMLElement {
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._taskItemAction=null;this._taskCreateDraft=null;
+    this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -356,6 +358,7 @@ export class FamilyCard extends HTMLElement {
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
+    if(this._view==="court"){renderCourt(this,body);return;}
     if(this._view==="alarms")this.renderAlarmRuns(body);
     if(this._view==="tasks")this.renderSeries(body);
     if(this._view==="shopping")renderShoppingSeries(this,body);
