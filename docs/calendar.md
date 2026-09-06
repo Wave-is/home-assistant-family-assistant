@@ -35,9 +35,27 @@ Authorized members can create and edit events through the card interface:
 * **Preparation checklist** (`preparation` items)
 * **Reminders**: customizable notification offsets in minutes (`reminder_minutes`)
 * **Visibility**: `family` (shared across household) or `participants` (restricted to assigned members)
+* **Recurrence rules**: configured directly in the card via the embedded recurrence form
+* **Related tasks**: checkbox selection linking up to 30 tasks assigned to event participants
+
+#### Recurrence Settings
+
+The card embeds full recurrence rule controls:
+
+* **Frequency**: `daily`, `weekly`, or `monthly`.
+* **Interval**: repeat every 1 to 52 days, weeks, or months.
+* **Start date, time & timezone**: follow the main event parameters above. For timed repeating events, the start must be on a whole minute (`HH:MM:00`) and match the first fold if Daylight Saving Time (DST) repeats the clock. One-off events preserve exact seconds and chosen DST folds untouched.
+* **Until date**: optional upper boundary date for the recurrence schedule.
+* **Weekdays / Month day**: weekly recurrence allows selecting specific weekdays (Monday–Sunday); monthly recurrence selects a day of the month (1–31, skipped in shorter months).
+* **Exception dates**: comma-separated or newline-separated dates (`YYYY-MM-DD`, up to 366) to exclude from generation.
 
 > [!IMPORTANT]
-> Recurrence rules (daily, weekly, monthly) and linking task IDs (`task_ids`) are fully supported by the underlying Domain API. However, advanced UI controls for recurrence and tasks are not yet implemented in the card interface.
+> Calendar reminders use a fixed 5-minute window (`now - 5m <= due <= now`) and expire after 5 minutes. The shared rule's `catchup_hours` value is preserved when editing but has no effect on calendar occurrences or reminders, so the calendar card does not expose it. The routines card uses this setting for missed routine starts.
+
+#### Related Tasks
+
+* Checkboxes allow linking up to 30 existing tasks assigned to event participants.
+* Linking is strictly informational: editing, cancelling or archiving an event does not change a linked task's assignment, schedule or completion status.
 
 ### Roles & Permissions
 
@@ -66,7 +84,7 @@ Integration with Telegram provides typed commands:
 ### Reminders & Notifications
 
 * Sent exclusively to assigned **participants** and the designated **escort** via private notifications.
-* **Catch-up & Expiry Window**: Reminders trigger within a 5-minute catch-up window (`now - 5m <= due <= now`) and expire after 5 minutes.
+* **Catch-up & Expiry Window**: Reminders trigger within a fixed 5-minute catch-up window (`now - 5m <= due <= now`) and expire after 5 minutes. This window is fixed and independent of shared recurrence catchup settings.
 * **No Offline Backlog**: If Home Assistant was offline, missed reminders outside the 5-minute window are dropped rather than flooding users.
 * **Safety**: Reminders are strictly notifications with preparation checklists; they trigger no physical device effects or automations.
 
@@ -109,14 +127,32 @@ type: custom:family-calendar-card
 Авторизованные пользователи могут создавать и редактировать события:
 
 * **Название**, **Начало / Окончание**, **Часовой пояс**
-* **Событие на весь день (All-day)**: исключающая граница окончания (exclusive end)
+* **Событие на весь день (All-day)**: исключающая граница окончания (exclusive end: 10–11 октября означает только 10 октября)
 * **Участники** и сопровождающий взрослый (**Adult Escort**: только роли `owner`, `parent`, `adult`)
 * **Список подготовки** (`preparation`)
 * **Напоминания**: смещение оповещений в минутах (`reminder_minutes`)
 * **Видимость**: `family` (для всей семьи) или `participants` (только для участников)
+* **Правила повторения**: форма настройки повторений встроена прямо в карточку
+* **Связанные задачи**: выбор чекбоксами до 30 задач участников события
+
+#### Настройки повторения
+
+Карточка содержит полноценные элементы управления расписанием:
+
+* **Периодичность**: ежедневно (`daily`), еженедельно (`weekly`) или ежемесячно (`monthly`).
+* **Интервал**: повтор каждые 1–52 дня, недели или месяца.
+* **Дата начала, время и часовой пояс**: берутся из основных полей события выше. Для повторяющихся событий с временем начало должно быть кратно целой минуте (`ЧЧ:ММ:00`) и попадать на первое вхождение при повторении времени (DST fold). Для разовых событий точные секунды и выбранный fold сохраняются без изменений.
+* **Дата окончания**: необязательное ограничение срока действия правила повторения (`until`).
+* **Дни недели / День месяца**: для еженедельных правил выбираются дни недели (пн–вс); для ежемесячных — день месяца (1–31, короткие месяцы пропускаются).
+* **Даты-исключения**: список дат через запятую или с новой строки (`ГГГГ-ММ-ДД`, до 366), исключаемых из генерации.
 
 > [!IMPORTANT]
-> Правила повторения (ежедневно, еженедельно, ежемесячно) и связывание задач (`task_ids`) поддерживаются на уровне API домена, однако расширенные элементы управления в карточке пока не реализованы.
+> Напоминания календаря используют фиксированное окно в 5 минут (`now - 5m <= due <= now`) и истекают через 5 минут. Поле общего правила `catchup_hours` сохраняется при редактировании, но не влияет на события или напоминания календаря, поэтому в этой карточке оно скрыто. В карточке распорядков оно управляет запуском пропущенных выполнений.
+
+#### Связанные задачи
+
+* Чекбоксы позволяют связать до 30 существующих задач, назначенных на участников события.
+* Связь носит исключительно информационный характер: редактирование, отмена или архивация события не меняет исполнителя, сроки или статус связанной задачи.
 
 ### Роли и права доступа
 
@@ -143,7 +179,7 @@ type: custom:family-calendar-card
 ### Напоминания и уведомления
 
 * Отправляются только **участникам** и **сопровождающему** в личные сообщения.
-* **Окно догона и истечения**: Напоминания отправляются в 5-минутном окне (`now - 5m <= due <= now`) и сгорают через 5 минут.
+* **Окно догона и истечения**: Напоминания отправляются в фиксированном 5-минутном окне (`now - 5m <= due <= now`) и сгорают через 5 минут. Это окно фиксировано и не зависит от настроек наверстывания повторений.
 * **Без очереди после офлайна**: Пропущенные за время отсутствия связи напоминания не спамят при перезапуске.
 * **Безопасность**: Напоминания носят исключительно информационный характер и не вызывают физических воздействий на устройства.
 
@@ -186,14 +222,32 @@ type: custom:family-calendar-card
 Авторизовані учасники можуть створювати та редагувати події:
 
 * **Назва**, **Початок / Завершення**, **Часовий пояс**
-* **Подія на весь день (All-day)**: конвенція виключної кінцевої дати (exclusive end)
+* **Подія на весь день (All-day)**: конвенція виключної кінцевої дати (exclusive end: 10–11 жовтня означає тільки 10 жовтня)
 * **Учасники** та дорослий супроводжуючий (**Adult Escort**: дозволені ролі `owner`, `parent`, `adult`)
 * **Список підготовки** (`preparation`)
 * **Нагадування**: інтервали сповіщень у хвилинах (`reminder_minutes`)
 * **Видимість**: `family` (для всієї родини) або `participants` (лише для призначених учасників)
+* **Правила повторення**: вбудована форма налаштування розкладу повторень
+* **Пов'язані завдання**: вибір чекбоксами до 30 завдань учасників події
+
+#### Налаштування повторення
+
+Картка містить повний набір елементів керування повтореннями:
+
+* **Періодичність**: щодня (`daily`), щотижня (`weekly`) або щомісяця (`monthly`).
+* **Інтервал**: повторювати кожні 1–52 дні, тижні або місяці.
+* **Дата початку, час і часовий пояс**: успадковуються з параметрів події вище. Для повторюваних подій із часом початок має припадати на цілу хвилину (`ГГ:ХХ:00`) та відповідати першому входженню при переведенні годинника (DST fold). Для разових подій точні секунди та обраний fold зберігаються без змін.
+* **Дата завершення**: необов'язкова кінцева межа дії розкладу (`until`).
+* **Дні тижня / День місяця**: для щотижневих правил обираються дні тижня (пн–нд); для щомісячних — день місяця (1–31, короткі місяці пропускаються).
+* **Дати-винятки**: список дат через кому або з нового рядка (`РРРР-ММ-ДД`, до 366), які виключаються з генерації.
 
 > [!IMPORTANT]
-> Правила повторення (щодня, щотижня, щомісяця) та зв'язування завдань (`task_ids`) підтримуються на рівні Domain API, але інтерфейсні елементи керування цим у картці поки не реалізовані.
+> Нагадування календаря використовують фіксоване вікно в 5 хвилин (`now - 5m <= due <= now`) та спливають через 5 хвилин. Поле спільного правила `catchup_hours` зберігається при редагуванні, але не впливає на події чи нагадування календаря, тому в цій картці воно приховане. У картці розпорядків воно керує запуском пропущених виконань.
+
+#### Пов'язані завдання
+
+* Чекбокси дозволяють зв'язати до 30 наявних завдань, призначених на учасників події.
+* Зв'язок є суто інформаційним: редагування, скасування чи архівування події не змінює виконавця, строк або статус пов'язаного завдання.
 
 ### Ролі та права доступу
 
@@ -220,7 +274,7 @@ type: custom:family-calendar-card
 ### Нагадування та сповіщення
 
 * Надсилаються виключно **учасникам** та **супроводжуючому** в приватні повідомлення.
-* **Вікно наздоганяння та застарівання**: Спрацьовують у межах 5-хвилинного вікна (`now - 5m <= due <= now`) та згорають через 5 хвилин.
+* **Вікно наздоганяння та застарівання**: Спрацьовують у межах фіксованого 5-хвилинного вікна (`now - 5m <= due <= now`) та згорають через 5 хвилин. Це вікно є фіксованим і не залежить від налаштування наздоганяння повторень.
 * **Без накопичення беклогу офлайн**: Пропущені за час простою сповіщення не накопичуються та відкидаються.
 * **Безпека**: Нагадування мають виключно інформаційний зміст і не спричиняють жодних фізичних дій чи керування пристроями.
 

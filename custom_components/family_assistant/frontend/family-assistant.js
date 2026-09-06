@@ -175,6 +175,11 @@ const STYLES = `
   input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:0;padding:0;margin:0;accent-color:#087f70}
   details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
   .item>details{margin-top:12px}.shopping-archive,.tasks-archive{margin-top:16px}.shopping-archive>ul,.tasks-archive>ul{margin-top:12px}.item>form{margin-top:14px}
+  .recurrence-fieldset,.calendar-task-links{display:block}
+  .recurrence-body{display:grid;gap:12px;margin-top:12px}
+  .recurrence-fieldset label:has(input[type=checkbox]){flex-direction:row;justify-content:flex-start}
+  .recurrence-hints p{font-size:12px;line-height:1.5;color:var(--secondary-text-color,#657d80)}
+  .calendar-task-links p{font-size:12px;line-height:1.5}
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;

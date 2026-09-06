@@ -17,8 +17,8 @@ Nothing is production-ready solely because a mock test passes.
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Ten cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines; richer editors and other module cards pending |
-| Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence API, preparation reminders, opt-in read-only HA calendar; recurrence/task-link UI pending |
-| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, private nonce confirmations, parent overrides, approved entity observations, three-valued conditions, modes/templates and paired escalation; recurrence UI and per-step assignees pending |
+| Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
+| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, private nonce confirmations, parent overrides, approved entity observations, three-valued conditions, modes/templates, recurrence editor and paired escalation; per-step assignees pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
@@ -45,7 +45,18 @@ is exercised with a synthetic entity, not by replacing its service registry.
 ## Verified checkpoint, 2026-09-06
 
 - 615 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/steps/observations/private commands and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 119 frontend unit tests and 38 Chromium browser tests passed.
+- 136 frontend unit tests and 41 Chromium browser tests passed.
+- Calendar and routine cards now share localized daily/weekly/monthly recurrence
+  controls, strict bounded numeric/date parsing, exceptions, timezone and until.
+  Calendar rule start follows event fields and rejects second-fold/subminute starts
+  without changing one-off timestamps. Existing recurrence values survive metadata
+  edits and frozen-payload retries. Calendar task links validate fresh assignees;
+  actual HA accepted full recurrence/link edits and preserved them on a rename,
+  keeping child approval/private publication boundaries. Calendar reminder TTL stays
+  fixed at five minutes; the ineffective shared catchup control is hidden there.
+  RU/UK mobile recurrence editors were inspected, their single-column layout fixed
+  and explanations collapsed. Browser tests exercise failed network retries and
+  explicit recurrence disable. Invalid hidden controls cannot block a disabled rule.
 - Routines snapshot ordered steps per assigned member. Manual confirmations require
   the current run revision and fresh step nonce; other members and future steps
   are rejected. Conditions use only owner-approved HA entities and fresh reports;
@@ -61,8 +72,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   Visual review moved the current step ahead of templates and collapsed settings.
   An actual-card refresh regression is covered: successful commands clear drafts,
   failed ones retain the same operation/payload. Routine steps neither actuate
-  devices nor substitute for independent wake-up challenges. Recurrence remains
-  API-only and per-step assignee handoff is not implemented yet.
+  devices nor substitute for independent wake-up challenges. Per-step assignee
+  handoff and a template-level condition editor are not implemented yet.
 - Calendar commands use durable revisions and replay; child edits require renewed
   approval. Participant-only records are absent from unrelated members and group
   `/calendar` replies. Preparation reminders target participants/escort, expire
@@ -74,7 +85,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
   selection. Card edits preserve original timestamp offsets/seconds unless changed,
   require a choice for newly entered folded times and reject stale identity/drafts.
   RU mobile creation/publication and UK child editing were checked in Chromium;
-  advanced recurrence/task links remain API-only and are documented explicitly.
+  recurrence/task links are now editable in the card with replay protection.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -213,7 +224,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on calendar checkpoint cfa6002 (run 34051220434).
+- All five GitHub check jobs passed on routines checkpoint 98198a4 (run 34053522186).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

@@ -1,7 +1,11 @@
 /* Routines view rendering and copy for Family Assistant card. All user content inserted via textContent only. */
 
+import { makeRecurrenceDraft, recurrencePayload, renderRecurrence } from "./recurrence-form.js";
+import { wallTime } from "./local-time.js";
+
 export const ROUTINES_COPY = {
   en: {
+    recurrence_error: "Check the recurrence settings and dates.",
     title: "Family routines",
     templates_title: "Routine templates",
     no_templates: "No routine templates configured.",
@@ -108,6 +112,7 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Authorization removed",
   },
   ru: {
+    recurrence_error: "Проверьте настройки повторения и даты.",
     title: "Семейные распорядки",
     templates_title: "Шаблоны распорядков",
     no_templates: "Шаблоны распорядков не настроены.",
@@ -214,6 +219,7 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Отозваны права",
   },
   uk: {
+    recurrence_error: "Перевірте налаштування повторення та дати.",
     title: "Сімейні розпорядки",
     templates_title: "Шаблони розпорядків",
     no_templates: "Шаблони розпорядків не налаштовані.",
@@ -1053,6 +1059,18 @@ export function renderRoutines(card, body) {
     renderSteps();
     form.append(stepsBox);
 
+    const zone = card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC";
+    d.recurrence ||= makeRecurrenceDraft(d.rule || null, {
+      timezone: zone, start_date: wallTime(new Date().toISOString(), zone).slice(0, 10), time: "08:00",
+    });
+    const recurrenceSection = el("section");
+    renderRecurrence(recurrenceSection, d.recurrence, {
+      language: card._config?.language || card._hass?.language || "en",
+      isStale: () => isStale() || isFrozen || Boolean(card._writing) || card._routineDraft !== d,
+    });
+    if (isFrozen || card._writing) for (const control of recurrenceSection.querySelectorAll("input,select,textarea")) control.disabled = true;
+    form.append(recurrenceSection);
+
     // Form submission buttons
     const actions = el("div", null, "actions");
     const saveBtn = localButton(card._actionError && isFrozen ? copy.retry : copy.save, () => {}, true);
@@ -1212,12 +1230,19 @@ export function renderRoutines(card, body) {
           });
         }
 
+        let rule;
+        try { rule = recurrencePayload(d.recurrence); }
+        catch {
+          card._actionError = copy.recurrence_error;
+          card.render();
+          return;
+        }
         payload = {
           title: titleTrimmed,
           description: d.description ? d.description.trim() : "",
           enabled: Boolean(d.enabled),
           assignees: assigneesList,
-          rule: d.rule ? clone(d.rule) : null,
+          rule,
           skip_when: d.skip_when ? clone(d.skip_when) : null,
           steps: validatedSteps,
         };

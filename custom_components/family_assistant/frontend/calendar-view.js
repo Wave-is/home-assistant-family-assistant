@@ -1,8 +1,14 @@
 /* Calendar view rendering and copy for Family Assistant card. All user content inserted via textContent only. */
 import { wallTime, wallTimeCandidates } from "./local-time.js";
+import { makeRecurrenceDraft, recurrencePayload, renderRecurrence } from "./recurrence-form.js";
 
 export const CALENDAR_COPY = {
   en: {
+    recurrence_error: "Check the recurrence settings and dates.",
+    reminder_window: "Calendar reminders have a fixed five-minute catchup and expiry window.",
+    recurrence_start: "A repeating event must start on a whole minute, using the first occurrence if the clock repeats. Start date, time and zone follow the event above.",
+    task_links: "Related tasks (up to 30)",
+    task_links_notice: "Only tasks assigned to this event’s participants can be linked. Linking does not change or complete a task.",
     history: "History", created: "Created", updated: "Edited", export_on: "Enabled", export_off: "Disabled",
     title: "Family calendar",
     agenda_title: "Upcoming (next 30 days)",
@@ -57,6 +63,11 @@ export const CALENDAR_COPY = {
     conflict_error: "Conflict: event was modified elsewhere. Form closed.",
   },
   ru: {
+    recurrence_error: "Проверьте настройки повторения и даты.",
+    reminder_window: "Напоминания календаря имеют фиксированное окно отправки и срок действия — пять минут.",
+    recurrence_start: "Повторяющееся событие должно начинаться в целую минуту; при переводе часов — в первое вхождение. Дата, время и пояс берутся из события выше.",
+    task_links: "Связанные задачи (не более 30)",
+    task_links_notice: "Можно связать задачи участников события. Связь не изменяет и не завершает задачу.",
     history: "История", created: "Создано", updated: "Изменено", export_on: "Включено", export_off: "Выключено",
     title: "Семейный календарь",
     agenda_title: "Ближайшие события (30 дней)",
@@ -111,6 +122,11 @@ export const CALENDAR_COPY = {
     conflict_error: "Конфликт: событие было изменено в другом месте. Форма закрыта.",
   },
   uk: {
+    recurrence_error: "Перевірте налаштування повторення та дати.",
+    reminder_window: "Нагадування календаря мають фіксоване вікно надсилання та строк дії — п’ять хвилин.",
+    recurrence_start: "Повторювана подія має починатися в цілу хвилину; при переведенні годинника — у перше входження. Дата, час і пояс беруться з події вище.",
+    task_links: "Пов’язані завдання (не більше 30)",
+    task_links_notice: "Можна пов’язати завдання учасників події. Зв’язок не змінює і не завершує завдання.",
     history: "Історія", created: "Створено", updated: "Змінено", export_on: "Увімкнено", export_off: "Вимкнено",
     title: "Сімейний календар",
     agenda_title: "Найближчі події (30 днів)",
@@ -414,6 +430,8 @@ export function renderCalendar(card, body) {
             preparation: [],
             reminder_minutes: [],
             visibility: "family",
+            rule: null,
+            task_ids: [],
           };
         }
         card.render();
@@ -632,6 +650,43 @@ export function renderCalendar(card, body) {
     visLabel.append(visSelect);
     form.append(visLabel);
 
+    const taskSection = el("fieldset", null, "calendar-task-links");
+    taskSection.append(el("legend", copy.task_links), el("p", copy.task_links_notice, "muted"));
+    const tasks = card._data.tasks || [];
+    const linked = new Set(d.task_ids || []);
+    const taskBoxes = [];
+    for (const task of tasks) {
+      if (task.archived && !linked.has(task.id)) continue;
+      const label = el("label", `${task.id} · ${task.title}`, "check");
+      const cb = el("input");
+      Object.assign(cb, {type: "checkbox", name: "task_ids", value: task.id, checked: linked.has(task.id)});
+      cb.disabled = !cb.checked && !(d.participants || []).includes(task.assignee);
+      label.prepend(cb); taskSection.append(label); taskBoxes.push(cb);
+    }
+    const undisplayedLinks = [...linked].filter(id => !taskBoxes.some(cb => cb.value === id));
+    // Keep links absent from this projection. The server still validates every link.
+    if (undisplayedLinks.length) taskSection.append(el("p", undisplayedLinks.join(", "), "muted"));
+    form.append(taskSection);
+
+    const ruleSection = el("section");
+    d.recurrence ||= makeRecurrenceDraft(d.rule || null, {
+      start_date: d.all_day ? d.start_date : (d.start_local || "").slice(0, 10),
+      time: d.all_day ? "00:00" : (d.start_local || "").slice(11, 16),
+      timezone: d.timezone || defaultZone,
+    });
+    ruleSection.append(el("p", copy.recurrence_start, "muted"));
+    renderRecurrence(ruleSection, d.recurrence, {
+      language: card._config?.language || card._hass?.language || "en",
+      lockedFields: ["start_date", "time", "timezone"],
+      isStale: () => isStale() || !form.isConnected || isFrozen || Boolean(card._writing) || card._calendarDraft !== d,
+    });
+    // Calendar reminder delivery has a fixed TTL, unlike routine creation catchup.
+    // Retain the existing rule field on edit without presenting an ineffective control.
+    ruleSection.querySelector('[data-recurrence-field="catchup_hours"]').hidden = true;
+    ruleSection.querySelector('[data-recurrence-hint="catchup_zero"]').hidden = true;
+    ruleSection.querySelector('[data-recurrence-group="hints"]').append(el("p", copy.reminder_window));
+    form.append(ruleSection);
+
     const errBox = el("div", null, "notice");
     errBox.style.display = "none";
     form.append(errBox);
@@ -660,7 +715,7 @@ export function renderCalendar(card, body) {
     submitBtn.disabled = Boolean(card._writing);
 
     // Sync draft on inputs
-    const syncDraft = () => {
+    const syncDraft = (event) => {
       if (isFrozen || isStale() || card._writing || card._calendarDraft !== d) return;
       d.title = titleInput.value;
       d.description = descInput.value;
@@ -681,6 +736,32 @@ export function renderCalendar(card, body) {
         .filter(Boolean);
       d.visibility = visSelect.value;
       d.reminder_minutes = remInput.value;
+      d.task_ids = [...undisplayedLinks, ...taskBoxes.filter(cb => cb.checked).map(cb => cb.value)];
+      d.recurrence.start_date = d.all_day ? d.start_date : d.start_local.slice(0, 10);
+      d.recurrence.time = d.all_day ? "00:00" : d.start_local.slice(11, 16);
+      d.recurrence.timezone = d.timezone.trim() || defaultZone;
+      const editedRuleField = event?.target?.dataset?.recurrenceControl;
+      if (editedRuleField === "weekdays") d.ruleWeekdaysEdited = true;
+      if (editedRuleField === "month_day") d.ruleMonthDayEdited = true;
+      if (!d.rule) {
+        const derived = makeRecurrenceDraft(null, {start_date: d.recurrence.start_date});
+        if (!d.ruleWeekdaysEdited) {
+          d.recurrence.weekdays = derived.weekdays;
+          for (const box of ruleSection.querySelectorAll('[data-recurrence-control="weekdays"]')) box.checked = derived.weekdays.includes(Number(box.value));
+        }
+        if (!d.ruleMonthDayEdited) {
+          d.recurrence.month_day = derived.month_day;
+          ruleSection.querySelector('[data-recurrence-control="month_day"]').value = derived.month_day;
+        }
+      }
+      for (const key of ["start_date", "time", "timezone"]) {
+        const input = ruleSection.querySelector(`[data-recurrence-control="${key}"]`);
+        if (input) input.value = d.recurrence[key];
+      }
+      for (const cb of taskBoxes) {
+        const task = tasks.find(t => t.id === cb.value);
+        cb.disabled = !cb.checked && !d.participants.includes(task?.assignee);
+      }
     };
     form.addEventListener("input", syncDraft);
     form.addEventListener("change", syncDraft);
@@ -782,6 +863,26 @@ export function renderCalendar(card, body) {
           return;
         }
 
+        let rule;
+        try {
+          rule = recurrencePayload(d.recurrence);
+          if (rule && !allDayBox.checked) {
+            const first = wallTimeCandidates(`${rule.start_date}T${rule.time}`, curTz)[0];
+            if (!first || new Date(first).getTime() !== new Date(startVal).getTime()) throw new Error("recurring_start");
+          }
+        } catch (error) {
+          errBox.textContent = error.message === "recurring_start" ? copy.recurrence_start : copy.recurrence_error;
+          errBox.style.display = "block";
+          return;
+        }
+        if (d.task_ids.length > 30 || d.task_ids.some(id => {
+          const task = (card._data.tasks || []).find(t => t.id === id);
+          return task && !checkedParts.includes(task.assignee);
+        })) {
+          errBox.textContent = copy.task_links_notice;
+          errBox.style.display = "block";
+          return;
+        }
         const payload = {
           title: tVal,
           description: descInput.value.trim(),
@@ -795,6 +896,8 @@ export function renderCalendar(card, body) {
           preparation,
           reminder_minutes: rems,
           visibility: visSelect.value,
+          rule,
+          task_ids: [...d.task_ids],
         };
 
         if (isEdit) {
@@ -987,6 +1090,8 @@ export function renderCalendar(card, body) {
               preparation: [...(ev.preparation || [])],
               reminder_minutes: [...(ev.reminder_minutes || [])],
               visibility: ev.visibility || "family",
+              rule: ev.rule ? structuredClone(ev.rule) : null,
+              task_ids: [...(ev.task_ids || [])],
             };
             card.render();
           })

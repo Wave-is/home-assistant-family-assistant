@@ -17,13 +17,21 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Safety & Non-Actuation**: Routines observe but **never** actuate Home Assistant devices. Missing or overdue steps never incur automatic penalties or court point deductions.
 * **Observation Allowlist & Conditions**: Sensor checks test exact string state equality (not numeric thresholds) against up to 50 owner-approved entities (`domain.object`). States must be recent (default max age 120s, range 1–3600s; timestamps >5s in the future evaluate to `None`). Unknown, unavailable, or stale states yield `None`; negation of `None` remains `None` (never `True`).
 * **Skip Scope**: Step `skip_when` is evaluated strictly at step activation. Template-level `skip_when` is evaluated at run creation (skipping all steps if `True`).
-* **Confirmations**: Manual steps issue a fresh plaintext nonce per activation. Nonces bind the confirmation to that exact step and run—they do not prove biometric presence or human identity (an authenticated client can automate calls). Parents can override any active step or cancel a run with a required reason.
+* **Confirmations & Overrides**: Manual steps issue a fresh plaintext nonce per activation. Nonces bind the confirmation to that exact step and run—they do not prove biometric presence or human identity (an authenticated client can automate calls). Parents can override any active step or cancel a run with a required reason. Manual overrides operate on individual runs and remain independent of recurrence rules.
 * **Edits & Lifecycle**: Template edits do not rewrite active runs. Setting `enabled: false` prevents new starts while letting active runs finish. Revoking creator permissions cancels associated active runs. Recurrence catch-up is bounded to 24h by default (0–48h max, at most 3 local dates deduplicated).
-* **Current UI Scope**: Recurrence rules are currently configured via API only. Per-step different assignees are pending. Template-level skip rules from presets/API are preserved but not edited in UI.
+* **Current UI Scope**: Recurrence rules can be configured directly in the template editor card via the shared recurrence form (daily/weekly/monthly, interval 1..52, start date/time/timezone, until, exception dates, catchup window). Template-level skip rules from presets/API are preserved but not edited in UI. Support for different per-step assignees is still pending.
 
 ### Dashboard Card & Telegram
 
 * **Card (`custom:family-routines-card`)**: Single-entry setups discover `entry_id` automatically (`entry_id` is optional). No placeholder entities required.
+* **Recurrence Controls**: When editing or creating a routine template in the card, parents can configure recurrence:
+  * **Frequency**: `daily`, `weekly`, or `monthly`.
+  * **Interval**: repeat every 1 to 52 days, weeks, or months.
+  * **Start date, time & timezone**: start calendar date, time (`HH:MM`), and IANA timezone.
+  * **Until date**: optional end date for the recurrence schedule.
+  * **Weekdays / Month day**: specific weekdays for weekly recurrence; day of month (1–31) for monthly recurrence.
+  * **Exception dates**: comma-separated or newline-separated dates (`YYYY-MM-DD`, up to 366).
+  * **Catchup window**: 0 to 48 hours (default 24h; 0 retains an approximately 1-minute execution window).
 * **Telegram**: Routine commands work **only in private bot chat** (group chat commands are rejected):
   * `/routines` — List templates and recent runs.
   * `/routine morning | member` — Create template from preset (`morning`, `evening`, `school_bag`).
@@ -48,12 +56,20 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Запуск**: Расписание создаёт отдельное выполнение для каждого участника (`assignees`, до 20). Ручной запуск стартует выполнение ровно для одного участника. На один шаблон и участника может быть только одно активное выполнение.
 * **Шаги и эскалация**: Шаг активируется, только когда завершены все предыдущие шаги **и** наступило время `planned_at + offset_minutes`. Таймер `escalate_minutes` отсчитывается от момента активации шага. При просрочке родители получают уведомление; сообщение о закрытии инцидента отправляется, только если оповещение уже отправлено, доставляется или его статус неопределён (неотправленные тихо заменяются).
 * **Безопасность и сенсоры**: Модуль только наблюдает и **никогда** не управляет устройствами. Штрафные баллы за задержки отсутствуют. Проверка сенсоров сравнивает состояние на точное равенство строк (не числовые пороги) по белому списку владельца (до 50 сущностей). Устаревшие (>120 с) или «будущие» (>5 с) данные дают `None`. Недоступные сущности (`unavailable`/`unknown`) дают `None`, отрицание `None` не равно `True`.
-* **Пропуск и подтверждение**: `skip_when` шага проверяется при его активации, а `skip_when` шаблона — при старте выполнения. Для ручного шага создаётся свежий незашифрованный nonce (привязка к текущему шагу, не биометрия и не защита от автоматизации клиентом). Родитель может переопределить шаг или отменить выполнение с указанием причины.
-* **Правки и UI**: Правка шаблона не перезаписывает текущие выполнения. `enabled: false` запрещает новые старты. Повторение задаётся через API; разные исполнители на отдельные шаги пока не поддерживаются.
+* **Пропуск, подтверждение и переопределение**: `skip_when` шага проверяется при его активации, а `skip_when` шаблона — при старте выполнения. Для ручного шага создаётся свежий незашифрованный nonce (привязка к текущему шагу, не биометрия и не защита от автоматизации клиентом). Родитель может переопределить шаг или отменить выполнение с указанием причины. Ручные переопределения применяются к конкретному выполнению и независимы от правил повторения.
+* **Правки и UI**: Правка шаблона не перезаписывает текущие выполнения. `enabled: false` запрещает новые старты. Форма повторения (ежедневно, еженедельно, ежемесячно, интервал 1..52, дата/время/пояс начала, until, исключения, наверстывание) доступна в карточке редактора. Разные исполнители для отдельных шагов пока не поддерживаются.
 
 ### Карточка и Telegram
 
 * **Карточка (`custom:family-routines-card`)**: `entry_id` опционален при одной семье. Заглушки сущностей не требуются.
+* **Элементы повторения**: В карточке доступна полная настройка повторений шаблона:
+  * **Периодичность**: ежедневно (`daily`), еженедельно (`weekly`) или ежемесячно (`monthly`).
+  * **Интервал**: каждые 1–52 дня, недели или месяца.
+  * **Дата начала, время и часовой пояс**: дата первого запуска, время (`ЧЧ:ММ`) и часовой пояс IANA.
+  * **Дата окончания**: опциональная дата завершения расписания (`until`).
+  * **Дни недели / День месяца**: дни недели для еженедельных правил; день месяца (1–31) для ежемесячных.
+  * **Даты-исключения**: список дат (`ГГГГ-ММ-ДД`, до 366).
+  * **Окно наверстывания**: от 0 до 48 часов (по умолчанию 24 ч; при 0 — окно около 1 минуты).
 * **Telegram (только личный чат с ботом)**:
   * `/routines` — список шаблонов и выполнений.
   * `/routine morning | участник` — создание шаблона из пресета.
@@ -78,12 +94,20 @@ assignee (or changing their role to guest) cancels their active runs.
 * **Запуск**: Розклад створює окреме виконання кожному призначеному учасникові (`assignees`, до 20). Ручний запуск призначений рівно для одного учасника. Дозволено лише одне активне виконання на шаблон і учасника.
 * **Кроки та ескалація**: Крок активується лише після завершення попередніх кроків **і** настання `planned_at + offset_minutes`. Таймер `escalate_minutes` рахується від активації кроку. У разі запізнення батькам відкривається інцидент; закриття сповіщається батькам, лише якщо перше сповіщення відправлено, перебуває в процесі чи має невизначений статус (невислані тихо скасовуються).
 * **Безпека та сенсори**: Модуль лише спостерігає та **ніколи** не керує приладами. Автоштрафи відсутні. Умови перевіряють строковий збіг стану (не числові пороги) за білим списком власника (до 50 сутностей). Застарілі (>120 с) чи «майбутні» (>5 с) спостереження повертають `None`. Стан `unavailable`/`unknown` дає `None`, заперечення якого ніколи не є `True`.
-* **Пропуск та підтвердження**: `skip_when` кроку перевіряється під час його активації; `skip_when` шаблону — під час створення виконання. Ручне підтвердження використовує свіжий відкритий nonce (прив'язка до поточного кроку, а не біометрія чи захист від клієнтської автоматизації). Батьки можуть переозначити крок або скасувати рутину з причиною.
-* **Зміни та стан UI**: Зміна шаблону не змінює активні виконання. `enabled: false` зупиняє нові старти. Розклад наразі налаштовується через API; різні виконавці для окремих кроків у розробці.
+* **Пропуск, підтвердження та переозначення**: `skip_when` кроку перевіряється під час його активації; `skip_when` шаблону — під час створення виконання. Ручне підтвердження використовує свіжий відкритий nonce (прив'язка до поточного кроку, а не біометрія чи захист від клієнтської автоматизації). Батьки можуть переозначити крок або скасувати рутину з причиною. Ручні переозначення стосуються окремих запусків і не залежать від правил повторення.
+* **Зміни та стан UI**: Зміна шаблону не змінює активні виконання. `enabled: false` зупиняє нові старти. Форма повторення (щодня, щотижня, щомісяця, інтервал 1..52, дата/час/пояс початку, until, винятки, наздоганяння) вбудована в картку редактора. Різні виконавці для окремих кроків усе ще в розробці.
 
 ### Картка та Telegram
 
 * **Картка (`custom:family-routines-card`)**: `entry_id` необов'язковий для однієї сім'ї. Заглушки сутностей не потрібні.
+* **Елементи повторення**: У картці доступне повне налаштування повторення розкладу:
+  * **Періодичність**: щодня (`daily`), щотижня (`weekly`) або щомісяця (`monthly`).
+  * **Інтервал**: кожні 1–52 дні, тижні або місяці.
+  * **Дата початку, час і часовий пояс**: дата старту, час (`ГГ:ХХ`) та часовий пояс IANA.
+  * **Дата завершення**: необов'язкова дата закінчення дії розкладу (`until`).
+  * **Дні тижня / День місяця**: дні тижня для щотижневих правил; день місяця (1–31) для щомісячних.
+  * **Дати-винятки**: список дат (`РРРР-ММ-ДД`, до 366).
+  * **Вікно наздоганяння**: від 0 до 48 годин (за замовчуванням 24 год; при 0 — близько 1 хвилини).
 * **Telegram (лише особистий чат із ботом)**:
   * `/routines` — перелік шаблонів і виконань.
   * `/routine morning | учасник` — шаблон із пресету.

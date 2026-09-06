@@ -828,6 +828,52 @@ async def verify_calendar_controls(hass, entry, owner, child, child_id, request)
     assert entity.event is None and not entity.available
     assert "message" not in hass.states.get(entity_id).attributes
     assert await entity.async_get_events(hass, start, start + timedelta(days=3)) == []
+    linked_task = next(
+        task
+        for task in entry.runtime_data.engine.snapshot()["tasks"].values()
+        if task["assignee"] == child_id
+    )
+    rule = {
+        "frequency": "weekly",
+        "interval": 2,
+        "start_date": start.date().isoformat(),
+        "time": "09:00",
+        "timezone": "UTC",
+        "weekdays": [start.weekday()],
+        "month_day": 31,
+        "until": (start + timedelta(days=90)).date().isoformat(),
+        "exceptions": [(start + timedelta(days=14)).date().isoformat()],
+        "catchup_hours": 0,
+    }
+    edited = await request(
+        child,
+        "calendar.save",
+        {
+            **payload,
+            "id": private["id"],
+            "revision": private["revision"],
+            "timezone": "UTC",
+            "rule": rule,
+            "task_ids": [linked_task["id"]],
+        },
+        "calendar-recurring-edit",
+    )
+    assert edited["rule"] == rule and edited["task_ids"] == [linked_task["id"]]
+    assert edited["status"] == "tentative"
+    renamed = await request(
+        child,
+        "calendar.save",
+        {
+            "id": edited["id"],
+            "revision": edited["revision"],
+            "title": "Synthetic renamed series",
+            "start": edited["start"],
+            "end": edited["end"],
+        },
+    )
+    assert renamed["rule"] == rule and renamed["task_ids"] == [linked_task["id"]]
+    assert await entity.async_get_events(hass, start, start + timedelta(days=3)) == []
+    print("PASS: actual HA recurring calendar edit preserves rules, links and private approval")
     print("PASS: actual HA calendar opt-in, approval, privacy, date types, read-only and revoke")
 
 

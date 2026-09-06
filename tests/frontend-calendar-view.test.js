@@ -10,6 +10,7 @@ for (const k of ["window", "document", "HTMLElement", "customElements", "CustomE
 const { CALENDAR_COPY, renderCalendar } = await import(
   "../custom_components/family_assistant/frontend/calendar-view.js"
 );
+const { makeRecurrenceDraft } = await import("../custom_components/family_assistant/frontend/recurrence-form.js");
 
 function createMockCard({
   role = "parent",
@@ -71,6 +72,51 @@ function createMockCard({
   };
   return card;
 }
+
+test("Recurring edit keeps normalized rule and task links with fresh participant validation", () => {
+  const rule = {frequency:"weekly",interval:3,start_date:"2026-09-07",time:"00:00",timezone:"UTC",weekdays:[0,3],month_day:22,until:"2027-01-01",exceptions:["2026-09-28"],catchup_hours:48};
+  const event = {id:"E000099",revision:5,title:"Synthetic event",all_day:true,start:"2026-09-07",end:"2026-09-08",timezone:"UTC",rule,participants:["c1"],task_ids:["T000099"],creator:"p1",status:"confirmed",visibility:"family"};
+  const card = createMockCard({calendar:{events:[event],occurrences:[],config:{revision:0}}});
+  card._data.tasks = [{id:"T000099",title:"Synthetic task",assignee:"c1"}];
+  card._calendarDraft = {...structuredClone(event),type:"edit",start_date:event.start,end_date:event.end};
+  const body = document.createElement("div");document.body.append(body);
+  renderCalendar(card,body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,1);
+  assert.deepEqual(card.commands[0].payload.rule,rule);
+  assert.deepEqual(card.commands[0].payload.task_ids,["T000099"]);
+  const frozen = structuredClone(card.commands[0].payload);
+  card._calendarDraft.recurrence.interval = "4";
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.deepEqual(card.commands[1].payload,frozen);
+
+  card._calendarDraft = {...structuredClone(event),type:"edit",start_date:event.start,end_date:event.end};
+  body.replaceChildren();renderCalendar(card,body);
+  card._data.tasks[0].assignee = "p1";
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,2,"Cannot link task reassigned outside event participants");
+});
+
+test("Calendar recurrence follows edited clock, rejects fold seconds and never converts one-off silently",()=>{
+  const card=createMockCard({timezone:"Europe/Helsinki"});
+  const body=document.createElement("div");document.body.append(body);
+  const base={type:"create",title:"Synthetic repeating event",all_day:false,start_local:"2026-09-07T09:35",end_local:"2026-09-07T10:35",timezone:"Europe/Helsinki",participants:["p1"]};
+  card._calendarDraft={...base,recurrence:makeRecurrenceDraft({frequency:"weekly",interval:1,start_date:"2026-09-01",time:"01:00",timezone:"UTC",weekdays:[0],month_day:1,exceptions:[],catchup_hours:24,until:null})};
+  renderCalendar(card,body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,1);
+  assert.equal(card.commands[0].payload.rule.start_date,"2026-09-07");
+  assert.equal(card.commands[0].payload.rule.time,"09:35");
+  assert.equal(card.commands[0].payload.rule.timezone,"Europe/Helsinki");
+  card._calendarDraft={...base,start_local:"2026-10-25T03:30",end_local:"2026-10-25T04:30",start_fold:"1",end_fold:"0",recurrence:makeRecurrenceDraft(card.commands[0].payload.rule)};
+  body.replaceChildren();renderCalendar(card,body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,1,"Second folded start is not valid for a repeated series");
+  card._calendarDraft.recurrence.enabled=false;
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,2);
+  assert.equal(card.commands[1].payload.rule,null);
+});
 
 test("1. CALENDAR_COPY RU UK EN key parity and non-empty values", () => {
   const enKeys = Object.keys(CALENDAR_COPY.en).sort();
