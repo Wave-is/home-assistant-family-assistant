@@ -2,9 +2,12 @@
 
 import { makeRecurrenceDraft, recurrencePayload, renderRecurrence } from "./recurrence-form.js";
 import { wallTime } from "./local-time.js";
+import { renderConditionForm } from "./condition-form.js";
+import { normalizeCondition } from "./condition-validation.js";
 
 export const ROUTINES_COPY = {
   en: {
+    condition_error: "Check the skip condition, approved entities, and time window.",
     step_assignee: "Who completes this step",
     inherit_assignee: "The member running this routine",
     handoff_notice: "Each step goes to its assigned member in private. Everyone assigned to this run can see its steps; only the current step’s assignee can confirm it. Parents can override with a reason.",
@@ -115,6 +118,7 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Authorization removed",
   },
   ru: {
+    condition_error: "Проверьте условие пропуска, разрешённые объекты и временной интервал.",
     step_assignee: "Кто выполняет этот шаг",
     inherit_assignee: "Участник, для которого запущен распорядок",
     handoff_notice: "Каждый шаг приходит исполнителю в личку. Участники выполнения видят его шаги; подтвердить текущий шаг может только его исполнитель. Родитель может переопределить результат с причиной.",
@@ -225,6 +229,7 @@ export const ROUTINES_COPY = {
     reason_authorization_removed: "Отозваны права",
   },
   uk: {
+    condition_error: "Перевірте умову пропуску, дозволені об’єкти й часовий інтервал.",
     step_assignee: "Хто виконує цей крок",
     inherit_assignee: "Учасник, для якого запущено розпорядок",
     handoff_notice: "Кожен крок надходить виконавцю в особистий чат. Учасники виконання бачать його кроки; підтвердити поточний крок може лише його виконавець. Батьки можуть змінити результат із причиною.",
@@ -857,6 +862,16 @@ export function renderRoutines(card, body) {
     }
     form.append(assigneesFieldset);
 
+    form.append(renderConditionForm({
+      value: d.skip_when,
+      language: card._config?.language || card._hass?.language || "en",
+      allowlist: card._data.routines?.config?.entity_allowlist || [],
+      timezone: card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC",
+      disabled: isFrozen || Boolean(card._writing),
+      isStale: () => isStale() || Boolean(card._writing) || card._routineDraft !== d,
+      onChange: value => { d.skip_when = value; },
+    }));
+
     // Ordered steps builder
     const stepsBox = el("div", null, "editor");
     stepsBox.append(el("strong", copy.steps_title));
@@ -1277,13 +1292,21 @@ export function renderRoutines(card, body) {
           card.render();
           return;
         }
+        let skipWhen;
+        try {
+          skipWhen = normalizeCondition(d.skip_when, {allowlist: [...allowedEntities]});
+        } catch {
+          card._actionError = copy.condition_error;
+          card.render();
+          return;
+        }
         payload = {
           title: titleTrimmed,
           description: d.description ? d.description.trim() : "",
           enabled: Boolean(d.enabled),
           assignees: assigneesList,
           rule,
-          skip_when: d.skip_when ? clone(d.skip_when) : null,
+          skip_when: skipWhen,
           steps: validatedSteps,
         };
         if (d.type === "edit_template") {

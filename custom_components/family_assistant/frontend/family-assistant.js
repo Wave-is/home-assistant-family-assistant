@@ -176,6 +176,9 @@ const STYLES = `
   details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
   .item>details{margin-top:12px}.shopping-archive,.tasks-archive{margin-top:16px}.shopping-archive>ul,.tasks-archive>ul{margin-top:12px}.item>form{margin-top:14px}
   .recurrence-fieldset,.calendar-task-links{display:block}
+  .condition-editor{display:block}.condition-body,.condition-node{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+  .condition-node .condition-node{border-inline-start:2px solid var(--divider-color,#dfe9e7);padding-inline-start:10px}
+  .condition-editor select,.condition-editor input{max-width:100%;min-width:0;box-sizing:border-box}
   .recurrence-body{display:grid;gap:12px;margin-top:12px}
   .recurrence-fieldset label:has(input[type=checkbox]){flex-direction:row;justify-content:flex-start}
   .recurrence-hints p{font-size:12px;line-height:1.5;color:var(--secondary-text-color,#657d80)}

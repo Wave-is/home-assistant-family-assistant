@@ -907,6 +907,24 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
     payload = {
         "title": "Synthetic ordered morning",
         "assignees": [child_id],
+        "skip_when": {
+            "kind": "all",
+            "conditions": [
+                {"kind": "mode", "mode": "holidays"},
+                {
+                    "kind": "any",
+                    "conditions": [
+                        {
+                            "kind": "time_window",
+                            "start": "22:00",
+                            "end": "08:00",
+                            "timezone": "UTC",
+                        },
+                        {**condition, "negate": True},
+                    ],
+                },
+            ],
+        },
         "steps": [
             {"title": "Synthetic preparation"},
             {
@@ -919,6 +937,14 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
     }
     await request(child, "routines.save", payload, error="forbidden")
     template = await request(owner, "routines.save", payload, "routine-ha-save")
+    retained_condition = template["skip_when"]
+    assert retained_condition["conditions"][1]["conditions"][1]["negate"] is True
+    renamed = {k: v for k, v in payload.items() if k != "skip_when"}
+    renamed.update(
+        id=template["id"], revision=template["revision"], title="Synthetic renamed routine"
+    )
+    template = await request(owner, "routines.save", renamed, "routine-ha-rename")
+    assert template["skip_when"] == retained_condition
     run = await request(
         child,
         "routines.start",
