@@ -29,6 +29,8 @@ class Runtime:
     telegram: Any = None
     assistant: Any = None
     network: Any = None
+    recipes: Any = None
+    recipes_revision: str = ""
     options_lock: Any = field(default_factory=asyncio.Lock)
 
     @callback
@@ -129,6 +131,7 @@ async def async_setup_runtime(hass, entry) -> bool:
         async_configure_assistant(hass, entry)
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
+        async_configure_recipes(hass, entry)
         from .llm_api import async_register
 
         async_register(hass, entry)
@@ -187,9 +190,29 @@ async def async_configure_telegram(hass, entry):
 async def async_options_updated(hass, entry):
     async with entry.runtime_data.options_lock:
         async_configure_assistant(hass, entry)
+        async_configure_recipes(hass, entry)
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         entry.runtime_data.updated()
+
+
+def async_configure_recipes(hass, entry):
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    from .recipes.mealie import Mealie
+
+    runtime = entry.runtime_data
+    config = entry.options.get("recipes", {})
+    runtime.recipes = None
+    runtime.recipes_revision = config.get("revision", "")
+    runtime.health.pop("recipes", None)
+    if config.get("enabled"):
+        try:
+            if not isinstance(runtime.recipes_revision, str) or not runtime.recipes_revision:
+                raise DomainError("invalid_field", "revision")
+            runtime.recipes = Mealie(async_get_clientsession(hass), config)
+        except DomainError as err:
+            runtime.health["recipes"] = err.code
 
 
 def async_configure_assistant(hass, entry):

@@ -11,7 +11,9 @@ from .domain.validation import DomainError, text
 
 
 def async_register_api(hass):
-    for handler in (households, view, execute, chat, network_refresh):
+    from .recipes.api import recipes
+
+    for handler in (households, view, execute, chat, network_refresh, recipes):
         websocket_api.async_register_command(hass, handler)
 
 
@@ -44,6 +46,9 @@ async def view(hass, connection, msg):
         data = runtime.engine.view(actor_id, now=dt_util.utcnow())
         if data["role"] in {"owner", "parent"}:
             data["health"] = dict(runtime.health)
+            from .recipes.api import source_view
+
+            data["recipe_source"] = source_view(runtime, data)
         connection.send_result(msg["id"], data)
     except DomainError as err:
         connection.send_error(msg["id"], err.code, err.code)

@@ -229,6 +229,9 @@ async def main():
             from ha_telegram_smoke import run_network
 
             await run_network(hass, entry, user, child_id)
+            from ha_recipes_smoke import verify_recipes
+
+            await verify_recipes(hass, entry, user, child_id)
             from ha_pantry_expiry_smoke import verify_pantry_expiry
 
             await verify_pantry_expiry(hass, user)

@@ -22,7 +22,7 @@ Nothing is production-ready solely because a mock test passes.
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
-| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and localized card; recipe providers pending |
+| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
@@ -46,8 +46,24 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1177 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 234 frontend unit tests and 69 Chromium browser tests passed.
+- 1233 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 241 frontend unit tests and 74 Chromium browser tests passed.
+- Optional Mealie v3 uses owner-configured private options and fixed bounded GETs;
+  bearer tokens are not prefilled, returned in views or reused for another URL.
+  Parents explicitly search/select and correct missing ingredient quantities/units
+  or remove unsupported rows. Servings never scale quantities. A named frozen
+  review creates one ordinary private one-meal draft with an exact retry ID;
+  no stock, shopping, source instructions or dietary data is copied automatically.
+  Displayed Options bind source/member revisions; success and failure recheck
+  authority and source after transport. Revoked owners receive no private form,
+  stale errors reveal no old provider state, and stale forms cannot re-enable a
+  disabled source. Real authenticated HA Options/HTTP/WebSocket tested these
+  races, strict validation, privacy, disable/token-clear and reload. In the
+  network-none lab only the HA session lookup uses an owned real aiohttp loopback
+  session because multicast DNS has no interface; parser/auth/HTTP remain real.
+  Mobile RU correction/retry and UK review were visually inspected. A global
+  fieldset layout collision was corrected. No real Mealie deployment was contacted;
+  this validates the documented v3 contract, not every Mealie version.
 - Dietary profiles are isolated local records with manual likes/dislikes/avoid labels
   and an optional allergy note, not a safety assessment or ingredient classifier.
   Adults manage their own initially private profile; other parents receive read-only
@@ -357,7 +373,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   544ac8c (run 34061803612), followed by weekly menus
   161b4d5 (run 34062734832) and menu shopping transfers
   657540d (run 34063962083), then expiry reminders
-  ad3fd17 (run 34064991218).
+  ad3fd17 (run 34064991218) and dietary profiles
+  cd9cae8 (run 34066055297).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

@@ -12,6 +12,7 @@ import {renderRoutines, ROUTINES_COPY} from "./routines-view.js";
 import {renderPantry} from "./pantry-view.js";
 import {renderMeals} from "./meals-view.js";
 import {renderDietaryProfiles,reconcileDietaryRefresh} from "./dietary-view.js";
+import {renderRecipes,reconcileRecipesRefresh} from "./recipes-view.js";
 import {renderMealShopping} from "./meal-shopping-view.js";
 const COPY = {
   en: {
@@ -220,7 +221,7 @@ export class FamilyCard extends HTMLElement {
     this._taskItemAction=null;this._taskCreateDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
-    this._dietaryDraft=null;
+    this._dietaryDraft=null;this._recipesDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -251,8 +252,9 @@ export class FamilyCard extends HTMLElement {
       const previousData = this._data;
       this._data = data; this._error = null;
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
+      const recipesForce = reconcileRecipesRefresh(this,previousData);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
+      if (dietaryForce || recipesForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
     } catch(error) { if (generation === this._generation) { this._error=error.code || this.t.failure; this.render(); } }
     finally { this._loading = false; }
   }
@@ -383,7 +385,10 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
-    if(this._view==="meals"){renderMeals(this,body);renderMealShopping(this,body);renderDietaryProfiles(this,body);return;}
+    if(this._view==="meals"){
+      if(!this._recipesDraft){renderMeals(this,body);renderMealShopping(this,body);renderDietaryProfiles(this,body);}
+      renderRecipes(this,body);return;
+    }
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}

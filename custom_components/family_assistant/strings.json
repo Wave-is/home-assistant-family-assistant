@@ -157,6 +157,7 @@
           "telegram_member": "Link a member's private chat",
           "conversation": "Language model and fallback",
           "search": "Internet search (SearXNG)",
+          "recipes": "Recipe source (Mealie)",
           "mikrotik": "MikroTik network"
         }
       },
@@ -264,6 +265,18 @@
           "api_key": "API key (optional)",
           "clear_key": "Clear saved key",
           "allow_http": "Allow unencrypted HTTP on a trusted network"
+        }
+      },
+      "recipes": {
+        "title": "Your Mealie recipe source",
+        "description": "Optional Mealie 3 connection. Enter the base URL (without /api) and a token from Mealie → User profile → API tokens. Family Assistant only reads recipes; use a separate least-privileged account. Parents explicitly review recipe data before creating a menu draft. No dietary profiles are sent. HTTPS is preferred. Blank token preserves the stored token only for the same URL; disabling does not erase it unless Clear token is selected.",
+        "data": {
+          "enabled": "Enable recipe source",
+          "url": "Mealie base URL",
+          "token": "API token (blank keeps current)",
+          "clear_token": "Clear stored token",
+          "allow_http": "Allow unencrypted HTTP (trusted local network only)",
+          "timeout": "Request timeout (seconds)"
         }
       },
       "mikrotik": {

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic recipe dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+    const query = new URLSearchParams(location.search),
+      language = query.get("lang") || "en",
+      actor = query.get("actor") || "parent";
+    const name =
+      language === "ru"
+        ? "Овощной суп"
+        : language === "uk"
+          ? "Овочевий суп"
+          : "Vegetable soup";
+    window.fixture = {
+      revision: 1,
+      actor,
+      role: actor,
+      settings: {
+        name: "Example family",
+        modules: ["pantry", "shopping"],
+        timezone: "Europe/Kyiv",
+      },
+      members: [
+        {
+          id: "parent",
+          name: "Alex",
+          role: "parent",
+          active: true,
+          revision: 1,
+        },
+        { id: "child", name: "Sam", role: "child", active: true, revision: 1 },
+      ],
+      pantry: { items: [], suggestions: [], meal_plans: [], meal_shopping: [] },
+      recipe_source: {
+        enabled: true,
+        provider: "mealie",
+        revision: "source-1",
+      },
+    };
+    window.candidate = {
+      source: { provider: "mealie", id: "recipe-1", slug: "vegetable-soup" },
+      title: name,
+      source_servings: { value: 4, display: "4" },
+      ingredients: [
+        {
+          display: "Potato: 1 kg",
+          name: "Potato",
+          unit: "kg",
+          quantity: 1,
+          blockers: [],
+        },
+        {
+          display: "Carrots to taste",
+          name: "Carrot",
+          unit: null,
+          quantity: null,
+          blockers: ["missing_unit", "missing_quantity"],
+        },
+      ],
+      blockers: [],
+    };
+    window.calls = [];
+    window.lookups = [];
+    const receipts = new Map();
+    const projection = () => {
+      const data = structuredClone(window.fixture);
+      if (!["owner", "parent"].includes(data.role)) {
+        delete data.recipe_source;
+        data.pantry.meal_plans = [];
+      }
+      return data;
+    };
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type === "family_assistant/recipes") {
+          window.lookups.push(structuredClone(message));
+          const sourceRevision = window.fixture.recipe_source.revision;
+          if (window.pauseLookup) {
+            window.pauseLookup = false;
+            await new Promise((resolve) => (window.releaseLookup = resolve));
+          }
+          if (message.kind === "search")
+            return {
+              source_revision: sourceRevision,
+              page: message.page,
+              total_pages: 1,
+              items: [{ id: "recipe-1", slug: "vegetable-soup", name }],
+            };
+          return {
+            source_revision: sourceRevision,
+            candidate: structuredClone(window.candidate),
+          };
+        }
+        if (message.type !== "family_assistant/execute")
+          throw { code: "unknown_action" };
+        window.calls.push(structuredClone(message));
+        if (receipts.has(message.operation_id))
+          return structuredClone(receipts.get(message.operation_id));
+        if (!["owner", "parent"].includes(window.fixture.role))
+          throw { code: "forbidden" };
+        if (message.action !== "pantry.meal_save" || message.payload.id)
+          throw { code: "unknown_action" };
+        const plan = {
+          ...structuredClone(message.payload),
+          id: `MP${String(window.fixture.pantry.meal_plans.length + 1).padStart(6, "0")}`,
+          revision: 1,
+          status: "draft",
+          created_by: "parent",
+          created_at: "2026-09-07T08:00:00Z",
+          updated_at: "2026-09-07T08:00:00Z",
+          history: [],
+        };
+        window.fixture.pantry.meal_plans.push(plan);
+        window.fixture.revision++;
+        const result = { id: plan.id, revision: 1, status: "draft" };
+        receipts.set(message.operation_id, result);
+        if (window.loseResponse) {
+          window.loseResponse = false;
+          throw { code: "storage_error" };
+        }
+        return structuredClone(result);
+      },
+    };
+    const card = document.createElement("family-meals-card");
+    card.setConfig({ entry_id: "synthetic", language });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+  </script>
+</html>

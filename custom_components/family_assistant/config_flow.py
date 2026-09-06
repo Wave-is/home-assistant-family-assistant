@@ -108,6 +108,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 "telegram_member",
                 "conversation",
                 "search",
+                "recipes",
                 "mikrotik",
             ],
         )
@@ -120,6 +121,11 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
         return runtime, actor
+
+    async def async_step_recipes(self, user_input=None):
+        from .recipes.options import options_step
+
+        return await options_step(self, user_input)
 
     async def async_step_mikrotik(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession

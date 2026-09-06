@@ -36,7 +36,8 @@ acceptance creates approved shopping list entries only (see
 accepted transfer is permitted per plan ID, and later amendments to shopping
 must be done manually. [Private preferences](dietary-profiles.md) have a separate
 consent-controlled section in this card and are never copied into meal records.
-Recipe providers remain a separate gate. An ingredient list is not a statement
+[Mealie](recipes.md) optionally supplies manually reviewed recipe candidates.
+An ingredient list is not a statement
 that a meal is safe for someone with an allergy; no such inference is made.
 
 ## Русский
@@ -66,8 +67,8 @@ that a meal is safe for someone with an allergy; no such inference is made.
 одного идентификатора плана допускается только один принятый перенос, а все
 последующие изменения вносятся в список покупок вручную. [Приватные
 предпочтения](dietary-profiles.md) находятся в отдельном разделе карточки с
-управлением согласием и не копируются в меню. Источники рецептов остаются отдельным
-этапом. Список ингредиентов не подтверждает безопасность блюда
+управлением согласием и не копируются в меню. [Mealie](recipes.md) можно подключить
+как источник рецептов с ручной проверкой. Список ингредиентов не подтверждает безопасность блюда
 при аллергии.
 
 ## Українська
@@ -97,7 +98,7 @@ that a meal is safe for someone with an allergy; no such inference is made.
 одного ідентифікатора плану дозволено лише одне прийняте перенесення, а будь-які
 подальші зміни вносяться до списку покупок вручну. [Приватні вподобання](dietary-profiles.md)
 розміщені в окремому розділі картки з керуванням згодою й не копіюються до меню.
-Джерела рецептів залишаються окремим етапом. Перелік
+[Mealie](recipes.md) можна підключити як джерело рецептів із ручною перевіркою. Перелік
 інгредієнтів не підтверджує безпечність страви за наявності алергії.
 
 ## API contract
