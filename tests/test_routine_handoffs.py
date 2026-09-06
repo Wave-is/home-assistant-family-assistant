@@ -554,7 +554,12 @@ async def test_revoking_step_participant_cancels_run_and_removes_nonces(
     await enabled_engine.execute(
         "owner",
         "members.save",
-        {"id": "adult", "name": "Adult", **member_update},
+        {
+            "id": "adult",
+            "revision": enabled_engine.snapshot()["members"]["adult"]["revision"],
+            "name": "Adult",
+            **member_update,
+        },
         f"revoke-adult-{member_update['role']}-{member_update['active']}",
         now,
     )
@@ -708,7 +713,13 @@ async def test_scheduler_does_not_start_invalid_participant_templates(enabled_en
     await enabled_engine.execute(
         "owner",
         "members.save",
-        {"id": "adult", "name": "Adult", "role": "adult", "active": False},
+        {
+            "id": "adult",
+            "revision": enabled_engine.snapshot()["members"]["adult"]["revision"],
+            "name": "Adult",
+            "role": "adult",
+            "active": False,
+        },
         "deact-sched-adult",
         now,
     )

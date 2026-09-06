@@ -267,6 +267,7 @@ async def test_preserve_creator_cursor_and_occurrences_across_other_parent_edit(
         "members.save",
         {
             "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
             "name": "Parent",
             "role": "child",
             "language": "en",
@@ -384,6 +385,7 @@ async def test_inactive_and_guest_targets_cannot_receive_tasks(engine, now):
         "members.save",
         {
             "id": "child",
+            "revision": engine.snapshot()["members"]["child"]["revision"],
             "name": "Child",
             "role": "child",
             "language": "en",

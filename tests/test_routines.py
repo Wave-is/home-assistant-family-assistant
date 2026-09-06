@@ -731,7 +731,13 @@ async def test_disabled_module_and_member_revocation_cancels_active_runs(enabled
     await enabled_engine.execute(
         "owner",
         "members.save",
-        {"id": "child", "name": "Child", "role": "child", "active": False},
+        {
+            "id": "child",
+            "revision": enabled_engine.snapshot()["members"]["child"]["revision"],
+            "name": "Child",
+            "role": "child",
+            "active": False,
+        },
         "deact-child",
         now,
     )

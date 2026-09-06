@@ -64,7 +64,13 @@ async def test_reusable_assignment_recalculates_date_and_rechecks_role(engine, s
     await restarted.execute(
         "owner",
         "members.save",
-        {"id": "parent", "name": "Parent", "role": "child", "language": "en"},
+        {
+            "id": "parent",
+            "revision": restarted.snapshot()["members"]["parent"]["revision"],
+            "name": "Parent",
+            "role": "child",
+            "language": "en",
+        },
         "revoke",
         now,
     )

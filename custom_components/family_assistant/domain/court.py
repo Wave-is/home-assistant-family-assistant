@@ -5,6 +5,7 @@ from __future__ import annotations
 from . import court_weekly, rewards
 from .context import Context
 from .validation import DomainError, fields, number, text
+from .validation import revision as strict_revision
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -39,11 +40,11 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     allowed = {"id", "revision", "reason"} | ({"decision"} if action == "resolve_appeal" else set())
     fields(
-        payload, allowed, {"id", "reason"} | ({"decision"} if action == "resolve_appeal" else set())
+        payload,
+        allowed,
+        {"id", "revision", "reason"} | ({"decision"} if action == "resolve_appeal" else set()),
     )
-    if "revision" in payload and (type(payload["revision"]) is not int or payload["revision"] < 1):
-        raise DomainError("invalid_field", "revision")
-    record = ctx.record("court", payload["id"], payload.get("revision"))
+    record = ctx.record("court", payload["id"], strict_revision(payload["revision"]))
     if action == "appeal":
         if record["member"] != ctx.actor_id and not ctx.privileged:
             raise DomainError("forbidden")

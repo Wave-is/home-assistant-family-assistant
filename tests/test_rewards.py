@@ -117,7 +117,7 @@ async def test_catalog_edits_do_not_reprice_pending_promise_or_destroy_metadata(
         "court.reward_save",
         {
             "id": " " + catalog["id"] + " ",
-            "revision": 1,
+            "revision": catalog["revision"],
             "name": "New label",
             "cost": 8,
             "enabled": False,
@@ -208,7 +208,15 @@ async def test_reversed_earnings_are_real_debt_not_free_points(engine, now):
     catalog = await setup(engine, now)
     item = await request(engine, now, catalog)
     await engine.execute(
-        "owner", "court.reverse", {"id": "C000001", "reason": "Corrected score"}, "reverse", now
+        "owner",
+        "court.reverse",
+        {
+            "id": "C000001",
+            "revision": engine.snapshot()["court"]["C000001"]["revision"],
+            "reason": "Corrected score",
+        },
+        "reverse",
+        now,
     )
     assert wallet(engine.snapshot(), "child")["net"] == -7
     with pytest.raises(DomainError, match="insufficient_points"):

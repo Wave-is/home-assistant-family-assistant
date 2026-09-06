@@ -56,7 +56,9 @@ async def test_return_values_and_journal_cannot_mutate_store(engine, now):
     item["name"] = "tampered"
     snapshot = engine.snapshot()
     snapshot["shopping"][item["id"]]["name"] = "also tampered"
-    await engine.execute("parent", "shopping.purchase", {"id": item["id"]}, "buy", now)
+    await engine.execute(
+        "parent", "shopping.purchase", {"id": item["id"], "revision": item["revision"]}, "buy", now
+    )
     persisted = engine.snapshot()
     assert persisted["shopping"][item["id"]]["name"] == "Bread"
     assert persisted["audit"][0]["result"]["status"] == "approved"
@@ -106,7 +108,16 @@ async def test_role_payload_cannot_elevate_child(engine, now):
         await engine.execute("child", "shopping.add", {"name": "Book", "role": "parent"}, "a", now)
     with pytest.raises(DomainError, match="forbidden"):
         await engine.execute(
-            "child", "members.save", {"name": "Child", "role": "owner", "id": "child"}, "b", now
+            "child",
+            "members.save",
+            {
+                "name": "Child",
+                "role": "owner",
+                "id": "child",
+                "revision": engine.snapshot()["members"]["child"]["revision"],
+            },
+            "b",
+            now,
         )
 
 

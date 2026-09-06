@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .context import Context
 from .penalties import award
-from .validation import DomainError, enum, fields, number, text, timestamp
+from .validation import DomainError, enum, fields, number, revision, text, timestamp
 
 ACTIVE = {"first", "waiting_second", "second"}
 
@@ -127,6 +127,8 @@ def _new_run(ctx: Context, schedule: dict, run_id: str, scheduled: datetime, tes
 def handle(ctx: Context, action: str, payload: dict) -> dict:
     if action == "save":
         ctx.require_parent()
+        is_edit = "id" in payload
+        required = {"member", "time", "days", "timezone"} | ({"revision"} if is_edit else set())
         fields(
             payload,
             {
@@ -145,13 +147,13 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 "recheck_grace",
                 "penalty",
             },
-            {"member", "time", "days", "timezone"},
+            required,
         )
+        if not is_edit and "revision" in payload:
+            raise DomainError("invalid_field", "revision")
         member = ctx.member(payload["member"])
-        alarm_id = text(payload["id"], "id", 80) if payload.get("id") else ctx.identifier("A")
-        old = ctx.state["alarms"].get(alarm_id)
-        if old:
-            ctx.record("alarms", alarm_id, payload.get("revision"))
+        alarm_id = text(payload["id"], "id", 80) if is_edit else ctx.identifier("A")
+        old = ctx.record("alarms", alarm_id, revision(payload["revision"])) if is_edit else None
         clock = text(payload["time"], "time", 5)
         if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", clock):
             raise DomainError("invalid_field", "time")
@@ -222,10 +224,15 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         return record
     if action in {"enable", "test"}:
         ctx.require_parent()
-        fields(payload, {"id", "revision", "enabled"} if action == "enable" else {"id"}, {"id"})
-        schedule = ctx.record("alarms", payload["id"], payload.get("revision"))
+        fields(
+            payload,
+            {"id", "revision", "enabled"} if action == "enable" else {"id"},
+            {"id", "revision", "enabled"} if action == "enable" else {"id"},
+        )
         if action == "test":
+            schedule = ctx.record("alarms", payload["id"])
             return public_run(_new_run(ctx, schedule, ctx.identifier("W"), ctx.now, test=True))
+        schedule = ctx.record("alarms", payload["id"], revision(payload["revision"]))
         if not isinstance(payload.get("enabled"), bool):
             raise DomainError("invalid_field", "enabled")
         schedule["enabled"] = payload["enabled"]

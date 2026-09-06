@@ -5,6 +5,7 @@ from __future__ import annotations
 from . import task_events
 from .context import Context
 from .validation import DomainError, fields, text, timestamp
+from .validation import revision as strict_revision
 
 FINAL = {"completed", "cancelled", "archived"}
 ACTION_FIELDS = {
@@ -75,10 +76,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         return item
     if action not in ACTION_FIELDS:
         raise DomainError("unknown_action")
-    fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id"})
-    if "revision" in payload and (type(payload["revision"]) is not int or payload["revision"] < 1):
-        raise DomainError("invalid_field", "revision")
-    item = ctx.record("tasks", payload["id"], payload.get("revision"))
+    fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id", "revision"})
+    item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
     own = item["assignee"] == ctx.actor_id
     if not ctx.privileged and not own:
         raise DomainError("forbidden")

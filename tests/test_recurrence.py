@@ -82,7 +82,13 @@ async def test_rotation_survives_restart_and_skips_inactive_member(engine, store
     await engine.execute(
         "owner",
         "members.save",
-        {"id": "child", "name": "Child", "role": "child", "active": False},
+        {
+            "id": "child",
+            "revision": engine.snapshot()["members"]["child"]["revision"],
+            "name": "Child",
+            "role": "child",
+            "active": False,
+        },
         "inactive",
         now,
     )
@@ -112,7 +118,16 @@ async def test_storage_fault_and_parent_revocation_cannot_generate_tasks(engine,
     assert engine.snapshot() == before
     store.fail = False
     await engine.execute(
-        "owner", "members.save", {"id": "parent", "name": "Parent", "role": "adult"}, "revoke", now
+        "owner",
+        "members.save",
+        {
+            "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
+            "name": "Parent",
+            "role": "adult",
+        },
+        "revoke",
+        now,
     )
     assert not await engine.tick(now)
     assert not engine.snapshot()["tasks"]

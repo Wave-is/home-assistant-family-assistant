@@ -62,6 +62,7 @@ async def test_replay_denies_changed_authority(engine, store, now, batch, revoca
             "members.save",
             {
                 "id": member,
+                "revision": engine.snapshot()["members"][member]["revision"],
                 "name": "Revoked",
                 "role": "guest",
                 "active": True,

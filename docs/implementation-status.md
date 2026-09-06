@@ -45,8 +45,21 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 689 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 822 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
 - 185 frontend unit tests and 53 Chromium browser tests passed.
+- Existing shopping/task/court/alarm/member edits now require strict current
+  revisions. A shared validator rejects missing/malformed versions; read-only
+  Context lookups remain distinct from explicit null. Member edits cannot silently
+  create a new identity from an invalid ID or restore privileges from a stale form.
+  Telegram freezes the interpreted command's visible version before execution;
+  replay does not rebase it. Model plans use the inference input's view rather than
+  a newer record observed after generation. Concurrent inference/update, stale
+  persisted plans, unchanged state/storage on refusal and old receipt replays are
+  regression-tested. Actual HA exercised two concurrent member Options Flows:
+  a stale privilege change conflicted; fresh displayed values allowed an intentional
+  retry without changing bindings, schedules or timezone. Producer fixtures were
+  updated explicitly; no engine/test wrapper auto-fills revisions. See
+  [command version contracts](command-revisions.md). No historical data was migrated.
 - Pantry records keep manually entered quantities/units, a minimum, optional expiry,
   category/location and parent-private notes. Quantity or unit corrections require
   reasons; unit relabeling does not convert stock. All five existing-record actions
@@ -263,7 +276,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
 - All five GitHub check jobs passed on handoff checkpoint 1b91ca4 (run 34057944480)
-  and condition-editor checkpoint 9c03f54 (run 34058895807).
+  and condition-editor checkpoint 9c03f54 (run 34058895807), then pantry checkpoint
+  e0ae29e (run 34060586354).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
@@ -292,10 +306,8 @@ service call does not prove physical sound or volume.
 
 ## Open engineering gates (not release-ready)
 
-- A bounded audit found older shopping/alarm handlers accepting malformed revision
-  values and task/court/member edits permitting revisionless updates. Strict command
-  concurrency and all producer contracts are the next hardening checkpoint; pantry
-  itself already requires a strict current revision for every existing-record action.
+- Legacy pending plans without required revisions need explicit review during
+  migration; do not silently rebase an old instruction to current household records.
 - Some controls are still API-only: advanced alarm exceptions/delay fields,
   task-series editing and advanced per-step routine conditions.
 - No real bot has been contacted during development tests. Poller restart/Telegram

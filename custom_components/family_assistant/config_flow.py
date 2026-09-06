@@ -662,6 +662,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     ]
                 if self._member_id != "_new":
                     payload["id"] = self._member_id
+                    payload["revision"] = getattr(self, "_member_revision", None)
                 if payload.get("ha_user_id") == "_none":
                     payload["ha_user_id"] = None
                 await runtime.engine.execute(
@@ -672,6 +673,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
             except DomainError as err:
                 errors["base"] = err.code
         users = [{"value": "_none", "label": "—"}]
+        # Capture what is actually displayed, not a newer role fetched on submit.
+        # A conflicting edit is redisplayed with fresh values before another save.
+        self._member_revision = existing.get("revision")
         users += [
             {"value": user.id, "label": user.name or user.id}
             for user in await self.hass.auth.async_get_users()

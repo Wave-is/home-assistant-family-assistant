@@ -223,6 +223,9 @@ async def main():
 
             await telegram_smoke(hass, entry, user, child_id)
             await run_websocket(hass, entry, user, child_id)
+            from ha_member_revision_smoke import verify_member_revision_options
+
+            await verify_member_revision_options(hass, entry, user, child_id)
             from ha_telegram_smoke import run_network
 
             await run_network(hass, entry, user, child_id)
@@ -309,6 +312,7 @@ async def run_websocket(hass, entry, owner, child_id):
         "members.save",
         {
             "id": child_id,
+            "revision": engine.snapshot()["members"][child_id]["revision"],
             "name": "Child",
             "role": "child",
             "ha_user_id": child.id,
@@ -631,6 +635,7 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
         "members.save",
         {
             "id": reviewer_id,
+            "revision": engine.snapshot()["members"][reviewer_id]["revision"],
             "name": "Synthetic reviewer",
             "role": "parent",
             "ha_user_id": reviewer.id,

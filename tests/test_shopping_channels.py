@@ -102,7 +102,13 @@ async def test_recurring_source_follows_merge_chain_without_duplicate_accumulati
         == "skipped_open"
     )
     assert (await route(engine, "child", "/shopping", "list", now)).count("Milk") == 1
-    await engine.execute("adult", "shopping.purchase", {"id": last["id"]}, "done", now)
+    await engine.execute(
+        "adult",
+        "shopping.purchase",
+        {"id": last["id"], "revision": engine.snapshot()["shopping"][last["id"]]["revision"]},
+        "done",
+        now,
+    )
     assert await engine.tick(now + timedelta(days=2))
     assert len(engine.snapshot()["shopping"]) == 4
 
@@ -127,7 +133,11 @@ async def test_six_decimal_quantities_finish_without_a_stuck_fraction(engine, st
     )
     assert item["quantity"] == 1
     bought = await engine.execute(
-        "adult", "shopping.purchase", {"id": item["id"], "quantity": 0.1234561}, "partial", now
+        "adult",
+        "shopping.purchase",
+        {"id": item["id"], "revision": item["revision"], "quantity": 0.1234561},
+        "partial",
+        now,
     )
     assert bought["purchased"] == 0.123456
     assert bought["history"][-1]["detail"]["amount"] == 0.123456
@@ -135,7 +145,13 @@ async def test_six_decimal_quantities_finish_without_a_stuck_fraction(engine, st
     state = engine.snapshot()
     state["shopping"][item["id"]]["quantity"] = 1.0000004
     restored = Engine(state, store.save)
-    result = await restored.execute("adult", "shopping.purchase", {"id": item["id"]}, "done", now)
+    result = await restored.execute(
+        "adult",
+        "shopping.purchase",
+        {"id": item["id"], "revision": restored.snapshot()["shopping"][item["id"]]["revision"]},
+        "done",
+        now,
+    )
     assert result["status"] == "purchased" and result["purchased"] == 1
 
 

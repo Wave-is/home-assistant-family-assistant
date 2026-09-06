@@ -124,6 +124,7 @@ async def test_role_change_denies_parent_receipt_and_adult_stock_is_private(stoc
         "members.save",
         {
             "id": "parent",
+            "revision": stocked.snapshot()["members"]["parent"]["revision"],
             "name": "Former parent",
             "role": "adult",
             "active": True,

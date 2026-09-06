@@ -9,6 +9,9 @@ from datetime import datetime
 
 from ..const import PRIVILEGED
 from .validation import DomainError, text
+from .validation import revision as validate_revision
+
+_UNSPECIFIED_REVISION = object()
 
 
 @dataclass
@@ -42,12 +45,15 @@ class Context:
         self.state["sequences"][prefix] = sequence
         return f"{prefix}{sequence:06}"
 
-    def record(self, bucket: str, record_id: str, revision: int | None = None) -> dict:
+    def record(self, bucket: str, record_id: str, revision=_UNSPECIFIED_REVISION) -> dict:
         record_id = text(record_id, "id", 80)
         result = self.state[bucket].get(record_id)
         if result is None:
             raise DomainError("not_found")
-        if revision is not None and revision != result["revision"]:
+        if (
+            revision is not _UNSPECIFIED_REVISION
+            and validate_revision(revision) != result["revision"]
+        ):
             raise DomainError("conflict")
         return result
 

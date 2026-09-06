@@ -92,7 +92,12 @@ async def test_second_reviewer_requires_another_active_parent(engine, now):
     await engine.execute(
         "owner",
         "members.save",
-        {"id": "parent", "name": "Parent", "role": "adult"},
+        {
+            "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
+            "name": "Parent",
+            "role": "adult",
+        },
         "downgrade",
         now,
     )
@@ -106,17 +111,25 @@ async def test_pending_appeal_needs_explicit_decision_and_guest_cannot_appeal(en
     for actor in ("guest", "sibling"):
         with pytest.raises(DomainError, match="forbidden"):
             await engine.execute(
-                actor, "court.appeal", {"id": item["id"], "reason": "Invalid actor"}, "deny", now
+                actor,
+                "court.appeal",
+                {"id": item["id"], "revision": item["revision"], "reason": "Invalid actor"},
+                "deny",
+                now,
             )
     await engine.execute(
-        "child", "court.appeal", {"id": item["id"], "reason": "Review"}, "appeal", now
+        "child",
+        "court.appeal",
+        {"id": item["id"], "revision": item["revision"], "reason": "Review"},
+        "appeal",
+        now,
     )
     before = engine.snapshot()
     with pytest.raises(DomainError, match="invalid_field"):
         await engine.execute(
             "owner",
             "court.resolve_appeal",
-            {"id": item["id"], "reason": "Missing decision"},
+            {"id": item["id"], "revision": item["revision"], "reason": "Missing decision"},
             "missing",
             now,
         )
@@ -204,7 +217,11 @@ async def test_independent_appeal_reviewer_cannot_be_bypassed_by_direct_reverse(
     await configure(engine, now, second_adult_review=True)
     item = await award(engine, now)
     appeal = await engine.execute(
-        "child", "court.appeal", {"id": item["id"], "reason": "Please review"}, "appeal", now
+        "child",
+        "court.appeal",
+        {"id": item["id"], "revision": item["revision"], "reason": "Please review"},
+        "appeal",
+        now,
     )
     for action, extra in (("court.resolve_appeal", {"decision": "reverse"}), ("court.reverse", {})):
         with pytest.raises(DomainError, match="forbidden"):
@@ -217,7 +234,11 @@ async def test_independent_appeal_reviewer_cannot_be_bypassed_by_direct_reverse(
             )
     with pytest.raises(DomainError, match="invalid_transition"):
         await engine.execute(
-            "child", "court.appeal", {"id": item["id"], "reason": "Again"}, "repeat-appeal", now
+            "child",
+            "court.appeal",
+            {"id": item["id"], "revision": appeal["revision"], "reason": "Again"},
+            "repeat-appeal",
+            now,
         )
     payload = {
         "id": item["id"],
@@ -240,7 +261,11 @@ async def test_independent_appeal_reviewer_cannot_be_bypassed_by_direct_reverse(
 async def test_upheld_appeal_history_and_failed_resolution_do_not_lose_data(engine, store, now):
     item = await award(engine, now)
     appeal = await engine.execute(
-        "child", "court.appeal", {"id": item["id"], "reason": "First reason"}, "appeal", now
+        "child",
+        "court.appeal",
+        {"id": item["id"], "revision": item["revision"], "reason": "First reason"},
+        "appeal",
+        now,
     )
     payload = {
         "id": item["id"],

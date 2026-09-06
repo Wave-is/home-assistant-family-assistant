@@ -71,7 +71,13 @@ async def test_participant_revocation_after_claim_prevents_transport(engine, sto
             gated.execute(
                 "owner",
                 "members.save",
-                {"id": "adult", "name": "Adult", "role": "adult", "active": False},
+                {
+                    "id": "adult",
+                    "revision": gated.snapshot()["members"]["adult"]["revision"],
+                    "name": "Adult",
+                    "role": "adult",
+                    "active": False,
+                },
                 "revoke-adult",
                 now,
             ),

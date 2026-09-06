@@ -62,7 +62,11 @@ async def test_reminder_escalation_and_penalty_once_even_after_restart(engine, s
 async def test_parent_review_delay_does_not_punish_child(engine, now):
     task = await setup_task(engine, now)
     await engine.execute(
-        "child", "tasks.submit", {"id": task["id"], "report": "Finished"}, "report", now
+        "child",
+        "tasks.submit",
+        {"id": task["id"], "revision": task["revision"], "report": "Finished"},
+        "report",
+        now,
     )
     await engine.tick(now + timedelta(days=1))
     assert not engine.snapshot()["court"] and not events(engine, "task_overdue")
@@ -72,7 +76,13 @@ async def test_parent_review_delay_does_not_punish_child(engine, now):
 async def test_completed_task_does_not_deliver_stale_reminder(engine, now):
     task = await setup_task(engine, now)
     await engine.tick(now)
-    await engine.execute("parent", "tasks.complete", {"id": task["id"]}, "done", now)
+    await engine.execute(
+        "parent",
+        "tasks.complete",
+        {"id": task["id"], "revision": task["revision"]},
+        "done",
+        now,
+    )
     assert events(engine, "task_reminder")[0]["state"] == "superseded"
     assert events(engine, "task_assigned")[0]["state"] == "superseded"
 
@@ -91,7 +101,11 @@ async def test_close_pairs_announced_problem_but_cancels_unsent_alert(engine, no
 
     await engine.system_update("synthetic_delivery", now, delivery)
     await engine.execute(
-        "parent", "tasks.complete", {"id": task["id"]}, "complete", now + timedelta(hours=2)
+        "parent",
+        "tasks.complete",
+        {"id": task["id"], "revision": task["revision"]},
+        "complete",
+        now + timedelta(hours=2),
     )
     assert len(events(engine, "task_incident_closed")) == (0 if delivery_state == "pending" else 1)
     if delivery_state == "pending":
@@ -107,7 +121,11 @@ async def test_reschedule_does_not_repeat_same_task_penalty(engine, now):
     await engine.execute(
         "parent",
         "tasks.revise",
-        {"id": task["id"], "due_at": (now + timedelta(days=1)).isoformat()},
+        {
+            "id": task["id"],
+            "revision": task["revision"],
+            "due_at": (now + timedelta(days=1)).isoformat(),
+        },
         "later",
         now + timedelta(hours=2),
     )

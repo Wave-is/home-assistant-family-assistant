@@ -12,19 +12,49 @@ async def test_child_purchase_requires_approval_then_tracks_partial_amount(engin
     )
     assert item["status"] == "pending"
     with pytest.raises(DomainError, match="invalid_transition"):
-        await engine.execute("child", "shopping.purchase", {"id": item["id"]}, "b", now)
+        await engine.execute(
+            "child", "shopping.purchase", {"id": item["id"], "revision": item["revision"]}, "b", now
+        )
     with pytest.raises(DomainError, match="forbidden"):
-        await engine.execute("child", "shopping.approve", {"id": item["id"]}, "b", now)
-    await engine.execute("parent", "shopping.approve", {"id": item["id"]}, "c", now)
+        await engine.execute(
+            "child", "shopping.approve", {"id": item["id"], "revision": item["revision"]}, "b", now
+        )
+    await engine.execute(
+        "parent", "shopping.approve", {"id": item["id"], "revision": item["revision"]}, "c", now
+    )
     partial = await engine.execute(
-        "child", "shopping.purchase", {"id": item["id"], "quantity": 2}, "d", now
+        "child",
+        "shopping.purchase",
+        {
+            "id": item["id"],
+            "revision": engine.snapshot()["shopping"][item["id"]]["revision"],
+            "quantity": 2,
+        },
+        "d",
+        now,
     )
     assert partial["purchased"] == 2
     assert partial["status"] == "approved"
     for bad in ({"quantity": 4}, {"quantity": -1}, {"quantity": True}, {"unit": "l"}):
         with pytest.raises(DomainError):
-            await engine.execute("child", "shopping.purchase", {"id": item["id"], **bad}, "e", now)
-    done = await engine.execute("child", "shopping.purchase", {"id": item["id"]}, "f", now)
+            await engine.execute(
+                "child",
+                "shopping.purchase",
+                {
+                    "id": item["id"],
+                    "revision": engine.snapshot()["shopping"][item["id"]]["revision"],
+                    **bad,
+                },
+                "e",
+                now,
+            )
+    done = await engine.execute(
+        "child",
+        "shopping.purchase",
+        {"id": item["id"], "revision": engine.snapshot()["shopping"][item["id"]]["revision"]},
+        "f",
+        now,
+    )
     assert done["status"] == "purchased"
     assert engine.snapshot()["tasks"] == {}
 
@@ -40,23 +70,67 @@ async def test_task_full_review_workflow_and_private_view(engine, now):
     assert engine.view("sibling")["tasks"] == []
     assert engine.view("child")["tasks"][0]["id"] == item["id"]
     await engine.execute(
-        "child", "tasks.check", {"id": item["id"], "checklist_index": 0, "done": True}, "b", now
+        "child",
+        "tasks.check",
+        {"id": item["id"], "revision": item["revision"], "checklist_index": 0, "done": True},
+        "b",
+        now,
     )
     submitted = await engine.execute(
-        "child", "tasks.submit", {"id": item["id"], "report": "Ready"}, "c", now
+        "child",
+        "tasks.submit",
+        {
+            "id": item["id"],
+            "revision": engine.snapshot()["tasks"][item["id"]]["revision"],
+            "report": "Ready",
+        },
+        "c",
+        now,
     )
     assert submitted["status"] == "submitted"
     with pytest.raises(DomainError, match="forbidden"):
-        await engine.execute("child", "tasks.complete", {"id": item["id"]}, "d", now)
+        await engine.execute(
+            "child",
+            "tasks.complete",
+            {"id": item["id"], "revision": engine.snapshot()["tasks"][item["id"]]["revision"]},
+            "d",
+            now,
+        )
     revised = await engine.execute(
-        "parent", "tasks.request_changes", {"id": item["id"], "note": "Pencils too"}, "e", now
+        "parent",
+        "tasks.request_changes",
+        {
+            "id": item["id"],
+            "revision": engine.snapshot()["tasks"][item["id"]]["revision"],
+            "note": "Pencils too",
+        },
+        "e",
+        now,
     )
     assert revised["status"] == "needs_changes"
-    await engine.execute("child", "tasks.submit", {"id": item["id"], "report": "Fixed"}, "f", now)
-    completed = await engine.execute("owner", "tasks.complete", {"id": item["id"]}, "g", now)
+    await engine.execute(
+        "child",
+        "tasks.submit",
+        {
+            "id": item["id"],
+            "revision": engine.snapshot()["tasks"][item["id"]]["revision"],
+            "report": "Fixed",
+        },
+        "f",
+        now,
+    )
+    completed = await engine.execute(
+        "owner",
+        "tasks.complete",
+        {"id": item["id"], "revision": engine.snapshot()["tasks"][item["id"]]["revision"]},
+        "g",
+        now,
+    )
     assert completed["status"] == "completed"
     assert completed["closed_at"]
-    archived = await engine.execute("parent", "tasks.archive", {"id": item["id"]}, "h", now)
+    archived = await engine.execute(
+        "parent", "tasks.archive", {"id": item["id"], "revision": completed["revision"]}, "h", now
+    )
     assert archived["previous_status"] == "completed"
     assert len(engine.snapshot()["audit"]) == 7
 
@@ -65,7 +139,9 @@ async def test_parent_can_confirm_work_without_child_message(engine, now):
     task = await engine.execute(
         "parent", "tasks.create", {"title": "Sweep", "assignee": "child"}, "a", now
     )
-    result = await engine.execute("parent", "tasks.complete", {"id": task["id"]}, "b", now)
+    result = await engine.execute(
+        "parent", "tasks.complete", {"id": task["id"], "revision": task["revision"]}, "b", now
+    )
     assert result["status"] == "completed"
 
 
@@ -74,10 +150,20 @@ async def test_child_cannot_change_parent_deadline_or_others_task(engine, now):
         "parent", "tasks.create", {"title": "Sweep", "assignee": "child"}, "a", now
     )
     with pytest.raises(DomainError, match="forbidden"):
-        await engine.execute("child", "tasks.revise", {"id": task["id"], "title": "Skip"}, "b", now)
+        await engine.execute(
+            "child",
+            "tasks.revise",
+            {"id": task["id"], "revision": task["revision"], "title": "Skip"},
+            "b",
+            now,
+        )
     with pytest.raises(DomainError, match="forbidden"):
         await engine.execute(
-            "sibling", "tasks.submit", {"id": task["id"], "report": "Ready"}, "b", now
+            "sibling",
+            "tasks.submit",
+            {"id": task["id"], "revision": task["revision"], "report": "Ready"},
+            "b",
+            now,
         )
 
 
@@ -92,11 +178,19 @@ async def test_court_reversal_keeps_reason_and_does_not_change_other_events(engi
     second = await engine.execute(
         "parent", "court.award", {"member": "child", "points": 2, "reason": "Helped"}, "b", now
     )
-    await engine.execute(
-        "child", "court.appeal", {"id": first["id"], "reason": "Was done"}, "c", now
+    appeal = await engine.execute(
+        "child",
+        "court.appeal",
+        {"id": first["id"], "revision": first["revision"], "reason": "Was done"},
+        "c",
+        now,
     )
     await engine.execute(
-        "parent", "court.reverse", {"id": first["id"], "reason": "Confirmed"}, "d", now
+        "parent",
+        "court.reverse",
+        {"id": first["id"], "revision": appeal["revision"], "reason": "Confirmed"},
+        "d",
+        now,
     )
     records = engine.snapshot()["court"]
     assert records[first["id"]]["reason"] == "Missed chore"
@@ -108,7 +202,16 @@ async def test_court_reversal_keeps_reason_and_does_not_change_other_events(engi
 async def test_owner_cannot_remove_last_owner(engine, now):
     with pytest.raises(DomainError, match="last_owner"):
         await engine.execute(
-            "owner", "members.save", {"id": "owner", "name": "Owner", "role": "adult"}, "a", now
+            "owner",
+            "members.save",
+            {
+                "id": "owner",
+                "revision": engine.snapshot()["members"]["owner"]["revision"],
+                "name": "Owner",
+                "role": "adult",
+            },
+            "a",
+            now,
         )
 
 
@@ -145,6 +248,7 @@ async def test_owner_cannot_unlink_last_dashboard_identity(engine, now):
             {
                 "id": "owner",
                 "name": "Owner",
+                "revision": engine.snapshot()["members"]["owner"]["revision"],
                 "role": "owner",
                 "ha_user_id": None,
             },

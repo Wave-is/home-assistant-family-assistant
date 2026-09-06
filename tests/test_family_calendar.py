@@ -363,6 +363,7 @@ async def test_child_approval_and_member_deactivate(calendar_engine, now):
         "members.save",
         {
             "id": "child",
+            "revision": calendar_engine.snapshot()["members"]["child"]["revision"],
             "name": "Child",
             "role": "child",
             "active": False,

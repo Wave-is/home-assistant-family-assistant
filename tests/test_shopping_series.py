@@ -365,7 +365,11 @@ def test_creation_partial_suppression_and_fully_purchased():
 
     # Partially purchase item1 (2 of 5 kg)
     shop_ctx = _make_ctx(state, "b1", now=datetime(2026, 9, 5, 12, 0, tzinfo=UTC))
-    shopping.handle(shop_ctx, "purchase", {"id": item1_id, "quantity": 2.0})
+    shopping.handle(
+        shop_ctx,
+        "purchase",
+        {"id": item1_id, "revision": item1["revision"], "quantity": 2.0},
+    )
     assert item1["purchased"] == 2.0
     assert item1["status"] == "approved"
 
@@ -377,7 +381,7 @@ def test_creation_partial_suppression_and_fully_purchased():
     assert len(state["shopping"]) == 1
 
     # Fully purchase remaining (3 kg)
-    shopping.handle(shop_ctx, "purchase", {"id": item1_id})
+    shopping.handle(shop_ctx, "purchase", {"id": item1_id, "revision": item1["revision"]})
     assert item1["status"] == "purchased"
 
     # Add an unrelated shopping item with the SAME name manually

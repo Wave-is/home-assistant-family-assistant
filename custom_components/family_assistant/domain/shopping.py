@@ -7,7 +7,7 @@ import unicodedata
 
 from .context import Context
 from .shopping_history import record_event
-from .validation import DomainError, fields, number, text
+from .validation import DomainError, fields, number, revision, text
 
 TERMINAL_STATUSES = frozenset({"pending", "archived", "purchased", "merged"})
 
@@ -17,13 +17,6 @@ def normalized_name(name: str) -> str:
     normalized = unicodedata.normalize("NFC", name)
     collapsed = " ".join(normalized.split())
     return collapsed.casefold()
-
-
-def _require_strict_positive_int(val: object, field_name: str) -> int:
-    """Strict positive integer revision: reject bool, float, string, omission, <= 0."""
-    if val is None or type(val) is not int or val <= 0:
-        raise DomainError("invalid_field", field_name)
-    return val
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -75,7 +68,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         fields(payload, {"id", "revision", "sources"}, {"id", "revision", "sources"})
 
         target_id = text(payload.get("id"), "id", 80)
-        target_rev = _require_strict_positive_int(payload.get("revision"), "revision")
+        target_rev = revision(payload["revision"])
 
         sources_raw = payload.get("sources")
         if not isinstance(sources_raw, list):
@@ -113,7 +106,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("invalid_field", f"sources[{idx}]")
             fields(src, {"id", "revision"}, {"id", "revision"})
             src_id = text(src.get("id"), "id", 80)
-            src_rev = _require_strict_positive_int(src.get("revision"), "revision")
+            src_rev = revision(src["revision"])
 
             if src_id in seen_source_ids:
                 # Sources must be distinct and not include target
@@ -196,8 +189,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         )
         return target_item
 
-    fields(payload, {"id", "revision", "quantity", "unit"}, {"id"})
-    item = ctx.record("shopping", payload["id"], payload.get("revision"))
+    if action not in {"approve", "reject", "archive", "purchase"}:
+        raise DomainError("unknown_action")
+    fields(payload, {"id", "revision", "quantity", "unit"}, {"id", "revision"})
+    item = ctx.record("shopping", payload["id"], revision(payload["revision"]))
     if action in {"approve", "reject", "archive"}:
         ctx.require_parent()
         if action == "archive":
@@ -238,6 +233,4 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             detail["status"] = "purchased"
         ctx.touch(item)
         record_event(ctx, item["id"], "purchase", detail)
-    else:
-        raise DomainError("unknown_action")
     return item

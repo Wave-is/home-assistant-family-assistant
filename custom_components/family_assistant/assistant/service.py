@@ -43,7 +43,7 @@ class Assistant:
                 raise DomainError("forbidden")
             if value["kind"] == "commands":
                 return await self._propose(
-                    actor, content, operation_id, proposal_id, value, current, now, t
+                    actor, content, operation_id, proposal_id, value, view, now, t
                 )
             if value["kind"] == "read":
                 from ..telegram.router import route

@@ -268,7 +268,11 @@ async def test_changed_record_rejected_at_confirmation_and_storage_fault_is_atom
     await assistant.respond("parent", "Complete this", "complete-nlp", now)
     proposal = next(iter(engine.snapshot()["proposals"]))
     await engine.execute(
-        "parent", "tasks.revise", {"id": task["id"], "title": "Changed"}, "changed", now
+        "parent",
+        "tasks.revise",
+        {"id": task["id"], "revision": task["revision"], "title": "Changed"},
+        "changed",
+        now,
     )
     with pytest.raises(DomainError, match="conflict"):
         await route(engine, "parent", "/confirm " + proposal, "confirm-changed", now)
@@ -304,7 +308,13 @@ async def test_proposal_expiry_and_role_revocation(engine, now):
     await engine.execute(
         "owner",
         "members.save",
-        {"id": "parent", "name": "Parent", "role": "child", "language": "en"},
+        {
+            "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
+            "name": "Parent",
+            "role": "child",
+            "language": "en",
+        },
         "revoke",
         now,
     )

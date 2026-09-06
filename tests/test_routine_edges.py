@@ -199,6 +199,7 @@ async def test_revoked_template_creator_cancels_and_cannot_start_new_runs(engine
         "members.save",
         {
             "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
             "name": "Parent",
             "role": "adult",
         },

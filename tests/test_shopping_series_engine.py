@@ -46,11 +46,21 @@ async def test_series_dispatch_store_fault_reload_and_replay(engine, store, now)
     restarted = Engine(state, store.save)
     assert not await restarted.tick(now + timedelta(seconds=10))
     await restarted.execute(
-        "adult", "shopping.purchase", {"id": item["id"], "quantity": 1}, "partial", now
+        "adult",
+        "shopping.purchase",
+        {"id": item["id"], "revision": item["revision"], "quantity": 1},
+        "partial",
+        now,
     )
     assert await restarted.tick(now + timedelta(days=1))
     assert len(restarted.snapshot()["shopping"]) == 1
-    await restarted.execute("adult", "shopping.purchase", {"id": item["id"]}, "finish", now)
+    await restarted.execute(
+        "adult",
+        "shopping.purchase",
+        {"id": item["id"], "revision": restarted.snapshot()["shopping"][item["id"]]["revision"]},
+        "finish",
+        now,
+    )
     assert await restarted.tick(now + timedelta(days=2))
     assert len(restarted.snapshot()["shopping"]) == 2
 
@@ -131,7 +141,16 @@ async def test_guest_buyer_cannot_be_assigned_or_receive_new_occurrences(engine,
         )
     await engine.execute("parent", "shopping.series_save", payload(now), "good", now)
     await engine.execute(
-        "owner", "members.save", {"id": "adult", "name": "Visitor", "role": "guest"}, "role", now
+        "owner",
+        "members.save",
+        {
+            "id": "adult",
+            "revision": engine.snapshot()["members"]["adult"]["revision"],
+            "name": "Visitor",
+            "role": "guest",
+        },
+        "role",
+        now,
     )
     await engine.tick(now)
     assert not engine.snapshot()["shopping"]

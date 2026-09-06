@@ -30,6 +30,13 @@ def number(value: Any, field: str, minimum: float = 0, maximum: float = 1000000)
     return float(value)
 
 
+def revision(value: Any) -> int:
+    """A JSON-safe record version, never a boolean or an optional wildcard."""
+    if type(value) is not int or not 1 <= value <= 2**53 - 1:
+        raise DomainError("invalid_field", "revision")
+    return value
+
+
 def timestamp(value: Any, field: str) -> datetime:
     try:
         result = datetime.fromisoformat(value) if isinstance(value, str) else value

@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..const import LANGUAGES, ROLES
 from .context import Context
 from .validation import DomainError, enum, fields, text
+from .validation import revision as strict_revision
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -14,11 +15,19 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     fields(
         payload,
-        {"id", "name", "role", "language", "aliases", "ha_user_id", "active"},
+        {"id", "revision", "name", "role", "language", "aliases", "ha_user_id", "active"},
         {"name", "role"},
     )
-    member_id = text(payload["id"], "id", 80) if payload.get("id") else ctx.identifier("M")
-    existing = ctx.state["members"].get(member_id, {})
+    member_id = text(payload["id"], "id", 80) if "id" in payload else None
+    existing = ctx.state["members"].get(member_id, {}) if member_id else {}
+    if existing:
+        existing = ctx.record("members", member_id, strict_revision(payload.get("revision")))
+    elif "revision" in payload:
+        if member_id:
+            raise DomainError("not_found")
+        raise DomainError("invalid_field", "revision")
+    if member_id is None:
+        member_id = ctx.identifier("M")
     role = enum(payload["role"], ROLES, "role")
     language = enum(payload.get("language", existing.get("language", "en")), LANGUAGES, "language")
     active = payload.get("active", existing.get("active", True))

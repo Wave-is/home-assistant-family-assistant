@@ -179,13 +179,21 @@ async def test_disable_schedule_module_or_member_cancels_active(engine, now):
     alarm = await schedule(engine, now)
     await engine.tick(now)
     await engine.execute(
-        "parent", "alarms.enable", {"id": alarm["id"], "enabled": False}, "disable", now
+        "parent",
+        "alarms.enable",
+        {"id": alarm["id"], "revision": alarm["revision"], "enabled": False},
+        "disable",
+        now,
     )
     assert current(engine)["stage"] == "cancelled"
     assert not current(engine)["siren_desired"]
     with pytest.raises(DomainError, match="forbidden"):
         await engine.execute(
-            "child", "alarms.enable", {"id": alarm["id"], "enabled": True}, "child-enable", now
+            "child",
+            "alarms.enable",
+            {"id": alarm["id"], "revision": alarm["revision"], "enabled": True},
+            "child-enable",
+            now,
         )
 
 

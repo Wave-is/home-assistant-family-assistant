@@ -14,6 +14,7 @@ async def test_replay_after_parent_role_revoked_is_denied(engine, now):
         "members.save",
         {
             "id": "parent",
+            "revision": engine.snapshot()["members"]["parent"]["revision"],
             "name": "Parent",
             "role": "child",
             "language": "en",

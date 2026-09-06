@@ -2,8 +2,36 @@
 
 import hashlib
 import json
+from copy import deepcopy
 
+from ..domain.tasks import ACTION_FIELDS
 from ..domain.validation import DomainError, text
+
+REVISION_ACTIONS = {
+    *("tasks." + action for action in ACTION_FIELDS),
+    "shopping.approve",
+    "shopping.reject",
+    "shopping.archive",
+    "shopping.purchase",
+    "court.appeal",
+    "court.reverse",
+    "court.resolve_appeal",
+    "alarms.save",
+    "alarms.enable",
+}
+
+
+def with_record_revision(action, payload, view):
+    """Bind a parsed human command to the visible version before freezing its plan."""
+    result = deepcopy(payload)
+    if action not in REVISION_ACTIONS or "revision" in result or not result.get("id"):
+        return result
+    bucket = action.split(".", 1)[0]
+    record = next((record for record in view.get(bucket, []) if record["id"] == result["id"]), None)
+    if record is None:
+        raise DomainError("not_found")
+    result["revision"] = record["revision"]
+    return result
 
 
 def signature(actor, content, refs):
@@ -23,10 +51,11 @@ def previous(engine, actor, content, refs, operation_id):
 async def execute(engine, actor, content, refs, operation_id, now, action, payload):
     # A plan is persisted before the domain command. Reject non-JSON numbers
     # here too, so a failed command cannot poison the household's stored data.
-    engine.view(actor)
+    view = engine.view(actor)
     text(operation_id, "operation_id", 180)
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
+    payload = with_record_revision(action, payload, view)
     try:
         encoded = json.dumps(
             [actor, action, payload], sort_keys=True, ensure_ascii=False, allow_nan=False
