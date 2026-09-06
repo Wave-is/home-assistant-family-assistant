@@ -94,6 +94,8 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 "telegram",
                 "telegram_group",
                 "telegram_member",
+                "conversation",
+                "search",
             ],
         )
 
@@ -105,6 +107,134 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
         return runtime, actor
+
+    async def async_step_conversation(self, user_input=None):
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+        from .assistant.provider import Ollama
+
+        try:
+            self._authorized_runtime()
+        except DomainError as err:
+            return self.async_abort(reason=err.code)
+        current = self.config_entry.options.get("conversation", {})
+        errors = {}
+        if user_input is not None:
+            config = dict(current)
+            config["enabled"] = user_input["enabled"]
+            try:
+                if config["enabled"]:
+                    for key in ("primary", "fallback"):
+                        if key == "fallback" and not user_input.get("fallback_enabled"):
+                            config.pop(key, None)
+                            continue
+                        old = current.get(key, {})
+                        provider = {
+                            "url": user_input.get(key + "_url", ""),
+                            "model": user_input.get(key + "_model", ""),
+                            "allow_http": user_input.get("allow_http", False),
+                            "timeout": user_input["timeout"],
+                        }
+                        # Blank means preserve; explicitly clearing uses the dedicated checkbox.
+                        if (
+                            provider["url"] != old.get("url")
+                            and old.get("api_key")
+                            and not (
+                                user_input.get(key + "_key") or user_input.get(key + "_clear_key")
+                            )
+                        ):
+                            raise DomainError("provider_key_scope")
+                        api_key = user_input.get(key + "_key") or old.get("api_key", "")
+                        if user_input.get(key + "_clear_key"):
+                            api_key = ""
+                        if api_key:
+                            provider["api_key"] = api_key
+                        await Ollama(async_get_clientsession(self.hass), provider).inspect()
+                        config[key] = provider
+                options = dict(self.config_entry.options)
+                options["conversation"] = config
+                return self.async_create_entry(title="", data=options)
+            except DomainError as err:
+                errors["base"] = err.code
+        schema = {vol.Required("enabled", default=current.get("enabled", False)): bool}
+        for key in ("primary", "fallback"):
+            old = current.get(key, {})
+            schema[vol.Optional(key + "_url", default=old.get("url", ""))] = str
+            schema[vol.Optional(key + "_model", default=old.get("model", ""))] = str
+            schema[vol.Optional(key + "_key")] = selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            )
+            schema[vol.Required(key + "_clear_key", default=False)] = bool
+        schema.update(
+            {
+                vol.Required("fallback_enabled", default=bool(current.get("fallback"))): bool,
+                vol.Required(
+                    "allow_http", default=current.get("primary", {}).get("allow_http", False)
+                ): bool,
+                vol.Required(
+                    "timeout", default=current.get("primary", {}).get("timeout", 15)
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=45)),
+            }
+        )
+        return self.async_show_form(
+            step_id="conversation", data_schema=vol.Schema(schema), errors=errors
+        )
+
+    async def async_step_search(self, user_input=None):
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+        from .assistant.search import Search
+
+        try:
+            self._authorized_runtime()
+        except DomainError as err:
+            return self.async_abort(reason=err.code)
+        current = self.config_entry.options.get("conversation", {}).get("search", {})
+        errors = {}
+        if user_input is not None:
+            options = dict(self.config_entry.options)
+            config = dict(options.get("conversation", {}))
+            try:
+                if user_input["enabled"]:
+                    search = {
+                        "url": user_input["url"],
+                        "allow_http": user_input.get("allow_http", False),
+                    }
+                    if (
+                        search["url"] != current.get("url")
+                        and current.get("api_key")
+                        and not (user_input.get("api_key") or user_input.get("clear_key"))
+                    ):
+                        raise DomainError("provider_key_scope")
+                    api_key = user_input.get("api_key") or current.get("api_key", "")
+                    if api_key and not user_input.get("clear_key"):
+                        search["api_key"] = api_key
+                    # Uses only a public synthetic query, never household data.
+                    await Search(async_get_clientsession(self.hass), search).query(
+                        "Home Assistant", "en"
+                    )
+                    config["search"] = search
+                else:
+                    config.pop("search", None)
+                options["conversation"] = config
+                return self.async_create_entry(title="", data=options)
+            except DomainError as err:
+                errors["base"] = err.code
+        return self.async_show_form(
+            step_id="search",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("enabled", default=bool(current)): bool,
+                    vol.Optional("url", default=current.get("url", "")): str,
+                    vol.Optional("api_key"): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                    ),
+                    vol.Required("clear_key", default=False): bool,
+                    vol.Required("allow_http", default=current.get("allow_http", False)): bool,
+                }
+            ),
+        )
 
     async def async_step_telegram(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -268,7 +398,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     {
                         "name": user_input["name"],
                         "language": user_input["language"],
-                        "modules": [m for m in DEFAULT_MODULES if user_input.get(m)],
+                        "modules": [
+                            m for m in (*DEFAULT_MODULES, "conversation") if user_input.get(m)
+                        ],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
                         "timezone": user_input.get(
@@ -304,7 +436,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
-                        for m in DEFAULT_MODULES
+                        for m in (*DEFAULT_MODULES, "conversation")
                     },
                 }
             ),

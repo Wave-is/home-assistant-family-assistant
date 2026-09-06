@@ -102,12 +102,22 @@ def member_by_name(state: dict, value: str) -> str:
     return find_member(state, value)
 
 
-async def route(engine, actor: str, content: str, operation_id: str, now: datetime, refs=()) -> str:
+async def route(
+    engine, actor: str, content: str, operation_id: str, now: datetime, refs=(), *, fallback=None
+) -> str:
     view = engine.view(actor)
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if "items" in result:
+            from ..assistant.language import COPY as ASSISTANT_COPY
+
+            if result.get("status") == "rejected":
+                return ASSISTANT_COPY[language]["rejected"]
+            return ASSISTANT_COPY[language]["confirmed"].format(
+                result="\n".join(summary(item, view, language) for item in result["items"])
+            )
         return t["saved"].format(id=result["id"], title=summary(result, view, language))
 
     prior = commands.previous(engine, actor, content, refs, operation_id)
@@ -133,9 +143,21 @@ async def route(engine, actor: str, content: str, operation_id: str, now: dateti
         return t["help"]
     command, _, tail = content.partition(" ")
     command = command.casefold()
-    intent = (
-        parse(engine.snapshot(), view, content, now, refs) if not command.startswith("/") else None
-    )
+    try:
+        intent = (
+            parse(engine.snapshot(), view, content, now, refs)
+            if not command.startswith("/")
+            else None
+        )
+    except DomainError as err:
+        if fallback is not None and err.code in {
+            "ambiguous_command",
+            "ambiguous_member",
+            "context_required",
+            "invalid_deadline",
+        }:
+            return await fallback(actor, content, operation_id, now, refs)
+        raise
     if intent and intent.action.startswith("read."):
         command = {"read.court": "/stats", "read.tasks": "/tasks"}[intent.action]
     if command in {"/shopping", "/tasks", "/stats", "/alarms"}:
@@ -176,7 +198,14 @@ async def route(engine, actor: str, content: str, operation_id: str, now: dateti
         action, payload = "tasks.submit", {"id": fields[0], "report": fields[1]}
     elif command == "/approve" and len(fields) == 1:
         action, payload = "tasks.complete", {"id": fields[0]}
+    elif command in {"/confirm", "/cancel"} and len(fields) == 1:
+        action, payload = (
+            "conversation." + ("confirm" if command == "/confirm" else "reject"),
+            {"id": fields[0]},
+        )
     if action is None:
+        if fallback is not None and not command.startswith("/"):
+            return await fallback(actor, content, operation_id, now, refs)
         return t["unknown"]
     result = await commands.execute(
         engine, actor, content, refs, operation_id, now, action, payload

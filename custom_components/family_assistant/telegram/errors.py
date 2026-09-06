@@ -51,6 +51,29 @@ ERRORS = {
         "context_required": "Reply to one specific task or include its ID.",
         "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
         "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+        "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without "
+        "credentials, query or fragment. HTTP requires "
+        "consent.",
+        "provider_authentication": "The provider rejected access. Check its API key "
+        "or enabled JSON search format.",
+        "provider_unreachable": "The configured provider could not be reached.",
+        "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
+        "provider_bad_response": "The model or search provider returned an invalid "
+        "response. Nothing was executed.",
+        "provider_model_missing": "The selected model is not installed on this Ollama server.",
+        "provider_not_configured": "Configure and enable a language provider in "
+        "Family Assistant settings.",
+        "provider_key_scope": "The server URL changed. Enter a new key or "
+        "explicitly clear the old key.",
+        "search_not_configured": "Internet search is not configured. Connect "
+        "SearXNG with JSON output enabled.",
+        "search_query_not_grounded": "I could not form a public search query "
+        "without sending private context. Specify a "
+        "public search phrase.",
+        "proposal_expired": "This proposal expired or was already handled. Send the request again.",
+        "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
+        "assistant_job_expired": "The queued request expired. Nothing was executed. "
+        "Please send it again.",
     },
     "ru": {
         "invalid_field": "Проверьте введённое значение.",
@@ -104,6 +127,29 @@ ERRORS = {
         "context_required": "Ответьте на сообщение об одной конкретной задаче или укажите её ID.",
         "ambiguous_command": "Действие или его объект неоднозначны. Ничего не изменено.",
         "invalid_deadline": "Укажите корректный будущий срок с однозначным временем.",
+        "provider_invalid_url": "Укажите базовый HTTP(S) URL сервера без логина, "
+        "пароля, параметров и фрагмента. Для HTTP нужно "
+        "согласие.",
+        "provider_authentication": "Сервер отказал в доступе. Проверьте ключ API "
+        "или разрешение JSON-формата поиска.",
+        "provider_unreachable": "Настроенный сервер недоступен.",
+        "provider_timeout": "Модель не ответила вовремя. Обычные команды продолжают работать.",
+        "provider_bad_response": "Модель или поиск вернули неверный формат. Никакие "
+        "действия не выполнены.",
+        "provider_model_missing": "Выбранная модель не установлена на этом сервере Ollama.",
+        "provider_not_configured": "Настройте и включите языковую модель в "
+        "параметрах Family Assistant.",
+        "provider_key_scope": "Адрес сервера изменился. Введите новый ключ либо "
+        "явно очистите старый.",
+        "search_not_configured": "Интернет-поиск не настроен. Подключите SearXNG с "
+        "включённым JSON-форматом.",
+        "search_query_not_grounded": "Не удалось составить открытый поисковый "
+        "запрос без личного контекста. Укажите "
+        "поисковую фразу.",
+        "proposal_expired": "Предложение истекло или уже обработано. Отправьте запрос заново.",
+        "assistant_busy": "Несколько обращений уже в очереди. Обычные команды работают.",
+        "assistant_job_expired": "Время ожидания обращения истекло. Ничего не "
+        "выполнено. Отправьте запрос заново.",
     },
     "uk": {
         "invalid_field": "Перевірте введене значення.",
@@ -156,5 +202,28 @@ ERRORS = {
         "завдання або вкажіть його ID.",
         "ambiguous_command": "Дія або її об’єкт неоднозначні. Нічого не змінено.",
         "invalid_deadline": "Вкажіть коректний майбутній термін з однозначним часом.",
+        "provider_invalid_url": "Укажіть базовий HTTP(S) URL сервера без логіна, "
+        "пароля, параметрів і фрагмента. Для HTTP потрібна "
+        "згода.",
+        "provider_authentication": "Сервер відмовив у доступі. Перевірте ключ API "
+        "або дозвіл JSON-формату пошуку.",
+        "provider_unreachable": "Налаштований сервер недоступний.",
+        "provider_timeout": "Модель не відповіла вчасно. Звичайні команди працюють далі.",
+        "provider_bad_response": "Модель або пошук повернули неправильний формат. "
+        "Жодних дій не виконано.",
+        "provider_model_missing": "Вибрана модель не встановлена на цьому сервері Ollama.",
+        "provider_not_configured": "Налаштуйте й увімкніть мовну модель у "
+        "параметрах Family Assistant.",
+        "provider_key_scope": "Адреса сервера змінилася. Введіть новий ключ або "
+        "явно очистьте старий.",
+        "search_not_configured": "Інтернет-пошук не налаштовано. Підключіть SearXNG "
+        "з увімкненим JSON-форматом.",
+        "search_query_not_grounded": "Не вдалося скласти відкритий пошуковий запит "
+        "без особистого контексту. Укажіть пошукову "
+        "фразу.",
+        "proposal_expired": "Пропозиція прострочена або вже опрацьована. Надішліть запит знову.",
+        "assistant_busy": "Кілька звернень уже в черзі. Звичайні команди працюють.",
+        "assistant_job_expired": "Час очікування звернення минув. Нічого не "
+        "виконано. Надішліть запит знову.",
     },
 }

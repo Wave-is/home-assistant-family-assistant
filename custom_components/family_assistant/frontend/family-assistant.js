@@ -2,6 +2,7 @@
 import {ERRORS} from "./errors.js";
 const COPY = {
   en: {
+    modelProposals:"Check my interpretation",confirmPlan:"Apply this plan",rejectPlan:"Cancel plan",proposalHint:"Nothing has changed yet. This plan expires at",
     advanced:"Advanced settings",
     addSeries:"Add recurring duty",
     recurring:"Recurring",
@@ -41,6 +42,7 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    modelProposals:"Проверьте, правильно ли я понял",confirmPlan:"Выполнить план",rejectPlan:"Отменить план",proposalHint:"Пока ничего не изменено. Предложение действует до",
     advanced:"Дополнительные настройки",
     addSeries:"Добавить регулярную обязанность",
     recurring:"Регулярно",
@@ -80,6 +82,7 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    modelProposals:"Перевірте, чи правильно я зрозумів",confirmPlan:"Виконати план",rejectPlan:"Скасувати план",proposalHint:"Поки нічого не змінено. Пропозиція діє до",
     advanced:"Додаткові налаштування",
     addSeries:"Додати регулярний обов’язок",
     recurring:"Регулярно",
@@ -320,6 +323,7 @@ export class FamilyCard extends HTMLElement {
       for(const entry of this._entries || []) body.append(this.button(entry.title,()=>{this._entry=entry.entry_id;this.refresh();}));
       if(this._error)body.append(this.button(this.t.retry,()=>this.refresh()));return;
     }
+    this.renderProposals(body);
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
@@ -332,6 +336,19 @@ export class FamilyCard extends HTMLElement {
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
+  }
+  renderProposals(body) {
+    if(!this._data.settings.modules?.includes("conversation"))return;
+    const proposals=(this._data.proposals || []).filter(p=>p.status==="pending" && Date.parse(p.expires_at)>Date.now());
+    if(!proposals.length)return;
+    const section=el("section");section.append(el("h3",this.t.modelProposals));body.append(section);
+    for(const plan of proposals){
+      const item=el("div",null,"item");item.append(el("div",plan.preview));
+      item.append(el("div",`${this.t.proposalHint} ${new Date(plan.expires_at).toLocaleTimeString(this._hass?.language)}`,"sub"));
+      const actions=el("div",null,"actions");
+      actions.append(this.button(this.t.confirmPlan,()=>this.command("conversation.confirm",{id:plan.id}),true),this.button(this.t.rejectPlan,()=>this.command("conversation.reject",{id:plan.id})));
+      item.append(actions);section.append(item);
+    }
   }
   renderToday(body) {
     const data=this._data, metrics=el("div",null,"metrics");body.append(metrics);

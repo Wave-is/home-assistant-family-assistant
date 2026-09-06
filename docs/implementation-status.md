@@ -14,7 +14,7 @@ Nothing is production-ready solely because a mock test passes.
 | Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
-| LLM, search, command repair | Planned | Adapters, bounded tools, privacy |
+| LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Six cards browser-tested | Today/shopping/tasks/court/alarms/health; richer editors and other module cards pending |
 | Routines and family calendar | Planned | Recurrence, catch-up, time zones |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 123 Python tests passed (domain, device adapter, outbox, Telegram, language/context, recurrence/incidents, public contracts).
-- 7 frontend unit tests and 10 Chromium browser tests passed.
+- 156 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, public contracts).
+- 7 frontend unit tests and 11 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -64,10 +64,13 @@ is exercised with a synthetic entity, not by replacing its service registry.
   exclusions, DST, bounded catch-up and Store faults are unit-tested.
 - Due reminders, parent-review exemption, one penalty per task, pending-alert
   supersession and paired closure after sent/in-flight/uncertain notices are tested.
+- Real HA model options/fallback, persisted nonblocking Telegram inbox, proposal
+  confirmation buttons, authenticated Assist and actor/session receipt context passed.
+- Mobile Russian model-plan confirmation visually inspected; no command before confirmation.
 - Private legacy family-only suite: 397 tests passed.
 - No production family module, Telegram bot, router or siren has been changed.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on main (run 34027446898). The initial
+- All five GitHub check jobs passed on the recurring-duty checkpoint (run 34028552978). The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 
@@ -95,5 +98,7 @@ service call does not prove physical sound or volume.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
+- Live model evaluation is pending; local Ollama was not reachable on its default
+  port during this checkpoint. No server was started or production provider changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.
 - All original vision modules and acceptance scenarios remain the goal.

@@ -1,5 +1,17 @@
 import {test,expect} from "@playwright/test";
 
+test("model interpretation stays unexecuted until the user's confirmation",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto("/tests/fixtures/dashboard.html?view=today&lang=ru&proposal=1");
+ await expect(page.getByRole("heading",{name:"Проверьте, правильно ли я понял"})).toBeVisible();
+ expect(await page.evaluate(()=>window.calls.length)).toBe(0);
+ await page.screenshot({path:"test-results/proposal-mobile-ru.png",fullPage:true});
+ await page.getByRole("button",{name:"Выполнить план",exact:true}).click();
+ expect((await page.evaluate(()=>window.calls))[0].action).toBe("conversation.confirm");
+ expect((await page.evaluate(()=>window.calls))[0].payload).toEqual({id:"Psynthetic"});
+ await expect(page.getByRole("button",{name:"Выполнить план",exact:true})).toHaveCount(0);
+});
+
 test("parent adds an item using the Russian mobile card",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto("/tests/fixtures/dashboard.html?lang=ru&view=shopping");

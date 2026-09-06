@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from .const import DOMAIN, SCHEMA_VERSION
 from .domain.engine import Engine, new_state
 from .domain.validation import DomainError
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.CONVERSATION]
 
 
 @dataclass
@@ -26,6 +27,8 @@ class Runtime:
     health: dict = field(default_factory=dict)
     scheduler: Any = None
     telegram: Any = None
+    assistant: Any = None
+    options_lock: Any = field(default_factory=asyncio.Lock)
 
     @callback
     def updated(self) -> None:
@@ -120,9 +123,15 @@ async def async_setup_runtime(hass, entry) -> bool:
 
         runtime.scheduler = Scheduler(hass, entry, runtime)
         runtime.scheduler.start()
+        async_configure_assistant(hass, entry)
         await async_configure_telegram(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
     except Exception:
+        if runtime.telegram:
+            await runtime.telegram.stop()
+        if runtime.scheduler:
+            await runtime.scheduler.stop()
+        await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
         data["entries"].pop(entry.entry_id, None)
         raise
     return True
@@ -165,8 +174,31 @@ async def async_configure_telegram(hass, entry):
 
 
 async def async_options_updated(hass, entry):
-    await async_configure_telegram(hass, entry)
-    entry.runtime_data.updated()
+    async with entry.runtime_data.options_lock:
+        async_configure_assistant(hass, entry)
+        await async_configure_telegram(hass, entry)
+        entry.runtime_data.updated()
+
+
+def async_configure_assistant(hass, entry):
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    from .assistant.provider import Cascade, Ollama
+    from .assistant.search import Search
+    from .assistant.service import Assistant
+
+    runtime = entry.runtime_data
+    runtime.assistant = None
+    config = entry.options.get("conversation", {})
+    if config.get("enabled") and config.get("primary"):
+        session = async_get_clientsession(hass)
+        providers = [
+            Ollama(session, config[key]) for key in ("primary", "fallback") if config.get(key)
+        ]
+        search = Search(session, config["search"]) if config.get("search") else None
+        runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
+    else:
+        runtime.health.pop("conversation", None)
 
 
 def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:

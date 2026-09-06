@@ -70,10 +70,36 @@
       "wrong_answer": "Not quite — try the current wake-up check again.",
       "context_required": "Reply to one specific task or include its ID.",
       "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
-      "invalid_deadline": "Specify a valid future deadline with an unambiguous time."
+      "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+      "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
+      "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
+      "provider_unreachable": "The configured provider could not be reached.",
+      "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
+      "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
+      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
+      "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
+      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
+      "proposal_expired": "This proposal expired or was already handled. Send the request again.",
+      "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
     },
     "abort": {
-      "admin_required": "A Home Assistant administrator must create the household."
+      "admin_required": "A Home Assistant administrator must create the household.",
+      "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
+      "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
+      "provider_unreachable": "The configured provider could not be reached.",
+      "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
+      "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
+      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
+      "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
+      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
+      "proposal_expired": "This proposal expired or was already handled. Send the request again.",
+      "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
     }
   },
   "options": {
@@ -86,7 +112,9 @@
           "alarm_device": "Wake-up siren",
           "telegram": "Connect your own Telegram bot",
           "telegram_group": "Link the family group",
-          "telegram_member": "Link a member's private chat"
+          "telegram_member": "Link a member's private chat",
+          "conversation": "Language model and fallback",
+          "search": "Internet search (SearXNG)"
         }
       },
       "member": {
@@ -119,7 +147,8 @@
           "court": "Rules and rewards",
           "automatic_penalties": "Enable automatic penalties",
           "daily_penalty_cap": "Maximum automatic negative points per person per day",
-          "timezone": "Time zone"
+          "timezone": "Time zone",
+          "conversation": "Conversation"
         }
       },
       "alarm_device": {
@@ -156,6 +185,35 @@
         "description": "Found: {name}\n\nTelegram chat ID: {id}\n\nOnly confirm if this is the intended family group or person's account. Receiving a code alone does not grant access.",
         "data": {
           "confirmed": "I confirm this is the correct chat or person"
+        }
+      },
+      "conversation": {
+        "title": "Language model and fallback",
+        "description": "Optional: messages and a limited role-filtered family context go to the servers you configure. First enable Conversation under Household preferences. Enter the Ollama base URL and exact installed model name (see /api/tags or ollama list). Both servers are checked before saving. A model has no internet without Search. HTTP is unencrypted; use it only on a trusted LAN/VPN, never expose Ollama directly. Leave keys blank to preserve them. Model-generated mutations require confirmation.",
+        "data": {
+          "enabled": "Enable model requests",
+          "primary_url": "Primary Ollama base URL",
+          "primary_model": "Primary model name",
+          "primary_key": "Primary API key (optional)",
+          "primary_clear_key": "Clear primary key",
+          "fallback_url": "Fallback Ollama base URL",
+          "fallback_model": "Fallback model name",
+          "fallback_key": "Fallback API key (optional)",
+          "fallback_clear_key": "Clear fallback key",
+          "fallback_enabled": "Enable fallback server",
+          "allow_http": "Allow unencrypted HTTP on a trusted network",
+          "timeout": "Timeout per server (seconds)"
+        }
+      },
+      "search": {
+        "title": "Internet search (SearXNG)",
+        "description": "Enter your own SearXNG base URL. Enable json in search.formats in SearXNG settings.yml. Saving tests a public query. Search sends only a phrase grounded in the current request, not stored family records. Results are filtered for internal addresses and treated as untrusted snippets. Full article fetching is not available yet.",
+        "data": {
+          "enabled": "Enable search",
+          "url": "SearXNG base URL",
+          "api_key": "API key (optional)",
+          "clear_key": "Clear saved key",
+          "allow_http": "Allow unencrypted HTTP on a trusted network"
         }
       }
     },
@@ -205,20 +263,51 @@
       "wrong_answer": "Not quite — try the current wake-up check again.",
       "context_required": "Reply to one specific task or include its ID.",
       "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
-      "invalid_deadline": "Specify a valid future deadline with an unambiguous time."
+      "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+      "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
+      "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
+      "provider_unreachable": "The configured provider could not be reached.",
+      "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
+      "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
+      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
+      "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
+      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
+      "proposal_expired": "This proposal expired or was already handled. Send the request again.",
+      "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
       "not_ready": "The household is not loaded.",
       "telegram_not_ready": "Connect and enable your Telegram bot first.",
       "telegram_enrollment_expired": "The enrollment code has expired or was already used. Generate a new code.",
-      "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted."
+      "telegram_not_confirmed": "The detected chat was not confirmed. No access was granted.",
+      "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
+      "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
+      "provider_unreachable": "The configured provider could not be reached.",
+      "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
+      "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
+      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
+      "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
+      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
+      "proposal_expired": "This proposal expired or was already handled. Send the request again.",
+      "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
     }
   },
   "entity": {
     "sensor": {
       "pending_actions": {
         "name": "Open tasks"
+      }
+    },
+    "conversation": {
+      "assistant": {
+        "name": "Family conversation"
       }
     }
   },
@@ -380,6 +469,45 @@
     },
     "invalid_deadline": {
       "message": "Specify a valid future deadline with an unambiguous time."
+    },
+    "provider_invalid_url": {
+      "message": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent."
+    },
+    "provider_authentication": {
+      "message": "The provider rejected access. Check its API key or enabled JSON search format."
+    },
+    "provider_unreachable": {
+      "message": "The configured provider could not be reached."
+    },
+    "provider_timeout": {
+      "message": "The model did not respond in time. Ordinary commands still work."
+    },
+    "provider_bad_response": {
+      "message": "The model or search provider returned an invalid response. Nothing was executed."
+    },
+    "provider_model_missing": {
+      "message": "The selected model is not installed on this Ollama server."
+    },
+    "provider_not_configured": {
+      "message": "Configure and enable a language provider in Family Assistant settings."
+    },
+    "provider_key_scope": {
+      "message": "The server URL changed. Enter a new key or explicitly clear the old key."
+    },
+    "search_not_configured": {
+      "message": "Internet search is not configured. Connect SearXNG with JSON output enabled."
+    },
+    "search_query_not_grounded": {
+      "message": "I could not form a public search query without sending private context. Specify a public search phrase."
+    },
+    "proposal_expired": {
+      "message": "This proposal expired or was already handled. Send the request again."
+    },
+    "assistant_busy": {
+      "message": "Several requests are already queued. Ordinary commands still work."
+    },
+    "assistant_job_expired": {
+      "message": "The queued request expired. Nothing was executed. Please send it again."
     }
   },
   "selector": {

@@ -86,8 +86,37 @@ refer to one actual bot message with a recorded delivery receipt. Pasted text
 is not trusted as an object reference.
 
 This is a bounded grammar, not a claim to understand every sentence. Unsupported
-requests do not change state. LLM/search setup is still pending; there is no
-hidden developer provider or automatic cloud access.
+requests do not change state. There is no hidden developer provider or automatic cloud access.
+
+## Optional model, fallback and search
+
+1. Enable Conversation in Household preferences. In Language model and fallback,
+   enter your own Ollama base URL and exact installed model name (`ollama list`
+   or `/api/tags`). Configure an independent fallback URL/model if needed.
+2. Saving verifies that each selected model exists. Requests have a configurable
+   per-server timeout; a failed or malformed response falls back. Both URLs
+   receive your messages and a limited, role-filtered family context. Do not use
+   an untrusted server. No bot token, HA identity or siren challenge is included.
+3. Prefer HTTPS or a trusted LAN/VPN. HTTP requires explicit consent and does
+   not encrypt data. Never expose Ollama directly to the public internet. Blank
+   API-key fields preserve the key; changing a URL requires a new key or clearing it.
+4. For web questions configure your SearXNG URL and enable `json` in its
+   `search.formats`. A language model alone does not have internet access. This
+   version summarizes search snippets with filtered public source links; full
+   article reading and alternative search adapters remain pending.
+5. Unknown addressed messages enter a durable worker queue. Ping, task commands
+   and wake-up buttons do not wait for inference. Quoted text is untrusted
+   context, never authorization. Model mutations are previewed first; confirm
+   with the Telegram button, `/confirm P…` or the dashboard. `/cancel P…` rejects.
+   A proposal lasts five minutes, belongs to its requester, and is revalidated
+   against current roles and record revisions. No inferred change happens silently.
+6. The module creates a standard conversation entity for Assist. Select it in
+   your pipeline. An unlinked/anonymous voice endpoint does not inherit a parent
+   role. Existing external conversation-agent delegation is not implemented yet.
+
+Calendar computations stay deterministic. Search results cannot execute commands.
+Provider outages do not disable the core lists, tasks or alarms. The developer
+agent/patch loop and learned correction dictionary are separate pending gates.
 
 ## Dashboard cards
 

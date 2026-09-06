@@ -128,4 +128,20 @@ def render(event, target, state):
         if any(len(button["callback_data"].encode()) > 64 for button in buttons):
             raise DeliveryError("notification_template_invalid")
         result["reply_markup"] = {"inline_keyboard": [buttons]}
+    if event["key"] == "telegram_reply" and data.get("proposal_id"):
+        proposal = state.get("proposals", {}).get(data["proposal_id"], {})
+        if proposal.get("status") == "pending" and proposal.get("actor") == data["actor"]:
+            labels = {
+                "en": ("Confirm", "Cancel"),
+                "ru": ("Подтвердить", "Отменить"),
+                "uk": ("Підтвердити", "Скасувати"),
+            }[language]
+            result["reply_markup"] = {
+                "inline_keyboard": [
+                    [
+                        {"text": label, "callback_data": f"fp:{action}:{proposal['id']}"}
+                        for label, action in zip(labels, ("confirm", "cancel"), strict=True)
+                    ]
+                ]
+            }
     return result

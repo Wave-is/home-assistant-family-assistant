@@ -26,6 +26,9 @@ class TelegramManager:
         self.notifications = Notifications(runtime.engine, self._targets, self._send_notification)
         self._tasks = []
         self._stopped = False
+        from ..assistant.jobs import Jobs
+
+        self.jobs = Jobs(runtime.engine)
 
     def _targets(self, event, state):
         if event["key"] == "telegram_reply" and event["data"].get("bot_id") != self.bot["id"]:
@@ -39,6 +42,9 @@ class TelegramManager:
             ),
             self.hass.async_create_background_task(
                 self._outbox(), "Family Assistant Telegram outbox"
+            ),
+            self.hass.async_create_background_task(
+                self._conversations(), "Family Assistant conversation inbox"
             ),
         ]
 
@@ -121,6 +127,36 @@ class TelegramManager:
         )
         return str(result["message_id"])
 
+    async def _conversations(self):
+        while not self._stopped:
+            try:
+                if (job := self.jobs.next(self.bot["id"])) is not None:
+                    cancelled = False
+                    try:
+                        actor = self.jobs.authorize(job, dt_util.utcnow())
+                        if not self.runtime.assistant:
+                            raise DomainError("provider_not_configured")
+                        response = await self.runtime.assistant.respond(
+                            actor,
+                            job["content"],
+                            job["id"],
+                            dt_util.parse_datetime(job["created_at"]),
+                            job["refs"],
+                            quoted_text=job.get("quoted_text", ""),
+                        )
+                        self.jobs.authorize(job, dt_util.utcnow())
+                    except (DomainError, TimeoutError) as err:
+                        code = err.code if isinstance(err, DomainError) else "provider_timeout"
+                        cancelled = code == "forbidden"
+                        response = COPY[job["language"]]["error"].format(
+                            error=ERRORS[job["language"]].get(code, code)
+                        )
+                    await self.jobs.finish(job, response, dt_util.utcnow(), cancelled=cancelled)
+                    self.runtime.updated()
+            except OSError:
+                self.runtime.health["conversation"] = "storage_error"
+            await asyncio.sleep(1)
+
     async def process(self, update):
         if not isinstance(update, dict):
             return
@@ -159,25 +195,57 @@ class TelegramManager:
                         if not isinstance(content, str) or len(content.encode()) > 64:
                             raise DomainError("invalid_field")
                         parts = content.rsplit(":", 2)
-                        if len(parts) != 3 or not parts[0].startswith("fa:"):
+                        if (
+                            len(parts) == 3
+                            and parts[0] == "fp"
+                            and parts[1] in {"confirm", "cancel"}
+                        ):
+                            response = await route(
+                                engine,
+                                actor,
+                                f"/{parts[1]} {parts[2]}",
+                                f"tg:{self.bot['id']}:{update_id}:action",
+                                now,
+                            )
+                            parts = None
+                        if parts is not None and (
+                            len(parts) != 3 or not parts[0].startswith("fa:")
+                        ):
                             raise DomainError("unknown_action")
-                        result = await engine.execute(
-                            actor,
-                            "alarms.answer",
-                            {
-                                "id": parts[0][3:],
-                                "nonce": parts[1],
-                                "answer": int(parts[2]),
-                            },
-                            f"tg:{self.bot['id']}:{update_id}:action",
-                            now,
-                        )
-                        response = (
-                            t["accepted"].format(stage=t[result["run"]["stage"]])
-                            if result["accepted"]
-                            else t["wrong"]
-                        )
+                        if parts is not None:
+                            result = await engine.execute(
+                                actor,
+                                "alarms.answer",
+                                {
+                                    "id": parts[0][3:],
+                                    "nonce": parts[1],
+                                    "answer": int(parts[2]),
+                                },
+                                f"tg:{self.bot['id']}:{update_id}:action",
+                                now,
+                            )
+                            response = (
+                                t["accepted"].format(stage=t[result["run"]["stage"]])
+                                if result["accepted"]
+                                else t["wrong"]
+                            )
                     elif (content := addressed(message, self.bot)) is not None:
+
+                        async def slow(actor, content, operation_id, received, refs):
+                            if not self.runtime.assistant:
+                                return t["unknown"]
+                            return await self.jobs.enqueue(
+                                actor,
+                                content,
+                                operation_id,
+                                received,
+                                refs,
+                                bot_id=self.bot["id"],
+                                chat_id=chat["id"],
+                                reply_to=envelope.get("message_id"),
+                                quoted_text=message.get("reply_to_message", {}).get("text", ""),
+                            )
+
                         response = await route(
                             engine,
                             actor,
@@ -185,6 +253,7 @@ class TelegramManager:
                             f"tg:{self.bot['id']}:{update_id}:action",
                             now,
                             reply_refs(engine.snapshot(), message, self.bot),
+                            fallback=slow,
                         )
                 except (DomainError, ValueError) as err:
                     code = err.code if isinstance(err, DomainError) else "invalid_field"

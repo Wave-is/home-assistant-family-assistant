@@ -16,6 +16,7 @@ from . import (
     delivery,
     household,
     members,
+    proposals,
     settings,
     shopping,
     task_events,
@@ -33,6 +34,7 @@ HANDLERS = {
     "court": court.handle,
     "alarms": alarms.handle,
     "notifications": delivery.handle,
+    "conversation": proposals.handle,
 }
 BUCKETS = (
     "members",
@@ -58,6 +60,8 @@ BUCKETS = (
     "notification_rates",
     "enrollments",
     "telegram",
+    "proposals",
+    "assistant_jobs",
 )
 
 
@@ -114,6 +118,8 @@ class Engine:
         self._state = deepcopy(state)
         self._state.setdefault("task_series", {})
         self._state.setdefault("incidents", {})
+        self._state.setdefault("proposals", {})
+        self._state.setdefault("assistant_jobs", {})
         self._persist = persist
         self._lock = asyncio.Lock()
 
@@ -180,6 +186,11 @@ class Engine:
             }
             for record in self._state["task_series"].values()
             if parent or actor_id in record["assignees"]
+        ]
+        data["proposals"] = [
+            {k: record[k] for k in ("id", "status", "preview", "expires_at")}
+            for record in self._state["proposals"].values()
+            if record["actor"] == actor_id and record["status"] == "pending"
         ]
         if parent:
             data["delivery_issues"] = [
