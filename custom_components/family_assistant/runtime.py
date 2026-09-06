@@ -37,6 +37,8 @@ class Runtime:
             listener()
         if self.scheduler:
             self.scheduler.request()
+        if self.network:
+            self.network.request_effects()
 
 
 def get_runtime(hass, entry_id: str) -> Runtime:

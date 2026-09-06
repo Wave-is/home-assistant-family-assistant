@@ -175,3 +175,20 @@ def test_router_interfaces_are_protected_and_features_not_guessed(now):
     assert result["devices"][0]["protected"] and result["fasttrack"]
     assert result["ipv6"] == "unknown_or_enabled"
     assert result["capabilities"]["wifi"] == "network_missing"
+
+
+@pytest.mark.asyncio
+async def test_typed_write_methods_require_opt_in_and_do_not_accept_console_paths():
+    session = Session(Response(200, []), Response(200, {}), Response(204, b""))
+    reader = client(session)
+    with pytest.raises(DomainError, match="network_readonly"):
+        await reader.make_static("*1")
+    writer = client(session, allow_write=True)
+    with pytest.raises(DomainError, match="network_target"):
+        await writer.make_static("*1/../system/reboot")
+    await writer.make_static("*1")
+    await writer.set_comment("*A", "Chosen name; still JSON data")
+    await writer.remove_reservation("*A")
+    assert [call[0] for call in session.calls] == ["POST", "PATCH", "DELETE"]
+    assert session.calls[0][2]["json"] == {"numbers": "*1"}
+    assert session.calls[1][2]["json"] == {"comment": "Chosen name; still JSON data"}

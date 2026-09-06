@@ -30,13 +30,27 @@ async def run_network(hass, entry, owner, child_id):
                 "status": "bound",
                 "comment": "Existing",
                 "dynamic": "true",
+                "server": "lan",
             }
         ],
+        "servers": [{"name": "lan", "interface": "lan"}],
+        "networks": [{"address": "198.51.100.0/24"}],
+        "addresses": [{"address": "198.51.100.1/24", "interface": "lan"}],
     }
     failure = False
+    writes = []
 
     async def request(_self, method, path, **_kwargs):
-        assert method == "GET"
+        if method != "GET":
+            writes.append((method, path))
+            if method == "POST" and path == "ip/dhcp-server/lease/make-static":
+                assert _kwargs["json"] == {"numbers": "*1"}
+                tables["leases"][0].update({".id": "*A", "dynamic": "false"})
+                return []
+            if method == "PATCH" and path == "ip/dhcp-server/lease/*A":
+                tables["leases"][0].update(_kwargs["json"])
+                return deepcopy(tables["leases"][0])
+            raise AssertionError("Unexpected router write in smoke test")
         if failure == "deadline":
             raise TimeoutError
         if failure:
@@ -129,6 +143,63 @@ async def run_network(hass, entry, owner, child_id):
         )
         assert flow["errors"]["base"] == "network_credential_scope"
         flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {**config, "allow_write": True}
+        )
+        assert flow["errors"]["base"] == "network_management_required"
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"],
+            {
+                **config,
+                "allow_write": True,
+                "ha_mac": "02:11:22:33:44:77",
+                "management_mac": "02:11:22:33:44:88",
+                "management_confirmed": True,
+            },
+        )
+        assert flow["type"] == "create_entry", flow
+        await hass.async_block_till_done()
+        manager = entry.runtime_data.network
+        await manager._task
+        planned = await engine.execute(
+            "owner",
+            "mikrotik.lease_plan",
+            {"leases": [{"id": "*1", "comment": "Selected name", "replace_comment": True}]},
+            "smoke-lease-plan",
+            datetime.now(UTC),
+        )
+        assert planned["status"] == "preview" and not writes
+        command = {"id": planned["id"], "confirmed": True, "dhcp_recovery": True}
+        await engine.execute(
+            "owner", "mikrotik.lease_apply", command, "smoke-lease-apply", datetime.now(UTC)
+        )
+        entry.runtime_data.updated()
+        await manager._effects_task
+        result = engine.snapshot()["network"]["plans"][planned["id"]]
+        assert result["status"] == "applied", result
+        assert result["progress"]["targets"][0]["phase"] == "verified"
+        assert writes == [
+            ("POST", "ip/dhcp-server/lease/make-static"),
+            ("PATCH", "ip/dhcp-server/lease/*A"),
+        ]
+        assert engine.view("owner")["network"]["inventory"]["devices"][0]["comments"] == [
+            "Selected name"
+        ]
+        await engine.execute(
+            "owner", "mikrotik.lease_apply", command, "smoke-lease-apply", datetime.now(UTC)
+        )
+        assert len(writes) == 2
+        assert (
+            len(
+                [
+                    event
+                    for event in engine.snapshot()["outbox"].values()
+                    if event["key"] == "network_plan_finished"
+                ]
+            )
+            == 1
+        )
+        flow = await options()
+        flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"enabled": False}
         )
         assert flow["type"] == "create_entry"
@@ -136,7 +207,7 @@ async def run_network(hass, entry, owner, child_id):
         assert entry.runtime_data.network is None
     print(
         "PASS: real HA RouterOS options, registry MAC matching, private projections "
-        "and stale-data preservation"
+        "and stale-data preservation; explicit write scope, lease preview/apply/read-back/replay"
     )
 
 

@@ -71,15 +71,19 @@ class RouterClient:
         except (DomainError, ValueError):
             raise DomainError("network_url") from None
         self.session = session
+        self._write_enabled = config.get("allow_write") is True
         username = text(config.get("username"), "username", 128)
         text(config.get("password"), "password", 1024)
         password = config["password"]  # Leading/trailing password spaces are significant.
         if ":" in username or any(ord(c) < 32 for c in username):
             raise DomainError("invalid_field", "username")
-        self._headers = {
-            "Authorization": "Basic "
-            + base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
-        }
+        try:
+            self._headers = {
+                "Authorization": "Basic "
+                + base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
+            }
+        except UnicodeError:
+            raise DomainError("invalid_field", "credentials") from None
         if tls_context is False:
             raise DomainError("network_certificate")
         self._tls = tls_context
@@ -108,6 +112,28 @@ class RouterClient:
             raise DomainError("network_version")
         await self.read("leases")
         return {"version": resource[0]["version"]}
+
+    def _write_target(self, target):
+        from .leases import identifier
+
+        if not self._write_enabled:
+            raise DomainError("network_readonly")
+        return identifier(target)
+
+    async def make_static(self, target):
+        target = self._write_target(target)
+        await self._request("POST", "ip/dhcp-server/lease/make-static", json={"numbers": target})
+
+    async def set_comment(self, target, comment):
+        target = self._write_target(target)
+        if not isinstance(comment, str) or len(comment) > 255 or any(ord(c) < 32 for c in comment):
+            raise DomainError("invalid_field", "comment")
+        await self._request("PATCH", "ip/dhcp-server/lease/" + target, json={"comment": comment})
+
+    async def remove_reservation(self, target):
+        """Only for an explicitly approved rollback of a newly converted lease."""
+        target = self._write_target(target)
+        await self._request("DELETE", "ip/dhcp-server/lease/" + target)
 
     async def inventory(self):
         # Required table failing does not replace a known inventory with an empty list.
@@ -148,7 +174,7 @@ class RouterClient:
                     body.extend(chunk)
                     if len(body) > 2097152:
                         raise DomainError("network_response")
-                return json.loads(body)
+                return None if method == "DELETE" and not body else json.loads(body)
         except DomainError:
             raise
         except aiohttp.ClientSSLError:

@@ -1,7 +1,8 @@
 # Optional RouterOS module
 
-Connection and inventory are implemented; applying mutation plans, Kid Control and
-allowlist enforcement remain separate acceptance gates. No production router
+Connection, inventory and reviewed lease plans are implemented and tested with a
+synthetic router in real HA. Live RouterOS acceptance, Kid Control and allowlist
+enforcement remain separate gates. No production router
 changes are made by installation, options validation or inventory polling.
 
 The client follows the [RouterOS REST API](https://manual.mikrotik.com/docs/developer-guides/rest-api/)
@@ -14,7 +15,7 @@ Use a dedicated custom RouterOS group with `read,rest-api` for inventory.
 The built-in `read` group includes more privileges than its name suggests;
 RouterOS policies are not a field-level ACL. See the official
 [user policy documentation](https://manual.mikrotik.com/docs/authentication-authorization-accounting/user/).
-Future explicitly approved writes require `write`; this does not justify adding
+Explicitly approved writes require `write`; this does not justify adding
 `reboot`, `policy`, `sniff`, `sensitive`, SSH, FTP or WinBox.
 
 The table and property allowlists cover DHCP leases/servers/networks, ARP, bridge
@@ -31,18 +32,32 @@ matches remain ambiguous. Locally administered MACs are flagged, not declared
 random or malicious. Router interfaces are protected. The current inventory is
 parent-only in authenticated HA APIs; it is not forwarded to a language model.
 
-## Mutation requirements still to implement
+## Reviewed lease changes
 
-The pure lease preview and conflict/protection checks are unit-tested. They are
-not exposed as a router write operation yet; the following application gates remain.
+Only owners perform bulk lease administration. Connection options require
+explicit write enablement plus verified, protected HA-host and administration
+device MACs. Preview selection preserves comments unless replacement is checked.
+No mutation runs while the preview is being prepared. Plans expire after five
+minutes and bind to the configured router, user and protected-device scope.
 
-- Static-lease previews must preserve comments by default, check current IP/MAC,
-  server and subnet conflicts, bind to a live fingerprint and expire. Apply only
-  selected records, preserve exact pre-state and read back every operation.
+- Static-lease previews check IP/MAC, DHCP server and interface-subnet conflicts.
+  Applying repeats those checks, journals each effect intent in Store before
+  sending it and verifies the selected records after the operation. Only typed
+  make-static, comment and approved reservation-compensation methods exist.
 - RouterOS has `make-static` but no equivalent way to reconstruct a dynamic
   lease verbatim. A rollback that removes a new reservation leaves recovery to
-  DHCP renewal; the UI must explain and explicitly authorize that distinction.
-  Never claim an exact rollback from a guessed dynamic flag.
+  DHCP renewal; the UI explains this and requires explicit recovery consent.
+  No exact dynamic-lease rollback is claimed. A failed read-back triggers scoped
+  compensation; a concurrent user edit or revoked authority stops further writes
+  and marks the plan for review. Disk failure stops effects immediately.
+- Timeout after an accepted write is resolved by reading its result, not blindly
+  repeating the write. Persisted phases let an interrupted operation reconcile
+  its already-applied conversion. A replayed confirmation cannot run it twice.
+  Final status is saved before an owner-private notification. Network inventory
+  is not posted to a family group by this workflow.
+
+## Remaining control gates
+
 - Kid Control resume means return to its configured schedule, not unrestricted
   access. Temporary grants need a router-local expiry before they are called
   autonomous. Restriction state is not proof that FastTrack, IPv6 or downstream

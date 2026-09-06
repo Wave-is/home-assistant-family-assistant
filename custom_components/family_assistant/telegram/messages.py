@@ -4,6 +4,9 @@ from ..notifications import DeliveryError
 
 MESSAGES = {
     "en": {
+        "network_plan_finished": (
+            "🌐 Network plan {id}: {status}. Details and read-back are on the Home network card."
+        ),
         "alarm_challenge": "⏰ Wake-up check: {question} = ?\nChoose the answer below.",
         "alarm_missed": "⏰ {member}: wake-up was not confirmed within 30 minutes.",
         "alarm_closed": "✅ {member}: the wake-up incident is closed ({stage}).",
@@ -21,6 +24,10 @@ MESSAGES = {
         "court_appeal": "⚖️ An appeal needs a parent's review: {id}",
     },
     "ru": {
+        "network_plan_finished": (
+            "🌐 План сети {id}: {status}. "
+            "Подробности и результат проверки — в карточке домашней сети."
+        ),
         "alarm_challenge": "⏰ Проверка подъёма: {question} = ?\nВыберите ответ кнопкой.",
         "alarm_missed": "⏰ {member}: подъём не подтверждён за 30 минут.",
         "alarm_closed": "✅ {member}: проверка подъёма закрыта ({stage}).",
@@ -40,6 +47,10 @@ MESSAGES = {
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
     },
     "uk": {
+        "network_plan_finished": (
+            "🌐 План мережі {id}: {status}. "
+            "Подробиці й результат перевірки — у картці домашньої мережі."
+        ),
         "alarm_challenge": "⏰ Перевірка підйому: {question} = ?\nВиберіть відповідь кнопкою.",
         "alarm_missed": "⏰ {member}: підйом не підтверджено за 30 хвилин.",
         "alarm_closed": "✅ {member}: перевірку підйому закрито ({stage}).",
@@ -117,6 +128,28 @@ def render(event, target, state):
         )
         data["title"] = record.get("title", record.get("name", ""))
         data["member"] = state["members"].get(data.get("member"), {}).get("name", "")
+        if event["key"] == "network_plan_finished":
+            labels = {
+                "en": {
+                    "applied": "applied and verified",
+                    "rolled_back": "compensated; check DHCP recovery",
+                    "review_required": "needs your review",
+                    "failed": "not applied",
+                },
+                "ru": {
+                    "applied": "применён и проверен",
+                    "rolled_back": "выполнен откат; проверьте восстановление DHCP",
+                    "review_required": "нужна ваша проверка",
+                    "failed": "не применён",
+                },
+                "uk": {
+                    "applied": "застосовано й перевірено",
+                    "rolled_back": "виконано відкат; перевірте відновлення DHCP",
+                    "review_required": "потрібна ваша перевірка",
+                    "failed": "не застосовано",
+                },
+            }
+            data["status"] = labels.get(language, labels["en"]).get(data["status"], data["status"])
         result = {"chat_id": target["id"], "text": template.format(**data)[:4000]}
     result["link_preview_options"] = {"is_disabled": True}
     if event["key"] == "alarm_challenge":

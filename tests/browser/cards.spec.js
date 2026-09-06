@@ -1,5 +1,26 @@
 import {test,expect} from "@playwright/test";
 
+test("lease changes need a selected preview and DHCP recovery consent",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru&write=1");
+ await page.getByRole("button",{name:"Выбрать подходящие динамические лизы",exact:true}).click();
+ await page.getByText("Выбрать лиз · 198.51.100.10 · lan",{exact:true}).click();
+ await page.getByLabel("Предлагаемый комментарий",{exact:true}).fill("Selected phone");
+ await page.getByLabel("Заменить существующий комментарий",{exact:true}).check();
+ await page.getByRole("button",{name:"Предпросмотр выбранных лизов",exact:true}).click();
+ expect((await page.evaluate(()=>window.calls))[0].payload).toEqual({leases:[{id:"*1",comment:"Selected phone",replace_comment:true}]});
+ await page.getByRole("button",{name:"Применить проверенный план",exact:true}).click();
+ expect(await page.evaluate(()=>window.calls.length)).toBe(1);
+ await page.getByRole("heading",{name:"Домашняя сеть",exact:true}).click();
+ await page.screenshot({path:"test-results/network-plan-mobile-ru.png",fullPage:true});
+ await page.getByLabel(/Понимаю: откат преобразования/).check();
+ await page.getByRole("button",{name:"Применить проверенный план",exact:true}).click();
+ const call=(await page.evaluate(()=>window.calls))[1];
+ expect(call.action).toBe("mikrotik.lease_apply");expect(call.payload).toEqual({id:"N000001",confirmed:true,dhcp_recovery:true});
+ await expect(page.getByText("N000001 · Применён и проверен",{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
 test("network evidence is readable on mobile and refresh is read-only",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru");

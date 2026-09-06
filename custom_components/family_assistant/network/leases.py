@@ -81,6 +81,8 @@ def preview(tables, selection, now, *, protected_macs=()):
         if len(matches) != 1:
             raise DomainError("network_target")
         before = deepcopy(matches[0])
+        if before.get("dynamic") not in {"true", "false"}:
+            raise DomainError("network_target")
         identity = mac(before.get("mac-address"))
         if not identity or identity in protected:
             raise DomainError("network_protected")

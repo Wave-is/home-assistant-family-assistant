@@ -102,7 +102,14 @@
       "network_target": "The selected lease is missing, inactive or unsupported. Refresh the inventory.",
       "network_conflict": "The lease identity, IP or server is ambiguous or changed. No further change was applied.",
       "network_protected": "This target is protected or has no valid unicast MAC.",
-      "network_subnet": "The IP, DHCP server and interface subnet could not be verified."
+      "network_subnet": "The IP, DHCP server and interface subnet could not be verified.",
+      "network_readonly": "Router writes are disabled in connection settings.",
+      "network_recovery_consent": "Confirm DHCP recovery: rollback of conversion removes the new reservation; dynamic leases return through DHCP renewal, not an exact restoration.",
+      "network_confirmation": "Review the selected records and explicitly confirm this plan.",
+      "network_readback": "The router read-back did not match the requested result. Check the plan; do not assume success.",
+      "network_management_required": "Specify and confirm protected HA-host and administration-device MACs before allowing writes.",
+      "network_stale": "The inventory is too old. Read the router again before preparing a plan.",
+      "network_busy": "Another network plan is still running. Wait for its verified result."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -241,13 +248,17 @@
       },
       "mikrotik": {
         "title": "Read your MikroTik inventory",
-        "description": "Optional RouterOS 7 HTTPS REST connection. Enable MikroTik in Household preferences too. Use your own dedicated account with read and rest-api only for inventory, not the built-in read group (it has extra powers). This step makes no router changes. A custom CA certificate may be pasted below; verification is never disabled. Do not paste a private key. Passwords stay in local HA options. Blank preserves the password; changing server or username requires entering it again.",
+        "description": "Optional RouterOS 7 HTTPS REST connection. Enable MikroTik in Household preferences too. Use your own dedicated account with read and rest-api only for inventory, not the built-in read group (it has extra powers). This step makes no router changes. A custom CA certificate may be pasted below; verification is never disabled. Do not paste a private key. Passwords stay in local HA options. Blank preserves the password; changing server or username requires entering it again. Optional writes need a dedicated account with read,write,rest-api. Write is a broad RouterOS policy; this integration exposes only selected lease plans. Specify and verify the HA host and your administration device as protected MACs before enabling. Saving these settings makes no router changes; each plan requires separate confirmation.",
         "data": {
           "enabled": "Enable connection",
           "url": "HTTPS router URL",
           "username": "Dedicated username",
           "password": "Password",
-          "ca_pem": "Optional trusted CA certificate (PEM)"
+          "ca_pem": "Optional trusted CA certificate (PEM)",
+          "allow_write": "Allow selected lease changes",
+          "ha_mac": "Protected Home Assistant host MAC",
+          "management_mac": "Protected administration device MAC",
+          "management_confirmed": "I verified these management devices and authorize only reviewed lease plans"
         }
       }
     },
@@ -329,7 +340,14 @@
       "network_target": "The selected lease is missing, inactive or unsupported. Refresh the inventory.",
       "network_conflict": "The lease identity, IP or server is ambiguous or changed. No further change was applied.",
       "network_protected": "This target is protected or has no valid unicast MAC.",
-      "network_subnet": "The IP, DHCP server and interface subnet could not be verified."
+      "network_subnet": "The IP, DHCP server and interface subnet could not be verified.",
+      "network_readonly": "Router writes are disabled in connection settings.",
+      "network_recovery_consent": "Confirm DHCP recovery: rollback of conversion removes the new reservation; dynamic leases return through DHCP renewal, not an exact restoration.",
+      "network_confirmation": "Review the selected records and explicitly confirm this plan.",
+      "network_readback": "The router read-back did not match the requested result. Check the plan; do not assume success.",
+      "network_management_required": "Specify and confirm protected HA-host and administration-device MACs before allowing writes.",
+      "network_stale": "The inventory is too old. Read the router again before preparing a plan.",
+      "network_busy": "Another network plan is still running. Wait for its verified result."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -620,6 +638,27 @@
     },
     "network_subnet": {
       "message": "The IP, DHCP server and interface subnet could not be verified."
+    },
+    "network_readonly": {
+      "message": "Router writes are disabled in connection settings."
+    },
+    "network_recovery_consent": {
+      "message": "Confirm DHCP recovery: rollback of conversion removes the new reservation; dynamic leases return through DHCP renewal, not an exact restoration."
+    },
+    "network_confirmation": {
+      "message": "Review the selected records and explicitly confirm this plan."
+    },
+    "network_readback": {
+      "message": "The router read-back did not match the requested result. Check the plan; do not assume success."
+    },
+    "network_management_required": {
+      "message": "Specify and confirm protected HA-host and administration-device MACs before allowing writes."
+    },
+    "network_stale": {
+      "message": "The inventory is too old. Read the router again before preparing a plan."
+    },
+    "network_busy": {
+      "message": "Another network plan is still running. Wait for its verified result."
     }
   },
   "selector": {

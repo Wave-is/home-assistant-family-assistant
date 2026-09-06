@@ -78,7 +78,14 @@ export const ERRORS = {
     "network_target": "The selected lease is missing, inactive or unsupported. Refresh the inventory.",
     "network_conflict": "The lease identity, IP or server is ambiguous or changed. No further change was applied.",
     "network_protected": "This target is protected or has no valid unicast MAC.",
-    "network_subnet": "The IP, DHCP server and interface subnet could not be verified."
+    "network_subnet": "The IP, DHCP server and interface subnet could not be verified.",
+    "network_readonly": "Router writes are disabled in connection settings.",
+    "network_recovery_consent": "Confirm DHCP recovery: rollback of conversion removes the new reservation; dynamic leases return through DHCP renewal, not an exact restoration.",
+    "network_confirmation": "Review the selected records and explicitly confirm this plan.",
+    "network_readback": "The router read-back did not match the requested result. Check the plan; do not assume success.",
+    "network_management_required": "Specify and confirm protected HA-host and administration-device MACs before allowing writes.",
+    "network_stale": "The inventory is too old. Read the router again before preparing a plan.",
+    "network_busy": "Another network plan is still running. Wait for its verified result."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -158,7 +165,14 @@ export const ERRORS = {
     "network_target": "Выбранный лиз отсутствует, неактивен или не поддерживается. Обновите инвентарь.",
     "network_conflict": "MAC, IP или сервер лиза неоднозначны либо изменились. Дальнейшее изменение не применено.",
     "network_protected": "Это устройство защищено или у него нет корректного индивидуального MAC.",
-    "network_subnet": "Не удалось проверить соответствие IP, DHCP-сервера и подсети интерфейса."
+    "network_subnet": "Не удалось проверить соответствие IP, DHCP-сервера и подсети интерфейса.",
+    "network_readonly": "Запись на роутер выключена в настройках подключения.",
+    "network_recovery_consent": "Подтвердите восстановление DHCP: откат преобразования удаляет новую резервацию; динамический лиз появится при DHCP-обновлении, это не точное восстановление.",
+    "network_confirmation": "Просмотрите выбранные записи и явно подтвердите план.",
+    "network_readback": "Повторное чтение роутера не подтвердило ожидаемый результат. Проверьте план; успех не подтверждён.",
+    "network_management_required": "Перед разрешением записи задайте и подтвердите защищённые MAC хоста HA и устройства администратора.",
+    "network_stale": "Инвентарь устарел. Перечитайте роутер перед подготовкой плана.",
+    "network_busy": "Другой сетевой план ещё выполняется. Дождитесь проверенного результата."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -238,6 +252,13 @@ export const ERRORS = {
     "network_target": "Вибраний ліз відсутній, неактивний або не підтримується. Оновіть інвентар.",
     "network_conflict": "MAC, IP або сервер ліза неоднозначні чи змінилися. Подальшу зміну не застосовано.",
     "network_protected": "Цей пристрій захищений або не має коректного індивідуального MAC.",
-    "network_subnet": "Не вдалося перевірити відповідність IP, DHCP-сервера й підмережі інтерфейсу."
+    "network_subnet": "Не вдалося перевірити відповідність IP, DHCP-сервера й підмережі інтерфейсу.",
+    "network_readonly": "Запис на роутер вимкнено в параметрах підключення.",
+    "network_recovery_consent": "Підтвердьте відновлення DHCP: відкат перетворення видаляє нову резервацію; динамічний ліз повернеться під час DHCP-оновлення, це не точне відновлення.",
+    "network_confirmation": "Перегляньте вибрані записи й явно підтвердьте план.",
+    "network_readback": "Повторне читання роутера не підтвердило очікуваний результат. Перевірте план; успіх не підтверджено.",
+    "network_management_required": "Перед дозволом запису задайте й підтвердьте захищені MAC хоста HA та пристрою адміністратора.",
+    "network_stale": "Інвентар застарів. Перечитайте роутер перед підготовкою плану.",
+    "network_busy": "Інший мережевий план ще виконується. Дочекайтеся перевіреного результату."
   }
 };

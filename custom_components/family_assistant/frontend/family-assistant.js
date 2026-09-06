@@ -2,7 +2,10 @@
 import {ERRORS} from "./errors.js";
 const COPY = {
   en: {
-    mikrotik:"Home network",networkRefresh:"Read router again",networkReadOnly:"Inventory only. Reading never changes leases or internet access.",networkParents:"Network inventory is available to parents only.",networkObserved:"Last successful observation",networkNoData:"Configure MikroTik in integration options and enable its module.",networkSources:"Sources",networkSuggestions:"Home Assistant matches",networkProtected:"Router interface — protected",networkUnknown:"No HA match",networkPrivateMac:"Locally administered MAC: check that this Wi-Fi network uses a fixed address.",networkAmbiguous:"Several equal matches — choose manually.",networkFasttrack:"FastTrack is enabled: rate limits and filtering need topology checks.",networkIPv6:"IPv6 is enabled or its state is unknown; IPv4-only restrictions are not enough.",networkUnavailable:"Unavailable tables",exact_mac:"Exact MAC",current_tracker_ip:"Current tracker IP",hostname_only:"Hostname only",networkMultiple:"Multiple current IP addresses",
+    networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
+    networkPrepare:"Preview selected leases",networkSelect:"Select lease",networkComment:"Proposed comment",networkReplace:"Replace existing comment",networkApply:"Apply reviewed plan",networkCancel:"Cancel plan",networkReview:"Review lease changes",networkConsent:"I understand: rollback of a conversion removes only its new reservation. Dynamic DHCP recovery requires renewal and is not an exact restoration.",networkWriteOff:"Writes are disabled. Enable reviewed changes and protect management devices in connection settings, then create a fresh plan.",networkToStatic:"Dynamic → static",networkNoChanges:"No change",networkExpired:"Preview expired — create a fresh one.",networkState_preview:"Preview only",networkState_queued:"Queued; not yet applied",networkState_applying:"Applying with read-back",networkState_rolling_back:"Compensating selected changes",networkState_applied:"Applied and verified",networkState_rolled_back:"Compensated — check DHCP recovery",networkState_review_required:"Needs your review",networkState_failed:"Not applied",networkState_cancelled:"Cancelled",networkSelectDynamic:"Select eligible dynamic leases",
+    networkPhase_ready:"Not started",networkPhase_converting:"Converting reservation",networkPhase_converted:"Reservation converted",networkPhase_commenting:"Updating comment",networkPhase_verified:"Verified on router",networkPhase_unchanged:"Unchanged",networkPhase_removing:"Removing newly created reservation",networkPhase_restoring_comment:"Restoring previous comment",networkPhase_restored:"Original settings restored",networkPhase_dhcp_recovery:"Reservation removed; DHCP renewal may be needed",
+    mikrotik:"Home network",networkRefresh:"Read router again",networkReadOnly:"Inventory only. Reading never changes leases or internet access.",networkParents:"Network inventory is available to parents only.",networkObserved:"Last successful observation",networkNoData:"Configure MikroTik in integration options and enable its module.",networkSources:"Sources",networkSuggestions:"Home Assistant matches",networkProtected:"Protected router or administration device",networkUnknown:"No HA match",networkPrivateMac:"Locally administered MAC: check that this Wi-Fi network uses a fixed address.",networkAmbiguous:"Several equal matches — choose manually.",networkFasttrack:"FastTrack is enabled: rate limits and filtering need topology checks.",networkIPv6:"IPv6 is enabled or its state is unknown; IPv4-only restrictions are not enough.",networkUnavailable:"Unavailable tables",exact_mac:"Exact MAC",current_tracker_ip:"Current tracker IP",hostname_only:"Hostname only",networkMultiple:"Multiple current IP addresses",
     conversation:"Family conversation",message:"Message",send:"Send",thinking:"Working on your request… Other cards remain available.",learnPhrase:"Teach a phrase",sourcePhrase:"Unrecognized phrase",canonicalPhrase:"Supported reusable command",learningHint:"Exact phrases are remembered for your account only. They never grant permissions or override built-in commands.",forgetPhrase:"Disable phrase",
     modelProposals:"Check my interpretation",confirmPlan:"Apply this plan",rejectPlan:"Cancel plan",proposalHint:"Nothing has changed yet. This plan expires at",
     advanced:"Advanced settings",
@@ -44,7 +47,10 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
-    mikrotik:"Домашняя сеть",networkRefresh:"Перечитать роутер",networkReadOnly:"Только инвентарь. Чтение не меняет лизы и доступ в интернет.",networkParents:"Инвентарь сети доступен только родителям.",networkObserved:"Последнее успешное наблюдение",networkNoData:"Настройте MikroTik в параметрах интеграции и включите модуль.",networkSources:"Источники",networkSuggestions:"Совпадения в Home Assistant",networkProtected:"Интерфейс роутера — защищён",networkUnknown:"Нет совпадения в HA",networkPrivateMac:"Локально назначенный MAC: проверьте, что для этой Wi-Fi-сети выбран постоянный адрес.",networkAmbiguous:"Несколько равных совпадений — нужен ручной выбор.",networkFasttrack:"FastTrack включён: ограничения скорости и фильтрацию нужно проверить с учётом топологии.",networkIPv6:"IPv6 включён или его состояние неизвестно; ограничений только IPv4 недостаточно.",networkUnavailable:"Недоступные таблицы",exact_mac:"Точное совпадение MAC",current_tracker_ip:"Текущий IP трекера",hostname_only:"Только hostname",networkMultiple:"Несколько текущих IP-адресов",
+    networkWriteHint:"Роутер меняют только выбранные и подтверждённые планы. Чтение инвентаря ничего не меняет.",
+    networkPrepare:"Предпросмотр выбранных лизов",networkSelect:"Выбрать лиз",networkComment:"Предлагаемый комментарий",networkReplace:"Заменить существующий комментарий",networkApply:"Применить проверенный план",networkCancel:"Отменить план",networkReview:"Проверка изменений лизов",networkConsent:"Понимаю: откат преобразования удалит только новую резервацию. Для восстановления динамического DHCP нужно обновление лиза; это не точное восстановление.",networkWriteOff:"Запись выключена. В параметрах подключения разрешите проверенные изменения и защитите устройства управления, затем создайте свежий план.",networkToStatic:"Динамический → статический",networkNoChanges:"Без изменений",networkExpired:"Предпросмотр истёк — создайте новый.",networkState_preview:"Только предпросмотр",networkState_queued:"В очереди; ещё не применён",networkState_applying:"Применяется с повторной проверкой",networkState_rolling_back:"Откат выбранных изменений",networkState_applied:"Применён и проверен",networkState_rolled_back:"Выполнен откат — проверьте DHCP",networkState_review_required:"Нужна ваша проверка",networkState_failed:"Не применён",networkState_cancelled:"Отменён",networkSelectDynamic:"Выбрать подходящие динамические лизы",
+    networkPhase_ready:"Не начато",networkPhase_converting:"Преобразование резервации",networkPhase_converted:"Резервация преобразована",networkPhase_commenting:"Обновление комментария",networkPhase_verified:"Проверено на роутере",networkPhase_unchanged:"Без изменений",networkPhase_removing:"Удаление новой резервации",networkPhase_restoring_comment:"Восстановление комментария",networkPhase_restored:"Исходные настройки восстановлены",networkPhase_dhcp_recovery:"Резервация удалена; может требоваться обновление DHCP",
+    mikrotik:"Домашняя сеть",networkRefresh:"Перечитать роутер",networkReadOnly:"Только инвентарь. Чтение не меняет лизы и доступ в интернет.",networkParents:"Инвентарь сети доступен только родителям.",networkObserved:"Последнее успешное наблюдение",networkNoData:"Настройте MikroTik в параметрах интеграции и включите модуль.",networkSources:"Источники",networkSuggestions:"Совпадения в Home Assistant",networkProtected:"Защищённое устройство роутера или управления",networkUnknown:"Нет совпадения в HA",networkPrivateMac:"Локально назначенный MAC: проверьте, что для этой Wi-Fi-сети выбран постоянный адрес.",networkAmbiguous:"Несколько равных совпадений — нужен ручной выбор.",networkFasttrack:"FastTrack включён: ограничения скорости и фильтрацию нужно проверить с учётом топологии.",networkIPv6:"IPv6 включён или его состояние неизвестно; ограничений только IPv4 недостаточно.",networkUnavailable:"Недоступные таблицы",exact_mac:"Точное совпадение MAC",current_tracker_ip:"Текущий IP трекера",hostname_only:"Только hostname",networkMultiple:"Несколько текущих IP-адресов",
     conversation:"Семейный разговор",message:"Сообщение",send:"Отправить",thinking:"Разбираю обращение… Остальные карточки продолжают работать.",learnPhrase:"Обучить фразе",sourcePhrase:"Непонятная фраза",canonicalPhrase:"Поддерживаемая повторяемая команда",learningHint:"Точные фразы запоминаются только для вашего аккаунта. Они не дают прав и не заменяют встроенные команды.",forgetPhrase:"Отключить фразу",
     modelProposals:"Проверьте, правильно ли я понял",confirmPlan:"Выполнить план",rejectPlan:"Отменить план",proposalHint:"Пока ничего не изменено. Предложение действует до",
     advanced:"Дополнительные настройки",
@@ -86,7 +92,10 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
-    mikrotik:"Домашня мережа",networkRefresh:"Перечитати роутер",networkReadOnly:"Лише інвентар. Читання не змінює лізи й доступ до інтернету.",networkParents:"Інвентар мережі доступний лише батькам.",networkObserved:"Останнє успішне спостереження",networkNoData:"Налаштуйте MikroTik у параметрах інтеграції та увімкніть модуль.",networkSources:"Джерела",networkSuggestions:"Збіги в Home Assistant",networkProtected:"Інтерфейс роутера — захищений",networkUnknown:"Немає збігу в HA",networkPrivateMac:"Локально призначений MAC: перевірте, що для цієї Wi-Fi-мережі вибрано постійну адресу.",networkAmbiguous:"Кілька рівних збігів — потрібен ручний вибір.",networkFasttrack:"FastTrack увімкнено: обмеження швидкості й фільтрацію слід перевірити з урахуванням топології.",networkIPv6:"IPv6 увімкнено або його стан невідомий; обмежень лише IPv4 недостатньо.",networkUnavailable:"Недоступні таблиці",exact_mac:"Точний збіг MAC",current_tracker_ip:"Поточний IP трекера",hostname_only:"Лише hostname",networkMultiple:"Кілька поточних IP-адрес",
+    networkWriteHint:"Роутер змінюють лише вибрані й підтверджені плани. Читання інвентарю нічого не змінює.",
+    networkPrepare:"Попередній перегляд вибраних лізів",networkSelect:"Вибрати ліз",networkComment:"Пропонований коментар",networkReplace:"Замінити чинний коментар",networkApply:"Застосувати перевірений план",networkCancel:"Скасувати план",networkReview:"Перевірка змін лізів",networkConsent:"Розумію: відкат перетворення видалить лише нову резервацію. Для відновлення динамічного DHCP потрібне оновлення ліза; це не точне відновлення.",networkWriteOff:"Запис вимкнено. У параметрах підключення дозвольте перевірені зміни й захистіть пристрої керування, потім створіть свіжий план.",networkToStatic:"Динамічний → статичний",networkNoChanges:"Без змін",networkExpired:"Попередній перегляд застарів — створіть новий.",networkState_preview:"Лише попередній перегляд",networkState_queued:"У черзі; ще не застосовано",networkState_applying:"Застосовується з повторною перевіркою",networkState_rolling_back:"Відкат вибраних змін",networkState_applied:"Застосовано й перевірено",networkState_rolled_back:"Виконано відкат — перевірте DHCP",networkState_review_required:"Потрібна ваша перевірка",networkState_failed:"Не застосовано",networkState_cancelled:"Скасовано",networkSelectDynamic:"Вибрати придатні динамічні лізи",
+    networkPhase_ready:"Не розпочато",networkPhase_converting:"Перетворення резервації",networkPhase_converted:"Резервацію перетворено",networkPhase_commenting:"Оновлення коментаря",networkPhase_verified:"Перевірено на роутері",networkPhase_unchanged:"Без змін",networkPhase_removing:"Видалення нової резервації",networkPhase_restoring_comment:"Відновлення коментаря",networkPhase_restored:"Початкові налаштування відновлено",networkPhase_dhcp_recovery:"Резервацію видалено; може бути потрібне оновлення DHCP",
+    mikrotik:"Домашня мережа",networkRefresh:"Перечитати роутер",networkReadOnly:"Лише інвентар. Читання не змінює лізи й доступ до інтернету.",networkParents:"Інвентар мережі доступний лише батькам.",networkObserved:"Останнє успішне спостереження",networkNoData:"Налаштуйте MikroTik у параметрах інтеграції та увімкніть модуль.",networkSources:"Джерела",networkSuggestions:"Збіги в Home Assistant",networkProtected:"Захищений пристрій роутера або керування",networkUnknown:"Немає збігу в HA",networkPrivateMac:"Локально призначений MAC: перевірте, що для цієї Wi-Fi-мережі вибрано постійну адресу.",networkAmbiguous:"Кілька рівних збігів — потрібен ручний вибір.",networkFasttrack:"FastTrack увімкнено: обмеження швидкості й фільтрацію слід перевірити з урахуванням топології.",networkIPv6:"IPv6 увімкнено або його стан невідомий; обмежень лише IPv4 недостатньо.",networkUnavailable:"Недоступні таблиці",exact_mac:"Точний збіг MAC",current_tracker_ip:"Поточний IP трекера",hostname_only:"Лише hostname",networkMultiple:"Кілька поточних IP-адрес",
     conversation:"Сімейна розмова",message:"Повідомлення",send:"Надіслати",thinking:"Опрацьовую звернення… Інші картки працюють далі.",learnPhrase:"Навчити фразі",sourcePhrase:"Незрозуміла фраза",canonicalPhrase:"Підтримувана повторювана команда",learningHint:"Точні фрази запам’ятовуються лише для вашого акаунта. Вони не надають прав і не замінюють вбудовані команди.",forgetPhrase:"Вимкнути фразу",
     modelProposals:"Перевірте, чи правильно я зрозумів",confirmPlan:"Виконати план",rejectPlan:"Скасувати план",proposalHint:"Поки нічого не змінено. Пропозиція діє до",
     advanced:"Додаткові налаштування",
@@ -150,6 +159,7 @@ const STYLES = `
   fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:10px;margin:0;min-width:0}
   legend{font-size:12px;color:var(--secondary-text-color,#657d80);padding:0 5px}
   label:has(input[type=checkbox]){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px;min-height:36px}
+  label.check:has(input[type=checkbox]){flex-direction:row;align-items:flex-start;padding-top:8px}
   input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:0;padding:0;margin:0;accent-color:#087f70}
   details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
   [hidden]{display:none!important}
@@ -348,7 +358,7 @@ export class FamilyCard extends HTMLElement {
   }
   renderNetwork(body) {
     if(!this.parent){body.append(el("p",this.t.networkParents,"notice"));return;}
-    body.append(el("p",this.t.networkReadOnly,"sub"));
+    body.append(el("p",this._data.network?.writable?this.t.networkWriteHint:this.t.networkReadOnly,"sub"));
     const health=this._data.health?.mikrotik;if(health && health!=="network_connected"){const lang=this._config?.language || this._hass.language?.split("-")[0];body.append(el("p",(ERRORS[lang] || ERRORS.en)[health] || this.t.failure,"notice"));}
     body.append(this.button(this.t.networkRefresh,async()=>{
       if(this._writing)return;const generation=this._generation;this._writing=true;
@@ -358,11 +368,19 @@ export class FamilyCard extends HTMLElement {
     }));
     const inventory=this._data.network?.inventory;
     if(!inventory){body.append(el("p",this.t.networkNoData,"empty"));return;}
+    this.renderNetworkPlans(body);
+    const form=el("form");
+    if(this._data.role==="owner"){
+      if(!this._data.network?.writable)body.append(el("p",this.t.networkWriteOff,"notice"));
+      form.append(this.button(this.t.networkSelectDynamic,()=>{for(const box of form.querySelectorAll('input[name="leases"][data-dynamic="true"]'))if(!box.disabled)box.checked=true;}));
+      form.addEventListener("submit",event=>{event.preventDefault();const data=new FormData(form);const leases=data.getAll("leases").map(id=>({id,comment:data.get("comment:"+id),replace_comment:data.get("replace:"+id)==="on"}));this.command("mikrotik.lease_plan",{leases});});
+    }
     body.append(el("p",`${this.t.networkObserved}: ${new Date(inventory.observed_at).toLocaleString(this._hass.language)}`,"sub"));
     if(inventory.fasttrack)body.append(el("p",this.t.networkFasttrack,"notice"));
     if(inventory.ipv6!=="disabled")body.append(el("p",this.t.networkIPv6,"notice"));
     const missing=Object.entries(inventory.capabilities || {}).filter(([,v])=>v!=="available").map(([k])=>k);
     if(missing.length)body.append(el("p",`${this.t.networkUnavailable}: ${missing.join(", ")}`,"sub"));
+    if(this._data.role==="owner")body.append(form);
     for(const device of inventory.devices){
       const item=el("section",null,"item");item.append(el("strong",device.suggested_name || device.comments[0] || device.hostnames[0] || this.t.networkUnknown));
       item.append(el("p",`${device.mac} · ${device.addresses.join(", ")}`,"sub"));
@@ -371,7 +389,44 @@ export class FamilyCard extends HTMLElement {
       if(device.protected)item.append(el("p",this.t.networkProtected,"notice"));
       for(const warning of device.warnings){const key={locally_administered:"networkPrivateMac",ambiguous_identity:"networkAmbiguous",multiple_addresses:"networkMultiple"}[warning];if(key)item.append(el("p",this.t[key],"sub"));}
       if(device.suggestions.length){const details=el("details");details.append(el("summary",this.t.networkSuggestions));for(const match of device.suggestions)details.append(el("p",`${match.name}${match.area?" · "+match.area:""} — ${match.evidence.map(e=>this.t[e] || e).join(", ")}`,"sub"));item.append(details);}
-      body.append(item);
+      if(this._data.role==="owner"){
+        for(const lease of device.leases || []){
+          const details=el("details");details.append(el("summary",`${this.t.networkSelect} · ${lease.address} · ${lease.server}`));
+          const label=el("label",null,"check"),check=el("input");check.type="checkbox";check.name="leases";check.value=lease[".id"];check.dataset.dynamic=lease.dynamic;check.disabled=!!device.protected || lease.disabled==="true" || (lease.dynamic==="true" && lease.status!=="bound");label.append(check,el("span",this.t.networkSelect));details.append(label);
+          const input=this.input(details,"comment:"+lease[".id"],this.t.networkComment,"text",device.suggested_name || lease.comment || "");input.maxLength=255;input.required=false;
+          const replace=el("label",null,"check"),box=el("input");box.type="checkbox";box.name="replace:"+lease[".id"];replace.append(box,el("span",this.t.networkReplace));details.append(replace);item.append(details);
+        }
+        form.append(item);
+      }else body.append(item);
+    }
+    if(this._data.role==="owner"){const button=el("button",this.t.networkPrepare,"primary");button.type="submit";form.append(button);}
+  }
+  renderNetworkPlans(body){
+    const language=this._config?.language || this._hass.language?.split("-")[0],errors=ERRORS[language] || ERRORS.en;
+    for(const plan of (this._data.network?.plans || []).slice().reverse()){
+      const section=el("section",null,"item");section.append(el("strong",`${plan.id} · ${this.t["networkState_"+plan.status] || plan.status}`));
+      const details=el("details");details.open=plan.status==="preview";details.append(el("summary",this.t.networkReview));
+      for(const [index,target] of plan.targets.entries()){
+        const line=el("p",`${target.address} · ${target.mac}\n${target.convert?this.t.networkToStatic:target.changed?this.t.networkComment:this.t.networkNoChanges}\n${target.old_comment || "—"} → ${target.comment || "—"}`,"sub");
+        line.style.whiteSpace="pre-line";details.append(line);
+        const progress=plan.progress?.targets?.[index];
+        if(progress?.phase)details.append(el("p",this.t["networkPhase_"+progress.phase] || this.t.failure,"sub"));
+        if(progress?.error)details.append(el("p",errors[progress.error] || this.t.failure,"notice"));
+      }
+      section.append(details);
+      if(plan.progress?.failure)section.append(el("p",errors[plan.progress.failure] || this.t.failure,"notice"));
+      if(plan.status==="preview" && this._data.role==="owner"){
+        const expired=Date.parse(plan.expires_at)<=Date.now();
+        if(expired)section.append(el("p",this.t.networkExpired,"notice"));
+        if(!expired && this._data.network.writable){
+          const form=el("form");
+          if(plan.requires_dhcp_recovery_consent){const label=el("label",null,"check"),check=el("input");check.type="checkbox";check.name="dhcp_recovery";check.required=true;label.append(check,el("span",this.t.networkConsent));form.append(label);}
+          const apply=el("button",this.t.networkApply,"primary");apply.type="submit";form.append(apply);
+          form.addEventListener("submit",event=>{event.preventDefault();this.command("mikrotik.lease_apply",{id:plan.id,confirmed:true,dhcp_recovery:new FormData(form).get("dhcp_recovery")==="on"});});section.append(form);
+        }
+        section.append(this.button(this.t.networkCancel,()=>this.command("mikrotik.lease_cancel",{id:plan.id})));
+      }
+      body.append(section);
     }
   }
   renderConversation(body) {

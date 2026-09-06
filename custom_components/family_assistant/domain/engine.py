@@ -10,6 +10,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from ..const import DEFAULT_MODULES, LANGUAGES, MODULES, PRIVILEGED, SCHEMA_VERSION
+from ..network import plans as network_plans
 from . import (
     alarms,
     court,
@@ -35,6 +36,7 @@ HANDLERS = {
     "alarms": alarms.handle,
     "notifications": delivery.handle,
     "conversation": proposals.handle,
+    "mikrotik": network_plans.handle,
 }
 BUCKETS = (
     "members",
@@ -200,6 +202,11 @@ class Engine:
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
+                "writable": self._state["network"].get("writable", False),
+                "plans": [
+                    network_plans.public(p)
+                    for p in self._state["network"].get("plans", {}).values()
+                ][-20:],
             }
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}

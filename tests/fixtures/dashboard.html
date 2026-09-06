@@ -23,6 +23,7 @@ if(query.has("proposal")){data.settings.modules.push("conversation");data.propos
 if(view==="conversation"){data.settings.modules.push("conversation");data.learned_phrases=[];}
 if(view==="mikrotik"){data.settings.modules.push("mikrotik");data.network={inventory:{observed_at:"2026-09-06T08:00:00Z",fasttrack:true,ipv6:"disabled",capabilities:{wifi:"network_missing"},devices:[{mac:"02:11:22:33:44:55",addresses:["198.51.100.10"],comments:["Existing comment"],hostnames:["mobile"],sources:["leases","arp"],warnings:["locally_administered"],suggested_name:"Example phone",suggestions:[{name:"Example phone",evidence:["exact_mac"],confidence:100,area:"Bedroom"}]}]}};}
 window.calls=[];const card=document.createElement("family-assistant-card");card.setConfig({view,entry_id:"synthetic"});
+if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 card.hass={language,callWS:async message=>{
  if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
  if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
@@ -31,6 +32,8 @@ card.hass={language,callWS:async message=>{
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
    if(message.action==="conversation.confirm" || message.action==="conversation.reject")data.proposals=[];
    if(message.action==="conversation.learn")data.learned_phrases.push({id:"Lsynthetic",...message.payload,active:true,revision:1});
+   if(message.action==="mikrotik.lease_plan"){const target=message.payload.leases[0];data.network.plans=[{id:"N000001",status:"preview",expires_at:"2099-09-06T08:00:00Z",requires_dhcp_recovery_consent:true,targets:[{id:target.id,mac:"02:11:22:33:44:55",address:"198.51.100.10",server:"lan",old_comment:"Existing comment",comment:target.replace_comment?target.comment:"Existing comment",convert:true,changed:true,warnings:[]}]}];}
+   if(message.action==="mikrotik.lease_apply")data.network.plans[0].status="applied";
    return {id:"S000003"};
  }
  return structuredClone(data);

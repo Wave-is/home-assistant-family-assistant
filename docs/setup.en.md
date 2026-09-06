@@ -150,9 +150,18 @@ Blank password preserves the saved value, except when changing server/user.
 
 The Home network card shows devices, existing comments and HA match evidence.
 Ambiguous names require a manual choice; locally administered MAC does not prove
-an intruder. Read failures retain the last successful observation. This stage
-only reads: static conversion, Kid Control and allowlist actions are not yet
-enabled. See [network boundaries and remaining gates](network-architecture.md).
+an intruder. Read failures retain the last successful observation.
+
+For selected lease changes, the owner must separately allow writes, provide the
+protected HA-host and administration-device MACs and confirm them. The dedicated
+RouterOS account then needs `write` too. Select leases in the card, check proposed
+comments and create a preview. Existing comments stay unless replacement is
+checked. Applying a five-minute preview is a separate action; conversion also
+requires consent that compensation removes only the new reservation and DHCP
+renewal must recover the dynamic lease. This is not an exact dynamic rollback.
+The card distinguishes queued, verified, compensated and review-required results.
+Kid Control/allowlist and live RouterOS acceptance remain pending. See the
+[network boundaries and remaining gates](network-architecture.md).
 
 ## Wake-up checks and delivery problems
 

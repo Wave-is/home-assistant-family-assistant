@@ -23,7 +23,7 @@ Nothing is production-ready solely because a mock test passes.
 | Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit- and HA-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; read-only live checks pending |
-| Static leases / comments | In progress | Pure preview/conflict/protection checks unit-tested; UI application, ownership, read-back, compensation pending |
+| Static leases / comments | Implemented / unit-, browser- and HA-tested | Owner selection, protected devices, preview, confirmation, durable phases, read-back and scoped compensation with synthetic router; live RouterOS acceptance pending |
 | Kid Control including Telegram parents | Planned | Schedule vs override, autonomy |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | Planned | No live legacy data modified |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 190 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease previews, public contracts).
-- 7 frontend unit tests and 14 Chromium browser tests passed.
+- 207 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease effects, public contracts).
+- 7 frontend unit tests and 15 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -73,10 +73,13 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - Real HA RouterOS options, credential scope, registry MAC matching, parent-only
   inventory and preservation of the last good data after failure passed with a
   synthetic REST transport. Mobile Russian network card visually inspected.
+- Real HA selected-lease preview/confirmation/application/read-back, replay and
+  private result notification passed. Transport uncertainty, disk interruption,
+  scoped compensation and concurrent user-edit preservation are unit-tested.
 - Private legacy family-only suite: 397 tests passed.
 - No production family module, Telegram bot, router or siren has been changed.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on the learning/tools checkpoint (run 34030969670). The initial
+- All five GitHub check jobs passed on the network-inventory checkpoint (run 34031974369). The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 
