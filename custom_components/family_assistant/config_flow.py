@@ -14,6 +14,15 @@ from .const import DEFAULT_MODULES, DOMAIN, LANGUAGES, ROLES
 from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
 
+CONFIGURABLE_MODULES = (
+    *DEFAULT_MODULES,
+    "conversation",
+    "mikrotik",
+    "calendar",
+    "routines",
+    "pantry",
+)
+
 
 def select(options, translation_key=None):
     config = {"options": list(options)}
@@ -72,13 +81,16 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_modules(self, user_input=None):
         if user_input is not None:
-            modules = [key for key in DEFAULT_MODULES if user_input.get(key)]
+            modules = [key for key in CONFIGURABLE_MODULES if user_input.get(key)]
             self._household["modules"] = modules
             return self.async_create_entry(title=self._household["name"], data=self._household)
         return self.async_show_form(
             step_id="modules",
             data_schema=vol.Schema(
-                {vol.Required(module, default=True): bool for module in DEFAULT_MODULES}
+                {
+                    vol.Required(module, default=module in DEFAULT_MODULES): bool
+                    for module in CONFIGURABLE_MODULES
+                }
             ),
         )
 
@@ -467,6 +479,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         except DomainError as err:
             return self.async_abort(reason=err.code)
         errors = {}
+        current_modules = runtime.engine.snapshot()["settings"]["modules"]
         if user_input is not None:
             try:
                 result = await runtime.engine.execute(
@@ -477,8 +490,13 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "language": user_input["language"],
                         "modules": [
                             m
-                            for m in (*DEFAULT_MODULES, "conversation", "mikrotik", "calendar")
-                            if user_input.get(m)
+                            for m in dict.fromkeys(
+                                [
+                                    *current_modules,
+                                    *CONFIGURABLE_MODULES,
+                                ]
+                            )
+                            if user_input.get(m, m in current_modules)
                         ],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
@@ -515,7 +533,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
-                        for m in (*DEFAULT_MODULES, "conversation", "mikrotik", "calendar")
+                        for m in CONFIGURABLE_MODULES
                     },
                 }
             ),

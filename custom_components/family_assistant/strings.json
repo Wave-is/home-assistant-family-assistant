@@ -20,7 +20,12 @@
           "shopping": "Shopping",
           "tasks": "Tasks",
           "alarms": "Alarms",
-          "court": "Rules and rewards"
+          "court": "Rules and rewards",
+          "conversation": "Conversation (configure a provider separately)",
+          "mikrotik": "MikroTik (configure access separately)",
+          "calendar": "Family calendar",
+          "routines": "Family routines",
+          "pantry": "Pantry and household stock"
         }
       }
     },
@@ -188,7 +193,9 @@
           "timezone": "Time zone",
           "conversation": "Conversation",
           "mikrotik": "MikroTik network",
-          "calendar": "Family calendar"
+          "calendar": "Family calendar",
+          "routines": "Family routines",
+          "pantry": "Pantry and household stock"
         }
       },
       "alarm_device": {

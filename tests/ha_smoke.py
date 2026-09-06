@@ -235,7 +235,11 @@ async def main():
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
-            assert len(shopping_after_reload) == 5
+            assert len(shopping_after_reload) == 6
+            pantry_after_reload = entry.runtime_data.engine.snapshot()["pantry"]
+            assert len(pantry_after_reload["items"]) == 1
+            assert next(iter(pantry_after_reload["items"].values()))["quantity"] == 0.5
+            assert next(iter(pantry_after_reload["suggestions"].values()))["status"] == "accepted"
             merged_source = next(p for p in shopping_after_reload if p["status"] == "merged")
             assert merged_source["history"][-1]["action"] == "merge"
             merge_target = next(
@@ -719,6 +723,72 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     )
     await verify_calendar_controls(hass, entry, owner, child, child_id, request)
     await verify_routine_controls(hass, entry, owner, child, child_id, request)
+    await verify_pantry_controls(hass, entry, owner, child, request)
+
+
+async def verify_pantry_controls(hass, entry, owner, child, request):
+    """Stock remains manual and parent notes stay private through actual HA transport."""
+    settings = entry.runtime_data.engine.snapshot()["settings"]
+    await request(
+        owner,
+        "settings.save",
+        {
+            "name": settings["name"],
+            "language": settings["language"],
+            "modules": [*settings["modules"], "pantry", "school"],
+        },
+    )
+    options = await hass.config_entries.options.async_init(
+        entry.entry_id, context={"user_id": owner.id}
+    )
+    options = await hass.config_entries.options.async_configure(
+        options["flow_id"], {"next_step_id": "general"}
+    )
+    schema_fields = {key.schema for key in options["data_schema"].schema}
+    assert {"routines", "pantry"} <= schema_fields
+    assert "school" not in schema_fields
+    options = await hass.config_entries.options.async_configure(
+        options["flow_id"],
+        {
+            "name": settings["name"],
+            "language": settings["language"],
+        },
+    )
+    assert options["type"] == "create_entry", options
+    await hass.async_block_till_done()
+    assert {"routines", "pantry", "school"} <= set(
+        entry.runtime_data.engine.snapshot()["settings"]["modules"]
+    )
+    payload = {
+        "name": "Synthetic pantry milk",
+        "unit": "l",
+        "quantity": 0.5,
+        "minimum_quantity": 2,
+        "note": "Synthetic parent-private pantry note",
+        "expires_on": (datetime.now(UTC) + timedelta(days=3)).date().isoformat(),
+    }
+    await request(child, "pantry.item_save", payload, error="forbidden")
+    item = await request(owner, "pantry.item_save", payload)
+    await entry.runtime_data.scheduler.run(datetime.now(UTC))
+    parent_view = (await request(owner, "view", {}))["pantry"]
+    child_view = (await request(child, "view", {}))["pantry"]
+    assert child_view["items"][0]["expiry_status"] == "expiring"
+    assert "note" not in child_view["items"][0] and child_view["suggestions"] == []
+    proposal = next(p for p in parent_view["suggestions"] if p["status"] == "open")
+    accept = {"id": proposal["id"], "revision": proposal["revision"]}
+    await request(child, "pantry.suggestion_accept", accept, error="forbidden")
+    result = await request(owner, "pantry.suggestion_accept", accept, "pantry-ha-accept")
+    assert result["status"] == "accepted"
+    assert await request(owner, "pantry.suggestion_accept", accept, "pantry-ha-accept") == result
+    child_data = await request(child, "view", {})
+    assert "Synthetic parent-private pantry note" not in str(child_data)
+    purchase = next(s for s in child_data["shopping"] if s["id"] == result["shopping_id"])
+    assert purchase["quantity"] == 1.5 and purchase["purchased"] == 0 and purchase["note"] == ""
+    assert entry.runtime_data.engine.snapshot()["pantry"]["items"][item["id"]]["quantity"] == 0.5
+    print(
+        "PASS: actual HA pantry privacy, stock proposals, shopping-only acceptance "
+        "and options preservation"
+    )
 
 
 async def verify_calendar_controls(hass, entry, owner, child, child_id, request):

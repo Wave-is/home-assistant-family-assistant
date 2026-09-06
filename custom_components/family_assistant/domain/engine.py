@@ -20,6 +20,7 @@ from . import (
     family_calendar,
     household,
     members,
+    pantry,
     proposals,
     rewards,
     routines,
@@ -45,6 +46,7 @@ HANDLERS = {
     "mikrotik": network_plans.handle,
     "calendar": family_calendar.handle,
     "routines": routines.handle,
+    "pantry": pantry.handle,
 }
 BUCKETS = (
     "members",
@@ -243,6 +245,8 @@ class Engine:
             data["calendar"] = family_calendar.view(self._state, actor, now)
         if actor["role"] != "guest" and "routines" in self._state["settings"]["modules"]:
             data["routines"] = routines.view(self._state, actor)
+        if actor["role"] != "guest" and "pantry" in self._state["settings"]["modules"]:
+            data["pantry"] = pantry.view(self._state, actor, now)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -362,6 +366,9 @@ class Engine:
             raise DomainError("module_disabled")
         if module == "routines":
             routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
+        elif action == "pantry.suggestion_accept":
+            if "shopping" not in self._state["settings"]["modules"]:
+                raise DomainError("module_disabled")
         elif module == "mikrotik":
             kid_control = action.startswith("mikrotik.kid_") and action not in {
                 "mikrotik.kid_adopt",
@@ -390,6 +397,7 @@ class Engine:
             alarms.tick(ctx)
             task_series.tick(ctx)
             shopping_series.tick(ctx)
+            pantry.tick(ctx)
             task_events.tick(ctx)
             court_weekly.tick(ctx)
             rewards.tick(ctx)

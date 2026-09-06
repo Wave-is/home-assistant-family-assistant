@@ -1,10 +1,51 @@
 """Real HA option flows and message routing with an isolated synthetic transport."""
 
 import asyncio
+import json
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
+
+KID_CONTROL_PRIVATE_FIELDS = frozenset(
+    {
+        "active-mac-address",
+        "backend",
+        "binding",
+        "mac",
+        "mac-address",
+        "profile_id",
+        "protected_macs",
+    }
+)
+
+
+def assert_child_kid_control_private(projection, private_identifiers):
+    """Require child Kid Control data to omit router identities and admin collections."""
+    found_fields = set()
+
+    def collect_fields(value):
+        if isinstance(value, dict):
+            found_fields.update(value)
+            for child in value.values():
+                collect_fields(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect_fields(child)
+
+    collect_fields(projection)
+    leaked_fields = sorted(found_fields & KID_CONTROL_PRIVATE_FIELDS)
+    assert not leaked_fields, f"private Kid Control fields leaked: {leaked_fields}"
+    serialized = json.dumps(projection, ensure_ascii=False, sort_keys=True)
+    leaked_identifiers = sorted(value for value in private_identifiers if value in serialized)
+    assert not leaked_identifiers, f"private router identifiers leaked: {leaked_identifiers}"
+    assert projection.get("candidates") == [], "child received owner-only router candidates"
+    assert projection.get("delegations") == {}, "child received owner-only delegations"
+    profiles = projection.get("profiles")
+    assert isinstance(profiles, list) and profiles, "adopted child profile missing from projection"
+    assert all(profile.get("devices") == [] for profile in profiles), (
+        "child received private device bindings"
+    )
 
 
 async def run_network(hass, entry, owner, child_id):
@@ -320,7 +361,16 @@ async def run_network(hass, entry, owner, child_id):
             manager.request_effects()
             await manager._effects_task
         assert engine.snapshot()["network"]["kid_plans"]["K000001"]["status"] == "expired"
-        assert "02:11" not in str(engine.view(child_id)["kid_control"])
+        assert_child_kid_control_private(
+            engine.view(child_id)["kid_control"],
+            {
+                "02:11:22:33:44:55",
+                "02:11:22:33:44:77",
+                "02:11:22:33:44:88",
+                "*3",
+                "*4",
+            },
+        )
         flow = await options()
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"enabled": False}

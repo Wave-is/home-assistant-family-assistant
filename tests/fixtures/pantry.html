@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+  <title>Synthetic pantry dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+    const q = new URLSearchParams(location.search),
+      language = q.get("lang") || "en",
+      actor = q.get("actor") || "parent";
+    const role =
+      actor === "child" ? "child" : actor === "adult" ? "adult" : "parent";
+    const names = {
+      en: {
+        milk: "Milk",
+        note: "Parent-private stock note",
+        reason: "Counted at home",
+        added: "Added to the shopping list",
+        notOrdered: "never ordered",
+      },
+      ru: {
+        milk: "Молоко",
+        note: "Приватная заметка родителя",
+        reason: "Пересчитано дома",
+        added: "Добавлено в список покупок",
+        notOrdered: "заказы не оформляются",
+      },
+      uk: {
+        milk: "Молоко",
+        note: "Приватна нотатка батьків",
+        reason: "Перераховано вдома",
+        added: "Додано до списку покупок",
+        notOrdered: "замовлення не створюються",
+      },
+    }[language] || {
+      milk: "Milk",
+      note: "Parent-private stock note",
+      reason: "Counted at home",
+      added: "Added to the shopping list",
+      notOrdered: "never ordered",
+    };
+    const data = {
+      revision: 1,
+      actor,
+      role,
+      settings: {
+        name: "Example family",
+        modules: ["pantry", "shopping"],
+        timezone: "Europe/Kyiv",
+      },
+      members: [
+        { id: "owner", role: "owner", active: true },
+        { id: "parent", role: "parent", active: true },
+        { id: "adult", role: "adult", active: true },
+        { id: "child", role: "child", active: true },
+      ],
+      pantry: { items: [], archived: [], suggestions: [] },
+      shopping: [],
+    };
+    window.fixture = data;
+    window.calls = [];
+    window.operations = new Map();
+    window.failCommand = false;
+    window.commitThenLose = false;
+    window.lostOnce = false;
+    const clone = (v) => structuredClone(v),
+      activeParent = () => data.role === "parent" || data.role === "owner";
+    const sequences = {};
+    const identifier = (prefix) => {
+      sequences[prefix] = (sequences[prefix] || 0) + 1;
+      return prefix + String(sequences[prefix]).padStart(6, "0");
+    };
+    const addSuggestion = (item) => {
+      if (item.quantity < item.minimum_quantity)
+        data.pantry.suggestions.push({
+          id: identifier("G"),
+          pantry_id: item.id,
+          revision: 1,
+          source_revision: item.revision,
+          quantity: item.minimum_quantity - item.quantity,
+          unit: item.unit,
+          reason: "below_minimum",
+          status: "open",
+          created_at: "2026-09-06T08:00:00Z",
+          history: [],
+        });
+    };
+    if (actor === "child" || actor === "adult") {
+      const item = {
+        id: identifier("I"),
+        name: names.milk,
+        unit: "l",
+        quantity: 1,
+        minimum_quantity: 3,
+        category: "Food",
+        location: "Fridge",
+        note: names.note,
+        expires_on: "2026-09-10",
+        status: "active",
+        revision: 1,
+        created_at: "2026-09-06T08:00:00Z",
+      };
+      data.pantry.items.push(item);
+      addSuggestion(item);
+    }
+    const card = document.createElement("family-pantry-card");
+    card.setConfig({
+      type: "custom:family-pantry-card",
+      entry_id: "synthetic",
+      language: language,
+    });
+    card.hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type.endsWith("/view")) {
+          const parent = data.role === "parent" || data.role === "owner";
+          const project = (item) => {
+            const days = item.expires_on
+              ? Math.round(
+                  (Date.parse(item.expires_on + "T00:00:00Z") -
+                    Date.parse("2026-09-07T00:00:00Z")) /
+                    86400000,
+                )
+              : null;
+            const result = {
+              ...clone(item),
+              low_stock: item.quantity < item.minimum_quantity,
+              expiry_status:
+                days === null
+                  ? "none"
+                  : days < 0
+                    ? "expired"
+                    : days === 0
+                      ? "today"
+                      : days <= 7
+                        ? "expiring"
+                        : "fresh",
+              expires_in_days: days,
+            };
+            if (!parent) {
+              delete result.note;
+              delete result.history;
+            }
+            return result;
+          };
+          return {
+            ...clone(data),
+            pantry: {
+              items: data.pantry.items
+                .filter((i) => i.status === "active")
+                .map(project),
+              archived: data.pantry.items
+                .filter((i) => i.status === "archived")
+                .map(project),
+              suggestions: parent ? clone(data.pantry.suggestions) : [],
+            },
+          };
+        }
+        if (!message.type.endsWith("/execute"))
+          throw { code: "unknown_action" };
+        window.calls.push(clone(message));
+        if (window.operations.has(message.operation_id))
+          return clone(window.operations.get(message.operation_id));
+        if (window.failCommand) throw { code: "storage_error" };
+        const action = message.action,
+          p = message.payload;
+        let result;
+        if (action === "pantry.item_save") {
+          if (!activeParent()) throw { code: "forbidden" };
+          let item = p.id ? data.pantry.items.find((v) => v.id === p.id) : null;
+          if (item) {
+            if (item.revision !== p.revision) throw { code: "conflict" };
+            Object.assign(item, p);
+            delete item.id;
+            delete item.revision;
+            item.id = p.id;
+            item.revision = (p.revision || 1) + 1;
+            data.pantry.suggestions = data.pantry.suggestions.filter(
+              (s) => s.pantry_id !== item.id || s.status !== "open",
+            );
+          } else {
+            item = {
+              id: identifier("I"),
+              ...p,
+              status: "active",
+              revision: 1,
+              created_at: "2026-09-06T08:00:00Z",
+            };
+            data.pantry.items.push(item);
+          }
+          if (
+            item.quantity < item.minimum_quantity &&
+            !data.pantry.suggestions.some(
+              (s) => s.pantry_id === item.id && s.status === "open",
+            )
+          )
+            addSuggestion(item);
+          result = item;
+        } else if (action === "pantry.stock_set") {
+          if (!(activeParent() || data.role === "adult"))
+            throw { code: "forbidden" };
+          const item = data.pantry.items.find((v) => v.id === p.id);
+          if (!item || item.revision !== p.revision || !p.reason)
+            throw { code: "conflict" };
+          item.quantity = p.quantity;
+          item.revision++;
+          data.pantry.suggestions = data.pantry.suggestions.filter(
+            (s) => s.pantry_id !== item.id || s.status !== "open",
+          );
+          result = item;
+        } else if (action === "pantry.suggestion_accept") {
+          if (!activeParent()) throw { code: "forbidden" };
+          const s = data.pantry.suggestions.find((v) => v.id === p.id);
+          const item = data.pantry.items.find((v) => v.id === s?.pantry_id);
+          if (
+            !s ||
+            s.revision !== p.revision ||
+            s.status !== "open" ||
+            !item ||
+            item.revision !== s.source_revision
+          )
+            throw { code: "conflict" };
+          const shopping = {
+            id: identifier("S"),
+            name: item.name,
+            quantity: s.quantity,
+            unit: item.unit,
+            status: "approved",
+            purchased: 0,
+            note: "",
+          };
+          data.shopping.push(shopping);
+          s.status = "accepted";
+          s.shopping_id = shopping.id;
+          s.revision++;
+          result = s;
+        } else throw { code: "unknown_action" };
+        data.revision++;
+        window.operations.set(message.operation_id, clone(result));
+        if (window.commitThenLose && !window.lostOnce) {
+          window.lostOnce = true;
+          throw { code: "storage_error" };
+        }
+        return clone(result);
+      },
+    };
+    document.querySelector("main").append(card);
+    window.card = card;
+  </script>
+</html>

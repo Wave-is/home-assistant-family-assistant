@@ -16,12 +16,13 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Ten cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines; richer editors and other module cards pending |
+| Today and module cards | Eleven cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry; richer editors and other module cards pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
-| Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
+| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, revision-deduplicated reviewable shopping proposals and localized card; expiry alerts and meal linkage pending |
+| Meals, school, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
@@ -42,10 +43,30 @@ ephemeral HA 2026.8.2 container with network disabled, no production configurati
 credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
-## Verified checkpoint, 2026-09-06
+## Verified checkpoint, 2026-09-07
 
-- 638 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 165 frontend unit tests and 49 Chromium browser tests passed.
+- 689 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 185 frontend unit tests and 53 Chromium browser tests passed.
+- Pantry records keep manually entered quantities/units, a minimum, optional expiry,
+  category/location and parent-private notes. Quantity or unit corrections require
+  reasons; unit relabeling does not convert stock. All five existing-record actions
+  reject null, boolean, float, string and out-of-range revisions. Tick creates only
+  revision-deduplicated proposals, never purchases or stock changes. Parent acceptance
+  rechecks current stock and exact-unit open shopping coverage, then adds only a
+  shopping-list record without private notes. Replays, permission/module revocation,
+  persistence failures, atomic batches and restart are tested. The expiry projection
+  uses the household date supplied by the HA WebSocket adapter, not a freshness or
+  safety inference. RU/UK/EN cards preserve focused drafts, show the exact item/amount
+  before confirmation and retry the identical operation after committed-but-lost
+  responses. Child views hide notes/proposals; adults only correct counts. Russian
+  mobile editor, Ukrainian child view and English review were visually inspected.
+  Actual HA exercised authenticated actions, scheduler dedup, private views and
+  Store reload. General options now preserve unshown module flags and expose routines
+  and pantry. No expiry alerts, menu profiles or automatic orders are claimed.
+- An actual-HA privacy test falsely rejected legitimate timestamps containing
+  `02:11` as a MAC prefix. It now checks complete synthetic identifiers and forbidden
+  fields, with positive leak-detection and real-projection timestamp regressions.
+  The complete isolated HA smoke passed after this correction.
 - Calendar and routine cards now share localized daily/weekly/monthly recurrence
   controls, strict bounded numeric/date parsing, exceptions, timezone and until.
   Calendar rule start follows event fields and rejects second-fold/subminute starts
@@ -241,7 +262,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on handoff checkpoint 1b91ca4 (run 34057944480).
+- All five GitHub check jobs passed on handoff checkpoint 1b91ca4 (run 34057944480)
+  and condition-editor checkpoint 9c03f54 (run 34058895807).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
@@ -270,6 +292,10 @@ service call does not prove physical sound or volume.
 
 ## Open engineering gates (not release-ready)
 
+- A bounded audit found older shopping/alarm handlers accepting malformed revision
+  values and task/court/member edits permitting revisionless updates. Strict command
+  concurrency and all producer contracts are the next hardening checkpoint; pantry
+  itself already requires a strict current revision for every existing-record action.
 - Some controls are still API-only: advanced alarm exceptions/delay fields,
   task-series editing and advanced per-step routine conditions.
 - No real bot has been contacted during development tests. Poller restart/Telegram

@@ -134,6 +134,14 @@ test("Kid Control renders live configured status, handles timezone, and hides MA
     mode:"schedule",allows:true,next_change_at:"2026-09-07T20:00:00Z",next_allows:false,remaining_minutes:45,
     temporary_until:"2026-09-07T21:00:00Z",temporary_mode:"grant",valid_until:new Date(Date.now()+60000).toISOString(),reason:"fresh"
   });
+
+test("pantry card and its editor retain the pantry alias",async()=>{
+  const card=document.createElement("family-pantry-card");card.setConfig({});
+  assert.equal(card._view,"pantry");
+  const editor=document.createElement("family-assistant-card-editor");
+  editor.setConfig({type:"custom:family-pantry-card"});
+  assert.equal(editor.shadowRoot.querySelector('[name="view"]').value,"pantry");
+});
   assert.match(bodyEn.textContent,/Normal schedule/);
   assert.match(bodyEn.textContent,/Configured access: Allowed/);
   assert.match(bodyEn.textContent,/Remaining: 45 min/);

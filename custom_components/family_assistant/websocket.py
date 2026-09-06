@@ -41,7 +41,7 @@ async def view(hass, connection, msg):
     try:
         runtime = get_runtime(hass, msg["entry_id"])
         actor_id = runtime.engine.actor_for_ha(connection.user.id)
-        data = runtime.engine.view(actor_id)
+        data = runtime.engine.view(actor_id, now=dt_util.utcnow())
         if data["role"] in {"owner", "parent"}:
             data["health"] = dict(runtime.health)
         connection.send_result(msg["id"], data)
