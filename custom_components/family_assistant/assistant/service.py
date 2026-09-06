@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import json
 import re
 from datetime import timedelta
 
@@ -27,6 +28,8 @@ class Assistant:
         if existing:
             if existing["actor"] != actor:
                 raise DomainError("forbidden")
+            if existing.get("source_hash") != hashlib.sha256(content.encode()).hexdigest():
+                raise DomainError("idempotency_conflict")
             return t["preview"].format(preview=existing["preview"], id=proposal_id)
         async with asyncio.timeout(100):
             value = await self.cascade.generate(
@@ -100,6 +103,9 @@ class Assistant:
 
     async def _propose(self, actor, content, operation_id, proposal_id, value, view, now, t):
         commands = plans.materialize(value, view, content, now)
+        signature = hashlib.sha256(
+            json.dumps([actor, content, commands], sort_keys=True).encode()
+        ).hexdigest()
 
         async def discard(_state):
             pass
@@ -115,11 +121,16 @@ class Assistant:
             member = ctx.state["members"].get(actor, {})
             if not member.get("active") or member.get("role") != view["role"]:
                 raise DomainError("forbidden")
+            prior = ctx.state["proposals"].get(proposal_id)
+            if prior and prior.get("signature") != signature:
+                raise DomainError("idempotency_conflict")
             ctx.state["proposals"].setdefault(
                 proposal_id,
                 {
                     "id": proposal_id,
                     "operation_id": operation_id,
+                    "source_hash": hashlib.sha256(content.encode()).hexdigest(),
+                    "signature": signature,
                     "actor": actor,
                     "role": view["role"],
                     "commands": commands,

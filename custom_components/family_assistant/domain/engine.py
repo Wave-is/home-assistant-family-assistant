@@ -192,6 +192,11 @@ class Engine:
             for record in self._state["proposals"].values()
             if record["actor"] == actor_id and record["status"] == "pending"
         ]
+        data["learned_phrases"] = [
+            {key: record[key] for key in ("id", "source", "canonical", "active", "revision")}
+            for record in self._state["memory"].get("phrases", {}).values()
+            if record["actor"] == actor_id
+        ]
         if parent:
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}

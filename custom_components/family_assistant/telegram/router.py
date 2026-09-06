@@ -110,6 +110,10 @@ async def route(
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if result.get("status") in {"learned", "forgotten"}:
+            from ..assistant.language import COPY as ASSISTANT_COPY
+
+            return ASSISTANT_COPY[language][result["status"]].format(id=result["id"])
         if "items" in result:
             from ..assistant.language import COPY as ASSISTANT_COPY
 
@@ -141,8 +145,12 @@ async def route(
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
         return t["help"]
+    from ..domain.learning import resolve
+
+    original_content = content
     command, _, tail = content.partition(" ")
     command = command.casefold()
+    parse_error = None
     try:
         intent = (
             parse(engine.snapshot(), view, content, now, refs)
@@ -150,14 +158,31 @@ async def route(
             else None
         )
     except DomainError as err:
-        if fallback is not None and err.code in {
+        parse_error, intent = err, None
+    if intent is None and not command.startswith("/"):
+        canonical = resolve(engine.snapshot(), actor, content)
+        if canonical != content:
+            content = canonical
+            command, _, tail = content.partition(" ")
+            command = command.casefold()
+            parse_error = None
+            try:
+                intent = (
+                    parse(engine.snapshot(), view, content, now, refs)
+                    if not command.startswith("/")
+                    else None
+                )
+            except DomainError as err:
+                parse_error = err
+    if parse_error:
+        if fallback is not None and parse_error.code in {
             "ambiguous_command",
             "ambiguous_member",
             "context_required",
             "invalid_deadline",
         }:
-            return await fallback(actor, content, operation_id, now, refs)
-        raise
+            return await fallback(actor, original_content, operation_id, now, refs)
+        raise parse_error
     if intent and intent.action.startswith("read."):
         command = {"read.court": "/stats", "read.tasks": "/tasks"}[intent.action]
     if command in {"/shopping", "/tasks", "/stats", "/alarms"}:
@@ -203,11 +228,15 @@ async def route(
             "conversation." + ("confirm" if command == "/confirm" else "reject"),
             {"id": fields[0]},
         )
+    elif command == "/learn" and len(fields) == 2:
+        action, payload = "conversation.learn", {"source": fields[0], "canonical": fields[1]}
+    elif command == "/forget" and len(fields) == 1:
+        action, payload = "conversation.forget", {"id": fields[0]}
     if action is None:
         if fallback is not None and not command.startswith("/"):
-            return await fallback(actor, content, operation_id, now, refs)
+            return await fallback(actor, original_content, operation_id, now, refs)
         return t["unknown"]
     result = await commands.execute(
-        engine, actor, content, refs, operation_id, now, action, payload
+        engine, actor, original_content, refs, operation_id, now, action, payload
     )
     return saved(result)

@@ -116,7 +116,17 @@ requests do not change state. There is no hidden developer provider or automatic
 
 Calendar computations stay deterministic. Search results cannot execute commands.
 Provider outages do not disable the core lists, tasks or alarms. The developer
-agent/patch loop and learned correction dictionary are separate pending gates.
+agent/patch loop remains a separate pending gate.
+
+To teach your own phrase explicitly, send `/learn my groceries | /shopping`.
+Only your account can use it. The Conversation card also has a teaching form
+and a list of your saved phrases. `/forget L…` disables a rule. Rules do not
+grant permissions; relative dates and reply targets are resolved on each use.
+
+An existing HA agent that supports selectable LLM APIs can select the household's
+Family Assistant API. It provides role-filtered reads and confirmed plan previews,
+not arbitrary HA services. Anonymous calls are rejected. This is tool access for
+that agent, not automatic delegation of Telegram messages to it.
 
 ## Dashboard cards
 
@@ -126,7 +136,7 @@ your HA profile. Open dashboard Resources and add the JavaScript module:
 a Family Assistant card through the card picker. Its visual editor lists only
 households linked to your HA account; no configuration ID needs to be copied.
 
-Available views: Today, Shopping, Tasks, Alarms, Rules & rewards, System health.
+Available views: Today, Shopping, Tasks, Alarms, Rules & rewards, Conversation, System health.
 The card uses the HA interface language; each member can separately choose
 their bot language. UI controls are not a substitute for server authorization.
 

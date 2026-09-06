@@ -12,6 +12,23 @@ test("model interpretation stays unexecuted until the user's confirmation",async
  await expect(page.getByRole("button",{name:"Выполнить план",exact:true})).toHaveCount(0);
 });
 
+test("conversation card sends an authenticated request and teaches an exact phrase",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto("/tests/fixtures/dashboard.html?view=conversation&lang=ru");
+ await page.getByLabel("Сообщение",{exact:true}).fill("/ping");
+ await page.getByRole("button",{name:"Отправить",exact:true}).click();
+ await expect(page.getByText("Я тут. Списки и задачи работают без модели.")).toBeVisible();
+ expect((await page.evaluate(()=>window.calls))[0].type).toBe("family_assistant/chat");
+ await page.getByText("Обучить фразе",{exact:true}).click();
+ await page.getByLabel("Непонятная фраза",{exact:true}).fill("покажи мой баланс");
+ await page.getByLabel("Поддерживаемая повторяемая команда",{exact:true}).fill("/stats");
+ await page.getByRole("button",{name:"Сохранить",exact:true}).click();
+ expect((await page.evaluate(()=>window.calls))[1].action).toBe("conversation.learn");
+ await page.getByText("Обучить фразе",{exact:true}).click();
+ await expect(page.getByRole("button",{name:"Отключить фразу",exact:true})).toBeVisible();
+ await page.screenshot({path:"test-results/conversation-mobile-ru.png",fullPage:true});
+});
+
 test("parent adds an item using the Russian mobile card",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto("/tests/fixtures/dashboard.html?lang=ru&view=shopping");

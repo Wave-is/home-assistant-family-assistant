@@ -2,6 +2,7 @@
 import {ERRORS} from "./errors.js";
 const COPY = {
   en: {
+    conversation:"Family conversation",message:"Message",send:"Send",thinking:"Working on your request… Other cards remain available.",learnPhrase:"Teach a phrase",sourcePhrase:"Unrecognized phrase",canonicalPhrase:"Supported reusable command",learningHint:"Exact phrases are remembered for your account only. They never grant permissions or override built-in commands.",forgetPhrase:"Disable phrase",
     modelProposals:"Check my interpretation",confirmPlan:"Apply this plan",rejectPlan:"Cancel plan",proposalHint:"Nothing has changed yet. This plan expires at",
     advanced:"Advanced settings",
     addSeries:"Add recurring duty",
@@ -42,6 +43,7 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    conversation:"Семейный разговор",message:"Сообщение",send:"Отправить",thinking:"Разбираю обращение… Остальные карточки продолжают работать.",learnPhrase:"Обучить фразе",sourcePhrase:"Непонятная фраза",canonicalPhrase:"Поддерживаемая повторяемая команда",learningHint:"Точные фразы запоминаются только для вашего аккаунта. Они не дают прав и не заменяют встроенные команды.",forgetPhrase:"Отключить фразу",
     modelProposals:"Проверьте, правильно ли я понял",confirmPlan:"Выполнить план",rejectPlan:"Отменить план",proposalHint:"Пока ничего не изменено. Предложение действует до",
     advanced:"Дополнительные настройки",
     addSeries:"Добавить регулярную обязанность",
@@ -82,6 +84,7 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    conversation:"Сімейна розмова",message:"Повідомлення",send:"Надіслати",thinking:"Опрацьовую звернення… Інші картки працюють далі.",learnPhrase:"Навчити фразі",sourcePhrase:"Незрозуміла фраза",canonicalPhrase:"Підтримувана повторювана команда",learningHint:"Точні фрази запам’ятовуються лише для вашого акаунта. Вони не надають прав і не замінюють вбудовані команди.",forgetPhrase:"Вимкнути фразу",
     modelProposals:"Перевірте, чи правильно я зрозумів",confirmPlan:"Виконати план",rejectPlan:"Скасувати план",proposalHint:"Поки нічого не змінено. Пропозиція діє до",
     advanced:"Додаткові налаштування",
     addSeries:"Додати регулярний обов’язок",
@@ -162,10 +165,11 @@ export class FamilyCard extends HTMLElement {
   setConfig(config) {
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
-    if (!["today","shopping","tasks","court","alarms","health"].includes(this._view)) throw new Error("Unknown Family Assistant view");
+    if (!["today","shopping","tasks","court","alarms","health","conversation"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
     this._entry = config.entry_id;
     this._data = null;
+    this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
   }
@@ -327,6 +331,7 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
+    if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="alarms")this.renderAlarmRuns(body);
     if(this._view==="tasks")this.renderSeries(body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
@@ -336,6 +341,32 @@ export class FamilyCard extends HTMLElement {
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
+  }
+  renderConversation(body) {
+    if(this._chatReply){const reply=el("div",this._chatReply,"item");reply.style.whiteSpace="pre-wrap";reply.setAttribute("aria-live","polite");body.append(reply);}
+    const form=el("form");const input=this.input(form,"message",this.t.message,"text",this._chatDraft || "");input.maxLength=4096;input.autocomplete="off";
+    const send=el("button",this.t.send,"primary");send.type="submit";send.disabled=!!this._writing;form.append(send);body.append(form);
+    if(this._writing){const status=el("p",this.t.thinking,"notice");status.setAttribute("role","status");body.append(status);}
+    form.addEventListener("submit",async event=>{
+      event.preventDefault();if(this._writing)return;
+      const content=new FormData(form).get("message");this._chatDraft=content;
+      if(this._chatPending?.content!==content)this._chatPending={content,id:crypto.randomUUID()};
+      const generation=this._generation;this._writing=true;this.render();
+      try{
+        const result=await this._hass.callWS({type:"family_assistant/chat",entry_id:this._entry,text:content,operation_id:this._chatPending.id,session_id:this._chatSession});
+        if(generation!==this._generation)return;
+        this._chatReply=result.reply;this._chatPending=null;this._chatDraft="";this._actionError=null;
+      }catch(error){if(generation===this._generation)this._actionError=error.code || this.t.failure;}
+      finally{this._writing=false;await this.refresh();this.render();}
+    });
+    const details=el("details");details.append(el("summary",this.t.learnPhrase));body.append(details);
+    details.append(el("p",this.t.learningHint,"sub"));const learn=el("form");details.append(learn);
+    this.input(learn,"source",this.t.sourcePhrase);this.input(learn,"canonical",this.t.canonicalPhrase);
+    const save=el("button",this.t.save,"primary");save.type="submit";learn.append(save);
+    learn.addEventListener("submit",event=>{event.preventDefault();this.command("conversation.learn",Object.fromEntries(new FormData(learn)));});
+    for(const phrase of (this._data.learned_phrases || []).filter(p=>p.active)){
+      const item=el("div",null,"item");item.append(el("strong",phrase.source),el("p",phrase.canonical,"sub"),this.button(this.t.forgetPhrase,()=>this.command("conversation.forget",{id:phrase.id})));details.append(item);
+    }
   }
   renderProposals(body) {
     if(!this._data.settings.modules?.includes("conversation"))return;
@@ -480,15 +511,15 @@ class FamilyEditor extends HTMLElement {
         for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
         input.disabled=!this._entries?.length;
       }
-      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health"]){const option=el("option",t[view]);option.value=view;input.append(option);}
-      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health"}[this._config?.type] || "today";
+      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation"]){const option=el("option",t[view]);option.value=view;input.append(option);}
+      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation"}[this._config?.type] || "today";
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
   }
 }
 customElements.define("family-assistant-card-editor",FamilyEditor);
-for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"]]){
+for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"]]){
   class Card extends FamilyCard {static defaultView=view;}
   customElements.define(type,Card);
   window.customCards=window.customCards || [];

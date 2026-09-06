@@ -34,7 +34,11 @@ class Jobs:
                 ):
                     raise DomainError("idempotency_conflict")
                 return
-            pending = [j for j in jobs.values() if j["status"] == "pending"]
+            pending = [
+                j
+                for j in jobs.values()
+                if j["status"] == "pending" and timestamp(j["expires_at"], "expires_at") > now
+            ]
             if len(pending) >= 20 or sum(j["actor"] == actor for j in pending) >= 3:
                 raise DomainError("assistant_busy")
             jobs[operation_id] = {

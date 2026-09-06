@@ -125,6 +125,9 @@ async def async_setup_runtime(hass, entry) -> bool:
         runtime.scheduler.start()
         async_configure_assistant(hass, entry)
         await async_configure_telegram(hass, entry)
+        from .llm_api import async_register
+
+        async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
     except Exception:
         if runtime.telegram:

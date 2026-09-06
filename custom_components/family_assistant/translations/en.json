@@ -83,7 +83,9 @@
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
-      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
+      "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -99,7 +101,9 @@
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
-      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
+      "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
     }
   },
   "options": {
@@ -276,7 +280,9 @@
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
-      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
+      "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -296,7 +302,9 @@
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
-      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
+      "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
+      "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
     }
   },
   "entity": {
@@ -508,6 +516,12 @@
     },
     "assistant_job_expired": {
       "message": "The queued request expired. Nothing was executed. Please send it again."
+    },
+    "learning_template_required": {
+      "message": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced."
+    },
+    "learning_limit": {
+      "message": "This account reached its 200-phrase limit. Update an existing phrase."
     }
   },
   "selector": {

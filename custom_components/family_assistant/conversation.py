@@ -67,6 +67,7 @@ class FamilyConversation(ConversationEntity):
         try:
             engine = self._runtime.engine
             actor = engine.actor_for_ha(user_input.context.user_id)
+            role = engine.view(actor)["role"]
             if not self.available:
                 raise DomainError("module_disabled")
             operation = (
@@ -93,7 +94,11 @@ class FamilyConversation(ConversationEntity):
             reply = await route(
                 engine, actor, user_input.text, operation, dt_util.utcnow(), refs, fallback=fallback
             )
-            engine.actor_for_ha(user_input.context.user_id)
+            if (
+                engine.actor_for_ha(user_input.context.user_id) != actor
+                or engine.view(actor)["role"] != role
+            ):
+                raise DomainError("forbidden")
 
             def save_refs(ctx):
                 from .telegram.context import result_refs

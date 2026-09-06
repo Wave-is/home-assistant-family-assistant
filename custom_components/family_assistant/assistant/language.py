@@ -2,6 +2,11 @@
 
 COPY = {
     "en": {
+        "learned": (
+            "📖 Remembered for your account: {id}. It grants no new permissions; "
+            "deadlines and targets are resolved anew. /forget {id} disables it."
+        ),
+        "forgotten": "📖 Phrase {id} is disabled. History is preserved.",
         "queued": "💬 I'll work on that. Ordinary commands and wake-up buttons remain available.",
         "preview": (
             "Please check the interpretation. Nothing has changed yet:\n{preview}\n"
@@ -14,6 +19,11 @@ COPY = {
         "rejected": "Cancelled. Nothing was changed.",
     },
     "ru": {
+        "learned": (
+            "📖 Запомнил для вашего аккаунта: {id}. Новых прав это не даёт; "
+            "сроки и объекты определяются заново. /forget {id} отключит правило."
+        ),
+        "forgotten": "📖 Фраза {id} отключена. История сохранена.",
         "queued": (
             "💬 Разберусь с обращением. Обычные команды и кнопки подъёма продолжают работать."
         ),
@@ -28,6 +38,11 @@ COPY = {
         "rejected": "Отменено. Ничего не изменено.",
     },
     "uk": {
+        "learned": (
+            "📖 Запам’ятав для вашого акаунта: {id}. Нових прав це не дає; "
+            "терміни й об’єкти визначаються заново. /forget {id} вимкне правило."
+        ),
+        "forgotten": "📖 Фразу {id} вимкнено. Історію збережено.",
         "queued": "💬 Розберуся зі зверненням. Звичайні команди та кнопки підйому працюють далі.",
         "preview": (
             "Перевірте, чи правильно я зрозумів. Поки нічого не змінено:\n{preview}\n"

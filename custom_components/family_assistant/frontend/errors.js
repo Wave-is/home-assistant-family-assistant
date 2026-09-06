@@ -59,7 +59,9 @@ export const ERRORS = {
     "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
     "proposal_expired": "This proposal expired or was already handled. Send the request again.",
     "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
-    "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again."
+    "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
+    "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
+    "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -120,7 +122,9 @@ export const ERRORS = {
     "search_query_not_grounded": "Не удалось составить открытый поисковый запрос без личного контекста. Укажите поисковую фразу.",
     "proposal_expired": "Предложение истекло или уже обработано. Отправьте запрос заново.",
     "assistant_busy": "Несколько обращений уже в очереди. Обычные команды работают.",
-    "assistant_job_expired": "Время ожидания обращения истекло. Ничего не выполнено. Отправьте запрос заново."
+    "assistant_job_expired": "Время ожидания обращения истекло. Ничего не выполнено. Отправьте запрос заново.",
+    "learning_template_required": "Укажите непонятную фразу и понятную повторяемую команду без конкретного ID или даты. Встроенные команды нельзя заменять.",
+    "learning_limit": "Для аккаунта достигнут предел 200 фраз. Измените существующую фразу."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -181,6 +185,8 @@ export const ERRORS = {
     "search_query_not_grounded": "Не вдалося скласти відкритий пошуковий запит без особистого контексту. Укажіть пошукову фразу.",
     "proposal_expired": "Пропозиція прострочена або вже опрацьована. Надішліть запит знову.",
     "assistant_busy": "Кілька звернень уже в черзі. Звичайні команди працюють.",
-    "assistant_job_expired": "Час очікування звернення минув. Нічого не виконано. Надішліть запит знову."
+    "assistant_job_expired": "Час очікування звернення минув. Нічого не виконано. Надішліть запит знову.",
+    "learning_template_required": "Укажіть незрозумілу фразу та підтримувану повторювану команду без конкретного ID чи дати. Вбудовані команди не можна замінювати.",
+    "learning_limit": "Для акаунта досягнуто межу 200 фраз. Змініть наявну фразу."
   }
 };

@@ -36,8 +36,22 @@ addresses at connection time, recheck redirects and enforce content-size limits.
 The [standard HA conversation entity](https://developers.home-assistant.io/docs/core/entity/conversation/)
 resolves `Context.user_id` for every turn. It uses actor/session-bound object
 receipts instead of treating arbitrary chat history as trusted references.
-Anonymous voice satellites do not inherit owner authority. Delegating to another
-HA conversation agent and publishing a bounded HA LLM API remain separate gates.
+Anonymous voice satellites do not inherit owner authority. The registered
+[HA LLM API](https://developers.home-assistant.io/docs/core/llm/) offers only
+`ReadFamily` and `PrepareFamilyPlan`: the latter cannot confirm its own proposal.
+HA 2026.8.2 does not supply the original user prompt in LLMContext, so a tool's
+`request` is explicitly untrusted and cannot silently authorize a mutation.
+Every tool call independently validates its schema and current HA identity.
+Delegating the family's bot to another HA conversation agent is still pending.
+
+Explicit `/learn source | canonical` rules are private to the teaching actor.
+They map an exact normalized phrase to a supported command, never Python,
+regular expressions or model-generated actions. Authorization is checked both
+while teaching on a non-mutating copy and on every use. Dates and reply targets
+are resolved anew; fixed record IDs and absolute dates are not reusable rules.
+Ordinary model confirmations do not silently create learned phrases. The
+authenticated dashboard conversation card uses the same router and proposal
+boundary, with actor/session-bound references and no invented owner identity.
 
 Verified: malformed/oversized responses, auth failures, redirects, timeouts,
 fallback/cooldown, private DNS results, search prompt injection, child role denial,

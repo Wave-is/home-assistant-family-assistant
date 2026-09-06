@@ -297,6 +297,25 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
             agent_id=agents[0],
         )
         assert "permission" in denied.as_dict()["response"]["speech"]["plain"]["speech"]
+        learned = await conversation.async_converse(
+            hass,
+            text="/learn my balance details | /stats",
+            conversation_id=result.conversation_id,
+            context=Context(user_id=owner.id),
+            language="en",
+            agent_id=agents[0],
+        )
+        assert "Remembered" in learned.as_dict()["response"]["speech"]["plain"]["speech"]
+        recalled = await conversation.async_converse(
+            hass,
+            text="my balance details",
+            conversation_id=result.conversation_id,
+            context=Context(user_id=owner.id),
+            language="en",
+            agent_id=agents[0],
+        )
+        assert "No records" in recalled.as_dict()["response"]["speech"]["plain"]["speech"]
+        await run_llm_api(hass, entry, owner)
         flow = await options("conversation")
         flow = await submit(flow, {"enabled": False, "timeout": 5})
         assert flow["type"] == "create_entry"
@@ -306,3 +325,67 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
             "PASS: real HA model options/fallback, nonblocking Telegram queue, "
             "confirmation buttons and authenticated Assist context"
         )
+
+
+async def run_llm_api(hass, entry, owner):
+    from homeassistant.core import Context
+    from homeassistant.exceptions import HomeAssistantError
+    from homeassistant.helpers import llm
+
+    context = llm.LLMContext(
+        platform="synthetic_agent",
+        context=Context(user_id=owner.id),
+        language="en",
+        assistant="conversation",
+        device_id=None,
+    )
+    api = await llm.async_get_api(hass, "family_assistant_" + entry.entry_id, context)
+    assert {tool.name for tool in api.tools} == {"ReadFamily", "PrepareFamilyPlan"}
+    records = await api.async_call_tool(llm.ToolInput(tool_name="ReadFamily", tool_args={}))
+    assert "tasks" in records and "telegram_id" not in str(records) and "audit" not in records
+    before = len(entry.runtime_data.engine.snapshot()["shopping"])
+    preview = await api.async_call_tool(
+        llm.ToolInput(
+            tool_name="PrepareFamilyPlan",
+            tool_args={
+                "request": "Buy bread",
+                "commands": [{"action": "shopping.add", "payload": {"name": "Bread"}}],
+            },
+        )
+    )
+    assert preview["applied"] is False and preview["proposal_id"].startswith("P")
+    assert len(entry.runtime_data.engine.snapshot()["shopping"]) == before
+    try:
+        await api.async_call_tool(
+            llm.ToolInput(
+                tool_name="PrepareFamilyPlan",
+                tool_args={
+                    "request": "Make owner",
+                    "commands": [{"action": "members.save", "payload": {}}],
+                },
+            )
+        )
+    except HomeAssistantError:
+        pass
+    else:
+        raise AssertionError("LLM API accepted a forbidden tool action")
+    try:
+        await llm.async_get_api(
+            hass,
+            "family_assistant_" + entry.entry_id,
+            llm.LLMContext(
+                platform="synthetic_agent",
+                context=None,
+                language="en",
+                assistant="conversation",
+                device_id=None,
+            ),
+        )
+    except HomeAssistantError:
+        pass
+    else:
+        raise AssertionError("LLM API accepted an anonymous context")
+    print(
+        "PASS: real HA bounded LLM API, non-mutating preview, "
+        "invalid tool/anonymous denial and learned phrase"
+    )

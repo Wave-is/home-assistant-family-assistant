@@ -230,6 +230,11 @@ async def main():
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
+            from homeassistant.helpers import llm
+
+            assert not any(
+                api.id.startswith("family_assistant_") for api in llm.async_get_apis(hass)
+            )
             print(
                 "PASS: real HA config/options/service, siren renewal/tones/answer, "
                 "Store/reload/unload"
@@ -294,6 +299,22 @@ async def run_websocket(hass, entry, owner, child_id):
                     result = await ws.receive_json()
                     assert not result["success"] and result["error"]["code"] == "forbidden"
                     assert not engine.snapshot()["court"]
+                await ws.send_json(
+                    {
+                        "id": 4,
+                        "type": "family_assistant/chat",
+                        "entry_id": entry.entry_id,
+                        "text": "/ping",
+                        "operation_id": "ws-chat-" + user.id,
+                        "session_id": "synthetic-session",
+                    }
+                )
+                result = await ws.receive_json()
+                assert result["success"] == allowed
+                if allowed:
+                    assert ("I'm here" if user is owner else "Я тут") in result["result"][
+                        "reply"
+                    ], result
             hass.auth.async_remove_refresh_token(refresh)
     print("PASS: actual HA WebSocket auth, household names, projections and command denial")
     release = datetime.now(UTC) + timedelta(minutes=1)

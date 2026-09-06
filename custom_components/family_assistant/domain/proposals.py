@@ -6,6 +6,11 @@ from .validation import DomainError, fields, timestamp
 def handle(ctx, action, payload):
     from .engine import Engine
 
+    if action in {"learn", "forget"}:
+        from .learning import handle as learning
+
+        return learning(ctx, action, payload)
+
     fields(payload, {"id"}, {"id"})
     proposal = ctx.record("proposals", payload["id"])
     if proposal["actor"] != ctx.actor_id or proposal["role"] != ctx.actor["role"]:
