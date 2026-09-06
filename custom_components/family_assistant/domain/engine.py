@@ -366,7 +366,11 @@ class Engine:
             raise DomainError("module_disabled")
         if module == "routines":
             routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
-        elif action == "pantry.suggestion_accept":
+        elif action in {
+            "pantry.suggestion_accept",
+            "pantry.meal_shop_prepare",
+            "pantry.meal_shop_accept",
+        }:
             if "shopping" not in self._state["settings"]["modules"]:
                 raise DomainError("module_disabled")
         elif module == "mikrotik":

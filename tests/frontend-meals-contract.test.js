@@ -219,6 +219,24 @@ test("archive cancel and configuration reset discard draft without mutation", as
   assert.equal(card._mealsDraft, null);
 });
 
+test("explicit operation IDs survive an intervening section command", async (t) => {
+  const { card, data, calls, lose } = await setup(t);
+  const original = { id: "MP000001", revision: 1, title: "First" };
+  lose();
+  await card.command("pantry.meal_save", original, "explicit-first");
+  assert.equal(card._actionError, "storage_error");
+  await card.command(
+    "pantry.meal_save",
+    { id: "MP000001", revision: 2, title: "Later" },
+    "explicit-later",
+  );
+  await card.command("pantry.meal_save", original, "explicit-first");
+  assert.equal(calls[0].operation_id, calls[2].operation_id);
+  assert.deepEqual(calls[0].payload, calls[2].payload);
+  assert.equal(data.pantry.meal_plans[0].revision, 3);
+  assert.equal(data.pantry.meal_plans[0].title, "Later");
+});
+
 for (const [field, value] of [
   ["week_start", "9999-12-27"],
   ["week_start", "0000-01-03"],

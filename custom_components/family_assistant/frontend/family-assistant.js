@@ -11,6 +11,7 @@ import {renderCalendar} from "./calendar-view.js";
 import {renderRoutines, ROUTINES_COPY} from "./routines-view.js";
 import {renderPantry} from "./pantry-view.js";
 import {renderMeals} from "./meals-view.js";
+import {renderMealShopping} from "./meal-shopping-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -217,7 +218,7 @@ export class FamilyCard extends HTMLElement {
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._taskItemAction=null;this._taskCreateDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
-    this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;
+    this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -268,11 +269,11 @@ export class FamilyCard extends HTMLElement {
     for(const member of members) { const option=el("option",member.name);option.value=member.id;select.append(option); }
     wrap.append(select);form.append(wrap);return select;
   }
-  async command(action,payload) {
+  async command(action,payload,operationId) {
     if (this._writing) return;
     const generation=this._generation;
     const fingerprint=JSON.stringify([this._entry,action,payload]);
-    if(this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:crypto.randomUUID()};
+    if(operationId || this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:operationId || crypto.randomUUID()};
     this._writing=true;
     for(const b of this.shadowRoot.querySelectorAll("button")) b.disabled=true;
     try {
@@ -378,7 +379,7 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
-    if(this._view==="meals"){renderMeals(this,body);return;}
+    if(this._view==="meals"){renderMeals(this,body);renderMealShopping(this,body);return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}

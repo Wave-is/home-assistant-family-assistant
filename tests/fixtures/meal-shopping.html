@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic meal shopping dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 680px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const actor = query.get("actor") || "parent";
+    const scenario = query.get("scenario") || "default";
+    const role =
+      actor === "child" ? "child" : actor === "adult" ? "adult" : "parent";
+    const clone = (value) => structuredClone(value);
+    const normalize = (value) =>
+      value
+        .normalize("NFC")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLocaleLowerCase("en");
+    const round6 = (value) => Math.round((value + Number.EPSILON) * 1e6) / 1e6;
+    const ceilMilli = (value) =>
+      Math.ceil((value - Number.EPSILON) * 1000) / 1000;
+    const members = [
+      { id: "owner", name: "Owner", role: "owner", active: true },
+      { id: "parent", name: "Parent", role: "parent", active: true },
+      { id: "adult", name: "Adult", role: "adult", active: true },
+      { id: "child", name: "Child", role: "child", active: true },
+      { id: "guest", name: "Guest", role: "guest", active: true },
+    ];
+    const plan = {
+      id: "MP000001",
+      revision: 2,
+      status: "published",
+      week_start: "2026-09-07",
+      title: "Synthetic family menu",
+      note: "PARENT PRIVATE MEAL NOTE",
+      created_by: "parent",
+      created_at: "2026-09-01T08:00:00Z",
+      updated_at: "2026-09-02T08:00:00Z",
+      published_at: "2026-09-02T08:00:00Z",
+      history: [
+        { actor: "parent", action: "published", at: "2026-09-02T08:00:00Z" },
+      ],
+      entries: [
+        {
+          date: "2026-09-07",
+          slot: "dinner",
+          title: "Synthetic soup",
+          servings: 4,
+          ingredients: [{ name: "Synthetic milk", unit: "l", quantity: 2 }],
+        },
+      ],
+    };
+    const state = {
+      revision: 1,
+      actor,
+      role,
+      settings: {
+        name: "Example family",
+        modules: ["pantry", "shopping"],
+        timezone: "Europe/Kyiv",
+      },
+      members: clone(members),
+      shopping: [
+        {
+          id: "S000001",
+          revision: 1,
+          name: " synthetic  MILK ",
+          unit: "l",
+          quantity: 0.5,
+          purchased: 0.25,
+          status: "approved",
+          note: "",
+        },
+      ],
+      pantry: {
+        items: [
+          {
+            id: "I000001",
+            revision: 1,
+            name: "SYNTHETIC MILK",
+            unit: "l",
+            quantity: 0.5,
+            minimum_quantity: 0,
+            status: "active",
+            expires_on: "2020-01-01",
+            note: "PARENT PRIVATE STOCK NOTE",
+            history: [],
+          },
+        ],
+        archived: [],
+        suggestions: [],
+        meal_plans: [plan],
+        meal_shopping: [],
+      },
+    };
+    if (scenario === "covered") {
+      state.pantry.items[0].quantity = 2;
+      state.shopping = [];
+    } else if (scenario === "rounding") {
+      plan.entries[0].ingredients[0].quantity = 1;
+      state.pantry.items[0] = {
+        ...state.pantry.items[0],
+        unit: "ml",
+        quantity: 999,
+      };
+      state.shopping[0].quantity = 0.999999;
+      state.shopping[0].purchased = 0;
+    }
+
+    let nextProposal = 1;
+    let nextShopping = 2;
+    window.fixture = state;
+    window.calls = [];
+    window.receipts = new Map();
+    window.loseNextAccept = false;
+
+    const activeParent = (data) => {
+      const current = data.members.find((member) => member.id === data.actor);
+      return Boolean(
+        current?.active &&
+          ["owner", "parent"].includes(current.role) &&
+          current.role === data.role,
+      );
+    };
+    const project = (data) => {
+      const result = clone(data);
+      const parent = activeParent(data);
+      result.pantry.meal_plans = data.pantry.meal_plans
+        .filter((item) => parent || item.status === "published")
+        .map((item) => {
+          const visible = clone(item);
+          if (!parent) {
+            for (const key of [
+              "revision",
+              "note",
+              "history",
+              "created_by",
+              "created_at",
+              "updated_at",
+              "published_at",
+              "archived_at",
+            ])
+              delete visible[key];
+          }
+          return visible;
+        });
+      result.pantry.meal_shopping = parent
+        ? data.pantry.meal_shopping.map((item) => {
+            const visible = clone(item);
+            delete visible.input_fingerprint;
+            return visible;
+          })
+        : [];
+      result.pantry.items = parent
+        ? clone(data.pantry.items)
+        : data.pantry.items.map((item) => {
+            const visible = clone(item);
+            delete visible.note;
+            delete visible.history;
+            return visible;
+          });
+      return result;
+    };
+    const authorize = (data) => {
+      if (!activeParent(data)) throw { code: "forbidden" };
+      if (
+        !data.settings.modules.includes("pantry") ||
+        !data.settings.modules.includes("shopping")
+      )
+        throw { code: "module_disabled" };
+    };
+    const sourcePlan = (data, payload) => {
+      const source = data.pantry.meal_plans.find(
+        (item) => item.id === payload.id,
+      );
+      if (!source) throw { code: "not_found" };
+      if (!Number.isSafeInteger(payload.revision))
+        throw { code: "invalid_field" };
+      if (source.revision !== payload.revision) throw { code: "conflict" };
+      if (source.status !== "published") throw { code: "invalid_transition" };
+      return source;
+    };
+    const calculate = (data, source) => {
+      const grouped = new Map();
+      for (const entry of source.entries)
+        for (const ingredient of entry.ingredients) {
+          const key = JSON.stringify([
+            normalize(ingredient.name),
+            ingredient.unit,
+          ]);
+          const current = grouped.get(key) || {
+            name: ingredient.name,
+            unit: ingredient.unit,
+            required: 0,
+            stock: 0,
+            open_shopping: 0,
+          };
+          current.required = round6(current.required + ingredient.quantity);
+          grouped.set(key, current);
+        }
+      for (const item of data.pantry.items) {
+        if (item.status !== "active") continue;
+        const current = grouped.get(
+          JSON.stringify([normalize(item.name), item.unit]),
+        );
+        if (current) current.stock = round6(current.stock + item.quantity);
+      }
+      for (const item of data.shopping) {
+        if (!["pending", "approved"].includes(item.status)) continue;
+        const current = grouped.get(
+          JSON.stringify([normalize(item.name), item.unit]),
+        );
+        if (current)
+          current.open_shopping = round6(
+            current.open_shopping + item.quantity - (item.purchased || 0),
+          );
+      }
+      return [...grouped.values()]
+        .sort((a, b) =>
+          `${normalize(a.name)}\0${a.unit}`.localeCompare(
+            `${normalize(b.name)}\0${b.unit}`,
+          ),
+        )
+        .map((line) => {
+          const deficit = round6(
+            Math.max(0, line.required - line.stock - line.open_shopping),
+          );
+          return {
+            ...line,
+            deficit,
+            quantity: deficit > 0 ? ceilMilli(deficit) : 0,
+          };
+        });
+    };
+    const fingerprint = (data, source, lines) =>
+      JSON.stringify({
+        plan: {
+          id: source.id,
+          revision: source.revision,
+          status: source.status,
+          lines,
+        },
+        stock: data.pantry.items
+          .filter(
+            (item) =>
+              item.status === "active" &&
+              lines.some(
+                (line) =>
+                  normalize(line.name) === normalize(item.name) &&
+                  line.unit === item.unit,
+              ),
+          )
+          .map((item) => [item.id, item.revision, item.quantity, item.status]),
+        shopping: data.shopping
+          .filter(
+            (item) =>
+              ["pending", "approved"].includes(item.status) &&
+              lines.some(
+                (line) =>
+                  normalize(line.name) === normalize(item.name) &&
+                  line.unit === item.unit,
+              ),
+          )
+          .map((item) => [
+            item.id,
+            item.revision,
+            item.quantity,
+            item.purchased,
+            item.status,
+          ]),
+      });
+    const prepare = (data, payload) => {
+      const terminal = data.pantry.meal_shopping.find(
+        (item) =>
+          item.source_plan_id === payload.id &&
+          ["accepted", "covered"].includes(item.status),
+      );
+      if (terminal) return terminal;
+      const source = sourcePlan(data, payload);
+      const lines = calculate(data, source);
+      const input = fingerprint(data, source, lines);
+      const existing = data.pantry.meal_shopping.find(
+        (item) =>
+          item.source_plan_id === source.id &&
+          item.status === "open" &&
+          item.input_fingerprint === input,
+      );
+      if (existing) return existing;
+      for (const item of data.pantry.meal_shopping) {
+        if (item.source_plan_id === source.id && item.status === "open") {
+          item.status = "superseded";
+          item.revision += 1;
+        }
+      }
+      const proposal = {
+        id: `MS${String(nextProposal++).padStart(6, "0")}`,
+        revision: 1,
+        status: "open",
+        source_plan_id: source.id,
+        source_revision: source.revision,
+        plan_title: source.title,
+        week_start: source.week_start,
+        lines,
+        input_fingerprint: input,
+        created_by: data.actor,
+        created_at: "2026-09-07T12:00:00Z",
+        history: [],
+      };
+      data.pantry.meal_shopping.push(proposal);
+      return proposal;
+    };
+    const accept = (data, payload) => {
+      const proposal = data.pantry.meal_shopping.find(
+        (item) => item.id === payload.id,
+      );
+      if (!proposal) throw { code: "not_found" };
+      if (!Number.isSafeInteger(payload.revision))
+        throw { code: "invalid_field" };
+      if (proposal.revision !== payload.revision) throw { code: "conflict" };
+      if (proposal.status !== "open") throw { code: "invalid_transition" };
+      const source = sourcePlan(data, {
+        id: proposal.source_plan_id,
+        revision: proposal.source_revision,
+      });
+      const lines = calculate(data, source);
+      if (fingerprint(data, source, lines) !== proposal.input_fingerprint)
+        throw { code: "conflict" };
+      proposal.lines = clone(lines);
+      proposal.transfer_count = 0;
+      for (const line of proposal.lines) {
+        if (line.quantity <= 0) continue;
+        const item = {
+          id: `S${String(nextShopping++).padStart(6, "0")}`,
+          revision: 1,
+          name: line.name,
+          unit: line.unit,
+          quantity: line.quantity,
+          purchased: 0,
+          status: "approved",
+          note: "",
+          creator: data.actor,
+          meal_plan_id: source.id,
+          meal_shopping_id: proposal.id,
+        };
+        data.shopping.push(item);
+        line.shopping_id = item.id;
+        proposal.transfer_count += 1;
+      }
+      proposal.status = proposal.transfer_count ? "accepted" : "covered";
+      proposal.revision += 1;
+      return proposal;
+    };
+
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type.endsWith("/households"))
+          return [{ entry_id: "synthetic", title: "Example family" }];
+        if (message.type.endsWith("/view")) return project(state);
+        if (!message.type.endsWith("/execute"))
+          throw { code: "unknown_action" };
+        window.calls.push(clone(message));
+        authorize(state);
+        const receiptKey = `${message.entry_id}:${message.operation_id}`;
+        if (window.receipts.has(receiptKey))
+          return clone(window.receipts.get(receiptKey));
+        let result;
+        if (message.action === "pantry.meal_shop_prepare")
+          result = prepare(state, message.payload);
+        else if (message.action === "pantry.meal_shop_accept")
+          result = accept(state, message.payload);
+        else throw { code: "unknown_action" };
+        state.revision += 1;
+        window.receipts.set(receiptKey, clone(result));
+        if (
+          message.action === "pantry.meal_shop_accept" &&
+          window.loseNextAccept
+        ) {
+          window.loseNextAccept = false;
+          throw { code: "storage_error" };
+        }
+        return clone(result);
+      },
+    };
+
+    const card = document.createElement("family-meals-card");
+    card.setConfig({
+      type: "custom:family-meals-card",
+      entry_id: "synthetic",
+      language,
+    });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+    window.syncCard = async () => {
+      await card.refresh();
+      card.render();
+    };
+    window.changeRelevantStock = () => {
+      const item = state.pantry.items[0];
+      item.quantity = round6(item.quantity + 0.25);
+      item.revision += 1;
+    };
+    window.editSource = () => {
+      plan.title = "Changed source";
+      plan.status = "draft";
+      plan.revision += 1;
+    };
+    window.revoke = (kind) => {
+      if (kind === "module") {
+        state.settings.modules = ["pantry"];
+        card._data.settings.modules = ["pantry"];
+      } else if (kind === "role") {
+        state.role = "child";
+        state.members.find((member) => member.id === state.actor).role =
+          "child";
+        card._data.role = "child";
+        card._data.members.find((member) => member.id === state.actor).role =
+          "child";
+      } else {
+        state.members.find((member) => member.id === state.actor).active =
+          false;
+        card._data.members.find((member) => member.id === state.actor).active =
+          false;
+      }
+    };
+  </script>
+</html>

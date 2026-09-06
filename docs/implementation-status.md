@@ -21,8 +21,8 @@ Nothing is production-ready solely because a mock test passes.
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
-| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, revision-deduplicated reviewable shopping proposals and localized card; expiry alerts and meal linkage pending |
-| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history and localized card; shopping linkage, preferences and recipe providers pending |
+| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals and localized cards; expiry alerts and preferences pending |
+| Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer and localized card; preferences and recipe providers pending |
 | School, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
@@ -46,8 +46,26 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 917 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, weekly meal plans, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 208 frontend unit tests and 58 Chromium browser tests passed.
+- 985 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 220 frontend unit tests and 63 Chromium browser tests passed.
+- Published menus now have parent-only shopping calculation and reviewed acceptance.
+  Required ingredient totals are grouped by normalized name and exact unit, with
+  active stock and remaining pending/approved shopping subtracted using decimals.
+  Positive shortfalls are explicitly rounded up to shopping's 0.001 minimum; exact
+  shortfalls and zero lines remain visible, and unlike units are never summed.
+  Acceptance rechecks the source version and relevant record fingerprints, creates
+  only approved shopping-list entries with provenance, and never deducts stock,
+  places orders or copies private notes. A plan ID has one accepted/covered transfer
+  for its lifetime; later amendments are manual. Module/role revocation, stale and
+  malformed versions, concurrent requests, Store faults, replay after restart and
+  batch rollback are tested. Actual HA WebSockets verified changed coverage refusal,
+  recalculation, acceptance, child redaction and persisted receipts after reload.
+  Real FamilyCard tests verify frozen named review and operation IDs even when an
+  intervening section command replaces its pending fingerprint. RU mobile review
+  and UK terminal/child views were visually inspected; duplicate review lines were
+  removed and historical receipts collapsed. An initial browser startup timeout
+  was not reproduced in the isolated scenario or a fresh full 63-case run; no
+  assertions were relaxed. See [menu shopping guide](meal-shopping.md).
 - Weekly menu drafts are parent-managed under the pantry module, with one published
   plan per canonical Monday week. Editing a published plan returns it to a private
   draft; archiving preserves history and requires a reason. Entries have strict
@@ -64,8 +82,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   history labels and mobile ingredient layout were refined after visual review.
   Russian mobile editing/publication and Ukrainian child screenshots were inspected;
   the oversized remove-meal button was corrected and the full browser suite rerun.
-  See [weekly menu guide](meals.md). Meal-linked shopping proposals, preferences,
-  recipe providers and allergy checks are not yet implemented.
+  See [weekly menu guide](meals.md). Preferences, recipe providers and allergy
+  checks are not yet implemented; reviewed shopping linkage is described above.
 - Existing shopping/task/court/alarm/member edits now require strict current
   revisions. A shared validator rejects missing/malformed versions; read-only
   Context lookups remain distinct from explicit null. Member edits cannot silently
@@ -297,7 +315,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - All five GitHub check jobs passed on handoff checkpoint 1b91ca4 (run 34057944480)
   and condition-editor checkpoint 9c03f54 (run 34058895807), then pantry checkpoint
   e0ae29e (run 34060586354) and strict-command revision checkpoint
-  544ac8c (run 34061803612).
+  544ac8c (run 34061803612), followed by weekly menus
+  161b4d5 (run 34062734832).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

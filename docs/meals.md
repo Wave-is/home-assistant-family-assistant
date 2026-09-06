@@ -28,11 +28,15 @@ newer plan. After a lost response, Retry uses the same payload and operation ID,
 even if saving already succeeded; it does not create a duplicate. Permission
 revocation still applies to old receipts.
 
-This slice is manual planning: it neither deducts stock nor creates shopping
-items, orders, reminders or allergy checks. Meal-linked shopping proposals,
-private preferences and recipe providers remain separate implementation gates.
-An ingredient list is not a statement that a meal is safe for someone with an
-allergy; no such inference is made.
+This slice is manual planning: it does not place orders, deduct stock, or
+perform allergy checks. When both **Pantry & household stock** and **Shopping**
+are enabled, parent-initiated calculation followed by explicit review and
+acceptance creates approved shopping list entries only (see
+[meal-shopping.md](meal-shopping.md)). Private notes are never copied, only one
+accepted transfer is permitted per plan ID, and later amendments to shopping
+must be done manually. Private preferences, recipe providers and allergy checks
+remain separate implementation gates. An ingredient list is not a statement
+that a meal is safe for someone with an allergy; no such inference is made.
 
 ## Русский
 
@@ -53,10 +57,16 @@ allergy; no such inference is made.
 потери ответа повторяет прежнюю операцию с прежними данными, не создавая
 второй план. Снятые права не возвращаются при повторе старой команды.
 
-Пока это ручное меню: запасы не списываются, покупки, заказы, напоминания и
-проверки аллергенов не создаются. Связь меню с покупками, приватные предпочтения
-и источники рецептов остаются отдельными этапами. Список ингредиентов не
-подтверждает безопасность блюда при аллергии.
+Само планирование не оформляет заказы, не списывает запасы и не выполняет
+проверки аллергенов. При включении обоих модулей («Продукты и запасы» и
+«Покупки») инициированный родителем расчёт с последующим явным просмотром и
+подтверждением создаёт только согласованные позиции в списке покупок (см.
+[meal-shopping.md](meal-shopping.md)). Приватные заметки не копируются, для
+одного идентификатора плана допускается только один принятый перенос, а все
+последующие изменения вносятся в список покупок вручную. Приватные
+предпочтения, источники рецептов и проверки аллергенов остаются отдельными
+этапами реализации. Список ингредиентов не подтверждает безопасность блюда
+при аллергии.
 
 ## Українська
 
@@ -77,9 +87,14 @@ allergy; no such inference is made.
 надсилає ту саму операцію з тими самими даними, не створюючи дубліката.
 Відкликані права не відновлюються повторенням старої команди.
 
-Наразі це ручне меню: воно не списує запаси, не створює покупки, замовлення,
-нагадування чи перевірки алергенів. Зв'язок меню з покупками, приватні
-вподобання та джерела рецептів залишаються окремими етапами. Перелік
+Саме планування не оформлює замовлення, не списує запаси та не виконує перевірки
+алергенів. Якщо ввімкнено обидва модулі («Продукти й запаси» та «Покупки»),
+ініційований батьками розрахунок із подальшим явним переглядом і підтвердженням
+створює лише погоджені позиції в списку покупок (див.
+[meal-shopping.md](meal-shopping.md)). Приватні примітки не копіюються, для
+одного ідентифікатора плану дозволено лише одне прийняте перенесення, а будь-які
+подальші зміни вносяться до списку покупок вручну. Приватні вподобання, джерела
+рецептів і перевірки алергенів залишаються окремими етапами реалізації. Перелік
 інгредієнтів не підтверджує безпечність страви за наявності алергії.
 
 ## API contract
