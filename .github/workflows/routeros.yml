@@ -13,15 +13,16 @@ concurrency:
 jobs:
   native-routeros:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
       - name: Download and verify the official disposable CHR fixture
         run: |
-          curl --fail --location --proto '=https' --proto-redir '=https' \
-            --max-time 120 --output "$RUNNER_TEMP/chr.img.zip" \
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --connect-timeout 15 --max-time 300 --retry 2 --retry-all-errors \
+            --retry-delay 3 --retry-max-time 700 --output "$RUNNER_TEMP/chr.img.zip" \
             https://download.mikrotik.com/routeros/7.20.1/chr-7.20.1.img.zip
           echo "aab591e9c2da21d8416ad1ed9966fa2359ebef7a25c3b20453efe93f05234e6b  $RUNNER_TEMP/chr.img.zip" | sha256sum --check
       - name: Build developer-only QEMU image
