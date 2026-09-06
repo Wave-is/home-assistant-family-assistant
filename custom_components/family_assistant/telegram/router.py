@@ -18,7 +18,11 @@ COPY = {
             "/buy item | quantity | unit\n/bought S000001\n/tasks — tasks\n/task "
             "member | task title\n/done T000001 | report\n/approve T000001 — "
             "parent confirmation\n/alarms — wake-up checks\n/stats — scores and "
-            "reasons\nReply to a wake-up check using its fresh buttons."
+            "reasons\n/internet member — Kid Control status\n/netpause member\n"
+            "/netresume member\n/netgrant member | 30 — temporary access\n"
+            "/netschedule member | weekdays | 08:00-22:00\n"
+            "Network changes need a reviewed plan and /netconfirm.\n"
+            "Reply to a wake-up check using its fresh buttons."
         ),
         "empty": "No records yet.",
         "saved": "✅ Saved: {id} · {title}",
@@ -40,7 +44,10 @@ COPY = {
             "задачи\n/task участник | задача\n/done T000001 | отчёт\n/approve "
             "T000001 — подтверждение родителя\n/alarms — проверки подъёма\n"
             "/stats — баллы и причины\nПодтверждайте подъём свежими кнопками "
-            "проверки."
+            "проверки.\n/internet участник — интернет ребёнка\n/netpause участник\n"
+            "/netresume участник\n/netgrant участник | 30 — временный доступ\n"
+            "/netschedule участник | будни | 08:00-22:00\n"
+            "Сетевые изменения — после проверки плана и /netconfirm."
         ),
         "empty": "Пока нет записей.",
         "saved": "✅ Сохранено: {id} · {title}",
@@ -61,7 +68,10 @@ COPY = {
             "завдання\n/task учасник | завдання\n/done T000001 | звіт\n/approve "
             "T000001 — підтвердження батьків\n/alarms — перевірки підйому\n"
             "/stats — бали та причини\nПідтверджуйте підйом свіжими кнопками "
-            "перевірки."
+            "перевірки.\n/internet учасник — інтернет дитини\n/netpause учасник\n"
+            "/netresume учасник\n/netgrant учасник | 30 — тимчасовий доступ\n"
+            "/netschedule учасник | будні | 08:00-22:00\n"
+            "Мережеві зміни — після перевірки плану та /netconfirm."
         ),
         "empty": "Поки немає записів.",
         "saved": "✅ Збережено: {id} · {title}",
@@ -110,6 +120,10 @@ async def route(
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if str(result.get("id", "")).startswith("K") and "mode" in result:
+            from .network import render_plan
+
+            return render_plan(result, view, language)
         if result.get("status") in {"learned", "forgotten"}:
             from ..assistant.language import COPY as ASSISTANT_COPY
 
@@ -145,6 +159,19 @@ async def route(
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
         return t["help"]
+    from .network import parsed as parse_network
+    from .network import status as network_status
+
+    network_intent = parse_network(engine.snapshot(), content, now)
+    if network_intent:
+        if "mikrotik" not in view["settings"]["modules"]:
+            raise DomainError("module_disabled")
+        action, payload = network_intent
+        if action == "read.network":
+            return network_status(view, payload.get("member"), language)
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, action, payload)
+        )
     from ..domain.learning import resolve
 
     original_content = content

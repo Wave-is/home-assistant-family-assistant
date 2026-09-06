@@ -141,6 +141,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         password=user_input.get("password") or current.get("password", ""),
                         ca_pem=user_input.get("ca_pem", ""),
                         allow_write=user_input.get("allow_write", False),
+                        allow_kid_control=user_input.get("allow_kid_control", False),
                         ha_mac=user_input.get("ha_mac", ""),
                         management_mac=user_input.get("management_mac", ""),
                         management_confirmed=user_input.get("management_confirmed", False),
@@ -172,6 +173,9 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "ca_pem", default=current.get("ca_pem", "")
                     ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
                     vol.Required("allow_write", default=current.get("allow_write", False)): bool,
+                    vol.Required(
+                        "allow_kid_control", default=current.get("allow_kid_control", False)
+                    ): bool,
                     vol.Optional("ha_mac", default=current.get("ha_mac", "")): str,
                     vol.Optional("management_mac", default=current.get("management_mac", "")): str,
                     vol.Required(

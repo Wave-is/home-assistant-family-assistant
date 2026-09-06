@@ -135,23 +135,48 @@ def render(event, target, state):
                     "rolled_back": "compensated; check DHCP recovery",
                     "review_required": "needs your review",
                     "failed": "not applied",
+                    "expired": "temporary exception ended; previous mode verified",
                 },
                 "ru": {
                     "applied": "применён и проверен",
                     "rolled_back": "выполнен откат; проверьте восстановление DHCP",
                     "review_required": "нужна ваша проверка",
                     "failed": "не применён",
+                    "expired": "временное исключение завершено; прежний режим проверен",
                 },
                 "uk": {
                     "applied": "застосовано й перевірено",
                     "rolled_back": "виконано відкат; перевірте відновлення DHCP",
                     "review_required": "потрібна ваша перевірка",
                     "failed": "не застосовано",
+                    "expired": "тимчасовий виняток завершено; попередній режим перевірено",
                 },
             }
             data["status"] = labels.get(language, labels["en"]).get(data["status"], data["status"])
+            if record_id.startswith("K") and event["data"]["status"] == "rolled_back":
+                data["status"] = {
+                    "en": "previous profile restored",
+                    "ru": "прежний профиль восстановлен",
+                    "uk": "попередній профіль відновлено",
+                }[language]
         result = {"chat_id": target["id"], "text": template.format(**data)[:4000]}
     result["link_preview_options"] = {"is_disabled": True}
+    if event["key"] == "telegram_reply" and data.get("network_plan_id"):
+        plan = state["network"].get("kid_plans", {}).get(data["network_plan_id"], {})
+        if plan.get("status") == "preview" and plan.get("actor") == data["actor"]:
+            labels = {
+                "en": ("Confirm", "Cancel"),
+                "ru": ("Подтвердить", "Отменить"),
+                "uk": ("Підтвердити", "Скасувати"),
+            }[language]
+            result["reply_markup"] = {
+                "inline_keyboard": [
+                    [
+                        {"text": label, "callback_data": f"fn:{action}:{plan['id']}"}
+                        for label, action in zip(labels, ("confirm", "cancel"), strict=True)
+                    ]
+                ]
+            }
     if event["key"] == "alarm_challenge":
         # Callback carries only the run, nonce and choice. Actor identity comes from Telegram.
         buttons = [

@@ -197,13 +197,13 @@ class TelegramManager:
                         parts = content.rsplit(":", 2)
                         if (
                             len(parts) == 3
-                            and parts[0] == "fp"
+                            and parts[0] in {"fp", "fn"}
                             and parts[1] in {"confirm", "cancel"}
                         ):
                             response = await route(
                                 engine,
                                 actor,
-                                f"/{parts[1]} {parts[2]}",
+                                f"/{'net' if parts[0] == 'fn' else ''}{parts[1]} {parts[2]}",
                                 f"tg:{self.bot['id']}:{update_id}:action",
                                 now,
                             )
@@ -272,6 +272,11 @@ class TelegramManager:
                             for event in ctx.state["outbox"].values()
                         ):
                             return
+                        processed = (
+                            ctx.state["processed"]
+                            .get(f"tg:{self.bot['id']}:{update_id}:action", {})
+                            .get("result", {})
+                        )
                         ctx.notify(
                             actor,
                             "telegram_reply",
@@ -281,6 +286,9 @@ class TelegramManager:
                                 "bot_id": self.bot["id"],
                                 "chat_id": chat["id"],
                                 "reply_to": envelope.get("message_id"),
+                                "network_plan_id": processed.get("id")
+                                if "mode" in processed and processed.get("status") == "preview"
+                                else None,
                                 "refs": result_refs(
                                     ctx.state["processed"]
                                     .get(f"tg:{self.bot['id']}:{update_id}:action", {})

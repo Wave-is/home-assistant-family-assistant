@@ -72,6 +72,7 @@ class RouterClient:
             raise DomainError("network_url") from None
         self.session = session
         self._write_enabled = config.get("allow_write") is True
+        self._kid_enabled = config.get("allow_kid_control") is True
         username = text(config.get("username"), "username", 128)
         text(config.get("password"), "password", 1024)
         password = config["password"]  # Leading/trailing password spaces are significant.
@@ -134,6 +135,70 @@ class RouterClient:
         """Only for an explicitly approved rollback of a newly converted lease."""
         target = self._write_target(target)
         await self._request("DELETE", "ip/dhcp-server/lease/" + target)
+
+    def _kid_target(self, target):
+        from .leases import identifier
+
+        if not self._kid_enabled:
+            raise DomainError("network_readonly")
+        return identifier(target)
+
+    async def set_kid_profile(self, target, changes):
+        from .kids import DAYS, rate, windows
+
+        target = self._kid_target(target)
+        allowed = {"disabled", "rate-limit", *DAYS, *("tur-" + d for d in DAYS)}
+        if not isinstance(changes, dict) or not changes or changes.keys() - allowed:
+            raise DomainError("network_operation")
+        for key, value in changes.items():
+            if key == "disabled":
+                if value not in {"true", "false"}:
+                    raise DomainError("invalid_field", key)
+            elif key == "rate-limit":
+                rate(value)
+            else:
+                windows(value)
+        await self._request("PATCH", "ip/kid-control/" + target, json=changes)
+
+    async def pause_kid(self, target, paused):
+        target = self._kid_target(target)
+        if type(paused) is not bool:
+            raise DomainError("invalid_field", "paused")
+        await self._request(
+            "POST", "ip/kid-control/" + ("pause" if paused else "resume"), json={"numbers": target}
+        )
+
+    async def kid_timers(self, timer_name):
+        from .kid_timer import name
+
+        properties = (
+            ".id,name,on-event,start-date,start-time,interval,policy,disabled,comment,run-count"
+        )
+        result = await self._request(
+            "GET", "system/scheduler", params={"name": name(timer_name), ".proplist": properties}
+        )
+        if not isinstance(result, list) or any(not isinstance(r, dict) for r in result):
+            raise DomainError("network_response")
+        selected = [r for r in result if r.get("name") == timer_name]
+        if any(not isinstance(v, str) or len(v) > 8192 for row in selected for v in row.values()):
+            raise DomainError("network_response")
+        return [{k: v for k, v in row.items() if k in properties.split(",")} for row in selected]
+
+    async def install_kid_timer(self, plan, timer_name):
+        from .kid_timer import specifications
+
+        self._kid_target(plan["binding"]["profile_id"])
+        specs = [s for s in specifications(plan) if s["name"] == timer_name]
+        if len(specs) != 1:
+            raise DomainError("network_operation")
+        await self._request("PUT", "system/scheduler", json=specs[0])
+
+    async def remove_kid_timer(self, target, timer_name):
+        target = self._kid_target(target)
+        rows = await self.kid_timers(timer_name)
+        if len(rows) != 1 or rows[0].get(".id") != target:
+            raise DomainError("network_conflict")
+        await self._request("DELETE", "system/scheduler/" + target)
 
     async def inventory(self):
         # Required table failing does not replace a known inventory with an empty list.

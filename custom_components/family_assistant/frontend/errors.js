@@ -85,7 +85,12 @@ export const ERRORS = {
     "network_readback": "The router read-back did not match the requested result. Check the plan; do not assume success.",
     "network_management_required": "Specify and confirm protected HA-host and administration-device MACs before allowing writes.",
     "network_stale": "The inventory is too old. Read the router again before preparing a plan.",
-    "network_busy": "Another network plan is still running. Wait for its verified result."
+    "network_busy": "Another network plan is still running. Wait for its verified result.",
+    "network_time_window": "Use increasing daily windows, such as 08:00-22:00. Split an overnight window between two days.",
+    "network_clock": "Router clock or time zone differs from this household. Check its clock/NTP before changing schedules.",
+    "network_kid_membership": "The entire profile membership must match the explicitly selected devices. Disabled, dynamic or changed members require review.",
+    "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
+    "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -172,7 +177,12 @@ export const ERRORS = {
     "network_readback": "Повторное чтение роутера не подтвердило ожидаемый результат. Проверьте план; успех не подтверждён.",
     "network_management_required": "Перед разрешением записи задайте и подтвердите защищённые MAC хоста HA и устройства администратора.",
     "network_stale": "Инвентарь устарел. Перечитайте роутер перед подготовкой плана.",
-    "network_busy": "Другой сетевой план ещё выполняется. Дождитесь проверенного результата."
+    "network_busy": "Другой сетевой план ещё выполняется. Дождитесь проверенного результата.",
+    "network_time_window": "Интервалы суток должны идти вперёд, например 08:00-22:00. Ночной интервал разделите между двумя днями.",
+    "network_clock": "Часы или часовой пояс роутера не совпадают с семьёй. Проверьте часы/NTP перед изменением расписания.",
+    "network_kid_membership": "Полный состав профиля должен совпадать с выбранными устройствами. Отключённые, динамические и изменённые записи требуют проверки.",
+    "network_kid_unmanaged": "Сначала владелец должен явно передать профиль ребёнка и его устройства RouterOS под управление.",
+    "network_timer_required": "Нужен проверенный таймер окончания и запуска в RouterOS 7.16+. Временный доступ не удалось безопасно включить."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -259,6 +269,11 @@ export const ERRORS = {
     "network_readback": "Повторне читання роутера не підтвердило очікуваний результат. Перевірте план; успіх не підтверджено.",
     "network_management_required": "Перед дозволом запису задайте й підтвердьте захищені MAC хоста HA та пристрою адміністратора.",
     "network_stale": "Інвентар застарів. Перечитайте роутер перед підготовкою плану.",
-    "network_busy": "Інший мережевий план ще виконується. Дочекайтеся перевіреного результату."
+    "network_busy": "Інший мережевий план ще виконується. Дочекайтеся перевіреного результату.",
+    "network_time_window": "Інтервали доби мають іти вперед, наприклад 08:00-22:00. Нічний інтервал розділіть між двома днями.",
+    "network_clock": "Годинник або часовий пояс роутера відрізняється від сімейного. Перевірте час/NTP до зміни розкладу.",
+    "network_kid_membership": "Повний склад профілю має відповідати вибраним пристроям. Вимкнені, динамічні та змінені записи потребують перевірки.",
+    "network_kid_unmanaged": "Спочатку власник має явно передати профіль дитини та її пристрої RouterOS під керування.",
+    "network_timer_required": "Потрібен перевірений таймер завершення та запуску в RouterOS 7.16+. Тимчасовий доступ не вдалося безпечно увімкнути."
   }
 };

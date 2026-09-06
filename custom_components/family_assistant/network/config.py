@@ -9,7 +9,7 @@ from .inventory import mac
 
 def protected(config):
     values = [mac(config.get("ha_mac")), mac(config.get("management_mac"))]
-    if config.get("allow_write") is True and (
+    if (config.get("allow_write") is True or config.get("allow_kid_control") is True) and (
         None in values or config.get("management_confirmed") is not True
     ):
         raise DomainError("network_management_required")
@@ -24,6 +24,7 @@ def identity(config):
                 "username": config.get("username"),
                 "protected": protected(config),
                 "write": config.get("allow_write") is True,
+                "kid_control": config.get("allow_kid_control") is True,
             },
             sort_keys=True,
         ).encode()

@@ -10,6 +10,7 @@ from copy import deepcopy
 from datetime import datetime
 
 from ..const import DEFAULT_MODULES, LANGUAGES, MODULES, PRIVILEGED, SCHEMA_VERSION
+from ..network import kid_plans
 from ..network import plans as network_plans
 from . import (
     alarms,
@@ -199,6 +200,7 @@ class Engine:
             for record in self._state["memory"].get("phrases", {}).values()
             if record["actor"] == actor_id
         ]
+        data["kid_control"] = kid_plans.view(self._state, actor_id)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -257,6 +259,7 @@ class Engine:
                     raise DomainError("forbidden")
                 if prior["fingerprint"] != fingerprint:
                     raise DomainError("idempotency_conflict")
+                self._replay_scope(actor_id, action, payload)
                 return deepcopy(prior["result"])
             working = deepcopy(self._state)
             ctx = Context(working, actor, now, operation_id)
@@ -301,6 +304,26 @@ class Engine:
             await self._persist(deepcopy(working))
             self._state = working
             return deepcopy(result)
+
+    def _replay_scope(self, actor_id, action, payload):
+        """A delegated network permission can be revoked without changing role."""
+        if action == "batch":
+            for command in payload["commands"]:
+                self._replay_scope(actor_id, command["action"], command["payload"])
+        elif action.startswith("mikrotik."):
+            if "mikrotik" not in self._state["settings"]["modules"]:
+                raise DomainError("module_disabled")
+            kid_control = action.startswith("mikrotik.kid_") and action not in {
+                "mikrotik.kid_adopt",
+                "mikrotik.kid_permission",
+            }
+            allowed = (
+                kid_plans.can_manage(self._state, actor_id)
+                if kid_control
+                else self._state["members"][actor_id]["role"] == "owner"
+            )
+            if not allowed:
+                raise DomainError("forbidden")
 
     async def tick(self, now: datetime) -> bool:
         """Internal clock, not an exposed action or a forged privileged user.

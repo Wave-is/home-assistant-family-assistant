@@ -1,5 +1,24 @@
 import {test,expect} from "@playwright/test";
 
+test("parent reviews a temporary internet grant; child has status only",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru&kids=1");
+  await page.getByLabel("Интернет детей",{exact:true}).selectOption("grant");
+  await page.getByLabel("Минуты",{exact:true}).fill("30");
+  await page.getByRole("button",{name:"Проверить план",exact:true}).click();
+  expect(await page.evaluate(()=>window.calls.at(-1).action)).toBe("mikrotik.kid_plan");
+  await expect(page.getByText("Только предпросмотр",{exact:false}).first()).toBeVisible();
+  await page.screenshot({path:"test-results/kid-control-mobile-ru.png",fullPage:true});
+  await page.getByRole("button",{name:"Применить проверенное управление",exact:true}).click();
+  expect(await page.evaluate(()=>window.calls.at(-1).payload)).toEqual({id:"K000001",confirmed:true});
+  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=uk&kids=1&role=child");
+  await expect(page.getByRole("heading",{name:"Інтернет дітей"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Перевірити план"})).toHaveCount(0);
+  await expect(page.getByText("08:00-22:00",{exact:false}).first()).not.toBeVisible();
+  await page.getByText("Розклад доступу",{exact:true}).click();
+  await expect(page.getByText("08:00-22:00",{exact:false}).first()).toBeVisible();
+});
+
 test("lease changes need a selected preview and DHCP recovery consent",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru&write=1");

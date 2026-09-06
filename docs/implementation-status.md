@@ -24,7 +24,7 @@ Nothing is production-ready solely because a mock test passes.
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit- and HA-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; read-only live checks pending |
 | Static leases / comments | Implemented / unit-, browser- and HA-tested | Owner selection, protected devices, preview, confirmation, durable phases, read-back and scoped compensation with synthetic router; live RouterOS acceptance pending |
-| Kid Control including Telegram parents | Planned | Schedule vs override, autonomy |
+| Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and router timers. Native hAP synthetic-profile pause/resume/schedule/rate/grant/expiry passed; REST/real traffic/startup execution and richer modes remain separate gates |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | Planned | No live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 207 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease effects, public contracts).
-- 7 frontend unit tests and 15 Chromium browser tests passed.
+- 235 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, public contracts).
+- 8 frontend unit tests and 16 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -77,9 +77,21 @@ is exercised with a synthetic entity, not by replacing its service registry.
   private result notification passed. Transport uncertainty, disk interruption,
   scoped compensation and concurrent user-edit preservation are unit-tested.
 - Private legacy family-only suite: 397 tests passed.
-- No production family module, Telegram bot, router or siren has been changed.
+- Real HA Kid Control adoption, parent Telegram confirmation/replay, native-guard
+  template verification, private result and expiry closure passed with synthetic transport.
+- Native hAP ac / RouterOS 7.24.2 acceptance used only new synthetic profile/device
+  records through pinned SSH. Pause, resume, schedule, rate, grant and autonomous
+  one-minute expiry passed; all test records were removed and existing profiles,
+  services, DHCP, VRRP and schedulers compared unchanged. No real client was blocked.
+  Duration rendering and native `disabled=yes/no` assignment regressions were
+  found by native tests and added to the test suite. This is not a REST-wire or
+  end-to-end traffic claim; actual reboot/startup execution is still pending.
+- Mobile Russian Kid Control review and Ukrainian child-only schedule were checked.
+- No production family module, Telegram bot or siren has been changed. Existing
+  router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on the network-inventory checkpoint (run 34031974369). The initial
+- All five GitHub check jobs passed on the lease checkpoint (run 34033811284).
+  The current Kid Control block awaits its own pushed CI run. The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 
@@ -95,8 +107,9 @@ service call does not prove physical sound or volume.
 2. Complete module controls, localization and automatic card resource registration.
 3. Complete recurrence, reports, rewards and module parity, then LLM/search and
    extended family modules. Keep all unmet rows visible.
-4. Implement and independently test MikroTik plans/read-back/rollback and parents'
-   Telegram controls. No live router changes during development tests.
+4. Complete native REST and isolated-router reboot tests, then richer Kid Control
+   modes and fail-closed unknown-client controls. Hardware tests require explicit
+   authorization, synthetic targets, exact pre-state and scoped cleanup.
 5. Add release CI/privacy scanning, migration/shadow verification and only then
    a tested release and controlled production cutover.
 

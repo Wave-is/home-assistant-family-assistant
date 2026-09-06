@@ -31,6 +31,10 @@ def public(plan):
 
 
 def handle(ctx, action, payload):
+    if action.startswith("kid_"):
+        from .kid_plans import handle as handle_kid
+
+        return handle_kid(ctx, action, payload)
     # Parents manage child access; bulk router administration is owner-only.
     if ctx.actor["role"] != "owner":
         raise DomainError("forbidden")
@@ -80,7 +84,10 @@ def handle(ctx, action, payload):
         raise DomainError("network_confirmation")
     if plan["requires_dhcp_recovery_consent"] and payload.get("dhcp_recovery") is not True:
         raise DomainError("network_recovery_consent")
-    if any(p["status"] in {"queued", "applying", "rolling_back"} for p in plans.values()):
+    if any(
+        p["status"] in {"queued", "applying", "rolling_back"}
+        for p in [*plans.values(), *network.get("kid_plans", {}).values()]
+    ):
         raise DomainError("network_busy")
     plan.update(status="queued", dhcp_recovery=payload.get("dhcp_recovery") is True)
     return public(plan)

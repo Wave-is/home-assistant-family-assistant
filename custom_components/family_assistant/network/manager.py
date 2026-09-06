@@ -10,6 +10,8 @@ from ..domain.validation import DomainError
 from .config import identity, protected
 from .ha_inventory import collect
 from .inventory import build
+from .kid_executor import KidExecutor
+from .kid_plans import can_manage
 from .lease_executor import LeaseExecutor
 
 
@@ -32,60 +34,94 @@ class NetworkManager:
         self.request_effects()
 
     def request_effects(self):
-        plans = self.runtime.engine.snapshot()["network"].get("plans", {})
+        network = self.runtime.engine.snapshot()["network"]
+        plans = [*network.get("plans", {}).values(), *network.get("kid_plans", {}).values()]
         if (
             not self._stopped
             and (self._effects_task is None or self._effects_task.done())
-            and any(p["status"] in {"queued", "applying", "rolling_back"} for p in plans.values())
+            and any(self._pending(p) for p in plans)
         ):
             self._effects_task = self.hass.async_create_background_task(
                 self._effects(), "Family selected lease changes"
             )
 
-    def _authorized(self, plan):
+    def _pending(self, plan):
+        return plan["status"] in {"queued", "applying", "rolling_back"} or (
+            plan["status"] == "applied"
+            and plan.get("until")
+            and dt_util.utcnow() >= dt_util.parse_datetime(plan["until"])
+        )
+
+    def _authorized(self, plan, kid=False):
         config = self.entry.options.get("mikrotik", {})
         state = self.runtime.engine.snapshot()
         member = state["members"].get(plan["actor"], {})
         return bool(
             not self._stopped
             and config.get("enabled")
-            and config.get("allow_write") is True
+            and config.get("allow_kid_control" if kid else "allow_write") is True
             and identity(config) == self._backend == plan.get("backend")
             and "mikrotik" in state["settings"]["modules"]
             and member.get("active")
-            and member.get("role") == "owner"
+            and (can_manage(state, plan["actor"]) if kid else member.get("role") == "owner")
+            and (
+                not kid
+                or (
+                    state["network"].get("kid_profiles", {}).get(plan["member"]) == plan["binding"]
+                    and state["members"].get(plan["member"], {}).get("active")
+                    and state["members"].get(plan["member"], {}).get("role") == "child"
+                )
+            )
         )
 
     async def _effects(self):
         async with self._lock:
-            plans = self.runtime.engine.snapshot()["network"].get("plans", {})
-            for plan in plans.values():
-                if self._stopped or plan["status"] not in {"queued", "applying", "rolling_back"}:
+            network = self.runtime.engine.snapshot()["network"]
+            plans = [
+                (bucket, p)
+                for bucket in ("plans", "kid_plans")
+                for p in network.get(bucket, {}).values()
+            ]
+            for bucket, plan in plans:
+                if self._stopped or not self._pending(plan):
                     continue
+                kid = bucket == "kid_plans"
+                expiring = kid and (
+                    (plan["status"] == "applied" and plan.get("until"))
+                    or plan.get("progress", {}).get("expiry")
+                )
 
-                async def persist(progress, plan_id=plan["id"]):
+                async def persist(progress, plan_id=plan["id"], bucket=bucket, expiring=expiring):
+                    if expiring and progress["status"] == "rolled_back":
+                        progress = {**progress, "status": "expired"}
+
                     def save(ctx):
-                        current = ctx.state["network"]["plans"][plan_id]
+                        current = ctx.state["network"][bucket][plan_id]
                         current.update(progress=progress, status=progress["status"])
-                        if progress["status"] in {
-                            "applied",
-                            "rolled_back",
-                            "review_required",
-                            "failed",
-                        } and not current.get("notified"):
+                        if (
+                            progress["status"]
+                            in {
+                                "applied",
+                                "rolled_back",
+                                "review_required",
+                                "failed",
+                                "expired",
+                            }
+                            and current.get("notified") != progress["status"]
+                        ):
                             ctx.notify(
                                 current["actor"],
                                 "network_plan_finished",
                                 {"id": plan_id, "status": progress["status"]},
                             )
-                            current["notified"] = True
+                            current["notified"] = progress["status"]
 
                     await self.runtime.engine.system_update(
                         "network_progress", dt_util.utcnow(), save
                     )
 
                 try:
-                    executor = LeaseExecutor(
+                    executor = (KidExecutor if kid else LeaseExecutor)(
                         self.client,
                         {
                             k: v
@@ -93,14 +129,20 @@ class NetworkManager:
                             if k not in {"progress", "status", "notified", "dhcp_recovery"}
                         },
                         persist,
-                        lambda plan=plan: self._authorized(plan),
+                        lambda plan=plan, kid=kid: self._authorized(plan, kid),
                         protected_macs=self._protected,
                     )
-                    await executor.run(
-                        dt_util.utcnow(),
-                        plan.get("progress"),
-                        dhcp_recovery=plan.get("dhcp_recovery", False),
-                    )
+                    progress = plan.get("progress")
+                    if expiring:
+                        progress = {**progress, "status": "rolling_back", "expiry": True}
+                    if kid:
+                        await executor.run(dt_util.utcnow(), progress)
+                    else:
+                        await executor.run(
+                            dt_util.utcnow(),
+                            progress,
+                            dhcp_recovery=plan.get("dhcp_recovery", False),
+                        )
                 except DomainError as err:
                     progress = dict(plan.get("progress") or {})
                     progress.update(
@@ -153,6 +195,8 @@ class NetworkManager:
                         backend=self._backend,
                         protected_macs=self._protected,
                         writable=self.entry.options.get("mikrotik", {}).get("allow_write") is True,
+                        kid_writable=self.entry.options.get("mikrotik", {}).get("allow_kid_control")
+                        is True,
                     )
 
                 await self.runtime.engine.system_update("network_inventory", now, save)

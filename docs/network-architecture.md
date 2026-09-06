@@ -1,8 +1,10 @@
 # Optional RouterOS module
 
-Connection, inventory and reviewed lease plans are implemented and tested with a
-synthetic router in real HA. Live RouterOS acceptance, Kid Control and allowlist
-enforcement remain separate gates. No production router
+Connection, inventory, reviewed lease plans and adopted Kid Control profiles are
+implemented and tested with a synthetic router in real HA. Native synthetic-profile
+checks on an authorized reserve hAP additionally verified pause/resume, hours,
+rate, temporary grant and router-only expiry. REST-wire, actual reboot/startup and
+end-to-end traffic checks remain separate gates. No production router
 changes are made by installation, options validation or inventory polling.
 
 The client follows the [RouterOS REST API](https://manual.mikrotik.com/docs/developer-guides/rest-api/)
@@ -56,11 +58,34 @@ minutes and bind to the configured router, user and protected-device scope.
   Final status is saved before an owner-private notification. Network inventory
   is not posted to a family group by this workflow.
 
+## Reviewed Kid Control
+
+Ownership is explicit: only an owner can adopt an existing profile after checking
+all its device records. Parents then control that adopted profile; an adult needs
+separate delegated permission. Children see only their own status without MACs.
+Connection write enablement is separate from lease write enablement.
+
+Plans are actor-bound, five-minute previews. Every effect journals its phase,
+rechecks ownership/permissions and reads back the resulting configuration. A timed
+operation installs and verifies two owned scheduler templates **before** changing
+mode. The expiry guard restores the previous disabled/paused mode independently
+of HA; a startup guard is intended to end the exception early on router reboot.
+The latter's configuration is checked, but real startup execution is still a test
+gate. Timers name the exact adopted profile and internal ID, preserve unrelated
+schedule/rate edits and remove only their own two entries. RouterOS 7.16+ and
+synchronized matching time zones are required. There is no arbitrary script API.
+
+Telegram commands and the card use the same permissions and plans. Telegram
+confirmation is bound to its author; duplicate updates cannot extend the duration.
+The worker's verified/failed/expired result goes privately to that author.
+Native duration (`7h30m`, `1d`) and script boolean (`yes/no`, unlike REST strings)
+compatibility have regression tests based on native hardware findings.
+
 ## Remaining control gates
 
 - Kid Control resume means return to its configured schedule, not unrestricted
-  access. Temporary grants need a router-local expiry before they are called
-  autonomous. Restriction state is not proof that FastTrack, IPv6 or downstream
+  access. Temporary grants require the verified router-local expiry described
+  above. Restriction state is not proof that FastTrack, IPv6 or downstream
   NAT cannot bypass it. Read-back and topology checks are separate gates.
 - No ownership is inferred from a familiar comment or profile name. Adopting
   existing profiles/devices and adding a protected administration path require

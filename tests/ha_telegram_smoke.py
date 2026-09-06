@@ -4,6 +4,7 @@ import asyncio
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 
 async def run_network(hass, entry, owner, child_id):
@@ -11,6 +12,9 @@ async def run_network(hass, entry, owner, child_id):
 
     from custom_components.family_assistant.domain.validation import DomainError
     from custom_components.family_assistant.network.client import TABLES, RouterClient
+    from custom_components.family_assistant.telegram.manager import TelegramManager
+    from custom_components.family_assistant.telegram.messages import render
+    from custom_components.family_assistant.telegram.router import route
 
     async def options():
         flow = await hass.config_entries.options.async_init(
@@ -36,9 +40,28 @@ async def run_network(hass, entry, owner, child_id):
         "servers": [{"name": "lan", "interface": "lan"}],
         "networks": [{"address": "198.51.100.0/24"}],
         "addresses": [{"address": "198.51.100.1/24", "interface": "lan"}],
+        "kids": [
+            {
+                ".id": "*3",
+                "name": "Child profile",
+                "disabled": "false",
+                "paused": "false",
+                **dict.fromkeys(("mon", "tue", "wed", "thu", "fri", "sat", "sun"), "08:00-22:00"),
+            }
+        ],
+        "kid_devices": [
+            {
+                ".id": "*4",
+                "name": "Phone",
+                "mac-address": "02:11:22:33:44:55",
+                "user": "Child profile",
+                "dynamic": "false",
+            }
+        ],
     }
     failure = False
     writes = []
+    timers = {}
 
     async def request(_self, method, path, **_kwargs):
         if method != "GET":
@@ -50,11 +73,40 @@ async def run_network(hass, entry, owner, child_id):
             if method == "PATCH" and path == "ip/dhcp-server/lease/*A":
                 tables["leases"][0].update(_kwargs["json"])
                 return deepcopy(tables["leases"][0])
+            if method == "PATCH" and path == "ip/kid-control/*3":
+                tables["kids"][0].update(_kwargs["json"])
+                return deepcopy(tables["kids"][0])
+            if method == "POST" and path in {"ip/kid-control/pause", "ip/kid-control/resume"}:
+                assert _kwargs["json"] == {"numbers": "*3"}
+                tables["kids"][0]["paused"] = "true" if path.endswith("pause") else "false"
+                return []
+            if method == "PUT" and path == "system/scheduler":
+                spec = _kwargs["json"]
+                timers[spec["name"]] = {**spec, ".id": "*" + str(10 + len(timers))}
+                return deepcopy(timers[spec["name"]])
+            if method == "DELETE" and path.startswith("system/scheduler/"):
+                selected = [k for k, v in timers.items() if v[".id"] == path.rsplit("/", 1)[1]]
+                assert len(selected) == 1
+                del timers[selected[0]]
+                return None
             raise AssertionError("Unexpected router write in smoke test")
         if failure == "deadline":
             raise TimeoutError
         if failure:
             raise DomainError("network_timeout")
+        if path == "system/scheduler":
+            name = _kwargs["params"]["name"]
+            return [deepcopy(timers[name])] if name in timers else []
+        if path == "system/clock":
+            zone = engine.snapshot()["settings"]["timezone"]
+            current = datetime.now(ZoneInfo(zone))
+            return [
+                {
+                    "date": current.strftime("%Y-%m-%d"),
+                    "time": current.strftime("%H:%M:%S"),
+                    "time-zone-name": zone,
+                }
+            ]
         name = next(k for k, v in TABLES.items() if v[0] == path)
         if name in {"wifi", "wireless"}:
             raise DomainError("network_missing")
@@ -151,6 +203,7 @@ async def run_network(hass, entry, owner, child_id):
             {
                 **config,
                 "allow_write": True,
+                "allow_kid_control": True,
                 "ha_mac": "02:11:22:33:44:77",
                 "management_mac": "02:11:22:33:44:88",
                 "management_confirmed": True,
@@ -198,6 +251,68 @@ async def run_network(hass, entry, owner, child_id):
             )
             == 1
         )
+        await engine.execute(
+            "owner",
+            "mikrotik.kid_adopt",
+            {"member": child_id, "profile_id": "*3", "devices": ["*4"], "confirmed": True},
+            "smoke-adopt",
+            datetime.now(UTC),
+        )
+        who = engine.snapshot()["members"][child_id]["name"]
+        preview = await route(
+            engine, "owner", "/netgrant " + who + " | 30", "smoke-kid-plan", datetime.now(UTC)
+        )
+        assert "/netconfirm K000001" in preview and len(writes) == 2
+        bot = {"id": 1000, "username": "synthetic_family_bot"}
+        receiver = TelegramManager(
+            hass, entry, entry.runtime_data, SyntheticTelegram(None, None), bot
+        )
+        state = engine.snapshot()
+        tg_user = state["members"]["owner"]["telegram_id"]
+        update = {
+            "update_id": 5000,
+            "callback_query": {
+                "id": "synthetic-network-confirm",
+                "from": {"id": tg_user, "is_bot": False},
+                "data": "fn:confirm:K000001",
+                "message": {
+                    "message_id": 5000,
+                    "chat": {"id": tg_user, "type": "private"},
+                    "from": {"id": 1000},
+                },
+            },
+        }
+        await receiver.process(update)
+        await manager._effects_task
+        controlled = engine.snapshot()["network"]["kid_plans"]["K000001"]
+        assert controlled["status"] == "applied", controlled
+        assert controlled["progress"]["timer_verified"] and len(timers) == 2
+        assert tables["kids"][0]["disabled"] == "true"
+        count = len(writes)
+        await receiver.process(update)
+        assert len(writes) == count
+        events = list(engine.snapshot()["outbox"].values())
+        notification = next(
+            e
+            for e in events
+            if e["key"] == "network_plan_finished" and e["data"]["id"] == "K000001"
+        )
+        assert notification["recipient"] == "owner"
+        assert (
+            "DHCP"
+            not in render(notification, {"id": tg_user, "language": "en"}, engine.snapshot())[
+                "text"
+            ]
+        )
+        # Simulate router-local expiry; HA only verifies and closes the exception.
+        tables["kids"][0]["disabled"] = "false"
+        timers.clear()
+        future = datetime.now(UTC) + timedelta(hours=1)
+        with patch("homeassistant.util.dt.utcnow", return_value=future):
+            manager.request_effects()
+            await manager._effects_task
+        assert engine.snapshot()["network"]["kid_plans"]["K000001"]["status"] == "expired"
+        assert "02:11" not in str(engine.view(child_id)["kid_control"])
         flow = await options()
         flow = await hass.config_entries.options.async_configure(
             flow["flow_id"], {"enabled": False}
@@ -208,6 +323,10 @@ async def run_network(hass, entry, owner, child_id):
     print(
         "PASS: real HA RouterOS options, registry MAC matching, private projections "
         "and stale-data preservation; explicit write scope, lease preview/apply/read-back/replay"
+    )
+    print(
+        "PASS: real HA Kid Control adoption, Telegram confirmation/replay, "
+        "scoped native guards, private result and expiry closure"
     )
 
 

@@ -160,7 +160,8 @@ checked. Applying a five-minute preview is a separate action; conversion also
 requires consent that compensation removes only the new reservation and DHCP
 renewal must recover the dynamic lease. This is not an exact dynamic rollback.
 The card distinguishes queued, verified, compensated and review-required results.
-Kid Control/allowlist and live RouterOS acceptance remain pending. See the
+Kid Control is described below; allowlist enforcement and end-to-end filtering
+remain separate gates. See the
 [network boundaries and remaining gates](network-architecture.md).
 
 ## Wake-up checks and delivery problems
@@ -191,6 +192,40 @@ System health shows failed/uncertain deliveries. A timeout may occur after
 Telegram already accepted a message, so it is not blindly resent. Check the
 chat, then either close the warning or explicitly retry with a reason and
 duplicate consent. If delivery waits for a channel, link the recipient's chat.
+
+## Parents' Kid Control
+
+In connection options, enable Kid Control writes separately from lease writes.
+The protected HA/management MAC list must be confirmed. In the network card,
+the owner selects an existing native profile and a child, reviews **every device**
+and confirms ownership. This adoption changes only local integration data.
+Parents can then preview pause, normal schedule, temporary access/pause, allowed
+hours and rate limits. Applying the preview is a separate confirmation.
+An adult without the parent role needs an explicit owner-granted permission.
+Children can read their own adopted profile, without MACs or control buttons.
+
+From your own bot: `/internet Child`, `/netpause Child`, `/netresume Child`,
+`/netgrant Child | 30`, `/netblock Child | 15`, `/netuntil Child | 21:30`,
+`/netschedule Child | weekdays | 08:00-22:00`, `/netlimit Child | 5M`.
+Use the child's configured name or alias. Review the plan, then its confirmation
+button or `/netconfirm K000001`; `/netcancel K000001` cancels an unapplied preview.
+The bot queues work and reports the verified outcome privately; accepting an API
+command alone is never reported as internet connectivity.
+
+Pause is indefinite; resume restores the configured schedule, not unrestricted
+24-hour access. Temporary operations require RouterOS 7.16+, synchronized clocks
+and matching household/router time zones. Two narrowly scoped router scheduler
+guards must be read back before access changes. The expiry guard restores the
+previous mode without HA; the startup guard ends an exception early after router
+reboot. A manually changed or recreated profile is not overwritten. Keep the
+integration connected until its final verification/incident closure.
+
+Verify actual filtering with a nonessential test client: IPv6, FastTrack and
+downstream NAT may affect enforcement. Rate-unlimited (`tur-*`) periods override
+rate limits; changing a day's allowed hours clears its separate unlimited window
+and shows that in the diff. Native synthetic-profile tests are not proof of your
+network's end-to-end filtering. Profile creation, per-device selection, holidays
+and unknown-client strict mode remain development gates.
 
 ## Acceptance before household use
 

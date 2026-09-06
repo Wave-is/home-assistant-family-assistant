@@ -6,6 +6,7 @@ const dom=new JSDOM("<!doctype html><body></body>",{url:"http://localhost"});
 for(const key of ["window","document","HTMLElement","customElements","CustomEvent","FormData"])
   globalThis[key]=dom.window[key];
 const {COPY}=await import("../custom_components/family_assistant/frontend/family-assistant.js");
+const {KID_COPY,KID_FIELDS,kidDiff}=await import("../custom_components/family_assistant/frontend/network-kids.js");
 const base={revision:1,settings:{name:"Demo family",modules:["shopping","tasks","court","alarms"]},actor:"parent",role:"parent",
   members:[{id:"parent",name:"Parent",role:"parent",active:true},{id:"child",name:"Child",role:"child",active:true}],
   tasks:[],shopping:[],court:[],alarms:[],alarm_runs:[]};
@@ -13,6 +14,12 @@ const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 
 test("all frontend locales have identical keys",()=>{
   for(const locale of Object.values(COPY))assert.deepEqual(Object.keys(locale).sort(),Object.keys(COPY.en).sort());
+  for(const locale of Object.values(KID_COPY))assert.deepEqual(Object.keys(locale).sort(),Object.keys(KID_COPY.en).sort());
+  for(const locale of Object.values(KID_FIELDS))assert.deepEqual(Object.keys(locale).sort(),Object.keys(KID_FIELDS.en).sort());
+});
+test("Kid Control preview uses human terms instead of inverted raw disabled flags",()=>{
+  assert.equal(kidDiff("disabled",{before:"false",after:"true"},"ru",[]),"Ограничения: Включены → Выключены");
+  assert.equal(kidDiff("paused",{before:"false",after:"true"},"uk",[]),"Примусова пауза: Ні → Так");
 });
 test("shopping names never become HTML",async()=>{
   const card=document.createElement("family-shopping-card");card.setConfig({entry_id:"demo"});
