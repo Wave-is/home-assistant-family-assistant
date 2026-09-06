@@ -80,6 +80,14 @@ test("late command error cannot overwrite the new household's status",async()=>{
   assert.doesNotMatch(card.shadowRoot.textContent,/Private old item|old-household-error/);
 });
 
+test("calendar card and its editor retain the calendar alias",async()=>{
+  const card=document.createElement("family-calendar-card");card.setConfig({});
+  assert.equal(card._view,"calendar");
+  const editor=document.createElement("family-assistant-card-editor");
+  editor.setConfig({type:"custom:family-calendar-card"});
+  assert.equal(editor.shadowRoot.querySelector('[name="view"]').value,"calendar");
+});
+
 test("visual editor uses authorized household names, not manually entered IDs",async()=>{
   const editor=document.createElement("family-assistant-card-editor");
   editor.setConfig({type:"custom:family-alarms-card"});let emitted;

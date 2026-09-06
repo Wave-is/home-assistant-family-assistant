@@ -4,6 +4,7 @@ from ..notifications import DeliveryError
 
 MESSAGES = {
     "en": {
+        "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member} requests {id} · {title}. Reserved: {cost} points. "
             "Parent review is required."
@@ -35,6 +36,7 @@ MESSAGES = {
         ),
     },
     "ru": {
+        "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member}: заявка {id} · {title}. Резерв: {cost} баллов. Нужна проверка родителя."
         ),
@@ -68,6 +70,7 @@ MESSAGES = {
         ),
     },
     "uk": {
+        "calendar_reminder": "📅 {title} · {start}\n{location}\n{preparation}",
         "reward_requested": (
             "🎁 {member}: заявка {id} · {title}. Резерв: {cost} балів. Потрібна перевірка батьків."
         ),
@@ -157,8 +160,21 @@ def render(event, target, state):
             ),
             {},
         )
-        data["title"] = record.get("title", record.get("name", ""))
+        data["title"] = record.get("title", record.get("name", data.get("title", "")))
         data["member"] = state["members"].get(data.get("member"), {}).get("name", "")
+        if event["key"] == "calendar_reminder":
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+
+            if not data["all_day"]:
+                data["start"] = (
+                    datetime.fromisoformat(data["start"])
+                    .astimezone(ZoneInfo(data["timezone"]))
+                    .strftime("%Y-%m-%d %H:%M")
+                    + " · "
+                    + data["timezone"]
+                )
+            data["preparation"] = "\n".join("☐ " + item for item in data["preparation"])
         if event["key"] == "reward_changed":
             labels = {
                 "en": {

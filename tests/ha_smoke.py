@@ -264,6 +264,9 @@ async def main():
                 "approved",
                 "fulfilled",
             ]
+            calendar_after_reload = entry.runtime_data.engine.snapshot()["calendar"]
+            assert len(calendar_after_reload) == 3
+            assert not entry.runtime_data.engine.snapshot()["settings"]["calendar"]["publish_to_ha"]
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -703,6 +706,117 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     print(
         "PASS: actual HA WebSocket privilege reservation, parent approval, fulfillment and replay"
     )
+    await verify_calendar_controls(hass, entry, owner, child, child_id, request)
+
+
+async def verify_calendar_controls(hass, entry, owner, child, child_id, request):
+    """Opt-in HA projection has no private events and cannot bypass family authorization."""
+    from homeassistant.components.calendar.const import DATA_COMPONENT as CALENDAR_COMPONENT
+    from homeassistant.exceptions import HomeAssistantError
+    from homeassistant.helpers import entity_registry as er
+
+    settings = entry.runtime_data.engine.snapshot()["settings"]
+    await request(
+        owner,
+        "settings.save",
+        {
+            "name": settings["name"],
+            "language": settings["language"],
+            "modules": [*settings["modules"], "calendar"],
+        },
+    )
+    unique_id = f"{entry.entry_id}_family_calendar"
+    registry = er.async_get(hass)
+    assert registry.async_get_entity_id("calendar", "family_assistant", unique_id) is None
+    start = (datetime.now(UTC) + timedelta(days=1)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    )
+    payload = {
+        "title": "Synthetic private appointment",
+        "start": start.isoformat(),
+        "end": (start + timedelta(hours=1)).isoformat(),
+        "visibility": "participants",
+    }
+    private = await request(child, "calendar.save", payload, "calendar-private-create")
+    assert private["status"] == "tentative"
+    assert await request(child, "calendar.save", payload, "calendar-private-create") == private
+    private = await request(
+        owner,
+        "calendar.approve",
+        {
+            "id": private["id"],
+            "revision": private["revision"],
+            "reason": "Synthetic approval",
+        },
+    )
+    assert private["participants"] == [child_id] and private["status"] == "confirmed"
+    shared_payload = {**payload, "title": "Synthetic shared visit", "visibility": "family"}
+    shared = await request(owner, "calendar.save", shared_payload)
+    all_day_start = (start + timedelta(days=1)).date()
+    await request(
+        owner,
+        "calendar.save",
+        {
+            "title": "Synthetic all-day trip",
+            "all_day": True,
+            "start": all_day_start.isoformat(),
+            "end": (all_day_start + timedelta(days=1)).isoformat(),
+        },
+    )
+    config = {"revision": 0, "publish_to_ha": True}
+    await request(child, "calendar.configure", config, error="forbidden")
+    await request(owner, "calendar.configure", config, error="confirmation_required")
+    await request(owner, "calendar.configure", {**config, "confirm_public_visibility": True})
+    await hass.async_block_till_done()
+    entity_id = registry.async_get_entity_id("calendar", "family_assistant", unique_id)
+    assert entity_id and hass.states.get(entity_id).state == "off"
+    entity = hass.data[CALENDAR_COMPONENT].get_entity(entity_id)
+    assert entity.supported_features == 0
+    events = await entity.async_get_events(
+        hass, start - timedelta(hours=1), start + timedelta(days=3)
+    )
+    assert [e.summary for e in events] == ["Synthetic shared visit", "Synthetic all-day trip"]
+    assert type(events[1].start).__name__ == "date" and type(events[0].start) is datetime
+    assert entity.event.uid == shared["id"]
+    # All-day queries use HA's timezone, even if household/event timezone differs.
+    midnight = datetime.combine(all_day_start, datetime.min.time(), UTC)
+    assert await entity.async_get_events(hass, midnight - timedelta(hours=1), midnight) == []
+    response = await hass.services.async_call(
+        "calendar",
+        "get_events",
+        {
+            "entity_id": entity_id,
+            "start_date_time": start.isoformat(),
+            "end_date_time": (start + timedelta(days=3)).isoformat(),
+        },
+        blocking=True,
+        return_response=True,
+        context=Context(user_id=owner.id),
+    )
+    assert len(response[entity_id]["events"]) == 2
+    try:
+        await hass.services.async_call(
+            "calendar",
+            "create_event",
+            {
+                "entity_id": entity_id,
+                "summary": "Must not bypass family permissions",
+                "start_date_time": start.isoformat(),
+                "end_date_time": (start + timedelta(hours=1)).isoformat(),
+            },
+            blocking=True,
+            context=Context(user_id=owner.id),
+        )
+    except HomeAssistantError:
+        pass
+    else:
+        raise AssertionError("The read-only calendar accepted a mutation")
+    await request(owner, "calendar.configure", {"revision": 1, "publish_to_ha": False})
+    await hass.async_block_till_done()
+    assert entity.event is None and not entity.available
+    assert "message" not in hass.states.get(entity_id).attributes
+    assert await entity.async_get_events(hass, start, start + timedelta(days=3)) == []
+    print("PASS: actual HA calendar opt-in, approval, privacy, date types, read-only and revoke")
 
 
 if __name__ == "__main__":

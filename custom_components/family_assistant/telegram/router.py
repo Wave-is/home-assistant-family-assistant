@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 
 from ..domain.validation import DomainError
-from . import commands, rewards
+from . import calendar, commands, rewards
 from .intents import find_member, parse
 from .presentation import court_stats, summary
 
@@ -125,13 +125,25 @@ def member_by_name(state: dict, value: str) -> str:
 
 
 async def route(
-    engine, actor: str, content: str, operation_id: str, now: datetime, refs=(), *, fallback=None
+    engine,
+    actor: str,
+    content: str,
+    operation_id: str,
+    now: datetime,
+    refs=(),
+    *,
+    fallback=None,
+    private=False,
 ) -> str:
     view = engine.view(actor, now=now)
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if "participants" in result and "start" in result:
+            return t["saved"].format(
+                id=result["id"], title=calendar.summary(result, language, private)
+            )
         if str(result.get("id", "")).startswith("K") and "mode" in result:
             from .network import render_plan
 
@@ -175,7 +187,7 @@ async def route(
     }:
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
-        return t["help"] + rewards.help_text(language)
+        return t["help"] + rewards.help_text(language) + calendar.help_text(language)
     from .network import parsed as parse_network
     from .network import status as network_status
 
@@ -252,7 +264,16 @@ async def route(
         return "\n".join(lines)[:3800] or t["empty"]
     if command in {"/rewards", "/wallet"}:
         return rewards.read(view, language, only_wallet=command == "/wallet")
+    if command == "/calendar":
+        return calendar.read(view, language, private)
     fields = [part.strip() for part in tail.split("|")]
+    calendar_intent = calendar.parsed(view, command, fields)
+    if calendar_intent:
+        return saved(
+            await commands.execute(
+                engine, actor, content, refs, operation_id, now, *calendar_intent
+            )
+        )
     reward_intent = rewards.parsed(view, command, fields)
     if reward_intent:
         return saved(

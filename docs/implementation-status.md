@@ -16,8 +16,9 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Eight cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health; richer editors and other module cards pending |
-| Routines and family calendar | Planned | Recurrence, catch-up, time zones |
+| Today and module cards | Nine cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar; richer editors and other module cards pending |
+| Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence API, preparation reminders, opt-in read-only HA calendar; recurrence/task-link UI pending |
+| Routines | Planned | Ordered steps, conditions, confirmation, modes and escalation |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
@@ -43,8 +44,20 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 494 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 98 frontend unit tests and 32 Chromium browser tests passed.
+- 549 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 111 frontend unit tests and 35 Chromium browser tests passed.
+- Calendar commands use durable revisions and replay; child edits require renewed
+  approval. Participant-only records are absent from unrelated members and group
+  `/calendar` replies. Preparation reminders target participants/escort, expire
+  after five minutes and do not flood after downtime. Shared confirmed events
+  reach a read-only HA calendar only after explicit owner opt-in; revocation clears
+  live state without claiming to purge Recorder history. Actual HA tested this
+  gate, private filtering, date types, read-only services and Store reload. Recurrence
+  expansion has bounded scans, UTC elapsed duration, gap skipping and first-fold
+  selection. Card edits preserve original timestamp offsets/seconds unless changed,
+  require a choice for newly entered folded times and reject stale identity/drafts.
+  RU mobile creation/publication and UK child editing were checked in Chromium;
+  advanced recurrence/task links remain API-only and are documented explicitly.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -183,11 +196,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on court checkpoint f7c8263 (run 34047574429).
+- All five GitHub check jobs passed on privilege checkpoint e83e6f8 (run 34048895288).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
-  persisting intent. The privilege checkpoint is locally verified here.
+  persisting intent. The calendar checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
@@ -212,8 +225,8 @@ service call does not prove physical sound or volume.
 
 ## Open engineering gates (not release-ready)
 
-- Some controls are still API-only: advanced alarm exceptions/delay fields
-  and task-series editing.
+- Some controls are still API-only: advanced alarm exceptions/delay fields,
+  task-series editing, calendar recurrence and calendar task links.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

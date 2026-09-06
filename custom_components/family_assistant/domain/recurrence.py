@@ -16,7 +16,7 @@ def clock(value):
 
 def local_date(value):
     try:
-        if not isinstance(value, str) or len(value) != 10:
+        if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
             raise ValueError
         return date.fromisoformat(value)
     except ValueError:
@@ -63,7 +63,7 @@ def validate(payload):
     if type(month_day) is not int or not 1 <= month_day <= 31:
         raise DomainError("invalid_field", "month_day")
     until = payload.get("until")
-    if until and local_date(until) < start:
+    if until is not None and local_date(until) < start:
         raise DomainError("invalid_field", "until")
     exceptions = payload.get("exceptions", [])
     if not isinstance(exceptions, list) or len(exceptions) > 366:
@@ -72,7 +72,7 @@ def validate(payload):
         "frequency": frequency,
         "interval": interval,
         "start_date": start.isoformat(),
-        "until": local_date(until).isoformat() if until else None,
+        "until": local_date(until).isoformat() if until is not None else None,
         "time": clock(payload["time"]),
         "timezone": timezone(payload["timezone"]),
         "weekdays": sorted(set(weekdays)),

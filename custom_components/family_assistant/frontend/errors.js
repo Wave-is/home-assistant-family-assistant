@@ -93,7 +93,8 @@ export const ERRORS = {
     "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
     "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
     "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
-    "reward_expired": "This privilege request expired. Submit a new request."
+    "reward_expired": "This privilege request expired. Submit a new request.",
+    "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -188,7 +189,8 @@ export const ERRORS = {
     "network_kid_unmanaged": "Сначала владелец должен явно передать профиль ребёнка и его устройства RouterOS под управление.",
     "network_timer_required": "Нужен проверенный таймер окончания и запуска в RouterOS 7.16+. Временный доступ не удалось безопасно включить.",
     "insufficient_points": "Недостаточно доступных баллов: действующие заявки резервируют свою стоимость.",
-    "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку."
+    "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку.",
+    "confirmation_required": "Подтвердите, что общие одобренные события могут быть видны другим пользователям Home Assistant."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -283,6 +285,7 @@ export const ERRORS = {
     "network_kid_unmanaged": "Спочатку власник має явно передати профіль дитини та її пристрої RouterOS під керування.",
     "network_timer_required": "Потрібен перевірений таймер завершення та запуску в RouterOS 7.16+. Тимчасовий доступ не вдалося безпечно увімкнути.",
     "insufficient_points": "Недостатньо доступних балів: чинні заявки резервують свою вартість.",
-    "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку."
+    "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку.",
+    "confirmation_required": "Підтвердьте, що спільні схвалені події можуть бути видимі іншим користувачам Home Assistant."
   }
 };

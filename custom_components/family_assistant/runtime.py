@@ -17,7 +17,7 @@ from .const import DOMAIN, SCHEMA_VERSION
 from .domain.engine import Engine, new_state
 from .domain.validation import DomainError
 
-PLATFORMS = [Platform.SENSOR, Platform.CONVERSATION]
+PLATFORMS = [Platform.SENSOR, Platform.CONVERSATION, Platform.CALENDAR]
 
 
 @dataclass

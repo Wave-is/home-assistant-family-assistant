@@ -33,6 +33,13 @@ data.health={telegram:"connected"};data.delivery_issues=[{id:"synthetic-delivery
 if(query.has("proposal")){data.settings.modules.push("conversation");data.proposals=[{id:"Psynthetic",status:"pending",preview:"Полить цветы · Ребёнок 1 · завтра 20:00",expires_at:"2099-09-06T08:00:00Z"}];}
 if(view==="conversation"){data.settings.modules.push("conversation");data.learned_phrases=[];}
 if(view==="mikrotik"){data.settings.modules.push("mikrotik");data.network={inventory:{observed_at:"2026-09-06T08:00:00Z",fasttrack:true,ipv6:"disabled",capabilities:{wifi:"network_missing"},devices:[{mac:"02:11:22:33:44:55",addresses:["198.51.100.10"],comments:["Existing comment"],hostnames:["mobile"],sources:["leases","arp"],warnings:["locally_administered"],suggested_name:"Example phone",suggestions:[{name:"Example phone",evidence:["exact_mac"],confidence:100,area:"Bedroom"}]}]}};}
+if(view==="calendar"){
+  data.settings.modules.push("calendar");data.settings.timezone="Europe/Kyiv";
+  data.members.forEach(m=>m.role=m.id==="owner"?"owner":"child");
+  const record={id:"E000001",title:{en:"School outing",ru:"Школьная поездка",uk:"Шкільна поїздка"}[language],description:"",location:"",start:"2026-10-25T03:30:15+02:00",end:"2026-10-25T04:30:45+02:00",all_day:false,timezone:"Europe/Kyiv",participants:["child"],escort:null,preparation:["Synthetic notebook"],reminder_minutes:[15],visibility:"family",status:"tentative",creator:"child",revision:1,archived:false,history:[]};
+  data.calendar={config:{publish_to_ha:false,revision:0},events:[record],occurrences:[{...record,event_id:record.id}]};
+  window.calendarFixture=data;window.calendarOperations=new Map();
+}
 window.calls=[];const card=document.createElement("family-assistant-card");card.setConfig({view,entry_id:"synthetic"});
 if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 if(query.has("kids")){data.settings.timezone="UTC";data.members[0].role="owner";data.members[1].role="child";data.kid_control={can_manage:data.role!=="child",writable:true,observed_at:"2026-09-06T08:00:00Z",plans:[],profiles:[{member:"child",name:"Child profile",device_names:["Phone"],observed:{disabled:"false",paused:"false",...Object.fromEntries(["mon","tue","wed","thu","fri","sat","sun"].map(d=>[d,"08:00-22:00"]))}}]};}
@@ -72,6 +79,29 @@ card.hass={language,callWS:async message=>{
   if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
   if(message.type.endsWith("/execute")){
     window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+    if(message.action.startsWith("calendar.")){
+      if(window.calendarOperations.has(message.operation_id))return structuredClone(window.calendarOperations.get(message.operation_id));
+      const p=message.payload,action=message.action.slice(9);let result;
+      if(action==="configure"){
+        if(data.role!=="owner")throw {code:"forbidden"};
+        if(p.revision!==data.calendar.config.revision)throw {code:"conflict"};
+        if(p.publish_to_ha&&!data.calendar.config.publish_to_ha&&!p.confirm_public_visibility)throw {code:"confirmation_required"};
+        result=data.calendar.config={publish_to_ha:p.publish_to_ha,revision:p.revision+1};
+      }else{
+        let record=data.calendar.events.find(e=>e.id===p.id);
+        if(p.id&&(!record||record.revision!==p.revision))throw {code:"conflict"};
+        if(action==="save"){
+          if(!record){record={id:`E${String(data.calendar.events.length+1).padStart(6,"0")}`,creator:data.actor,revision:0,history:[],archived:false};data.calendar.events.push(record);}
+          Object.assign(record,p,{status:data.role==="child"?"tentative":"confirmed"});
+        }else if(action==="approve"){
+          if(!["parent","owner"].includes(data.role))throw {code:"forbidden"};record.status="confirmed";
+        }else if(action==="cancel")record.status="cancelled";
+        else if(action==="archive")record.archived=true;
+        record.revision++;record.history.push({action:action==="save"?"updated":action,actor:data.actor,at:new Date().toISOString(),reason:p.reason||""});result=record;
+        data.calendar.occurrences=data.calendar.events.filter(e=>!e.archived&&e.status!=="cancelled").map(e=>({...e,event_id:e.id}));
+      }
+      window.calendarOperations.set(message.operation_id,structuredClone(result));return structuredClone(result);
+    }
     if(message.action.startsWith("court.reward_")&&window.rewardOperations.has(message.operation_id))return structuredClone(window.rewardOperations.get(message.operation_id));
     const rewardDone=result=>{window.rewardOperations.set(message.operation_id,structuredClone(result));return structuredClone(result);};
     if(message.action==="court.configure"){

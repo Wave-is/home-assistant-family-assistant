@@ -117,7 +117,8 @@
       "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
       "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
       "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
-      "reward_expired": "This privilege request expired. Submit a new request."
+      "reward_expired": "This privilege request expired. Submit a new request.",
+      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -186,7 +187,8 @@
           "daily_penalty_cap": "Maximum automatic negative points per person per day",
           "timezone": "Time zone",
           "conversation": "Conversation",
-          "mikrotik": "MikroTik network"
+          "mikrotik": "MikroTik network",
+          "calendar": "Family calendar"
         }
       },
       "alarm_device": {
@@ -364,7 +366,8 @@
       "network_kid_unmanaged": "The owner must explicitly adopt this child's RouterOS profile and devices first.",
       "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
       "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
-      "reward_expired": "This privilege request expired. Submit a new request."
+      "reward_expired": "This privilege request expired. Submit a new request.",
+      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -398,6 +401,11 @@
     "conversation": {
       "assistant": {
         "name": "Family conversation"
+      }
+    },
+    "calendar": {
+      "family_calendar": {
+        "name": "Family calendar"
       }
     }
   },
@@ -700,6 +708,9 @@
     },
     "reward_expired": {
       "message": "This privilege request expired. Submit a new request."
+    },
+    "confirmation_required": {
+      "message": "Confirm that shared confirmed events may be visible to other Home Assistant users."
     }
   },
   "selector": {

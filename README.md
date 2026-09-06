@@ -19,7 +19,8 @@ pending implementation and explain how to create and link your own bot.
 Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Tasks / Задачи / Завдання](docs/tasks.md) ·
 [Court / Семейный суд / Сімейний суд](docs/court.md) ·
-[Privileges / Привилегии / Привілеї](docs/rewards.md).
+[Privileges / Привилегии / Привілеї](docs/rewards.md) ·
+[Calendar / Календарь / Календар](docs/calendar.md).
 
 ## Development
 

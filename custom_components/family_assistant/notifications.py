@@ -94,7 +94,7 @@ class Notifications:
         for event in ctx.state["outbox"].values():
             if event["state"] in {"sent", "superseded", "failed", "uncertain", "resolved"}:
                 continue
-            if event["key"] == "alarm_challenge":
+            if event["key"] in {"alarm_challenge", "calendar_reminder"}:
                 if ctx.now >= timestamp(event["data"]["expires_at"], "expires_at"):
                     event["state"] = "superseded"
                     continue

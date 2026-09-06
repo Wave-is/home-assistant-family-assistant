@@ -132,6 +132,8 @@ ERRORS = {
         "enabled.",
         "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
         "reward_expired": "This privilege request expired. Submit a new request.",
+        "confirmation_required": "Confirm that shared confirmed events may be "
+        "visible to other Home Assistant users.",
     },
     "ru": {
         "invalid_field": "Проверьте введённое значение.",
@@ -269,6 +271,8 @@ ERRORS = {
         "insufficient_points": "Недостаточно доступных баллов: действующие заявки "
         "резервируют свою стоимость.",
         "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку.",
+        "confirmation_required": "Подтвердите, что общие одобренные события могут "
+        "быть видны другим пользователям Home Assistant.",
     },
     "uk": {
         "invalid_field": "Перевірте введене значення.",
@@ -402,5 +406,7 @@ ERRORS = {
         "insufficient_points": "Недостатньо доступних балів: чинні заявки "
         "резервують свою вартість.",
         "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку.",
+        "confirmation_required": "Підтвердьте, що спільні схвалені події можуть "
+        "бути видимі іншим користувачам Home Assistant.",
     },
 }

@@ -254,6 +254,7 @@ class TelegramManager:
                             now,
                             reply_refs(engine.snapshot(), message, self.bot),
                             fallback=slow,
+                            private=chat.get("type") == "private",
                         )
                 except (DomainError, ValueError) as err:
                     code = err.code if isinstance(err, DomainError) else "invalid_field"

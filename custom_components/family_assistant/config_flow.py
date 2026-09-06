@@ -477,7 +477,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "language": user_input["language"],
                         "modules": [
                             m
-                            for m in (*DEFAULT_MODULES, "conversation", "mikrotik")
+                            for m in (*DEFAULT_MODULES, "conversation", "mikrotik", "calendar")
                             if user_input.get(m)
                         ],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
@@ -515,7 +515,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
-                        for m in (*DEFAULT_MODULES, "conversation", "mikrotik")
+                        for m in (*DEFAULT_MODULES, "conversation", "mikrotik", "calendar")
                     },
                 }
             ),

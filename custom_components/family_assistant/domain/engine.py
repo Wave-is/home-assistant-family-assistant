@@ -17,6 +17,7 @@ from . import (
     court,
     court_weekly,
     delivery,
+    family_calendar,
     household,
     members,
     proposals,
@@ -41,6 +42,7 @@ HANDLERS = {
     "notifications": delivery.handle,
     "conversation": proposals.handle,
     "mikrotik": network_plans.handle,
+    "calendar": family_calendar.handle,
 }
 BUCKETS = (
     "members",
@@ -132,6 +134,7 @@ class Engine:
         self._state.setdefault("court_reports", {})
         self._state.setdefault("rewards", {})
         self._state.setdefault("reward_requests", {})
+        self._state.setdefault("calendar", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
         self._persist = persist
@@ -229,6 +232,8 @@ class Engine:
             if record["actor"] == actor_id
         ]
         data["kid_control"] = kid_plans.view(self._state, actor_id, now)
+        if actor["role"] != "guest" and "calendar" in self._state["settings"]["modules"]:
+            data["calendar"] = family_calendar.view(self._state, actor, now)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -371,6 +376,7 @@ class Engine:
             task_events.tick(ctx)
             court_weekly.tick(ctx)
             rewards.tick(ctx)
+            family_calendar.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1
