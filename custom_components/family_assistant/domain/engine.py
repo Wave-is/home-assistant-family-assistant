@@ -21,6 +21,7 @@ from . import (
     proposals,
     settings,
     shopping,
+    shopping_series,
     task_events,
     task_series,
     tasks,
@@ -42,6 +43,7 @@ HANDLERS = {
 BUCKETS = (
     "members",
     "shopping",
+    "shopping_series",
     "tasks",
     "task_series",
     "incidents",
@@ -120,6 +122,7 @@ class Engine:
             raise DomainError("unsupported_schema")
         self._state = deepcopy(state)
         self._state.setdefault("task_series", {})
+        self._state.setdefault("shopping_series", {})
         self._state.setdefault("incidents", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
@@ -179,6 +182,14 @@ class Engine:
             ]
         if actor["role"] == "guest":
             data["shopping"] = []
+        data["shopping_series"] = (
+            [
+                {k: v for k, v in record.items() if k not in {"creator", "occurrences"}}
+                for record in self._state["shopping_series"].values()
+            ]
+            if actor["role"] != "guest"
+            else []
+        )
         data["task_series"] = [
             record
             if parent
@@ -339,6 +350,7 @@ class Engine:
             )
             alarms.tick(ctx)
             task_series.tick(ctx)
+            shopping_series.tick(ctx)
             task_events.tick(ctx)
             if working == self._state:
                 return False

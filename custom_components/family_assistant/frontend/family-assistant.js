@@ -1,6 +1,7 @@
 /* Family Assistant cards. User data is inserted only through textContent. */
 import {ERRORS} from "./errors.js";
 import {renderKids} from "./network-kids.js";
+import {renderShoppingSeries} from "./shopping-series.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -186,6 +187,7 @@ export class FamilyCard extends HTMLElement {
     this._generation = (this._generation || 0) + 1;
     this._entry = config.entry_id;
     this._data = null;
+    this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -352,8 +354,9 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="alarms")this.renderAlarmRuns(body);
     if(this._view==="tasks")this.renderSeries(body);
+    if(this._view==="shopping")renderShoppingSeries(this,body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
-    if(!["court","alarms"].includes(this._view) || this.parent) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this.render();},true));
+    if(!["court","alarms"].includes(this._view) || this.parent) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
     body.append(toolbar);if(this._form)body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);

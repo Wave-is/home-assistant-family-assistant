@@ -7,6 +7,10 @@ from .validation import DomainError, fields, number, text
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
+    if action.startswith("series_"):
+        from .shopping_series import handle as series_command
+
+        return series_command(ctx, action, payload)
     if ctx.actor["role"] == "guest":
         raise DomainError("forbidden")
     if action == "add":

@@ -52,6 +52,19 @@ test("late response from previous household cannot replace current household",as
   card.setConfig({entry_id:"new"});finish(base);await tick();assert.equal(card._data,null);
 });
 
+test("changing household clears private recurring-shopping drafts",()=>{
+  const card=document.createElement("family-shopping-card");
+  card.setConfig({entry_id:"old"});
+  card._shoppingSeriesFormOpen=true;
+  card._shoppingSeriesEditingItem={id:"B1",name:"Private old household"};
+  card._shoppingSeriesDraft={name:"Private draft"};
+  card.setConfig({entry_id:"new"});
+  assert.equal(card._shoppingSeriesFormOpen,false);
+  assert.equal(card._shoppingSeriesEditingItem,null);
+  assert.equal(card._shoppingSeriesDraft,null);
+  assert.doesNotMatch(card.shadowRoot.textContent,/Private/);
+});
+
 test("visual editor uses authorized household names, not manually entered IDs",async()=>{
   const editor=document.createElement("family-assistant-card-editor");
   editor.setConfig({type:"custom:family-alarms-card"});let emitted;

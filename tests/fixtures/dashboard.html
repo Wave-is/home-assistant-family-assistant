@@ -17,6 +17,8 @@ shopping:[{id:"S000001",name:{en:"Apples",ru:"Яблоки",uk:"Яблука"}[l
 tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растения",uk:"Полити рослини"}[language],assignee:"child",status:"assigned",due_at:"2026-09-10T17:00:00Z",revision:1}],
 court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
 data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
+data.shopping_series=[];
+if(query.has("shoppingseries"))data.shopping_series=[{id:"B000001",revision:3,name:"Молоко",quantity:2,unit:"л",buyer:"child",note:"",category:"",store:"",enabled:true,rule:{frequency:"weekly",interval:1,start_date:"2026-09-01",time:"08:00",timezone:"Europe/Kyiv",weekdays:[0,4],month_day:1,until:null,exceptions:["2026-12-25"],catchup_hours:24}}];
 data.alarm_runs=query.has("ringing")?[{id:"W000001",member:"child",stage:"first",siren_desired:true,test:true,challenge:{nonce:"synthetic-nonce",question:"3 + 4",choices:[5,7,9,6]}}]:[];
 data.health={telegram:"connected"};data.delivery_issues=[{id:"synthetic-delivery",recipient:"child",key:"task_assigned",state:"uncertain",created_at:"2026-09-06T08:00:00Z",attempts:1}];
 if(query.has("proposal")){data.settings.modules.push("conversation");data.proposals=[{id:"Psynthetic",status:"pending",preview:"Полить цветы · Ребёнок 1 · завтра 20:00",expires_at:"2099-09-06T08:00:00Z"}];}
@@ -37,6 +39,12 @@ card.hass={language,callWS:async message=>{
  if(message.type.endsWith("/execute")){
    window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
    if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
+   if(message.action==="shopping.series_save"){
+     const idx=data.shopping_series.findIndex(s=>s.id===message.payload.id);
+     const item={...message.payload,id:message.payload.id || "B000001",revision:idx>=0?data.shopping_series[idx].revision+1:1};
+     if(idx>=0)data.shopping_series[idx]=item;else data.shopping_series.push(item);
+   }
+   if(message.action==="shopping.series_enable")Object.assign(data.shopping_series.find(s=>s.id===message.payload.id),{enabled:message.payload.enabled,revision:message.payload.revision+1});
    if(message.action==="conversation.confirm" || message.action==="conversation.reject")data.proposals=[];
    if(message.action==="conversation.learn")data.learned_phrases.push({id:"Lsynthetic",...message.payload,active:true,revision:1});
    if(message.action==="mikrotik.lease_plan"){const target=message.payload.leases[0];data.network.plans=[{id:"N000001",status:"preview",expires_at:"2099-09-06T08:00:00Z",requires_dhcp_recovery_consent:true,targets:[{id:target.id,mac:"02:11:22:33:44:55",address:"198.51.100.10",server:"lan",old_comment:"Existing comment",comment:target.replace_comment?target.comment:"Existing comment",convert:true,changed:true,warnings:[]}]}];}

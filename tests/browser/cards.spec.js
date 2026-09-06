@@ -1,5 +1,45 @@
 import {test,expect} from "@playwright/test";
 
+test("parent creates a recurring purchase from a Russian mobile card",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=ru");
+  await page.getByRole("button",{name:"Добавить регулярную покупку",exact:true}).click();
+  const form=page.locator("form.shopping-series-form");
+  await form.getByLabel("Название",{exact:true}).fill("Хлеб");
+  await form.getByLabel("Количество",{exact:true}).fill("2");
+  await form.getByLabel("Единица",{exact:true}).fill("шт");
+  await form.getByLabel("Дата начала",{exact:true}).fill("2026-09-07");
+  await form.getByLabel("Время создания",{exact:true}).fill("09:00");
+  await page.screenshot({path:"test-results/shopping-series-form-ru.png",fullPage:true});
+  await form.getByRole("button",{name:"Сохранить",exact:true}).click();
+  const call=(await page.evaluate(()=>window.calls))[0];
+  expect(call.action).toBe("shopping.series_save");
+  expect(call.payload.name).toBe("Хлеб");expect(call.payload.quantity).toBe(2);
+  expect(call.payload.rule.weekdays).toEqual([0,1,2,3,4]);
+  await expect(page.getByText("Регулярно · Хлеб",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Выключить",exact:true}).click();
+  expect((await page.evaluate(()=>window.calls)).at(-1).payload).toEqual({id:"B000001",revision:1,enabled:false});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("Ukrainian recurring purchase edits clear buyer and exclusions with revision",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=uk&shoppingseries=1");
+  await page.getByRole("button",{name:"Редагувати регулярну покупку",exact:true}).click();
+  const form=page.locator("form.shopping-series-form");
+  await form.getByLabel("Покупець (необов’язково)",{exact:true}).selectOption("");
+  await form.getByText("Додаткові налаштування",{exact:true}).click();
+  await form.getByLabel("Винятки: дати РРРР-ММ-ДД через кому",{exact:true}).fill("");
+  await form.getByRole("button",{name:"Зберегти",exact:true}).click();
+  const call=(await page.evaluate(()=>window.calls))[0];
+  expect(call.payload.id).toBe("B000001");expect(call.payload.revision).toBe(3);
+  expect(call.payload.buyer).toBeNull();expect(call.payload.rule.exceptions).toEqual([]);
+  await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=uk&role=child&shoppingseries=1");
+  await expect(page.getByText("Регулярно · Молоко",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Редагувати регулярну покупку",exact:true})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Додати регулярну покупку",exact:true})).toHaveCount(0);
+});
+
 test("parent reviews a temporary internet grant; child has status only",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/tests/fixtures/dashboard.html?view=mikrotik&lang=ru&kids=1");

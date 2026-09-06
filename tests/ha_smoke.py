@@ -229,7 +229,8 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
-            assert len(entry.runtime_data.engine.view("owner")["shopping"]) == 3
+            assert len(entry.runtime_data.engine.view("owner")["shopping"]) == 4
+            assert len(entry.runtime_data.engine.view("owner")["shopping_series"]) == 1
             assert len(entry.runtime_data.engine.view("owner")["members"]) == 3
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
@@ -351,12 +352,48 @@ async def run_websocket(hass, entry, owner, child_id):
         "smoke-series",
         datetime.now(UTC),
     )
+    shopping_series = await engine.execute(
+        "owner",
+        "shopping.series_save",
+        {
+            "name": "Synthetic recurring milk",
+            "quantity": 2,
+            "unit": "l",
+            "rule": {
+                "frequency": "daily",
+                "start_date": release.date().isoformat(),
+                "time": release.strftime("%H:%M"),
+                "timezone": "UTC",
+            },
+        },
+        "smoke-shopping-series",
+        datetime.now(UTC),
+    )
     await entry.runtime_data.scheduler.run(release + timedelta(seconds=5))
     assert (
         len([t for t in engine.snapshot()["tasks"].values() if t.get("series_id") == duty["id"]])
         == 1
     )
     print("PASS: HA scheduler generated one recurring task instance")
+    purchases = [
+        p
+        for p in engine.snapshot()["shopping"].values()
+        if p.get("series_id") == shopping_series["id"]
+    ]
+    assert len(purchases) == 1 and purchases[0]["status"] == "approved"
+    await entry.runtime_data.scheduler.run(release + timedelta(seconds=10))
+    assert len(engine.view("owner")["shopping_series"]) == 1
+    assert (
+        len(
+            [
+                p
+                for p in engine.snapshot()["shopping"].values()
+                if p.get("series_id") == shopping_series["id"]
+            ]
+        )
+        == 1
+    )
+    print("PASS: HA scheduler generated one separate recurring purchase without duplicate replay")
 
 
 if __name__ == "__main__":

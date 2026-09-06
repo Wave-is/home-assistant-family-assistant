@@ -9,7 +9,7 @@ Nothing is production-ready solely because a mock test passes.
 | Clean public source and HACS structure | In progress | No public release yet |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
-| Separate shopping model | Implemented / unit-tested | Partial purchase and approvals; recurring/media/price extensions pending |
+| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items and parent editor; merging/media/price/history extensions pending |
 | Tasks, deadlines, reports and reviews | In progress | Text lifecycle, repeat duties/rotation, reminders, paired overdue incidents and opt-in idempotent penalties tested; legacy parity and media pending |
 | Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 333 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 9 frontend unit tests and 18 Chromium browser tests passed.
+- 357 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases and incidents, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 25 frontend unit tests and 20 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -64,6 +64,17 @@ is exercised with a synthetic entity, not by replacing its service registry.
   exclusions, DST, bounded catch-up and Store faults are unit-tested.
 - Due reminders, parent-review exemption, one penalty per task, pending-alert
   supersession and paired closure after sent/in-flight/uncertain notices are tested.
+- Recurring purchases are separate shopping records, not tasks. Parent-only
+  schedules support daily/weekly/monthly recurrence, time zones, exclusions and
+  bounded catch-up. Open or partially purchased items from the same series suppress
+  new duplicates; unrelated manual items are untouched. Revoked creators and
+  inactive/guest buyers cannot generate new purchases. Strict revision checks,
+  storage failures, restart/replay and actual DST gaps/folds are unit-tested.
+  RU/UK/EN card creation/edit/enable/disable is implemented; browser checks cover
+  mobile creation and clearing a buyer/exclusions. Failed saves retain draft data
+  with a stable retry payload. Household changes clear private drafts. The real
+  HA scheduler generated exactly one approved purchase and Store reload retained it.
+  The Russian mobile recurring-purchase form was visually inspected.
 - Real HA model options/fallback, persisted nonblocking Telegram inbox, proposal
   confirmation buttons, authenticated Assist and actor/session receipt context passed.
 - Mobile Russian model-plan confirmation visually inspected; no command before confirmation.
@@ -116,11 +127,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on checkpoint f92ec3e (run 34040075861).
+- All five GitHub check jobs passed on checkpoint 18df770 (run 34041486164).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after
-  persisting intent. The new status-display checkpoint is locally verified here.
+  persisting intent. The recurring-purchase checkpoint is locally verified here.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
