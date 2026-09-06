@@ -10,7 +10,7 @@ Nothing is production-ready solely because a mock test passes.
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | Implemented / unit-tested | Partial purchase and approvals; recurring/media/price extensions pending |
-| Tasks, deadlines, reports and reviews | In progress | Legacy parity and media pending |
+| Tasks, deadlines, reports and reviews | In progress | Text lifecycle, repeat duties/rotation, reminders, paired overdue incidents and opt-in idempotent penalties tested; legacy parity and media pending |
 | Court, rewards, penalties and appeals | In progress | Automatic settlement/rewards pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
@@ -43,8 +43,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 104 Python tests passed (domain, device adapter, outbox, Telegram, language/context, public contracts).
-- 7 frontend unit tests and 8 Chromium browser tests passed.
+- 123 Python tests passed (domain, device adapter, outbox, Telegram, language/context, recurrence/incidents, public contracts).
+- 7 frontend unit tests and 10 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
   entity setup, explicit siren opt-in, actual siren service parameter validation,
@@ -59,10 +59,15 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - RU/UK/EN setup guides explain own-bot setup, identity confirmation, current
   limits, wake-up testing and delivery uncertainty. Card editor lists authorized households.
 - Mobile Ukrainian wake-up and Russian shopping screenshots visually inspected.
+- Recurring duty creation/rotation is browser-tested on mobile; the real HA
+  scheduler generated one ordinary task instance. Daily, weekly, monthly,
+  exclusions, DST, bounded catch-up and Store faults are unit-tested.
+- Due reminders, parent-review exemption, one penalty per task, pending-alert
+  supersession and paired closure after sent/in-flight/uncertain notices are tested.
 - Private legacy family-only suite: 397 tests passed.
 - No production family module, Telegram bot, router or siren has been changed.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on main (run 34026374437). The initial
+- All five GitHub check jobs passed on main (run 34027446898). The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
 

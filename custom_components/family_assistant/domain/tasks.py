@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import task_events
 from .context import Context
 from .validation import DomainError, fields, text, timestamp
 
@@ -9,12 +10,25 @@ FINAL = {"completed", "cancelled", "archived"}
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
+    if action.startswith("series_"):
+        from .task_series import handle as series_command
+
+        return series_command(ctx, action, payload)
     if ctx.actor["role"] == "guest":
         raise DomainError("forbidden")
     if action == "create":
         fields(
             payload,
-            {"title", "assignee", "due_at", "report_type", "checklist"},
+            {
+                "title",
+                "assignee",
+                "due_at",
+                "report_type",
+                "checklist",
+                "reminder_minutes",
+                "grace_minutes",
+                "penalty",
+            },
             {"title", "assignee"},
         )
         assignee = ctx.member(payload["assignee"])
@@ -39,6 +53,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "status": "assigned",
             "report_type": report_type,
             "report": None,
+            "deadline_policy": task_events.policy(ctx, payload),
             "checklist": [{"text": text(t, "checklist", 200), "done": False} for t in checklist],
         }
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
@@ -56,6 +71,9 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "note",
             "checklist_index",
             "done",
+            "reminder_minutes",
+            "grace_minutes",
+            "penalty",
         },
         {"id"},
     )
@@ -77,11 +95,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if "title" in payload:
             item["title"] = text(payload["title"], "title")
         if "due_at" in payload:
+            task_events.close(ctx, item)
             item["due_at"] = timestamp(payload["due_at"], "due_at").isoformat()
         if "assignee" in payload:
             ctx.require_parent()
+            task_events.close(ctx, item)
             item["assignee"] = ctx.member(payload["assignee"])["id"]
             item["status"] = "assigned"
+        item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
     elif action in {"accept", "start", "submit", "check"}:
         if not own and not ctx.privileged:
             raise DomainError("forbidden")
@@ -131,4 +152,6 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         item["closed_at"] = ctx.now.isoformat()
     else:
         raise DomainError("unknown_action")
+    if item["status"] in {"submitted", "completed", "cancelled", "archived"}:
+        task_events.close(ctx, item)
     return ctx.touch(item)

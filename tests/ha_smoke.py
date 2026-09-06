@@ -296,6 +296,31 @@ async def run_websocket(hass, entry, owner, child_id):
                     assert not engine.snapshot()["court"]
             hass.auth.async_remove_refresh_token(refresh)
     print("PASS: actual HA WebSocket auth, household names, projections and command denial")
+    release = datetime.now(UTC) + timedelta(minutes=1)
+    duty = await engine.execute(
+        "owner",
+        "tasks.series_save",
+        {
+            "title": "Synthetic rotating duty",
+            "assignees": [child_id],
+            "rotation": True,
+            "rule": {
+                "frequency": "daily",
+                "start_date": release.date().isoformat(),
+                "time": release.strftime("%H:%M"),
+                "timezone": "UTC",
+            },
+            "due_time": (release + timedelta(hours=1)).strftime("%H:%M"),
+        },
+        "smoke-series",
+        datetime.now(UTC),
+    )
+    await entry.runtime_data.scheduler.run(release + timedelta(seconds=5))
+    assert (
+        len([t for t in engine.snapshot()["tasks"].values() if t.get("series_id") == duty["id"]])
+        == 1
+    )
+    print("PASS: HA scheduler generated one recurring task instance")
 
 
 if __name__ == "__main__":

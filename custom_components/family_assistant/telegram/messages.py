@@ -11,6 +11,12 @@ MESSAGES = {
         "alarm_device_recovered": "✅ The wake-up siren is responding again.",
         "task_assigned": "📋 New task: {id} · {title}",
         "task_review": "📸 Review requested: {id} · {title}",
+        "task_reminder": "📋 Task due soon: {id} · {title} · {due_at}",
+        "task_overdue": "⚠️ {member}: task overdue: {id} · {title}. Parent review is needed.",
+        "task_incident_closed": (
+            "✅ The overdue incident for {member}'s task {id} is closed. "
+            "Any recorded points remain separately reviewable."
+        ),
         "shopping_approval": "🛒 Purchase approval requested: {id} · {title}",
         "court_appeal": "⚖️ An appeal needs a parent's review: {id}",
     },
@@ -24,6 +30,12 @@ MESSAGES = {
         "alarm_device_recovered": "✅ Сирена будильника снова отвечает.",
         "task_assigned": "📋 Новая задача: {id} · {title}",
         "task_review": "📸 Отчёт ждёт проверки: {id} · {title}",
+        "task_reminder": "📋 Скоро срок задачи: {id} · {title} · {due_at}",
+        "task_overdue": "⚠️ {member}: просрочена задача {id} · {title}. Нужна проверка родителя.",
+        "task_incident_closed": (
+            "✅ Ситуация с просрочкой задачи {id} у {member} закрыта. "
+            "Начисленные баллы проверяются отдельно."
+        ),
         "shopping_approval": "🛒 Покупка ждёт одобрения: {id} · {title}",
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
     },
@@ -37,6 +49,14 @@ MESSAGES = {
         "alarm_device_recovered": "✅ Сирена будильника знову відповідає.",
         "task_assigned": "📋 Нове завдання: {id} · {title}",
         "task_review": "📸 Звіт чекає перевірки: {id} · {title}",
+        "task_reminder": "📋 Скоро термін завдання: {id} · {title} · {due_at}",
+        "task_overdue": (
+            "⚠️ {member}: прострочено завдання {id} · {title}. Потрібна перевірка батьків."
+        ),
+        "task_incident_closed": (
+            "✅ Ситуацію з простроченням завдання {id} у {member} закрито. "
+            "Нараховані бали перевіряються окремо."
+        ),
         "shopping_approval": "🛒 Покупка чекає схвалення: {id} · {title}",
         "court_appeal": "⚖️ Апеляція чекає рішення батьків: {id}",
     },

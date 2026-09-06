@@ -103,6 +103,17 @@ their bot language. UI controls are not a substitute for server authorization.
 
 ## Wake-up checks and delivery problems
 
+The Tasks card also has **Add recurring duty**. Choose one or more people, a
+daily/weekly/monthly rule, creation time and due time. Each person receives an
+independent task, or select Take turns for rotation. Advanced settings contain
+exceptions, end date, recurrence interval, reminders, grace period and optional
+penalty. Templates start at the next scheduled creation; late restarts do not
+generate tasks whose deadline has already passed. Missing monthly days are
+skipped, not silently moved. Disabling a duty stops new instances and preserves
+existing tasks and history. A submitted report is not penalized while awaiting
+parent review. An automatic penalty requires both household opt-in and a
+negative per-task/duty value; completion does not silently erase that history.
+
 Create separate weekday/weekend schedules on the Alarms card. Gentle mode uses
 messages. Strict mode additionally uses an explicitly assigned **dedicated**
 wake-up siren in integration options. Never select a fire/security siren.

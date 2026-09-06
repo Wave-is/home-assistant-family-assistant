@@ -56,7 +56,7 @@ class Context:
         record["updated_at"] = self.now.isoformat()
         return record
 
-    def notify(self, recipient: str, key: str, data: dict) -> None:
+    def notify(self, recipient: str, key: str, data: dict) -> str:
         suffix = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:16]
         notification_id = f"{self.operation_id}:{recipient}:{key}:{suffix}"
         self.state["outbox"].setdefault(
@@ -71,3 +71,4 @@ class Context:
                 "attempts": 0,
             },
         )
+        return notification_id

@@ -2,6 +2,26 @@
 import {ERRORS} from "./errors.js";
 const COPY = {
   en: {
+    advanced:"Advanced settings",
+    addSeries:"Add recurring duty",
+    recurring:"Recurring",
+    rotation:"Take turns",
+    eachPerson:"A task for each person",
+    frequency:"Repeat",
+    daily:"Daily",
+    weekly:"Weekly",
+    monthly:"Monthly",
+    startDate:"Start date",
+    untilDate:"End date (optional)",
+    releaseTime:"Create tasks at",
+    dueTime:"Task due time",
+    interval:"Every N days / weeks / months",
+    weeklyDays:"Days for weekly recurrence",
+    exceptions:"Excluded dates (YYYY-MM-DD, comma-separated)",
+    seriesHint:"Starts at the next scheduled creation time. Each person gets an independent task, or duties rotate. Late restarts do not create already overdue tasks. Monthly recurrence uses the start-date day and skips months without that day.",
+    reminderMinutes:"Remind before deadline (minutes, 0 disables)",
+    graceMinutes:"Grace after deadline (minutes)",
+    taskPenalty:"Missed task points (0 disables)",
     health:"System health",parentsOnly:"Only parents can review system delivery.",noDeliveryIssues:"No unresolved delivery problems.",uncertain:"Delivery uncertain",failed:"Delivery failed",awaiting_channel:"Waiting for a linked chat",connected:"Connected",retryDelivery:"Review and resend",resolveDelivery:"Resolve without resending",retryWarning:"Telegram may already have accepted the message. Resending can create a duplicate.",resolveWarning:"This closes the warning without resending or claiming delivery.",retryConsent:"I accept the possible duplicate",channelHint:"Link the recipient's private chat in the Telegram options.",
     today: "Family today", shopping: "Shopping", tasks: "Tasks", court: "Rules & rewards",
     alarms:"Wake-up alarms",alarmTime:"Wake-up time",timezone:"Time zone",days:"Days",weekdays:"Weekdays",weekends:"Weekends",everyday:"Every day",profile:"Wake-up style",gentle:"Messages only",strict:"Messages and dedicated siren",alarmPenalty:"Missed wake-up points (0 disables)",alarmDeviceHint:"Assign and test a dedicated siren in integration settings. Automatic penalties require separate opt-in.",moduleOff:"This module is disabled.",first:"First wake-up check",waiting_second:"Waiting for a second check",second:"Second wake-up check",testAlarm:"Test without penalties",soundRequested:"Sound requested — check the device status",soundPaused:"Sound paused",stopAlarm:"Stop this wake-up check",enabled:"Enabled",disabled:"Disabled",enable:"Enable",disable:"Disable",testAlarmWarning:"This test starts the selected siren in strict mode. No penalty will be issued.",startTest:"Start test",alarm_missed:"Wake-up was not confirmed in time",dayNames:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
@@ -21,6 +41,26 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    advanced:"Дополнительные настройки",
+    addSeries:"Добавить регулярную обязанность",
+    recurring:"Регулярно",
+    rotation:"По очереди",
+    eachPerson:"Отдельная задача каждому",
+    frequency:"Повторять",
+    daily:"Ежедневно",
+    weekly:"Еженедельно",
+    monthly:"Ежемесячно",
+    startDate:"Дата начала",
+    untilDate:"Дата окончания (необязательно)",
+    releaseTime:"Создавать задачи в",
+    dueTime:"Срок выполнения",
+    interval:"Каждые N дней / недель / месяцев",
+    weeklyDays:"Дни еженедельного повторения",
+    exceptions:"Исключения: даты ГГГГ-ММ-ДД через запятую",
+    seriesHint:"Начнётся в следующий момент создания по расписанию. Каждому выдаётся отдельная задача либо участники чередуются. После долгого простоя уже просроченные задачи не создаются. Ежемесячно используется число даты начала; месяцы без этого числа пропускаются.",
+    reminderMinutes:"Напомнить до срока (минут, 0 — выключено)",
+    graceMinutes:"Пауза после срока (минут)",
+    taskPenalty:"Баллы за пропуск задачи (0 — без штрафа)",
     health:"Состояние системы",parentsOnly:"Доставку уведомлений проверяют родители.",noDeliveryIssues:"Нет нерешённых проблем доставки.",uncertain:"Результат отправки неизвестен",failed:"Ошибка отправки",awaiting_channel:"Ожидается привязка чата",connected:"Подключён",retryDelivery:"Проверить и повторить",resolveDelivery:"Закрыть без повтора",retryWarning:"Telegram уже мог принять сообщение. Повторная отправка может создать дубликат.",resolveWarning:"Предупреждение будет закрыто без повтора и без утверждения о доставке.",retryConsent:"Понимаю, что возможен дубликат",channelHint:"Привяжите личный чат получателя в настройках Telegram.",
     today: "Семья сегодня", shopping: "Покупки", tasks: "Задачи", court: "Правила и поощрения",
     alarms:"Будильники",alarmTime:"Время подъёма",timezone:"Часовой пояс",days:"Дни",weekdays:"Будни",weekends:"Выходные",everyday:"Каждый день",profile:"Режим пробуждения",gentle:"Только сообщения",strict:"Сообщения и отдельная сирена",alarmPenalty:"Баллы за пропуск (0 — без штрафа)",alarmDeviceHint:"Назначьте и проверьте отдельную сирену в настройках интеграции. Автоштрафы включаются отдельно.",moduleOff:"Модуль выключен.",first:"Первая проверка подъёма",waiting_second:"Ожидается повторная проверка",second:"Повторная проверка подъёма",testAlarm:"Тест без штрафов",soundRequested:"Запрошен звук — проверьте состояние устройства",soundPaused:"Звук приостановлен",stopAlarm:"Остановить проверку подъёма",enabled:"Включён",disabled:"Выключен",enable:"Включить",disable:"Выключить",testAlarmWarning:"В строгом режиме тест включит назначенную сирену. Штрафов не будет.",startTest:"Начать тест",alarm_missed:"Подъём не подтверждён вовремя",dayNames:["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
@@ -40,6 +80,26 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    advanced:"Додаткові налаштування",
+    addSeries:"Додати регулярний обов’язок",
+    recurring:"Регулярно",
+    rotation:"По черзі",
+    eachPerson:"Окреме завдання кожному",
+    frequency:"Повторювати",
+    daily:"Щодня",
+    weekly:"Щотижня",
+    monthly:"Щомісяця",
+    startDate:"Дата початку",
+    untilDate:"Дата завершення (необов’язково)",
+    releaseTime:"Створювати завдання о",
+    dueTime:"Термін виконання",
+    interval:"Кожні N днів / тижнів / місяців",
+    weeklyDays:"Дні щотижневого повторення",
+    exceptions:"Винятки: дати РРРР-ММ-ДД через кому",
+    seriesHint:"Почнеться в наступний час створення за розкладом. Кожен отримує окреме завдання або учасники чергуються. Після тривалого простою прострочені завдання не створюються. Щомісяця використовується число дати початку; місяці без цього числа пропускаються.",
+    reminderMinutes:"Нагадати до терміну (хвилини, 0 — вимкнено)",
+    graceMinutes:"Пауза після терміну (хвилини)",
+    taskPenalty:"Бали за пропуск завдання (0 — без штрафу)",
     health:"Стан системи",parentsOnly:"Доставку сповіщень перевіряють батьки.",noDeliveryIssues:"Немає невирішених проблем доставки.",uncertain:"Результат надсилання невідомий",failed:"Помилка надсилання",awaiting_channel:"Очікується прив’язка чату",connected:"Підключено",retryDelivery:"Перевірити та повторити",resolveDelivery:"Закрити без повтору",retryWarning:"Telegram уже міг прийняти повідомлення. Повторне надсилання може створити дублікат.",resolveWarning:"Попередження буде закрито без повтору й без твердження про доставку.",retryConsent:"Розумію, що можливий дублікат",channelHint:"Прив’яжіть особистий чат отримувача в налаштуваннях Telegram.",
     today: "Родина сьогодні", shopping: "Покупки", tasks: "Завдання", court: "Правила та заохочення",
     alarms:"Будильники",alarmTime:"Час підйому",timezone:"Часовий пояс",days:"Дні",weekdays:"Будні",weekends:"Вихідні",everyday:"Щодня",profile:"Режим пробудження",gentle:"Лише повідомлення",strict:"Повідомлення та окрема сирена",alarmPenalty:"Бали за пропуск (0 — без штрафу)",alarmDeviceHint:"Призначте й перевірте окрему сирену в налаштуваннях інтеграції. Автоштрафи вмикаються окремо.",moduleOff:"Модуль вимкнено.",first:"Перша перевірка підйому",waiting_second:"Очікується повторна перевірка",second:"Повторна перевірка підйому",testAlarm:"Тест без штрафів",soundRequested:"Запитано звук — перевірте стан пристрою",soundPaused:"Звук призупинено",stopAlarm:"Зупинити перевірку підйому",enabled:"Увімкнено",disabled:"Вимкнено",enable:"Увімкнути",disable:"Вимкнути",testAlarmWarning:"У суворому режимі тест увімкне призначену сирену. Штрафів не буде.",startTest:"Почати тест",alarm_missed:"Підйом не підтверджено вчасно",dayNames:["Пн","Вт","Ср","Чт","Пт","Сб","Нд"],
@@ -78,6 +138,12 @@ const STYLES = `
   .metric{background:rgba(19,146,127,.07);padding:14px 8px;border-radius:14px;text-align:center}.metric b{display:block;font-size:25px}.metric span{font-size:11px}
   .notice{padding:12px;border-radius:12px;margin-bottom:12px;background:rgba(238,150,60,.14);font-size:13px}
   .toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:16px}.editor{padding:16px;display:grid;gap:12px}
+  fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:10px;margin:0;min-width:0}
+  legend{font-size:12px;color:var(--secondary-text-color,#657d80);padding:0 5px}
+  label:has(input[type=checkbox]){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px;min-height:36px}
+  input[type=checkbox]{width:20px;height:20px;min-width:20px;min-height:0;padding:0;margin:0;accent-color:#087f70}
+  details{border:1px solid var(--divider-color,#dfe9e7);border-radius:12px;padding:12px}summary{cursor:pointer;font-size:13px}.advanced{display:grid;gap:12px;padding-top:12px}
+  [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
 
@@ -154,7 +220,7 @@ export class FamilyCard extends HTMLElement {
     try {
       const result=await this._hass.callWS({type:"family_assistant/execute",entry_id:this._entry,
         action,payload,operation_id:this._pending.id});
-      this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;this._form=null;
+      this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;this._form=null;this._seriesForm=null;
     } catch(error) {this._actionError=error.code || this.t.failure;}
     finally {this._writing=false;await this.refresh();this.render();}
   }
@@ -168,6 +234,7 @@ export class FamilyCard extends HTMLElement {
     } else if(this._view==="tasks") {
       this.input(form,"title",this.t.title);this.memberSelect(form);
       this.input(form,"due_at",this.t.due,"datetime-local","",false);
+      this.deadlinePolicy(form);
     } else if(this._view==="alarms") {
       this.memberSelect(form);
       this.input(form,"name",this.t.name,"text","",false);
@@ -188,10 +255,59 @@ export class FamilyCard extends HTMLElement {
     form.addEventListener("submit",event=>{
       event.preventDefault();const values=Object.fromEntries(new FormData(form));
       if(this._view==="shopping") this.command("shopping.add",{...values,quantity:Number(values.quantity)});
-      if(this._view==="tasks") { if(values.due_at)values.due_at=new Date(values.due_at).toISOString();else delete values.due_at;this.command("tasks.create",values); }
+      if(this._view==="tasks") { if(values.due_at)values.due_at=new Date(values.due_at).toISOString();else delete values.due_at;for(const key of ["reminder_minutes","grace_minutes","penalty"])if(key in values)values[key]=Number(values[key]);this.command("tasks.create",values); }
       if(this._view==="court") this.command("court.award",{member:values.assignee,points:Number(values.points),reason:values.reason});
       if(this._view==="alarms") this.command("alarms.save",{member:values.assignee,name:values.name,time:values.time,timezone:values.timezone,days:values.days==="weekdays"?[0,1,2,3,4]:values.days==="weekends"?[5,6]:[0,1,2,3,4,5,6],profile:values.profile,penalty:Number(values.penalty)});
     });return form;
+  }
+  deadlinePolicy(form){
+    for(const [key,label,value,min,max] of [["reminder_minutes",this.t.reminderMinutes,60,0,10080],["grace_minutes",this.t.graceMinutes,30,0,1440],...(this.parent?[["penalty",this.t.taskPenalty,0,-10,0]]:[])]){
+      const input=this.input(form,key,label,"number",String(value));input.min=String(min);input.max=String(max);input.step="1";
+    }
+  }
+  seriesForm(){
+    const form=el("form");this.input(form,"title",this.t.title);
+    const advanced=el("details"),advancedBody=el("div",null,"advanced");advanced.append(el("summary",this.t.advanced),advancedBody);
+    const people=el("fieldset");people.append(el("legend",this.t.assignee));form.append(people);
+    for(const member of this._data.members.filter(m=>m.active)){
+      const label=el("label",member.name),box=el("input");box.type="checkbox";box.name="assignees";box.value=member.id;label.append(box);people.append(label);
+    }
+    const rotation=el("label",this.t.rotation),box=el("input");box.type="checkbox";box.name="rotation";rotation.append(box);form.append(rotation);
+    const frequency=el("label",this.t.frequency),select=el("select");select.name="frequency";
+    for(const key of ["daily","weekly","monthly"]){const option=el("option",this.t[key]);option.value=key;select.append(option);}frequency.append(select);form.append(frequency);
+    const zone=this._data.settings.timezone || this._hass?.config?.time_zone || "UTC";
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+    const date=["year","month","day"].map(key=>parts.find(p=>p.type===key).value).join("-");
+    this.input(form,"start_date",this.t.startDate,"date",date);
+    this.input(advancedBody,"until",this.t.untilDate,"date","",false);
+    this.input(form,"time",this.t.releaseTime,"time","07:00");
+    this.input(form,"due_time",this.t.dueTime,"time","20:00");
+    this.input(advancedBody,"timezone",this.t.timezone,"text",zone);
+    const interval=this.input(advancedBody,"interval",this.t.interval,"number","1");interval.min="1";interval.max="52";
+    const weekdays=el("fieldset");weekdays.append(el("legend",this.t.weeklyDays));form.append(weekdays);
+    this.t.dayNames.forEach((name,day)=>{const label=el("label",name),box=el("input");box.type="checkbox";box.name="weekdays";box.value=String(day);box.checked=day<5;label.append(box);weekdays.append(label);});
+    weekdays.hidden=select.value!=="weekly";select.addEventListener("change",()=>{weekdays.hidden=select.value!=="weekly";});
+    this.input(advancedBody,"exceptions",this.t.exceptions,"text","",false);
+    this.deadlinePolicy(advancedBody);form.append(advanced,el("div",this.t.seriesHint,"sub"));
+    const save=el("button",this.t.save,"primary");save.type="submit";form.append(save);
+    form.addEventListener("submit",event=>{
+      event.preventDefault();const data=new FormData(form),v=Object.fromEntries(data);
+      this.command("tasks.series_save",{title:v.title,assignees:data.getAll("assignees"),rotation:v.rotation==="on",due_time:v.due_time,
+        reminder_minutes:Number(v.reminder_minutes),grace_minutes:Number(v.grace_minutes),penalty:Number(v.penalty),
+        rule:{frequency:v.frequency,start_date:v.start_date,until:v.until || null,time:v.time,timezone:v.timezone,interval:Number(v.interval),weekdays:data.getAll("weekdays").map(Number),exceptions:v.exceptions.split(",").map(s=>s.trim()).filter(Boolean)}});
+    });return form;
+  }
+  renderSeries(body){
+    const series=this._data.task_series || [];
+    if(this.parent)body.append(this.button(this._seriesForm?this.t.back:this.t.addSeries,()=>{this._seriesForm=!this._seriesForm;this._form=false;this.render();}));
+    if(this._seriesForm)body.append(this.seriesForm());
+    for(const item of series){
+      const row=el("div",null,"item");row.append(el("strong",`${this.t.recurring} · ${item.title}`));
+      const people=item.assignees.map(id=>this._data.members.find(m=>m.id===id)?.name || "").join(", ");
+      row.append(el("div",`${people} · ${item.rotation?this.t.rotation:this.t.eachPerson} · ${this.t[item.rule.frequency]} · ${item.rule.time} → ${item.due_time} · ${this.t[item.enabled?"enabled":"disabled"]}`,"sub"));
+      if(this.parent)row.append(this.button(this.t[item.enabled?"disable":"enable"],()=>this.command("tasks.series_enable",{id:item.id,revision:item.revision,enabled:!item.enabled})));
+      body.append(row);
+    }
   }
   render() {
     const root=this.shadowRoot;root.replaceChildren(el("style",STYLES));
@@ -208,8 +324,9 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="health") {this.renderHealth(body);return;}
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="alarms")this.renderAlarmRuns(body);
+    if(this._view==="tasks")this.renderSeries(body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
-    if(!["court","alarms"].includes(this._view) || this.parent) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this.render();},true));
+    if(!["court","alarms"].includes(this._view) || this.parent) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this.render();},true));
     body.append(toolbar);if(this._form)body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);

@@ -61,3 +61,27 @@ test("notification retry requires consent and a reason",async({page})=>{
  expect(command.action).toBe("notifications.retry");
  expect(command.payload.confirmed).toBe(true);
 });
+
+test("parent creates a rotating duty using the Russian mobile form",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru");
+ await page.getByRole("button",{name:"Добавить регулярную обязанность"}).click();
+ await page.getByLabel("Что нужно сделать?",{exact:true}).fill("Проверить растения");
+ await page.getByRole("group",{name:"Кому?",exact:true}).getByLabel("Ребёнок 1",{exact:true}).check();
+ await page.getByLabel("По очереди",{exact:true}).check();
+ await page.getByRole("combobox",{name:"Повторять",exact:true}).selectOption("weekly");
+ await page.getByLabel("Дата начала",{exact:true}).fill("2026-09-07");
+ await page.screenshot({path:"test-results/recurring-form-mobile-ru.png",fullPage:true});
+ await page.getByRole("button",{name:"Сохранить",exact:true}).click();
+ const command=(await page.evaluate(()=>window.calls))[0];
+ expect(command.action).toBe("tasks.series_save");
+ expect(command.payload.assignees).toEqual(["child"]);expect(command.payload.rotation).toBe(true);
+ expect(command.payload.rule.weekdays).toEqual([0,1,2,3,4]);expect(command.payload.penalty).toBe(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/recurring-mobile-ru.png",fullPage:true});
+});
+
+test("child cannot create a recurring family duty",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=en&role=child");
+ await expect(page.getByRole("button",{name:"Add recurring duty"})).toHaveCount(0);
+});

@@ -10,7 +10,18 @@ from copy import deepcopy
 from datetime import datetime
 
 from ..const import DEFAULT_MODULES, LANGUAGES, MODULES, PRIVILEGED, SCHEMA_VERSION
-from . import alarms, court, delivery, household, members, settings, shopping, tasks
+from . import (
+    alarms,
+    court,
+    delivery,
+    household,
+    members,
+    settings,
+    shopping,
+    task_events,
+    task_series,
+    tasks,
+)
 from .context import Context
 from .validation import DomainError, enum, fields, text, timestamp
 
@@ -27,6 +38,8 @@ BUCKETS = (
     "members",
     "shopping",
     "tasks",
+    "task_series",
+    "incidents",
     "court",
     "alarms",
     "alarm_runs",
@@ -99,6 +112,8 @@ class Engine:
         if state.get("schema_version") != SCHEMA_VERSION:
             raise DomainError("unsupported_schema")
         self._state = deepcopy(state)
+        self._state.setdefault("task_series", {})
+        self._state.setdefault("incidents", {})
         self._persist = persist
         self._lock = asyncio.Lock()
 
@@ -155,6 +170,17 @@ class Engine:
             ]
         if actor["role"] == "guest":
             data["shopping"] = []
+        data["task_series"] = [
+            record
+            if parent
+            else {
+                key: value
+                for key, value in record.items()
+                if key not in {"occurrences", "cursor", "creator"}
+            }
+            for record in self._state["task_series"].values()
+            if parent or actor_id in record["assignees"]
+        ]
         if parent:
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}
@@ -263,6 +289,8 @@ class Engine:
                 working, {"id": "system", "role": "system"}, now, f"clock:{now.isoformat()}"
             )
             alarms.tick(ctx)
+            task_series.tick(ctx)
+            task_events.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1
