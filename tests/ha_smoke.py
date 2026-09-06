@@ -243,6 +243,10 @@ async def main():
             assert len(pantry_after_reload["items"]) == 1
             assert next(iter(pantry_after_reload["items"].values()))["quantity"] == 0.5
             assert next(iter(pantry_after_reload["suggestions"].values()))["status"] == "accepted"
+            meal_after_reload = next(iter(pantry_after_reload["meal_plans"].values()))
+            assert meal_after_reload["status"] == "published"
+            assert meal_after_reload["title"] == "Revised menu"
+            assert meal_after_reload["entries"][0]["ingredients"][0]["quantity"] == 0.5
             merged_source = next(p for p in shopping_after_reload if p["status"] == "merged")
             assert merged_source["history"][-1]["action"] == "merge"
             merge_target = next(
@@ -729,6 +733,9 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     await verify_calendar_controls(hass, entry, owner, child, child_id, request)
     await verify_routine_controls(hass, entry, owner, child, child_id, request)
     await verify_pantry_controls(hass, entry, owner, child, request)
+    from ha_meals_smoke import verify_meals_controls
+
+    await verify_meals_controls(hass, entry, owner, child, request)
 
 
 async def verify_pantry_controls(hass, entry, owner, child, request):

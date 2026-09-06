@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic meal-plan dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const actor = query.get("actor") || "parent";
+    const role =
+      actor === "child" ? "child" : actor === "adult" ? "adult" : "parent";
+    const words = {
+      en: {
+        published: "Family menu",
+        draft: "Private draft",
+        soup: "Vegetable soup",
+        secret: "PARENT NOTE: buy a surprise cake",
+        history: "PRIVATE HISTORY MARKER",
+      },
+      ru: {
+        published: "Семейное меню",
+        draft: "Личный черновик",
+        soup: "Овощной суп",
+        secret: "ЗАМЕТКА РОДИТЕЛЯ: купить торт-сюрприз",
+        history: "ПРИВАТНАЯ ИСТОРИЯ",
+      },
+      uk: {
+        published: "Сімейне меню",
+        draft: "Особиста чернетка",
+        soup: "Овочевий суп",
+        secret: "ПРИМІТКА БАТЬКІВ: купити торт-сюрприз",
+        history: "ПРИВАТНА ІСТОРІЯ",
+      },
+    }[language] || {
+      published: "Family menu",
+      draft: "Private draft",
+      soup: "Vegetable soup",
+      secret: "PARENT NOTE: buy a surprise cake",
+      history: "PRIVATE HISTORY MARKER",
+    };
+    const clone = (value) => structuredClone(value);
+    const members = [
+      { id: "owner", role: "owner", active: true },
+      { id: "parent", role: "parent", active: true },
+      { id: "adult", role: "adult", active: true },
+      { id: "child", role: "child", active: true },
+    ];
+    const makeState = (name) => ({
+      revision: 1,
+      actor,
+      role,
+      settings: {
+        name,
+        modules: ["pantry", "shopping"],
+        timezone: "Europe/Kyiv",
+      },
+      members: clone(members),
+      pantry: {
+        items: [],
+        suggestions: [],
+        meal_plans: [
+          {
+            id: "MP000001",
+            week_start: "2026-09-07",
+            title: words.published,
+            entries: [
+              {
+                date: "2026-09-07",
+                slot: "dinner",
+                title: words.soup,
+                servings: 4,
+                ingredients: [{ name: "Potato", unit: "kg", quantity: 1.25 }],
+              },
+            ],
+            note: words.secret,
+            status: "published",
+            revision: 2,
+            created_by: "parent",
+            created_at: "2026-09-01T08:00:00Z",
+            updated_at: "2026-09-02T08:00:00Z",
+            published_at: "2026-09-02T08:00:00Z",
+            history: [
+              {
+                action: words.history,
+                actor: "parent",
+                at: "2026-09-02T08:00:00Z",
+              },
+            ],
+          },
+          {
+            id: "MP000002",
+            week_start: "2026-09-14",
+            title: words.draft,
+            entries: [
+              {
+                date: "2026-09-14",
+                slot: "breakfast",
+                title: "Porridge",
+                servings: 3,
+                ingredients: [],
+              },
+            ],
+            note: words.secret,
+            status: "draft",
+            revision: 1,
+            created_by: "parent",
+            created_at: "2026-09-03T08:00:00Z",
+            updated_at: "2026-09-03T08:00:00Z",
+            history: [
+              {
+                action: words.history,
+                actor: "parent",
+                at: "2026-09-03T08:00:00Z",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const households = {
+      synthetic: makeState("Example family"),
+      other: makeState("Other family"),
+    };
+    households.other.pantry.meal_plans = [];
+    window.fixture = households.synthetic;
+    window.households = households;
+    window.calls = [];
+    window.operations = new Map();
+    window.failCommand = false;
+    window.commitThenLose = false;
+    window.lostOnce = false;
+    let nextPlan = 3;
+
+    const stateFor = (entryId) => households[entryId];
+    const activeParent = (data) => {
+      const member = data.members.find((item) => item.id === data.actor);
+      return Boolean(
+        member?.active &&
+          ["owner", "parent"].includes(member.role) &&
+          data.role === member.role,
+      );
+    };
+    const project = (data) => {
+      const parent = activeParent(data);
+      const result = clone(data);
+      result.pantry.meal_plans = data.pantry.meal_plans
+        .filter((plan) => parent || plan.status === "published")
+        .map((plan) => {
+          const visible = clone(plan);
+          if (!parent) {
+            for (const field of [
+              "note",
+              "history",
+              "created_by",
+              "created_at",
+              "updated_at",
+              "published_at",
+              "archived_at",
+              "revision",
+            ])
+              delete visible[field];
+          }
+          return visible;
+        });
+      return result;
+    };
+    const currentPlan = (data, payload) => {
+      const plan = data.pantry.meal_plans.find(
+        (item) => item.id === payload.id,
+      );
+      if (!plan) throw { code: "not_found" };
+      if (plan.status === "archived") throw { code: "invalid_transition" };
+      if (
+        !Number.isSafeInteger(payload.revision) ||
+        plan.revision !== payload.revision
+      )
+        throw { code: "conflict" };
+      return plan;
+    };
+    const history = (plan, action, reason) => {
+      plan.history.push({
+        action,
+        actor: "parent",
+        at: "2026-09-07T12:00:00Z",
+        ...(reason ? { reason } : {}),
+      });
+      plan.updated_at = "2026-09-07T12:00:00Z";
+    };
+
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type.endsWith("/households"))
+          return Object.keys(households).map((entry_id) => ({
+            entry_id,
+            name: households[entry_id].settings.name,
+          }));
+        const data = stateFor(message.entry_id);
+        if (!data) throw { code: "not_found" };
+        if (message.type.endsWith("/view")) return project(data);
+        if (!message.type.endsWith("/execute"))
+          throw { code: "unknown_action" };
+
+        window.calls.push(clone(message));
+        if (!data.settings.modules.includes("pantry") || !activeParent(data))
+          throw { code: "forbidden" };
+        const operationKey = `${message.entry_id}:${message.operation_id}`;
+        if (window.operations.has(operationKey))
+          return clone(window.operations.get(operationKey));
+        if (window.failCommand) throw { code: "storage_error" };
+        const payload = clone(message.payload);
+        let result;
+        if (message.action === "pantry.meal_save") {
+          if (payload.id) {
+            const plan = currentPlan(data, payload);
+            for (const field of ["week_start", "title", "entries", "note"])
+              if (Object.hasOwn(payload, field))
+                plan[field] = clone(payload[field]);
+            plan.status = "draft";
+            delete plan.published_at;
+            plan.revision += 1;
+            history(plan, "edited");
+            result = plan;
+          } else {
+            if (Object.hasOwn(payload, "revision"))
+              throw { code: "invalid_field" };
+            const plan = {
+              id: `MP${String(nextPlan++).padStart(6, "0")}`,
+              ...payload,
+              note: payload.note || "",
+              status: "draft",
+              revision: 1,
+              created_by: data.actor,
+              created_at: "2026-09-07T12:00:00Z",
+              updated_at: "2026-09-07T12:00:00Z",
+              history: [
+                {
+                  action: "created",
+                  actor: data.actor,
+                  at: "2026-09-07T12:00:00Z",
+                },
+              ],
+            };
+            data.pantry.meal_plans.push(plan);
+            result = plan;
+          }
+        } else if (message.action === "pantry.meal_publish") {
+          const plan = currentPlan(data, payload);
+          if (plan.status !== "draft") throw { code: "invalid_transition" };
+          if (
+            data.pantry.meal_plans.some(
+              (item) =>
+                item.id !== plan.id &&
+                item.week_start === plan.week_start &&
+                item.status === "published",
+            )
+          )
+            throw { code: "conflict" };
+          plan.status = "published";
+          plan.revision += 1;
+          plan.published_at = "2026-09-07T12:00:00Z";
+          history(plan, "published");
+          result = plan;
+        } else if (message.action === "pantry.meal_archive") {
+          const plan = currentPlan(data, payload);
+          if (typeof payload.reason !== "string" || !payload.reason.trim())
+            throw { code: "invalid_field" };
+          plan.status = "archived";
+          plan.revision += 1;
+          plan.archived_at = "2026-09-07T12:00:00Z";
+          history(plan, "archived", payload.reason.trim());
+          result = plan;
+        } else throw { code: "unknown_action" };
+
+        data.revision += 1;
+        window.operations.set(operationKey, clone(result));
+        if (window.commitThenLose && !window.lostOnce) {
+          window.lostOnce = true;
+          throw { code: "storage_error" };
+        }
+        return clone(result);
+      },
+    };
+
+    const card = document.createElement("family-meals-card");
+    card.setConfig({
+      type: "custom:family-meals-card",
+      entry_id: "synthetic",
+      language,
+    });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+    window.syncCard = async () => {
+      card.shadowRoot.activeElement?.blur();
+      await card.refresh();
+      card.render();
+    };
+    window.switchHousehold = async (entryId) => {
+      card.setConfig({
+        type: "custom:family-meals-card",
+        entry_id: entryId,
+        language,
+      });
+      card.hass = hass;
+      while (card._loading)
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    window.bumpFocusedRevision = (id) => {
+      const source = window.fixture.pantry.meal_plans.find(
+        (plan) => plan.id === id,
+      );
+      const projected = card._data.pantry.meal_plans.find(
+        (plan) => plan.id === id,
+      );
+      source.revision += 1;
+      source.updated_at = "2026-09-07T12:01:00Z";
+      if (projected) projected.revision = source.revision;
+    };
+    window.revokeFocusedAccess = (kind) => {
+      if (kind === "module") {
+        window.fixture.settings.modules = ["shopping"];
+        card._data.settings.modules = ["shopping"];
+      } else {
+        window.fixture.role = "child";
+        window.fixture.members.find(
+          (item) => item.id === window.fixture.actor,
+        ).role = "child";
+        card._data.role = "child";
+      }
+    };
+  </script>
+</html>
