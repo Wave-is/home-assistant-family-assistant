@@ -8,6 +8,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
-    "jsdom": "^26.1.0"
+    "jsdom": "^30.0.1"
   }
 }
