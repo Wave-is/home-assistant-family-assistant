@@ -500,6 +500,16 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         ],
                         "automatic_penalties": user_input.get("automatic_penalties", False),
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
+                        "pantry_expiry_reminders": user_input.get(
+                            "pantry_expiry_reminders",
+                            runtime.engine.snapshot()["settings"].get(
+                                "pantry_expiry_reminders", False
+                            ),
+                        ),
+                        "pantry_expiry_days": user_input.get(
+                            "pantry_expiry_days",
+                            runtime.engine.snapshot()["settings"].get("pantry_expiry_days", 3),
+                        ),
                         "timezone": user_input.get(
                             "timezone",
                             runtime.engine.snapshot()["settings"].get(
@@ -531,6 +541,13 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         "daily_penalty_cap", default=settings.get("daily_penalty_cap", 1)
                     ): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        "pantry_expiry_reminders",
+                        default=settings.get("pantry_expiry_reminders", False),
+                    ): bool,
+                    vol.Required(
+                        "pantry_expiry_days", default=settings.get("pantry_expiry_days", 3)
+                    ): vol.All(int, vol.Range(min=0, max=30)),
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
                         for m in CONFIGURABLE_MODULES

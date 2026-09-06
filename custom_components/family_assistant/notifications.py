@@ -15,6 +15,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from .domain.engine import Engine
+from .domain.pantry_expiry import current_event as current_pantry_expiry_event
 from .domain.validation import timestamp
 
 URGENT = {
@@ -107,6 +108,12 @@ class Notifications:
             delivery = event.get("deliveries", {}).get(delivery_id)
             if delivery is None or delivery["state"] != "sending":
                 return None
+            if event["key"] == "pantry_expiry" and not current_pantry_expiry_event(
+                ctx.state, event, now
+            ):
+                delivery["state"] = "superseded"
+                self._aggregate(event)
+                return None
             current_targets = self.resolve(deepcopy(event), deepcopy(ctx.state))
             if not self._target_current(delivery["target"], current_targets):
                 delivery["state"] = "superseded"
@@ -129,6 +136,19 @@ class Notifications:
         policy = ctx.state["settings"].get("notifications", {})
         for event in ctx.state["outbox"].values():
             if event["state"] in {"sent", "superseded", "failed", "uncertain", "resolved"}:
+                continue
+            if (
+                event["key"] == "pantry_expiry"
+                and event["state"] != "sending"
+                and not current_pantry_expiry_event(ctx.state, event, ctx.now)
+            ):
+                if not event.get("deliveries"):
+                    event["state"] = "superseded"
+                else:
+                    for delivery in event["deliveries"].values():
+                        if delivery["state"] == "pending":
+                            delivery["state"] = "superseded"
+                    self._aggregate(event)
                 continue
             if event["key"] in {"alarm_challenge", "calendar_reminder"}:
                 if ctx.now >= timestamp(event["data"]["expires_at"], "expires_at"):

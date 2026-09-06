@@ -108,6 +108,8 @@ def new_state(
             "automatic_penalties": False,
             "daily_penalty_cap": 1,
             "timezone": household.timezone(timezone),
+            "pantry_expiry_reminders": False,
+            "pantry_expiry_days": 3,
         },
         "members": {
             "owner": {

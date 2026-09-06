@@ -7,7 +7,7 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from ..const import PRIVILEGED
-from . import meal_plans, meal_shopping, shopping
+from . import meal_plans, meal_shopping, pantry_expiry, shopping
 from .context import Context
 from .validation import DomainError, fields, number, text, timestamp
 
@@ -329,6 +329,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
 
 def tick(ctx: Context) -> None:
     """Create reviewable low-stock suggestions; never create shopping items."""
+    pantry_expiry.tick(ctx)
     if "pantry" not in ctx.state.get("settings", {}).get("modules", []):
         return
     items = _bucket(ctx.state, "items")

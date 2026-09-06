@@ -180,6 +180,7 @@
         }
       },
       "general": {
+        "description": "Optional pantry reminders go privately to linked parents after 09:00 in the household time zone, once per item revision. Only recorded dates from today through the lead window are included; no expired backlog or stock changes. This is a reminder to check the item, not a food-safety assessment.",
         "title": "Household preferences",
         "data": {
           "name": "Household name",
@@ -190,6 +191,8 @@
           "court": "Rules and rewards",
           "automatic_penalties": "Enable automatic penalties",
           "daily_penalty_cap": "Maximum automatic negative points per person per day",
+          "pantry_expiry_reminders": "Remind parents about recorded pantry expiry dates",
+          "pantry_expiry_days": "Days before the recorded date (0 = that day only; 0–30)",
           "timezone": "Time zone",
           "conversation": "Conversation",
           "mikrotik": "MikroTik network",

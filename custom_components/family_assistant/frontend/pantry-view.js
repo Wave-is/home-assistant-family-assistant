@@ -22,6 +22,73 @@ const copyFor = (card) => {
 const textFor = (copy, key, fallback) => copy[key] || fallback;
 const snapshot = (value) => JSON.parse(JSON.stringify(value));
 
+const formatText = (template, values) =>
+  String(template).replace(/\{([a-z_]+)\}/g, (match, key) =>
+    Object.hasOwn(values, key) ? String(values[key]) : match,
+  );
+
+function appendExpiryReminderInfo(card, body, copy) {
+  const settings = card._data?.settings || {};
+  const enabled = settings.pantry_expiry_reminders === true;
+  const configuredDays = settings.pantry_expiry_days;
+  const days =
+    Number.isInteger(configuredDays) &&
+    configuredDays >= 0 &&
+    configuredDays <= 30
+      ? configuredDays
+      : 3;
+  const timezone =
+    typeof settings.timezone === "string" && settings.timezone.trim()
+      ? settings.timezone
+      : "UTC";
+  const section = el("details", null, "pantry-expiry-info");
+  section.dataset.pantryExpiryInfo = enabled ? "enabled" : "disabled";
+  const title = textFor(copy, "expiry_reminders_title", "Expiry reminders");
+  const status = enabled
+    ? textFor(copy, "expiry_reminders_on", "Enabled.")
+    : textFor(copy, "expiry_reminders_off", "Disabled.");
+  section.append(el("summary", `${title}: ${status}`));
+  if (enabled) {
+    const key =
+      days === 0 ? "expiry_reminders_window_zero" : "expiry_reminders_window";
+    section.append(
+      el(
+        "p",
+        formatText(
+          textFor(
+            copy,
+            key,
+            "After 09:00 in {timezone}, parents are notified privately for each current item revision.",
+          ),
+          { days, timezone },
+        ),
+        "sub",
+      ),
+      el(
+        "p",
+        textFor(
+          copy,
+          "expiry_reminders_factual",
+          "Reminders do not change stock or determine food safety.",
+        ),
+        "sub",
+      ),
+    );
+  }
+  section.append(
+    el(
+      "p",
+      textFor(
+        copy,
+        "expiry_reminders_settings",
+        "The household owner can change this in the integration Settings.",
+      ),
+      "sub",
+    ),
+  );
+  body.append(section);
+}
+
 function quantity(raw, field) {
   const value = String(raw ?? "").trim();
   if (!QUANTITY.test(value)) throw new Error(field);
@@ -279,6 +346,8 @@ export function renderPantry(card, body) {
       card.render();
     }
   };
+
+  if (parent) appendExpiryReminderInfo(card, body, copy);
 
   if (parent) {
     body.append(

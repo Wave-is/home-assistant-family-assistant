@@ -229,6 +229,9 @@ async def main():
             from ha_telegram_smoke import run_network
 
             await run_network(hass, entry, user, child_id)
+            from ha_pantry_expiry_smoke import verify_pantry_expiry
+
+            await verify_pantry_expiry(hass, user)
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(

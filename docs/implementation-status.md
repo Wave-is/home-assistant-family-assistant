@@ -21,7 +21,7 @@ Nothing is production-ready solely because a mock test passes.
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
-| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals and localized cards; expiry alerts and preferences pending |
+| Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders and localized cards; preferences pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer and localized card; preferences and recipe providers pending |
 | School, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
@@ -46,8 +46,24 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 985 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 220 frontend unit tests and 63 Chromium browser tests passed.
+- 1034 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders, weekly meal plans and reviewed shopping transfers, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 225 frontend unit tests and 65 Chromium browser tests passed.
+- Pantry expiry reminders are owner opt-in (off by default, lead window 0–30 days).
+  The scheduler creates at most one reminder per item revision after 09:00 in the
+  household timezone, only for positive active stock within the recorded date window.
+  Private linked parents receive only the item name, recorded date, ID and revision;
+  notes, quantities and group chats are excluded. Quiet hours remain effective.
+  Source edits, zero stock, archive, module/policy revocation and a narrowed lead
+  window supersede unsent work; authority is checked again after the durable claim.
+  Already sending/sent/uncertain requests cannot be recalled. Marked revisions are
+  not recreated after policy changes, and expired backlog is not emitted.
+  Dates are manually recorded facts, not a food-safety assessment. Stock, shopping
+  and penalties remain unchanged. Store faults, reload, fanout and race cases passed.
+  A second synthetic actual-HA household exercised real Options schemas/owner access,
+  authenticated commands, clocked scheduler dedup and persisted markers after reload.
+  Russian mobile policy and Ukrainian child-redaction screenshots were inspected;
+  the card explains policy without introducing a second configuration endpoint.
+  See [expiry reminder guide](pantry-expiry.md).
 - Published menus now have parent-only shopping calculation and reviewed acceptance.
   Required ingredient totals are grouped by normalized name and exact unit, with
   active stock and remaining pending/approved shopping subtracted using decimals.
@@ -112,7 +128,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   mobile editor, Ukrainian child view and English review were visually inspected.
   Actual HA exercised authenticated actions, scheduler dedup, private views and
   Store reload. General options now preserve unshown module flags and expose routines
-  and pantry. No expiry alerts, menu profiles or automatic orders are claimed.
+  and pantry. Expiry alerts are covered above; menu profiles and automatic orders
+  are not claimed.
 - An actual-HA privacy test falsely rejected legitimate timestamps containing
   `02:11` as a MAC prefix. It now checks complete synthetic identifiers and forbidden
   fields, with positive leak-detection and real-projection timestamp regressions.
@@ -316,7 +333,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   and condition-editor checkpoint 9c03f54 (run 34058895807), then pantry checkpoint
   e0ae29e (run 34060586354) and strict-command revision checkpoint
   544ac8c (run 34061803612), followed by weekly menus
-  161b4d5 (run 34062734832).
+  161b4d5 (run 34062734832) and menu shopping transfers
+  657540d (run 34063962083).
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

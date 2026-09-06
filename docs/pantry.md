@@ -28,8 +28,10 @@ category, location, parent-private note, and one optional `expires_on` date.
 Quantities are bounded to `0..1,000,000` with at most three decimal places.
 The date is the date recorded for that stock record; it is not a medical,
 freshness, or food-safety judgment. Separate lots or different expiry dates
-must be separate records. Expiry does not decrement quantity and currently
-does not create notifications, menus, or preferences.
+must be separate records. Expiry never decrements quantity. Optional private
+[expiry reminders](pantry-expiry.md) are configured separately by the owner.
+[Weekly menus](meals.md) and [reviewed shopping transfers](meal-shopping.md)
+use separate explicit actions; an expiry date does not create a menu.
 
 Changing quantity or unit requires a reason. A unit change is a relabeling, not
 an automatic conversion; use a reason such as `unit_relabel_not_conversion`.
@@ -88,8 +90,9 @@ reason, while acceptance does not accept one.
 Количество: от 0 до 1 000 000, не более трёх знаков после запятой. Разные
 партии или разные сроки годности записываются отдельными строками; указанный
 срок не является оценкой свежести или безопасности продукта. Истёкшая
-дата ничего не списывает и пока не создаёт уведомления, меню, предпочтения или
-рецепты.
+дата ничего не списывает. Владелец отдельно включает [личные напоминания о
+сроках](pantry-expiry.md). [Недельное меню](meals.md) и [перенос в покупки после
+проверки](meal-shopping.md) требуют отдельных действий; дата не создаёт меню.
 
 Изменение количества или единицы требует причины. Единица только
 переподписывается, автоматического пересчёта нет: объясните причину изменения
@@ -126,7 +129,9 @@ reason, while acceptance does not accept one.
 Кількість: від 0 до 1 000 000, не більше трьох десяткових знаків. Різні партії
 або строки придатності записуються окремо; зазначений строк не є оцінкою
 свіжості чи безпечності продукту. Після цієї дати кількість не
-зменшується, сповіщень, меню, уподобань і рецептів наразі немає.
+зменшується. Власник окремо вмикає [приватні нагадування про строки](pantry-expiry.md).
+[Тижневе меню](meals.md) і [перенесення в покупки після перевірки](meal-shopping.md)
+потребують окремих дій; дата не створює меню.
 
 Зміна кількості або одиниці потребує причини. Одиниця лише перейменовується,
 автоматичного перерахунку немає: поясніть причину зміни своїми словами.
@@ -156,7 +161,8 @@ reason, while acceptance does not accept one.
 
 ## Current limits
 
-There are no expiry notifications, expiry-driven quantity decrements, menu or
-preference management, recipe provider, or pantry-specific user preferences in
-the current API. Use the exact action names and fields above; household IDs,
+There are no expiry-driven quantity decrements, preference profiles or recipe
+provider in the current API. Reminder creation is opt-in, once per item revision,
+and respects the recorded household-local date; it is not a safety assessment.
+Use the exact action names and fields in the linked guides; household IDs,
 device IDs, credentials, and real shopping data do not belong in this guide.

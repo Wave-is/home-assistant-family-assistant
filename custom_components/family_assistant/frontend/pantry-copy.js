@@ -55,6 +55,17 @@ export const PANTRY_COPY = {
       "Stock quantities are factual, manual, and not inferred from expiry. Values allow up to 3 decimal places and must be non-negative (>= 0). Unit changes are relabeling only, not conversion, and require an explicit reason.",
     private_note_hint:
       "Pantry notes are private to parents and are never copied into the family shopping list.",
+    expiry_reminders_title: "Expiry reminders",
+    expiry_reminders_on: "Enabled.",
+    expiry_reminders_off: "Disabled.",
+    expiry_reminders_window:
+      "After 09:00 in {timezone}, parents are notified privately when a recorded expiry is today or within the next {days} days. At most one reminder is created for each item revision.",
+    expiry_reminders_window_zero:
+      "After 09:00 in {timezone}, parents are notified privately only on the recorded expiry date. At most one reminder is created for each item revision.",
+    expiry_reminders_factual:
+      "A reminder does not deduct stock or determine whether food is safe.",
+    expiry_reminders_settings:
+      "The household owner can change this policy in the integration's Settings.",
     show_history: "Show history",
     history: "Item history",
     date_unknown: "Date unknown",
@@ -114,6 +125,17 @@ export const PANTRY_COPY = {
       "Остатки фактические, фиксируются вручную и не рассчитываются по сроку годности. Допускается до 3 знаков после запятой, количество должно быть не меньше нуля (>= 0). Смена единицы — это переименование ярлыка, а не пересчёт, и требует указания причины.",
     private_note_hint:
       "Заметки в кладовой видны только родителям и никогда не копируются в общий список покупок семьи.",
+    expiry_reminders_title: "Напоминания о сроке годности",
+    expiry_reminders_on: "Включены.",
+    expiry_reminders_off: "Отключены.",
+    expiry_reminders_window:
+      "После 09:00 по часовому поясу {timezone} родители получают личное уведомление, если указанная дата срока годности — сегодня или наступит в течение следующих {days} суток. Для каждой редакции позиции напоминание создаётся один раз.",
+    expiry_reminders_window_zero:
+      "После 09:00 по часовому поясу {timezone} родители получают личное уведомление только в указанную дату срока годности. Для каждой редакции позиции напоминание создаётся один раз.",
+    expiry_reminders_factual:
+      "Напоминание не списывает остатки и не определяет, безопасен ли продукт.",
+    expiry_reminders_settings:
+      "Владелец пространства может изменить эту политику в настройках интеграции.",
     show_history: "Показать историю",
     history: "История изменений",
     date_unknown: "Дата неизвестна",
@@ -172,6 +194,17 @@ export const PANTRY_COPY = {
       "Залишки фактичні, вносяться вручну і не вираховуються за терміном придатності. Дозволено до 3 знаків після коми, кількість має бути не меншою за нуль (>= 0). Зміна одиниці є лише перейменуванням позначки, а не автоматичним перерахунком, і вимагає зазначення причини.",
     private_note_hint:
       "Примітки в коморі доступні лише батькам і ніколи не копіюються до спільного сімейного списку покупок.",
+    expiry_reminders_title: "Нагадування про термін придатності",
+    expiry_reminders_on: "Увімкнено.",
+    expiry_reminders_off: "Вимкнено.",
+    expiry_reminders_window:
+      "Після 09:00 за часовим поясом {timezone} батьки отримують приватне сповіщення, якщо зазначена дата терміну придатності — сьогодні або настане протягом наступних {days} діб. Для кожної редакції позиції нагадування створюється один раз.",
+    expiry_reminders_window_zero:
+      "Після 09:00 за часовим поясом {timezone} батьки отримують приватне сповіщення лише в зазначену дату терміну придатності. Для кожної редакції позиції нагадування створюється один раз.",
+    expiry_reminders_factual:
+      "Нагадування не списує залишки й не визначає, чи є продукт безпечним.",
+    expiry_reminders_settings:
+      "Власник простору може змінити цю політику в налаштуваннях інтеграції.",
     show_history: "Показати історію",
     history: "Історія змін",
     date_unknown: "Дата невідома",

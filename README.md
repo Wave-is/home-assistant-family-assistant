@@ -23,6 +23,7 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Calendar / Календарь / Календар](docs/calendar.md),
 [Routines / Распорядки / Розпорядки](docs/routines.md) ·
 [Pantry / Запасы / Запаси](docs/pantry.md) ·
+[Expiry reminders / Напоминания о сроках / Нагадування про строки](docs/pantry-expiry.md) ·
 [Weekly menu / Меню на неделю / Меню на тиждень](docs/meals.md) ·
 [Menu shopping / Покупки по меню / Покупки за меню](docs/meal-shopping.md).
 

@@ -34,6 +34,10 @@ MESSAGES = {
             "Any recorded points remain separately reviewable."
         ),
         "shopping_approval": "🛒 Purchase approval requested: {id} · {title}",
+        "pantry_expiry": (
+            "📦 Pantry reminder: {name} has the recorded expiry date {expires_on}. "
+            "Check it manually. This is not a food-safety assessment, and stock was not changed."
+        ),
         "court_appeal": "⚖️ An appeal needs a parent's review: {id}",
         "court_appeal_resolved": "⚖️ Appeal {id}: {decision}. The reason is in the court card.",
         "court_weekly": (
@@ -74,6 +78,10 @@ MESSAGES = {
             "Начисленные баллы проверяются отдельно."
         ),
         "shopping_approval": "🛒 Покупка ждёт одобрения: {id} · {title}",
+        "pantry_expiry": (
+            "📦 Напоминание о запасах: для «{name}» записан срок годности: {expires_on}. "
+            "Проверьте вручную. Это не оценка безопасности продукта; остаток не изменён."
+        ),
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
         "court_appeal_resolved": "⚖️ Апелляция {id}: {decision}. Причина — в карточке суда.",
         "court_weekly": (
@@ -116,6 +124,10 @@ MESSAGES = {
             "Нараховані бали перевіряються окремо."
         ),
         "shopping_approval": "🛒 Покупка чекає схвалення: {id} · {title}",
+        "pantry_expiry": (
+            "📦 Нагадування про запаси: для «{name}» записано термін придатності: {expires_on}. "
+            "Перевірте вручну. Це не оцінка безпечності продукту; залишок не змінено."
+        ),
         "court_appeal": "⚖️ Апеляція чекає рішення батьків: {id}",
         "court_appeal_resolved": "⚖️ Апеляція {id}: {decision}. Причина — у картці суду.",
         "court_weekly": (
@@ -140,6 +152,26 @@ def targets(event, state):
         ):
             return [{"channel": "telegram", "id": chat, "language": actor["language"]}]
         return []
+    if key == "pantry_expiry":
+        from ..domain.pantry_expiry import current_event
+
+        if recipient != "parents" or not current_event(state, event):
+            return []
+        people = [
+            member
+            for member in state["members"].values()
+            if member.get("active")
+            and member.get("telegram_id")
+            and member.get("role") in {"parent", "owner"}
+        ]
+        return [
+            {
+                "channel": "telegram",
+                "id": member["telegram_id"],
+                "language": member["language"],
+            }
+            for member in people
+        ]
     if recipient == "family":
         return [{"channel": "telegram", "id": group, "language": language}] if group else []
     people = [
