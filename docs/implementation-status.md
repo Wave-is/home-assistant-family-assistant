@@ -55,7 +55,10 @@ is exercised with a synthetic entity, not by replacing its service registry.
 - Mobile Ukrainian wake-up and Russian shopping screenshots visually inspected.
 - Private legacy family-only suite: 397 tests passed.
 - No production family module, Telegram bot, router or siren has been changed.
-- No GitHub repository, public release, migration or HACS default submission yet.
+- Public development repository created at Wave-is/home-assistant-family-assistant.
+- HACS and Hassfest passed on GitHub. Frontend CI passed. The first Python CI
+  run exposed a test import-path difference; an explicit pytest root fixes it.
+- No public release, migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;
