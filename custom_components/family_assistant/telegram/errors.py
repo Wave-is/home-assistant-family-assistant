@@ -87,7 +87,9 @@ ERRORS = {
         "network_response": "RouterOS returned an invalid or oversized response. "
         "Previous data was retained.",
         "network_version": "RouterOS 7 is required for this REST connection.",
-        "network_authentication": "RouterOS rejected the username or password.",
+        "network_authentication": "RouterOS rejected authentication. Check "
+        "credentials, allowed source address and rest-api "
+        "permission; RouterOS 7.20.1 also requires api.",
         "network_permission": "The RouterOS account lacks permission for this table.",
         "network_missing": "This RouterOS table is not available on the device.",
         "network_unreachable": "The router could not be reached. Previous data was retained.",
@@ -214,7 +216,9 @@ ERRORS = {
         "network_response": "RouterOS вернул неверный или слишком большой ответ. "
         "Предыдущие данные сохранены.",
         "network_version": "Для REST-подключения требуется RouterOS 7.",
-        "network_authentication": "RouterOS отклонил имя пользователя или пароль.",
+        "network_authentication": "RouterOS отклонил вход. Проверьте пароль, "
+        "допустимый адрес и право rest-api; RouterOS "
+        "7.20.1 также требует api.",
         "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
         "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
         "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
@@ -344,7 +348,9 @@ ERRORS = {
         "network_response": "RouterOS повернув хибну або завелику відповідь. "
         "Попередні дані збережено.",
         "network_version": "Для REST-підключення потрібна RouterOS 7.",
-        "network_authentication": "RouterOS відхилив ім’я користувача або пароль.",
+        "network_authentication": "RouterOS відхилив вхід. Перевірте пароль, "
+        "дозволену адресу та право rest-api; RouterOS "
+        "7.20.1 також потребує api.",
         "network_permission": "Акаунт RouterOS не має права читання цієї таблиці.",
         "network_missing": "Ця таблиця RouterOS недоступна на пристрої.",
         "network_unreachable": "Роутер недоступний. Попередні дані збережено.",

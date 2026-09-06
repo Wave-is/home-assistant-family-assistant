@@ -22,9 +22,9 @@ Nothing is production-ready solely because a mock test passes.
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry, meals, school, maintenance | Planned | APIs, scheduling and cards |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
-| MikroTik inventory / HA matching | Implemented / unit- and HA-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; read-only live checks pending |
-| Static leases / comments | Implemented / unit-, browser- and HA-tested | Owner selection, protected devices, preview, confirmation, durable phases, read-back and scoped compensation with synthetic router; live RouterOS acceptance pending |
-| Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and router timers. Native hAP synthetic-profile pause/resume/schedule/rate/grant/expiry passed; REST/real traffic/startup execution and richer modes remain separate gates |
+| MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
+| Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
+| Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | Planned | No live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
@@ -43,7 +43,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-06
 
-- 241 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, public contracts).
+- 256 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurrence/incidents, network inventory/lease/Kid Control effects, lab fixtures, public contracts).
 - 8 frontend unit tests and 16 Chromium browser tests passed.
 - Ruff lint and formatting passed.
 - Real HA smoke: Config/Options Flow, owner-linked authenticated service,
@@ -85,14 +85,27 @@ is exercised with a synthetic entity, not by replacing its service registry.
   services, DHCP, VRRP and schedulers compared unchanged. No real client was blocked.
   Duration rendering and native `disabled=yes/no` assignment regressions were
   found by native tests and added to the test suite. This is not a REST-wire or
-  end-to-end traffic claim; actual reboot/startup execution is still pending.
+  end-to-end traffic claim; the isolated CHR checks below cover those separately.
+- Native CHR 7.20.1 in QEMU/TCG with Docker network disabled verified HTTPS/CA REST,
+  a dedicated limited account, real DHCP discover/offer/request/ack, dynamic-to-static
+  conversion/comment/read-back/replay and all implemented Kid Control modes. Fresh
+  bidirectional routed IPv4 UDP verified pause/resume and temporary modes; a separate
+  unbound control client remained reachable during blocks. Both one-minute modes
+  expired without HA. An orderly VM reboot ended a 30-minute grant early, restored
+  the prior paused state and removed its two timers. No household packets or credentials
+  were used. Rate configuration was checked, not throughput, IPv6 or FastTrack behavior.
+- Native REST uncovered exact error-shape regressions: absent `wireless` is HTTP 400;
+  permission denial can be HTTP 500 with `not enough permissions (9)`. Both now have
+  bounded, narrow classification tests. On CHR 7.20.1 the limited account needed `api`
+  in addition to `rest-api`; localized setup/error guidance records that observed caveat.
 - Mobile Russian Kid Control review and Ukrainian child-only schedule were checked.
 - No production family module, Telegram bot or siren has been changed. Existing
   router configuration was preserved during the explicitly authorized reserve test.
 - Public development repository created at Wave-is/home-assistant-family-assistant.
-- All five GitHub check jobs passed on the Kid Control checkpoint (run 34037456767).
-  Subsequent store-await authorization/expired-during-install fault tests also
-  pass locally; every device effect rechecks authority after persisting intent.
+- All five GitHub check jobs passed on checkpoint 8e55a7f (run 34037789583), including
+  store-await authorization/expired-during-install faults. Every device effect
+  rechecks authority after persisting intent. The next native-lab/error-shape
+  checkpoint is not yet published at this matrix revision.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
 - No public release, migration or HACS default submission yet.
@@ -109,7 +122,7 @@ service call does not prove physical sound or volume.
 2. Complete module controls, localization and automatic card resource registration.
 3. Complete recurrence, reports, rewards and module parity, then LLM/search and
    extended family modules. Keep all unmet rows visible.
-4. Complete native REST and isolated-router reboot tests, then richer Kid Control
+4. Extend native fault/IPv6/FastTrack topology coverage, richer Kid Control
    modes and fail-closed unknown-client controls. Hardware tests require explicit
    authorization, synthetic targets, exact pre-state and scoped cleanup.
 5. Add release CI/privacy scanning, migration/shadow verification and only then

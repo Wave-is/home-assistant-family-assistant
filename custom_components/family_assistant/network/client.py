@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 import ssl
 from urllib.parse import urlsplit
 
@@ -232,14 +233,36 @@ class RouterClient:
                     raise DomainError("network_permission")
                 if response.status == 404:
                     raise DomainError("network_missing")
-                if not 200 <= response.status < 300:
+                if not 200 <= response.status < 300 and response.status not in {400, 500}:
                     raise DomainError("network_unreachable")
                 body = bytearray()
                 async for chunk in response.content.iter_chunked(16384):
                     body.extend(chunk)
                     if len(body) > 2097152:
                         raise DomainError("network_response")
-                return None if method == "DELETE" and not body else json.loads(body)
+                result = None if method == "DELETE" and not body else json.loads(body)
+                if response.status in {400, 500}:
+                    detail = result.get("detail") if isinstance(result, dict) else None
+                    # Native REST may wrap its API permission trap as HTTP 500.
+                    # Classify the exact known trap without exposing its body.
+                    if detail == "not enough permissions (9)":
+                        raise DomainError("network_permission")
+                    missing = re.fullmatch(
+                        r"no such command or directory \(([a-zA-Z0-9_-]+)\)",
+                        detail if isinstance(detail, str) else "",
+                    )
+                    # Native RouterOS uses 400, not 404, for an absent package.
+                    # Do not hide malformed parameters or write failures as an
+                    # optional missing table. Never expose the raw error body.
+                    if (
+                        response.status == 400
+                        and method == "GET"
+                        and missing
+                        and missing[1] in path.split("/")
+                    ):
+                        raise DomainError("network_missing")
+                    raise DomainError("network_unreachable")
+                return result
         except DomainError:
             raise
         except aiohttp.ClientSSLError:

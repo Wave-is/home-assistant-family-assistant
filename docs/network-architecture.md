@@ -3,8 +3,9 @@
 Connection, inventory, reviewed lease plans and adopted Kid Control profiles are
 implemented and tested with a synthetic router in real HA. Native synthetic-profile
 checks on an authorized reserve hAP additionally verified pause/resume, hours,
-rate, temporary grant and router-only expiry. REST-wire, actual reboot/startup and
-end-to-end traffic checks remain separate gates. No production router
+rate, temporary grant and router-only expiry. An isolated native CHR additionally
+passed verified REST, real DHCP conversion, routed IPv4 UDP restrictions,
+autonomous expiry and actual VM reboot/startup restoration. No production router
 changes are made by installation, options validation or inventory polling.
 
 The client follows the [RouterOS REST API](https://manual.mikrotik.com/docs/developer-guides/rest-api/)
@@ -19,6 +20,16 @@ RouterOS policies are not a field-level ACL. See the official
 [user policy documentation](https://manual.mikrotik.com/docs/authentication-authorization-accounting/user/).
 Explicitly approved writes require `write`; this does not justify adding
 `reboot`, `policy`, `sniff`, `sensitive`, SSH, FTP or WinBox.
+
+Native CHR **7.20.1** testing found that `rest-api` alone rejected authentication
+(`via api` in the router log). Adding only the `api` login policy fixed the same
+account/password/source restriction. For that build use `read,api,rest-api`, plus
+`write` only for explicitly enabled mutations. The integration never changes
+RouterOS users or their policies itself. Restrict management ingress to the HA
+host using router service/firewall configuration; `api` also authorizes the
+separate binary API if its service is reachable. Do not expose either publicly.
+The harness verifies the two policy sets on each run instead of assuming this
+behavior is identical across all RouterOS versions.
 
 The table and property allowlists cover DHCP leases/servers/networks, ARP, bridge
 hosts, interfaces, supported Wi-Fi registration/access tables, Kid Control and
@@ -69,9 +80,9 @@ Plans are actor-bound, five-minute previews. Every effect journals its phase,
 rechecks ownership/permissions and reads back the resulting configuration. A timed
 operation installs and verifies two owned scheduler templates **before** changing
 mode. The expiry guard restores the previous disabled/paused mode independently
-of HA; a startup guard is intended to end the exception early on router reboot.
-The latter's configuration is checked, but real startup execution is still a test
-gate. Timers name the exact adopted profile and internal ID, preserve unrelated
+of HA; a startup guard ends the exception early on router reboot. Actual startup
+restoration of a paused profile and timer cleanup passed on isolated CHR 7.20.1.
+Timers name the exact adopted profile and internal ID, preserve unrelated
 schedule/rate edits and remove only their own two entries. RouterOS 7.16+ and
 synchronized matching time zones are required. There is no arbitrary script API.
 
@@ -80,6 +91,10 @@ confirmation is bound to its author; duplicate updates cannot extend the duratio
 The worker's verified/failed/expired result goes privately to that author.
 Native duration (`7h30m`, `1d`) and script boolean (`yes/no`, unlike REST strings)
 compatibility have regression tests based on native hardware findings.
+The [native acceptance lab](../tests/routeros/README.md) is reproducible without
+production credentials or network interfaces. RouterOS's missing-package HTTP 400
+and permission-trap HTTP 500 responses are classified narrowly; unrelated server
+errors are not silently converted into optional missing capabilities.
 
 ## Remaining control gates
 

@@ -5,7 +5,11 @@ import json
 import pytest
 
 from custom_components.family_assistant.domain.validation import DomainError
-from custom_components.family_assistant.network.client import RouterClient, certificate_context
+from custom_components.family_assistant.network.client import (
+    TABLES,
+    RouterClient,
+    certificate_context,
+)
 from custom_components.family_assistant.network.inventory import build, mac
 
 
@@ -115,6 +119,61 @@ async def test_field_projection_readonly_and_no_redirects():
 async def test_read_failures_are_stable_and_bounded(status, body, code):
     with pytest.raises(DomainError, match=code):
         await client(Session(Response(status, body))).read("leases")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "detail,code",
+    [
+        ("no such command or directory (wireless)", "network_missing"),
+        ("no such command or directory (unrelated)", "network_unreachable"),
+        ("invalid value of argument .proplist", "network_unreachable"),
+    ],
+)
+async def test_native_400_missing_package_is_not_a_router_outage(detail, code):
+    session = Session(Response(400, {"error": 400, "message": "Bad Request", "detail": detail}))
+    with pytest.raises(DomainError, match=code):
+        await client(session).read("wireless")
+
+
+@pytest.mark.asyncio
+async def test_missing_optional_package_keeps_remaining_inventory():
+    missing = Response(400, {"detail": "no such command or directory (wireless)"})
+    responses = [Response(200, tables()["leases"])]
+    responses += [
+        missing if "wireless" in name else Response(200, []) for name in TABLES if name != "leases"
+    ]
+    result = await client(Session(*responses)).inventory()
+    assert len(result["leases"]) == 1
+    assert result["capabilities"]["wireless"] == "network_missing"
+    assert result["capabilities"]["wireless_access"] == "network_missing"
+    assert result["capabilities"]["kids"] == "available"
+
+
+@pytest.mark.asyncio
+async def test_missing_command_on_write_is_not_optional_success():
+    session = Session(Response(400, {"detail": "no such command or directory (make-static)"}))
+    with pytest.raises(DomainError, match="network_unreachable"):
+        await client(session, allow_write=True).make_static("*1")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 500])
+@pytest.mark.parametrize("method", ["GET", "POST"])
+async def test_native_permission_trap_is_not_a_connection_failure(status, method):
+    session = Session(Response(status, {"detail": "not enough permissions (9)"}))
+    with pytest.raises(DomainError, match="network_permission"):
+        await client(session)._request(method, "ip/dhcp-server/lease")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "detail",
+    ["not enough permissions (8)", "Internal failure", "no such command or directory (wireless)"],
+)
+async def test_other_500_errors_are_not_misclassified_as_permission_or_optional(detail):
+    with pytest.raises(DomainError, match="network_unreachable"):
+        await client(Session(Response(500, {"detail": detail}))).read("wireless")
 
 
 def test_mac_normalization_no_multicast():

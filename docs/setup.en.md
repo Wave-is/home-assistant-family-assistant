@@ -148,6 +148,12 @@ built-in read group has extra powers. An optional CA certificate can establish
 trust for your router; do not paste its private key or disable TLS verification.
 Blank password preserves the saved value, except when changing server/user.
 
+On RouterOS **7.20.1**, native tests found that REST additionally requires the
+`api` login policy: use `read,api,rest-api` for that version. Keep management
+services restricted to your HA host; `api` also permits binary API login if that
+service is reachable. Do not add administrator rights or expose ports publicly.
+The integration does not modify router users, services or firewall rules.
+
 The Home network card shows devices, existing comments and HA match evidence.
 Ambiguous names require a manual choice; locally administered MAC does not prove
 an intruder. Read failures retain the last successful observation.

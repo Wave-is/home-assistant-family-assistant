@@ -91,7 +91,7 @@
       "network_operation": "Эта операция RouterOS не разрешена.",
       "network_response": "RouterOS вернул неверный или слишком большой ответ. Предыдущие данные сохранены.",
       "network_version": "Для REST-подключения требуется RouterOS 7.",
-      "network_authentication": "RouterOS отклонил имя пользователя или пароль.",
+      "network_authentication": "RouterOS отклонил вход. Проверьте пароль, допустимый адрес и право rest-api; RouterOS 7.20.1 также требует api.",
       "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
       "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
       "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
@@ -335,7 +335,7 @@
       "network_operation": "Эта операция RouterOS не разрешена.",
       "network_response": "RouterOS вернул неверный или слишком большой ответ. Предыдущие данные сохранены.",
       "network_version": "Для REST-подключения требуется RouterOS 7.",
-      "network_authentication": "RouterOS отклонил имя пользователя или пароль.",
+      "network_authentication": "RouterOS отклонил вход. Проверьте пароль, допустимый адрес и право rest-api; RouterOS 7.20.1 также требует api.",
       "network_permission": "У аккаунта RouterOS нет права чтения этой таблицы.",
       "network_missing": "Эта таблица RouterOS недоступна на устройстве.",
       "network_unreachable": "Роутер недоступен. Предыдущие данные сохранены.",
@@ -615,7 +615,7 @@
       "message": "Для REST-подключения требуется RouterOS 7."
     },
     "network_authentication": {
-      "message": "RouterOS отклонил имя пользователя или пароль."
+      "message": "RouterOS отклонил вход. Проверьте пароль, допустимый адрес и право rest-api; RouterOS 7.20.1 также требует api."
     },
     "network_permission": {
       "message": "У аккаунта RouterOS нет права чтения этой таблицы."

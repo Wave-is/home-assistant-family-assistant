@@ -91,7 +91,7 @@
       "network_operation": "This RouterOS operation is not allowed.",
       "network_response": "RouterOS returned an invalid or oversized response. Previous data was retained.",
       "network_version": "RouterOS 7 is required for this REST connection.",
-      "network_authentication": "RouterOS rejected the username or password.",
+      "network_authentication": "RouterOS rejected authentication. Check credentials, allowed source address and rest-api permission; RouterOS 7.20.1 also requires api.",
       "network_permission": "The RouterOS account lacks permission for this table.",
       "network_missing": "This RouterOS table is not available on the device.",
       "network_unreachable": "The router could not be reached. Previous data was retained.",
@@ -335,7 +335,7 @@
       "network_operation": "This RouterOS operation is not allowed.",
       "network_response": "RouterOS returned an invalid or oversized response. Previous data was retained.",
       "network_version": "RouterOS 7 is required for this REST connection.",
-      "network_authentication": "RouterOS rejected the username or password.",
+      "network_authentication": "RouterOS rejected authentication. Check credentials, allowed source address and rest-api permission; RouterOS 7.20.1 also requires api.",
       "network_permission": "The RouterOS account lacks permission for this table.",
       "network_missing": "This RouterOS table is not available on the device.",
       "network_unreachable": "The router could not be reached. Previous data was retained.",
@@ -615,7 +615,7 @@
       "message": "RouterOS 7 is required for this REST connection."
     },
     "network_authentication": {
-      "message": "RouterOS rejected the username or password."
+      "message": "RouterOS rejected authentication. Check credentials, allowed source address and rest-api permission; RouterOS 7.20.1 also requires api."
     },
     "network_permission": {
       "message": "The RouterOS account lacks permission for this table."
