@@ -323,6 +323,9 @@ async def main():
             }
             dietary_expected = entry.runtime_data.engine.snapshot()["dietary_profiles"]
             shopping_expected = entry.runtime_data.engine.snapshot()["shopping"]
+            from ha_model_plan_smoke import verify_model_plan_reload, verify_model_plans
+
+            model_plan_expected = await verify_model_plans(hass, entry, user, child_id)
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(
@@ -331,6 +334,7 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
+            await verify_model_plan_reload(hass, entry, user, model_plan_expected)
             assert entry.runtime_data.engine.snapshot()["school"] == school_expected
             assert school_expected["timetables"][school_id]["status"] == "active"
             for task_id, task in school_tasks_expected.items():

@@ -60,7 +60,7 @@ class Assistant:
         async with asyncio.timeout(100):
             value = await self.cascade.generate(
                 plans.messages(view, content, refs, now, quoted_text=quoted_text),
-                plans.SCHEMA,
+                plans.request_schema(content),
                 plans.validate,
                 scope_check=scope_check,
             )
@@ -103,6 +103,14 @@ class Assistant:
                     t,
                     scope_check=scope_check,
                 )
+            if quoted_text and value["kind"] == "answer":
+                value = await self.cascade.generate(
+                    plans.quote_messages(language, content, quoted_text, now),
+                    plans.ARTICLE_SCHEMA,
+                    self._answer_only,
+                    scope_check=scope_check,
+                )
+                await self._check_scope(scope_check)
             # Do not forward invented model links as verified sources.
             reply = re.sub(r"https?://\S+", "[unverified link]", value["text"])
             await self._check_scope(scope_check)

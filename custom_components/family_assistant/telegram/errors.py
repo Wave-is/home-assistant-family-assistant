@@ -70,6 +70,9 @@ ERRORS = {
         "context_required": "Reply to one specific task or include its ID.",
         "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
         "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+        "invalid_alarm_days": "Specify the alarm days explicitly, for example "
+        "weekdays, weekends or Monday and Wednesday. No "
+        "schedule was changed.",
         "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without "
         "credentials, query or fragment. HTTP requires "
         "consent.",
@@ -231,6 +234,9 @@ ERRORS = {
         "context_required": "Ответьте на сообщение об одной конкретной задаче или укажите её ID.",
         "ambiguous_command": "Действие или его объект неоднозначны. Ничего не изменено.",
         "invalid_deadline": "Укажите корректный будущий срок с однозначным временем.",
+        "invalid_alarm_days": "Укажите дни будильника явно: например, по будням, по "
+        "выходным или в понедельник и среду. Расписание не "
+        "изменено.",
         "provider_invalid_url": "Укажите базовый HTTP(S) URL сервера без логина, "
         "пароля, параметров и фрагмента. Для HTTP нужно "
         "согласие.",
@@ -396,6 +402,9 @@ ERRORS = {
         "завдання або вкажіть його ID.",
         "ambiguous_command": "Дія або її об’єкт неоднозначні. Нічого не змінено.",
         "invalid_deadline": "Вкажіть коректний майбутній термін з однозначним часом.",
+        "invalid_alarm_days": "Укажіть дні будильника явно: наприклад, у будні, у "
+        "вихідні або в понеділок і середу. Розклад не "
+        "змінено.",
         "provider_invalid_url": "Укажіть базовий HTTP(S) URL сервера без логіна, "
         "пароля, параметрів і фрагмента. Для HTTP потрібна "
         "згода.",

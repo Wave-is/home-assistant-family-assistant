@@ -584,7 +584,7 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
             await gate.wait()
             return {
                 "kind": "commands",
-                "commands": [
+                "operations": [
                     {
                         "action": "tasks.create",
                         "payload": {"title": "Synthetic model task", "assignee": child_id},

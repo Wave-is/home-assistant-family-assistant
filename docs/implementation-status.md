@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.2 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.3 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -14,7 +14,7 @@ Nothing is production-ready solely because a mock test passes.
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
-| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real-model eval and external agent delegation pending |
+| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real Qwen evaluation identified schema/day/quote fixes, broader model acceptance and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; ownership-safe Lovelace registration, module-graph versioning and offline HACS install/upgrade tested; richer overview and live provider acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.2, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.3, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only preflight and source/mapping review unit-tested | Strict Store-byte decoding, counts-only validation, immutable source/current-member mapping fingerprints; coherence capture, conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
@@ -48,6 +48,20 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+Current alpha.4 candidate: real Qwen3.5-9B synthetic evaluation passed 12 cases
+after reproducing and fixing envelope, command selection, alarm-day and quote
+injection failures. Raw quotes cannot enter planning; their terminal answer pass
+cannot return commands. Numeric model days cannot create/change alarm schedules,
+and shopping projection retains the actual partial purchase field. The full local
+suite passed 2784 Python tests, five host skips and 23 subtests, plus lint/format,
+locales and privacy checks. All 175 Chromium scenarios passed, with Node checks.
+The exact reviewed runtime passed the complete actual-HA suite, including atomic
+two-alarm preview, Store reload and authenticated confirmation/replay. Offline HACS
+installed alpha.3, restored it after a failed update, then upgraded to this candidate
+and retained the synthetic household data. Runtime ZIP: 201 files, SHA256
+`92d1295d05efe912e8357bdb1d79f0e44d5f732e2e1103a5e4697f27d04dae3e`.
+CI/publication remain pending for this candidate; no live cutover is claimed.
 
 Published test prerelease `0.1.0-alpha.2` at commit
 `49c9891c48625d3f62d7baa5c1677a06f1e17e82`. All seven jobs in CI run
@@ -69,7 +83,8 @@ The joined alpha.3 development export passed 2620 Python tests (five host skips,
 23 subtests), Ruff/format, privacy/locales, the full actual-HA suite and all five
 offline HACS install/rollback/upgrade phases. Runtime-only ZIP: 200 files, SHA256
 `f46ac492f5ae2a5528991a54eb27883ac7d8a63458cf9d6131cfb48d5935800a`.
-Alpha.3 CI and publication are pending at this checkpoint. A narrow AGY review
+Alpha.3 was published at `7930f7e8825de158a2d3facc590f44e40d78a4b5`; all seven
+jobs in run `34148532409` passed. GitHub tag and asset digest match. A narrow AGY review
 of the new source-review helper timed out; it is not a passing review claim.
 
 Reviewed shopping metadata editing now preserves quantities, partial purchases,
@@ -805,7 +820,7 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   persisting intent. The calendar checkpoint passed the actual HA CI job too.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
-- No public release, migration or HACS default submission yet.
+- Test prereleases alpha.2 and alpha.3 are published; no migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;
@@ -842,7 +857,9 @@ service call does not prove physical sound or volume.
   generation-bound Repair/retry now passes actual admin/non-admin HTTP tests.
   An active backup cannot be force-cleared; full encrypted archive restoration
   remains a separate release gate.
-- Live model evaluation is pending; local Ollama was not reachable on its default
-  port during this checkpoint. No server was started or production provider changed.
+- Opt-in real Qwen evaluation now runs against checked-in fictional fixtures only.
+  It exposed schema, alarm-day and quote-planning defects; see model-evaluation.md.
+  Wider language/model acceptance remains pending. Local Ollama was not started
+  and production provider settings were not changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.
 - All original vision modules and acceptance scenarios remain the goal.

@@ -13,8 +13,11 @@ allowlists and sizes. Ollama's response format is not treated as authorization.
 The configured fallback is independent and failures have a short cooldown. The
 [model listing endpoint](https://docs.ollama.com/api/tags) is checked during setup.
 
-Model requests contain only the current input, bounded quoted text, receipt-backed
-object references, a role-filtered data projection, language and current time.
+Planning requests contain only the current input, receipt-backed object references,
+a role-filtered data projection, language and current time. Raw quoted text is
+withheld from the planner. When an ordinary reply needs it, a separate terminal
+answer-only pass receives the current message and bounded quote, without the
+family database or command schema. An injected command from that pass is rejected.
 They do not include HA/TG identities, credentials, audit logs or wake-up nonces.
 Quotes, task titles and external snippets are explicitly untrusted. The system
 never supplies a developer-owned server, account or bot.
@@ -26,12 +29,22 @@ must originate in the current request and are interpreted by the deterministic
 calendar. Family settings, identities, arbitrary HA services, alarm answers and
 physical device tests are absent from the model's command allowlist.
 
+Wire plans use `kind: commands` with an `operations` array, converted to the
+unchanged internal `commands` format before validation/persistence. Every response
+kind has its own exact schema branch. New alarm days use a literal source phrase;
+the per-request grammar offers recognized phrases and the server computes Monday=0
+indices. Clock-only edits may retain an existing schedule's days, but model-supplied
+numeric days cannot create or change a schedule. Calendar/UI domain commands remain
+unchanged. The model sees the actual shopping `purchased` field, not an invented
+`purchased_quantity` property.
+
 The [SearXNG JSON search API](https://docs.searxng.org/dev/search_api.html) receives
 only a query grounded in the current message, never model-invented family context.
 Result links are checked for literal and DNS-resolved internal addresses. Snippets
 are terminal read-only evidence: the synthesis response cannot execute commands.
-This version does not fetch articles; a later fetcher must validate and pin DNS
-addresses at connection time, recheck redirects and enforce content-size limits.
+This search path does not fetch articles. Separate off-default, explicitly
+reviewed [article reading](articles.md) pins DNS at connection time, rechecks
+redirects and enforces content-size limits without sending family context.
 
 The [standard HA conversation entity](https://developers.home-assistant.io/docs/core/entity/conversation/)
 resolves `Context.user_id` for every turn. It uses actor/session-bound object
@@ -59,4 +72,6 @@ proposal expiry/concurrent edits, storage faults, original identity revocation,
 and nonblocking ping. Real HA smoke uses real Config/Options Flow, conversation
 entity, Store, Telegram manager and callbacks with synthetic transport providers.
 No live family data or real bot/provider is used by CI. Real-model language-quality
-evaluation and production acceptance are still required before release.
+evaluation and production acceptance are still required before stable release.
+An opt-in [synthetic-only live evaluator](model-evaluation.md) exercises the
+real model adapter, plan envelope, deadline materialization and domain guards.

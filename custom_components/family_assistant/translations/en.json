@@ -86,6 +86,7 @@
       "context_required": "Reply to one specific task or include its ID.",
       "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
       "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+      "invalid_alarm_days": "Specify the alarm days explicitly, for example weekdays, weekends or Monday and Wednesday. No schedule was changed.",
       "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
       "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
       "provider_unreachable": "The configured provider could not be reached.",
@@ -448,6 +449,7 @@
       "context_required": "Reply to one specific task or include its ID.",
       "ambiguous_command": "The action or its target is ambiguous. Nothing was changed.",
       "invalid_deadline": "Specify a valid future deadline with an unambiguous time.",
+      "invalid_alarm_days": "Specify the alarm days explicitly, for example weekdays, weekends or Monday and Wednesday. No schedule was changed.",
       "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
       "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
       "provider_unreachable": "The configured provider could not be reached.",
@@ -712,6 +714,9 @@
     },
     "invalid_deadline": {
       "message": "Specify a valid future deadline with an unambiguous time."
+    },
+    "invalid_alarm_days": {
+      "message": "Specify the alarm days explicitly, for example weekdays, weekends or Monday and Wednesday. No schedule was changed."
     },
     "provider_invalid_url": {
       "message": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent."

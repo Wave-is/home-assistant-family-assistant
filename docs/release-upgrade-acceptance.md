@@ -11,8 +11,8 @@ shipped version. The result reports both runtime ZIP SHA-256 hashes; it does not
 claim that either version was published.
 
 CI currently pins baseline commit
-`0d2a490f6c90ce780cceab3a9e1160b97fbd25e9` (`0.1.0-alpha.1`), a reviewed
-development snapshot. The `application-upgrade` job runs the candidate against
+`7930f7e8825de158a2d3facc590f44e40d78a4b5` (`0.1.0-alpha.3`), a published
+test prerelease. The `application-upgrade` job runs the candidate against
 that exact baseline in the network-disabled HA 2026.8.2 image. Advancing the
 baseline is a reviewed release decision, not an automatic replacement with the
 latest branch.

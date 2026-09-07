@@ -88,6 +88,7 @@ class PrepareFamilyPlan(llm.Tool):
     description = (
         "Preview at most five requested family actions for human confirmation. Task deadlines use "
         "due_expression copied from the current user request, not computed due_at. "
+        "Alarm day changes use days_expression copied from that request, not numeric days. "
         "No changes are applied."
     )
     parameters = vol.Schema(

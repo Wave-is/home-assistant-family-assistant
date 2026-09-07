@@ -29,7 +29,7 @@ jobs:
       - run: python tools/check_public_tree.py
       - run: python tools/sync_locales.py --check
       - name: Verify exact runtime release candidate
-        run: python tools/build_release.py --version 0.1.0-alpha.3
+        run: python tools/build_release.py --version 0.1.0-alpha.4
       - run: python -m compileall -q custom_components
 
   frontend:
@@ -77,10 +77,10 @@ jobs:
         with:
           path: candidate
           persist-credentials: false
-      - name: Exact reviewed development baseline (not a shipped release)
+      - name: Exact published alpha.3 baseline
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 0d2a490f6c90ce780cceab3a9e1160b97fbd25e9
+          ref: 7930f7e8825de158a2d3facc590f44e40d78a4b5
           path: baseline
           persist-credentials: false
       - name: Retain synthetic Config Entry, Options and domain data across versions
@@ -100,10 +100,10 @@ jobs:
         with:
           path: candidate
           persist-credentials: false
-      - name: Exact reviewed development baseline (not a shipped release)
+      - name: Exact published alpha.3 baseline
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 0d2a490f6c90ce780cceab3a9e1160b97fbd25e9
+          ref: 7930f7e8825de158a2d3facc590f44e40d78a4b5
           path: baseline
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
