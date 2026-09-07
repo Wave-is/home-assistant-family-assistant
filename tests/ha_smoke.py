@@ -877,6 +877,9 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     from ha_dietary_smoke import verify_dietary_controls
 
     await verify_dietary_controls(hass, entry, owner, child, child_id, request)
+    from ha_shopping_edit_smoke import verify_shopping_edit
+
+    await verify_shopping_edit(hass, entry, owner, child, child_id, request)
 
 
 async def verify_pantry_controls(hass, entry, owner, child, request):

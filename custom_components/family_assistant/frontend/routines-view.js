@@ -37,7 +37,7 @@ export const ROUTINES_COPY = {
     step_confirmation: "Completion mode",
     confirmation_manual: "Manual confirmation (user button)",
     confirmation_none: "Automatic progression",
-    confirmation_entity_state: "Entity state condition",
+    confirmation_entity_state: "Automatic when condition is true",
     step_escalate: "Escalate if overdue (minutes, 1..1440, optional)",
     step_skip_mode: "Skip this step during mode",
     step_entity_condition: "Target entity state condition",
@@ -46,6 +46,10 @@ export const ROUTINES_COPY = {
     condition_max_age: "Max age (seconds, 1..3600)",
     complex_preserved_notice: "Advanced condition rules are preserved. Changing simple controls will replace them.",
     replace_condition: "Replace with simple condition",
+    step_skip_editor: "Advanced skip condition",
+    step_completion_editor: "Automatic completion condition",
+    completion_inactive_notice:
+      "The completion condition remains in this draft, but saving manual or immediate completion will remove it from the template.",
     add_step: "Add step",
     remove_step: "Remove",
     move_up: "Up",
@@ -148,7 +152,7 @@ export const ROUTINES_COPY = {
     step_confirmation: "Способ подтверждения",
     confirmation_manual: "Вручную (кнопка участника)",
     confirmation_none: "Автоматический переход",
-    confirmation_entity_state: "По состоянию объекта HA",
+    confirmation_entity_state: "Автоматически, когда условие истинно",
     step_escalate: "Эскалация при просрочке (минут, 1..1440, необязательно)",
     step_skip_mode: "Пропускать шаг в режиме",
     step_entity_condition: "Условие по состоянию объекта",
@@ -157,6 +161,10 @@ export const ROUTINES_COPY = {
     condition_max_age: "Макс. давность (секунд, 1..3600)",
     complex_preserved_notice: "Сохранены расширенные правила условий. Изменение параметров заменит их.",
     replace_condition: "Заменить простым условием",
+    step_skip_editor: "Расширенное условие пропуска",
+    step_completion_editor: "Условие автоматического завершения",
+    completion_inactive_notice:
+      "Условие завершения сохранено в этом черновике, но сохранение ручного или немедленного завершения удалит его из шаблона.",
     add_step: "Добавить шаг",
     remove_step: "Удалить",
     move_up: "Выше",
@@ -259,7 +267,7 @@ export const ROUTINES_COPY = {
     step_confirmation: "Спосіб підтвердження",
     confirmation_manual: "Вручну (кнопка учасника)",
     confirmation_none: "Автоматичний перехід",
-    confirmation_entity_state: "За станом об'єкта HA",
+    confirmation_entity_state: "Автоматично, коли умова істинна",
     step_escalate: "Ескалація у разі затримки (хвилин, 1..1440, необов'язково)",
     step_skip_mode: "Пропускати крок у режимі",
     step_entity_condition: "Умова за станом об'єкта",
@@ -268,6 +276,10 @@ export const ROUTINES_COPY = {
     condition_max_age: "Макс. давність (секунд, 1..3600)",
     complex_preserved_notice: "Збережено розширені правила умов. Зміна параметрів замінить їх.",
     replace_condition: "Замінити простою умовою",
+    step_skip_editor: "Розширена умова пропуску",
+    step_completion_editor: "Умова автоматичного завершення",
+    completion_inactive_notice:
+      "Умова завершення збережена в цій чернетці, але збереження ручного або негайного завершення видалить її з шаблону.",
     add_step: "Додати крок",
     remove_step: "Видалити",
     move_up: "Вище",
@@ -385,49 +397,81 @@ function makeDefaultStep(offset = 0) {
     raw_offset: String(offset),
     confirmation: "manual",
     raw_escalate: "15",
-    skip_mode: "",
+    skip_when: null,
     skip_dirty: false,
-    raw_skip: null,
-    raw_entity_id: "",
-    raw_entity_state: "",
-    raw_entity_max_age: "120",
-    entity_dirty: false,
-    raw_completion: null,
+    completion_condition: null,
+    completion_dirty: false,
   };
 }
 
-function parseCondition(cond) {
-  if (!cond || typeof cond !== "object") return null;
-  if (cond.kind === "mode" && cond.negate === false) return { type: "mode", mode: cond.mode };
-  if (cond.kind === "entity_state" && cond.negate === false) {
-    return {
-      type: "entity_state",
-      entity_id: cond.entity_id || "",
-      state: cond.state || "",
-      max_age_seconds: cond.max_age_seconds != null ? cond.max_age_seconds : 120,
-    };
-  }
-  return { type: "complex", raw: cond };
-}
-
 function buildStepFromData(s) {
-  const parsedSkip = parseCondition(s.skip_when);
-  const parsedComp = parseCondition(s.completion_condition);
   return {
     assignee: s.assignee || null,
     title: s.title || "",
     raw_offset: s.offset_minutes != null ? String(s.offset_minutes) : "0",
     confirmation: s.confirmation || "manual",
     raw_escalate: s.escalate_minutes != null ? String(s.escalate_minutes) : "",
-    skip_mode: parsedSkip?.type === "mode" ? parsedSkip.mode : "",
+    skip_when: s.skip_when ? clone(s.skip_when) : null,
     skip_dirty: false,
-    raw_skip: s.skip_when ? clone(s.skip_when) : null,
-    raw_entity_id: parsedComp?.type === "entity_state" ? parsedComp.entity_id : "",
-    raw_entity_state: parsedComp?.type === "entity_state" ? parsedComp.state : "",
-    raw_entity_max_age: parsedComp?.type === "entity_state" ? String(parsedComp.max_age_seconds) : "120",
-    entity_dirty: false,
-    raw_completion: s.completion_condition ? clone(s.completion_condition) : null,
+    completion_condition: s.completion_condition ? clone(s.completion_condition) : null,
+    completion_dirty: false,
   };
+}
+
+function conditionHasEntity(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (value.kind === "entity_state") return true;
+  return (
+    (value.kind === "all" || value.kind === "any") &&
+    Array.isArray(value.conditions) &&
+    value.conditions.some(conditionHasEntity)
+  );
+}
+
+function conditionForSave(value, dirty, allowlist) {
+  try {
+    return { value: normalizeCondition(value, { allowlist }), supported: true };
+  } catch (error) {
+    // Preserve a future backend condition byte-for-byte until the user chooses
+    // replacement. Current allowlist revocation remains a local hard stop.
+    if (!dirty && error?.code === "invalid_field") {
+      return { value: clone(value), supported: false };
+    }
+    throw error;
+  }
+}
+
+function routineAccess(card, data = card?._data) {
+  const members = Array.isArray(data?.members) ? data.members : [];
+  const actor = members.find((member) => member?.id === data?.actor);
+  const validRevision = (value) => Number.isSafeInteger(value) && value >= 1;
+  if (!actor || actor.active !== true || actor.role !== data?.role ||
+      !["owner", "parent", "adult", "child"].includes(actor.role) ||
+      !validRevision(actor.revision) || !card?._entry ||
+      !data?.settings?.modules?.includes("routines")) return null;
+  return JSON.stringify([
+    card._generation, card._entry, actor.id, actor.role, actor.revision,
+    members.filter((member) => member?.active === true && member.role !== "guest")
+      .map((member) => [member.id, member.role, member.revision])
+      .sort((left, right) => String(left[0]).localeCompare(String(right[0]))),
+  ]);
+}
+
+export function reconcileRoutineRefresh(card, previousData) {
+  if (!previousData) return false;
+  const changedIdentity = routineAccess(card, previousData) !== routineAccess(card);
+  const draft = card._routineDraft;
+  let changedTarget = false;
+  if (draft && !(draft.frozenPayload && draft.operationId)) {
+    const data = card._data?.routines;
+    if (["allowlist", "modes"].includes(draft.type)) changedTarget = data?.config?.revision !== draft.revision;
+    if (["edit_template", "start_run"].includes(draft.type)) changedTarget = data?.templates?.find(item => item.id === (draft.id || draft.template_id))?.revision !== draft.revision;
+    if (["step_override", "cancel_run"].includes(draft.type)) changedTarget = data?.runs?.find(item => item.id === draft.run_id)?.revision !== draft.revision;
+  }
+  if (!changedIdentity && !changedTarget) return false;
+  card._routineDraft = null;
+  card._actionError = "conflict";
+  return true;
 }
 
 export function renderRoutines(card, body) {
@@ -444,7 +488,11 @@ export function renderRoutines(card, body) {
 
   const startGen = card._generation;
   const startEntry = card._entry;
-  const scope = JSON.stringify([startGen, startEntry, role, actorId]);
+  const scope = routineAccess(card);
+  if (!scope) {
+    card._routineDraft = null;
+    return;
+  }
 
   if (card._routineDraft) {
     if (card._routineDraft.scope && card._routineDraft.scope !== scope) {
@@ -460,7 +508,8 @@ export function renderRoutines(card, body) {
     card._entry !== startEntry ||
     card._data?.role !== role ||
     card._data?.actor !== actorId ||
-    !card._data?.settings?.modules?.includes("routines");
+    !card._data?.settings?.modules?.includes("routines") ||
+    routineAccess(card) !== scope;
   const isStale = () => !body.isConnected || staleIdentity();
 
   const copy = getCopy(card);
@@ -485,6 +534,16 @@ export function renderRoutines(card, body) {
   const runCmd = async (action, payload, expectedRevision, targetKind, targetId) => {
     if (isStale() || card._writing) return;
     const currentDraft = card._routineDraft;
+    const exactDraftRequest = Boolean(currentDraft?.frozenPayload && currentDraft?.operationId &&
+      JSON.stringify(currentDraft.frozenPayload) === JSON.stringify(payload) &&
+      (!currentDraft.pendingAction || currentDraft.pendingAction === action));
+    if (currentDraft?.frozenPayload && !exactDraftRequest) {
+      card._actionError = "conflict";
+      card._routineDraft = null;
+      card.render();
+      return;
+    }
+    if (exactDraftRequest) currentDraft.pendingAction = action;
 
     if (expectedRevision !== undefined) {
       let freshRev = null;
@@ -497,7 +556,11 @@ export function renderRoutines(card, body) {
         const r = (card._data?.routines?.runs || []).find((x) => x.id === targetId);
         freshRev = r?.revision;
       }
-      if (freshRev !== expectedRevision) {
+      const exactTemplateRetry =
+        exactDraftRequest &&
+        Number.isSafeInteger(freshRev) &&
+        freshRev > expectedRevision;
+      if (freshRev !== expectedRevision && !exactTemplateRetry) {
         card._actionError = "conflict";
         card._routineDraft = null;
         card.render();
@@ -506,7 +569,7 @@ export function renderRoutines(card, body) {
     }
 
     try {
-      await card.command(action, payload);
+      await card.command(action, payload, exactDraftRequest ? currentDraft.operationId : undefined);
       if (!staleIdentity() && card._routineDraft === currentDraft) {
         if (!card._actionError) {
           card._routineDraft = null;
@@ -619,6 +682,7 @@ export function renderRoutines(card, body) {
           }
           payload = { entity_allowlist: items, revision: d.revision };
           d.frozenPayload = clone(payload);
+          d.operationId = crypto.randomUUID();
         }
         await runCmd("routines.configure", payload, d.revision, "config");
       });
@@ -717,6 +781,7 @@ export function renderRoutines(card, body) {
           const chosen = ALL_MODES.filter((k) => checkboxes[k]?.checked);
           payload = { modes: chosen.length ? chosen : ["normal"], revision: d.revision };
           d.frozenPayload = clone(payload);
+          d.operationId = crypto.randomUUID();
         }
         await runCmd("routines.modes", payload, d.revision, "config");
       });
@@ -868,6 +933,8 @@ export function renderRoutines(card, body) {
       allowlist: card._data.routines?.config?.entity_allowlist || [],
       timezone: card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC",
       disabled: isFrozen || Boolean(card._writing),
+      context: "template_skip",
+      scope: "template-skip",
       isStale: () => isStale() || Boolean(card._writing) || card._routineDraft !== d,
       onChange: value => { d.skip_when = value; },
     }));
@@ -879,6 +946,7 @@ export function renderRoutines(card, body) {
       stepsBox.replaceChildren(el("strong", copy.steps_title));
       (d.steps || []).forEach((st, idx) => {
         const stepCard = el("div", null, "item");
+        stepCard.dataset.routineStepIndex = String(idx);
         stepCard.append(el("strong", `${copy.step_num} ${idx + 1}`));
 
         // Title
@@ -934,6 +1002,7 @@ export function renderRoutines(card, body) {
         // Confirmation Mode
         const sConfWrap = el("label", copy.step_confirmation);
         const sConfSelect = el("select");
+        sConfSelect.dataset.stepConfirmation = String(idx);
         sConfSelect.disabled = isFrozen || Boolean(card._writing);
         for (const cVal of ["manual", "none", "entity_state"]) {
           const opt = el("option", copy[`confirmation_${cVal}`] || cVal);
@@ -958,102 +1027,69 @@ export function renderRoutines(card, body) {
         sEscWrap.append(sEscInput);
         stepCard.append(sEscWrap);
 
-        // Skip condition (mode selector)
-        const sSkipWrap = el("label", copy.step_skip_mode);
-        const sSkipSelect = el("select");
-        sSkipSelect.disabled = isFrozen || Boolean(card._writing);
-        const noSkipOpt = el("option", copy.none);
-        noSkipOpt.value = "";
-        sSkipSelect.append(noSkipOpt);
-        for (const mVal of ["holidays", "vacation", "ill", "guests"]) {
-          const opt = el("option", copy[`mode_${mVal}`] || mVal);
-          opt.value = mVal;
-          sSkipSelect.append(opt);
+        const conditionStale = () =>
+          isStale() ||
+          isFrozen ||
+          Boolean(card._writing) ||
+          card._routineDraft !== d ||
+          !d.steps.includes(st);
+
+        const skipDetails = el("details", null, "condition-panel");
+        skipDetails.dataset.stepCondition = "skip";
+        skipDetails.dataset.stepIndex = String(idx);
+        skipDetails.open = st.skip_when != null;
+        skipDetails.append(el("summary", copy.step_skip_editor));
+        skipDetails.append(
+          renderConditionForm({
+            value: st.skip_when,
+            language: card._config?.language || card._hass?.language || "en",
+            allowlist: card._data.routines?.config?.entity_allowlist || [],
+            timezone: card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC",
+            disabled: isFrozen || Boolean(card._writing),
+            context: "step_skip",
+            scope: `step-${idx}-skip`,
+            isStale: conditionStale,
+            onChange: (value) => {
+              if (conditionStale()) return;
+              st.skip_when = value;
+              st.skip_dirty = true;
+            },
+          }),
+        );
+        stepCard.append(skipDetails);
+
+        if (st.confirmation === "entity_state") {
+          const completionDetails = el("details", null, "condition-panel");
+          completionDetails.dataset.stepCondition = "completion";
+          completionDetails.dataset.stepIndex = String(idx);
+          completionDetails.open = st.completion_condition != null;
+          completionDetails.append(el("summary", copy.step_completion_editor));
+          completionDetails.append(
+            renderConditionForm({
+              value: st.completion_condition,
+              language: card._config?.language || card._hass?.language || "en",
+              allowlist: card._data.routines?.config?.entity_allowlist || [],
+              timezone: card._data.settings?.timezone || card._hass?.config?.time_zone || "UTC",
+              disabled: isFrozen || Boolean(card._writing),
+              context: "step_completion",
+              scope: `step-${idx}-completion`,
+              isStale: conditionStale,
+              onChange: (value) => {
+                if (conditionStale()) return;
+                st.completion_condition = value;
+                st.completion_dirty = true;
+              },
+            }),
+          );
+          stepCard.append(completionDetails);
+        } else if (st.completion_condition != null) {
+          stepCard.append(el("p", copy.completion_inactive_notice, "sub"));
         }
-        sSkipSelect.value = st.skip_mode || "";
-        sSkipSelect.addEventListener("change", () => {
-          if (!isFrozen) {
-            st.skip_mode = sSkipSelect.value;
-            st.skip_dirty = true;
-            renderSteps();
-          }
-        });
-        sSkipWrap.append(sSkipSelect);
-        stepCard.append(sSkipWrap);
-
-        if (!st.skip_dirty && st.raw_skip && parseCondition(st.raw_skip)?.type === "complex") {
-          const compNotice = el("p", copy.complex_preserved_notice, "sub");
-          stepCard.append(compNotice);
-        }
-
-        // Entity state condition controls
-        const entityBox = el("div", null, "editor");
-        entityBox.style.display = st.confirmation === "entity_state" ? "grid" : "none";
-
-        if (!st.entity_dirty && st.raw_completion && parseCondition(st.raw_completion)?.type === "complex") {
-          const compCompNotice = el("p", copy.complex_preserved_notice, "sub");
-          entityBox.append(compCompNotice);
-          const replBtn = localButton(copy.replace_condition, () => {
-            if (isFrozen) return;
-            st.entity_dirty = true;
-            renderSteps();
-          });
-          entityBox.append(replBtn);
-        } else {
-          const entIdWrap = el("label", copy.condition_entity_id);
-          const entIdInput = el("input");
-          entIdInput.type = "text";
-          entIdInput.placeholder = "binary_sensor.door_contact";
-          entIdInput.value = st.raw_entity_id || "";
-          entIdInput.disabled = isFrozen || Boolean(card._writing);
-          entIdInput.addEventListener("input", () => {
-            if (!isFrozen) {
-              st.raw_entity_id = entIdInput.value;
-              st.entity_dirty = true;
-            }
-          });
-          entIdWrap.append(entIdInput);
-          entityBox.append(entIdWrap);
-
-          const entStateWrap = el("label", copy.condition_expected_state);
-          const entStateInput = el("input");
-          entStateInput.type = "text";
-          entStateInput.placeholder = "on";
-          entStateInput.value = st.raw_entity_state || "";
-          entStateInput.disabled = isFrozen || Boolean(card._writing);
-          entStateInput.addEventListener("input", () => {
-            if (!isFrozen) {
-              st.raw_entity_state = entStateInput.value;
-              st.entity_dirty = true;
-            }
-          });
-          entStateWrap.append(entStateInput);
-          entityBox.append(entStateWrap);
-
-          const entAgeWrap = el("label", copy.condition_max_age);
-          const entAgeInput = el("input");
-          entAgeInput.type = "number";
-          entAgeInput.min = "1";
-          entAgeInput.max = "3600";
-          entAgeInput.value = st.raw_entity_max_age;
-          entAgeInput.disabled = isFrozen || Boolean(card._writing);
-          entAgeInput.addEventListener("input", () => {
-            if (!isFrozen) {
-              st.raw_entity_max_age = entAgeInput.value;
-              st.entity_dirty = true;
-            }
-          });
-          entAgeWrap.append(entAgeInput);
-          entityBox.append(entAgeWrap);
-        }
-
-        stepCard.append(entityBox);
 
         sConfSelect.addEventListener("change", () => {
-          if (!isFrozen) {
-            st.confirmation = sConfSelect.value;
-            entityBox.style.display = st.confirmation === "entity_state" ? "grid" : "none";
-          }
+          if (conditionStale()) return;
+          st.confirmation = sConfSelect.value;
+          renderSteps();
         });
 
         // Step reordering / deletion actions
@@ -1220,53 +1256,32 @@ export function renderRoutines(card, body) {
             }
           }
 
-          let skipCondition = null;
-          if (st.skip_dirty) {
-            if (st.skip_mode) {
-              skipCondition = { kind: "mode", mode: st.skip_mode, negate: false };
-            } else {
-              skipCondition = null;
-            }
-          } else {
-            skipCondition = st.raw_skip ? clone(st.raw_skip) : null;
-          }
-
+          let skipCondition;
           let compCondition = null;
-          if (st.confirmation === "entity_state") {
-            if (!st.entity_dirty && st.raw_completion) {
-              compCondition = clone(st.raw_completion);
-            } else {
-              const entId = (st.raw_entity_id || "").trim().toLowerCase();
-              const entState = (st.raw_entity_state || "").trim();
-              if (st.raw_entity_max_age === "" || st.raw_entity_max_age === null || st.raw_entity_max_age === undefined) {
-                card._actionError = copy.invalid_max_age;
-                card.render();
-                return;
+          try {
+            skipCondition = conditionForSave(
+              st.skip_when,
+              Boolean(st.skip_dirty),
+              [...allowedEntities],
+            ).value;
+            if (st.confirmation === "entity_state") {
+              const completion = conditionForSave(
+                st.completion_condition,
+                Boolean(st.completion_dirty),
+                [...allowedEntities],
+              );
+              if (
+                completion.value == null ||
+                (completion.supported && !conditionHasEntity(completion.value))
+              ) {
+                throw new Error("completion_condition");
               }
-              const maxAge = Number(st.raw_entity_max_age);
-              if (!Number.isInteger(maxAge) || maxAge < 1 || maxAge > 3600) {
-                card._actionError = copy.invalid_max_age;
-                card.render();
-                return;
-              }
-              if (!entId || !ENTITY_REGEX.test(entId) || !allowedEntities.has(entId)) {
-                card._actionError = copy.invalid_entity_id;
-                card.render();
-                return;
-              }
-              if (!entState || entState === "unknown" || entState === "unavailable") {
-                card._actionError = copy.invalid_state;
-                card.render();
-                return;
-              }
-              compCondition = {
-                kind: "entity_state",
-                entity_id: entId,
-                state: entState,
-                max_age_seconds: maxAge,
-                negate: false,
-              };
+              compCondition = completion.value;
             }
+          } catch {
+            card._actionError = copy.condition_error;
+            card.render();
+            return;
           }
 
           validatedSteps.push({
@@ -1314,6 +1329,20 @@ export function renderRoutines(card, body) {
           payload.revision = d.revision;
         }
         d.frozenPayload = clone(payload);
+        d.operationId = crypto.randomUUID();
+      }
+
+      // Legacy in-memory drafts have no private retry ID. They may adopt only
+      // the matching existing card receipt, never invent a new request for an
+      // uncertain earlier save.
+      if (!d.operationId) {
+        const fingerprint = JSON.stringify([card._entry, "routines.save", payload]);
+        if (card._pending?.fingerprint !== fingerprint || !card._pending?.id) {
+          card._actionError = "conflict";
+          card.render();
+          return;
+        }
+        d.operationId = card._pending.id;
       }
 
       await runCmd(
@@ -1449,6 +1478,7 @@ export function renderRoutines(card, body) {
               member: d.member || actorId,
             };
             d.frozenPayload = clone(payload);
+            d.operationId = crypto.randomUUID();
           }
           await runCmd("routines.start", payload, d.revision, "template", d.template_id);
         });
@@ -1610,6 +1640,7 @@ export function renderRoutines(card, body) {
                   reason: trimmedReason,
                 };
                 od.frozenPayload = clone(payload);
+                od.operationId = crypto.randomUUID();
               }
               await runCmd("routines.override", payload, od.revision, "run", od.run_id);
             });
@@ -1697,6 +1728,7 @@ export function renderRoutines(card, body) {
                 reason: trimmedReason,
               };
               cd.frozenPayload = clone(payload);
+              cd.operationId = crypto.randomUUID();
             }
             await runCmd("routines.cancel", payload, cd.revision, "run", cd.run_id);
           });

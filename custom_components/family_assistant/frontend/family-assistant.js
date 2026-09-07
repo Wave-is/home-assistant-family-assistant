@@ -2,14 +2,14 @@
 import {ERRORS} from "./errors.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
-import {renderShoppingItem,renderShoppingArchive} from "./shopping-items.js";
+import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor} from "./shopping-items.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
 import {renderCourt} from "./court-view.js";
 import {renderRewards} from "./rewards-view.js";
 import {renderCalendar} from "./calendar-view.js";
-import {renderRoutines, ROUTINES_COPY} from "./routines-view.js";
+import {renderRoutines, ROUTINES_COPY, reconcileRoutineRefresh} from "./routines-view.js";
 import {renderPantry} from "./pantry-view.js";
 import {renderMeals} from "./meals-view.js";
 import {renderDietaryProfiles,reconcileDietaryRefresh} from "./dietary-view.js";
@@ -234,7 +234,7 @@ export class FamilyCard extends HTMLElement {
     this._entry = config.entry_id;
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
-    this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
+    this._shoppingItemAction=null;this._shoppingEditorDraft=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._taskItemAction=null;this._taskCreateDraft=null;this._taskSeriesDraft=null;this._alarmEditorDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
@@ -260,7 +260,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); disposeConversation(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -292,9 +292,11 @@ export class FamilyCard extends HTMLElement {
       const taskSeriesForce = reconcileTaskSeriesRefresh(this,previousData);
       const articleForce = reconcileArticleRefresh(this,previousData);
       const conversationForce = reconcileConversationRefresh(this,previousData);
+      const shoppingEditorForce = reconcileShoppingEditorRefresh(this,previousData);
+      const routineForce = reconcileRoutineRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -413,13 +415,13 @@ export class FamilyCard extends HTMLElement {
       renderTaskSeries(this,body);
       if(this._taskSeriesDraft)return;
     }
-    if(this._view==="shopping")renderShoppingSeries(this,body);
-    const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
+    if(this._view==="shopping"){renderShoppingSeries(this,body);renderShoppingEditor(this,body);}
+    const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
       toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
-    } else if(this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
-    body.append(toolbar);if(this._form)body.append(this.form());
+    } else if(toolbar && this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
+    if(toolbar)body.append(toolbar);if(this._form && this._view!=="shopping")body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):this._view==="tasks"?!["completed","cancelled","archived"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);

@@ -18,9 +18,9 @@ const copies = {
 };
 const names = copies[lang] || copies.en;
 const members = [
-  {id:"owner",name:names.owner,role:"owner",active:true},
-  {id:"child",name:names.child,role:"child",active:true},
-  {id:"former",name:names.former,role:"adult",active:!staleTemplate},
+  {id:"owner",name:names.owner,role:"owner",active:true,revision:1},
+  {id:"child",name:names.child,role:"child",active:true,revision:1},
+  {id:"former",name:names.former,role:"adult",active:!staleTemplate,revision:1},
 ];
 const step = (title, assignee=null, status="pending") => ({title,assignee,offset_minutes:0,confirmation:"manual",completion_condition:null,skip_when:null,escalate_minutes:15,status});
 const template = {id:"U000001",revision:3,title:names.title,description:"",enabled:true,assignees:["owner","child"],rule:null,skip_when:null,steps:[step(names.first),step(names.second,staleTemplate?"former":null)]};

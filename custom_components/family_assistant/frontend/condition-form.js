@@ -7,6 +7,12 @@ const CONDITION_COPY = {
     hint: "Conditions only observe approved Home Assistant entities; they never control devices. Unknown or stale observations remain unknown, including when negated.",
     templateHint:
       "Checked once when the routine starts. If true, all steps are skipped; unknown never skips.",
+    stepSkipCondition: "Skip this step when",
+    stepSkipHint:
+      "Checked once when this step becomes ready. True skips it; false or unknown keeps the manual or automatic completion mode.",
+    stepCompletionCondition: "Complete this step automatically when",
+    stepCompletionHint:
+      "Checked while this step is active. It completes only when true and must include at least one approved observed entity; unknown keeps it active.",
     none: "No condition",
     kind: "Condition type",
     negate: "Negate result",
@@ -44,6 +50,12 @@ const CONDITION_COPY = {
     hint: "Условия только наблюдают за разрешёнными объектами Home Assistant и никогда ими не управляют. Неизвестное или устаревшее наблюдение остаётся неизвестным, в том числе при отрицании.",
     templateHint:
       "Проверяется один раз при запуске. Если условие истинно, все шаги пропускаются. Неизвестный результат не вызывает пропуск.",
+    stepSkipCondition: "Пропустить этот шаг, если",
+    stepSkipHint:
+      "Проверяется один раз, когда шаг становится доступен. Истина пропускает шаг; ложь или неизвестный результат сохраняют выбранный способ завершения.",
+    stepCompletionCondition: "Автоматически завершить этот шаг, если",
+    stepCompletionHint:
+      "Проверяется, пока шаг активен. Шаг завершается только при истинном результате; условие должно включать хотя бы один разрешённый наблюдаемый объект. Неизвестный результат оставляет шаг активным.",
     none: "Без условия",
     kind: "Тип условия",
     negate: "Инвертировать результат",
@@ -82,6 +94,12 @@ const CONDITION_COPY = {
     hint: "Умови лише спостерігають за дозволеними об’єктами Home Assistant і ніколи ними не керують. Невідоме або застаріле спостереження залишається невідомим, навіть при запереченні.",
     templateHint:
       "Перевіряється один раз під час запуску. Якщо умова істинна, усі кроки пропускаються. Невідомий результат не спричиняє пропуск.",
+    stepSkipCondition: "Пропустити цей крок, якщо",
+    stepSkipHint:
+      "Перевіряється один раз, коли крок стає доступним. Істина пропускає крок; хибний або невідомий результат зберігають вибраний спосіб завершення.",
+    stepCompletionCondition: "Автоматично завершити цей крок, якщо",
+    stepCompletionHint:
+      "Перевіряється, доки крок активний. Крок завершується лише за істинного результату; умова має містити хоча б один дозволений спостережуваний об’єкт. Невідомий результат залишає крок активним.",
     none: "Без умови",
     kind: "Тип умови",
     negate: "Інвертувати результат",
@@ -115,6 +133,11 @@ const CONDITION_COPY = {
 };
 const MODES = ["normal", "holidays", "guests", "ill", "vacation"],
   KINDS = ["mode", "entity_state", "time_window", "all", "any"];
+const CONTEXT = {
+  template_skip: ["condition", "templateHint"],
+  step_skip: ["stepSkipCondition", "stepSkipHint"],
+  step_completion: ["stepCompletionCondition", "stepCompletionHint"],
+};
 const clone = (value) =>
   value == null ? value : JSON.parse(JSON.stringify(value));
 const copyFor = (language) =>
@@ -212,12 +235,16 @@ export function renderConditionForm({
   timezone = "UTC",
   disabled = false,
   isStale = () => false,
+  context = "template_skip",
+  scope = "",
 } = {}) {
   const copy = copyFor(language),
     fieldset = make("fieldset", "", "condition-editor");
+  const contextKeys = CONTEXT[context] || CONTEXT.template_skip;
+  if (typeof scope === "string" && scope) fieldset.dataset.conditionScope = scope;
   fieldset.append(
-    make("legend", copy.condition),
-    make("p", copy.templateHint, "sub"),
+    make("legend", copy[contextKeys[0]]),
+    make("p", copy[contextKeys[1]], "sub"),
   );
   const help = make("details");
   help.append(make("summary", copy.help), make("p", copy.hint, "sub"));

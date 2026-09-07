@@ -10,10 +10,10 @@ const words={en:["Parent 1","Child 1","Morning routine","Wash","Pack bag"],ru:["
 const step=title=>({title,offset_minutes:0,confirmation:"manual",completion_condition:null,skip_when:null,escalate_minutes:15});
 const template={id:"U000001",revision:1,title:words[2],description:"",enabled:true,assignees:["child"],rule:null,skip_when:null,steps:[step(words[3]),step(words[4])]};
 const data={revision:1,actor:child?"child":"owner",role:child?"child":"owner",settings:{name:"Example family",modules:["routines"],timezone:"Europe/Kyiv"},
- members:[{id:"owner",name:words[0],role:"owner",active:true},{id:"child",name:words[1],role:"child",active:true}],
+ members:[{id:"owner",name:words[0],role:"owner",active:true,revision:1},{id:"child",name:words[1],role:"child",active:true,revision:1}],
  routines:{config:{modes:["normal"],entity_allowlist:["binary_sensor.synthetic_ready"],revision:0},templates:[template],presets:[],runs:[]},proposals:[]};
 if(child)data.routines.runs=[{id:"J000001",template_id:template.id,revision:2,title:words[2],member:"child",status:"active",started_at:"2026-09-06T08:00:00Z",planned_at:"2026-09-06T08:00:00Z",steps:template.steps.map((s,i)=>({...s,status:i?"pending":"active",...(i?{}:{nonce:"synthetic-fresh-first"})})),history:[]}];
-window.fixture=data;window.calls=[];window.operations=new Map();
+window.fixture=data;window.calls=[];window.operations=new Map();window.commitThenLose=false;window.lostOnce=false;
 const card=document.createElement("family-routines-card");card.setConfig({entry_id:"synthetic",language});
 card.hass={language,callWS:async msg=>{
  if(msg.type.endsWith("/view"))return structuredClone(data);
@@ -42,7 +42,9 @@ card.hass={language,callWS:async msg=>{
   else throw {code:"unknown_action"};
   run.revision++;result=run;
  }
- data.revision++;window.operations.set(msg.operation_id,structuredClone(result));return structuredClone(result);
+ data.revision++;window.operations.set(msg.operation_id,structuredClone(result));
+ if(window.commitThenLose&&!window.lostOnce){window.lostOnce=true;throw {code:"storage_error"};}
+ return structuredClone(result);
 }};
 document.querySelector("main").append(card);window.card=card;
 </script></html>

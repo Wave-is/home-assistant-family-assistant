@@ -9,16 +9,16 @@ Nothing is production-ready solely because a mock test passes.
 | Clean public source and HACS structure | In progress | No public release yet |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
-| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, per-item history and archive; metadata/media/price/pantry extensions pending |
+| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
 | Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real-model eval and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; supported ownership-safe Lovelace registration and full module-graph versioning; richer overview/editors and packaged HACS upgrade acceptance pending |
+| Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; ownership-safe Lovelace registration, module-graph versioning and offline HACS install/upgrade tested; richer overview and live provider acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
-| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
+| Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence, template and advanced per-step condition editors; production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
@@ -33,8 +33,8 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS, Hassfest and two-process application upgrade passed on main; deterministic runtime ZIP, containment, exact manifest/import checks; HACS-installed acceptance and legacy migration remain pending |
-| Existing-home migration and verification | Planned | Final integration gate |
+| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS metadata, Hassfest and two-process application upgrade passed on main; deterministic runtime ZIP and offline actual-HACS install/failure rollback/upgrade passed locally; new installer CI job, live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only preflight unit-tested | Bounded counts-only validation and local-only conversion contract; actual conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
 
@@ -48,6 +48,45 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+Reviewed shopping metadata editing now preserves quantities, partial purchases,
+status, creator and recurrence/merge provenance. Category, store, household-visible
+note and assigned buyer have strict validation and a named review. Children may
+edit only their own pending proposals; these remain pending. Lost replies retain
+one exact request even after another command occupies the card's shared slot.
+Current member epochs, source revisions and disabled modules revoke stale forms.
+Actual authenticated HA WebSockets tested editing, child denial/proposals,
+stale revisions and replay; the full Store reload retained shopping data.
+
+Advanced per-step routine skip/completion rules use the same bounded nested
+condition editor as template rules. Rule meaning and the minimum observed-entity
+requirement are explained in EN/RU/UK. Reordering/handoff retains each rule;
+switching to manual completion preserves the draft but explicitly removes the
+condition on save. Every frozen routine editor command owns its retry ID; a
+focused stale template/run/config form is invalidated on a conflicting refresh.
+Old browser fixtures lacking member revisions were corrected to the real view
+contract. Root passed 2545 Python tests (five host skips, 23 subtests), all 175
+Chromium scenarios, 435 Node tests (including six shopping pretests), Ruff/format,
+privacy/locales, and the complete actual-HA suite for the joined runtime.
+RU per-step and UK shopping-review mobile screenshots were visually inspected.
+
+The read-only legacy preflight reports fixed counts/issues, not raw family data.
+It validates bounded schema-1 inputs, references, schedules, quantities, active
+runs and current-week court reconciliation. It is not wired to an import endpoint
+and cannot modify either installation. See `legacy-migration.md` for the explicit
+mapping, coherent-source and isolated shadow-instance prerequisites.
+
+The offline HACS 2.0.5 installer gate passed for this exact joined runtime,
+including registration/install, exact installed bytes, failed-update restoration,
+successful upgrade and durable data across fresh HA processes. The new CI job
+is not yet a passed CI claim. HACS OAuth/update-entity bootstrap is outside this
+gate; the specific synthetic boundaries are documented in `hacs-lab.md`.
+
+Joined runtime-only ZIP: 199 files; SHA256
+`ce2ab345f2cfcacf12b58e68254c1e4011a5f10d7e24d732ac2722d196fc6c94`.
+This is a verified development checkpoint, not a public release or household
+migration. The original vision's remaining module/retention/provider/network
+and migration gates remain open.
 
 The joined command-scope candidate passed 2464 Python tests, five host skips
 and 23 subtests, Ruff/format, privacy and locale checks. The complete actual-HA
@@ -754,22 +793,22 @@ service call does not prove physical sound or volume.
 
 1. Extend language/context coverage and the LLM/search cascade; keep calendar
    calculations and authorization deterministic.
-2. Complete module controls and localization; verify automatic card resources with a packaged HACS install/upgrade.
+2. Complete module controls and localization; extend offline HACS acceptance with live bootstrap/card loading before household cutover.
 3. Complete recurrence, reports, rewards and module parity, then LLM/search and
    extended family modules. Keep all unmet rows visible.
 4. Extend native fault/IPv6/FastTrack topology coverage, richer Kid Control
    modes and fail-closed unknown-client controls. Hardware tests require explicit
    authorization, synthetic targets, exact pre-state and scoped cleanup.
-5. Add release CI/privacy scanning, migration/shadow verification and only then
+5. Verify release CI/privacy scanning, migration/shadow verification and only then
    a tested release and controlled production cutover.
 
 ## Open engineering gates (not release-ready)
 
 - Legacy pending plans without required revisions need explicit review during
   migration; do not silently rebase an old instruction to current household records.
-- Advanced per-step routine conditions still need a complete card editor.
-  Alarm exceptions/delay fields and task-series editing now have reviewed card
-  forms; their implemented portions are documented in the checkpoints above.
+- Advanced per-step routine conditions, alarm exceptions/delay fields and
+  task-series editing now have reviewed card forms. Production acceptance is
+  separate from the synthetic browser/HA checks documented above.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

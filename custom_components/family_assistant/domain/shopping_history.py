@@ -7,7 +7,7 @@ from typing import Any
 from .context import Context
 from .validation import DomainError, number, text
 
-ACTIONS = frozenset({"add", "approve", "reject", "archive", "purchase", "merge"})
+ACTIONS = frozenset({"add", "approve", "reject", "archive", "purchase", "merge", "edit"})
 KNOWN_DETAIL_FIELDS = frozenset(
     {
         "quantity",
@@ -18,6 +18,7 @@ KNOWN_DETAIL_FIELDS = frozenset(
         "status",
         "sources",
         "merged_into",
+        "fields",
     }
 )
 
@@ -81,6 +82,16 @@ def record_event(
                 for idx, src_id in enumerate(v):
                     clean_sources.append(text(src_id, f"sources[{idx}]", 80))
                 clean_detail[k] = clean_sources
+            elif k == "fields":
+                allowed_fields = {"name", "category", "store", "note", "buyer"}
+                if (
+                    not isinstance(v, list)
+                    or not 1 <= len(v) <= len(allowed_fields)
+                    or any(field not in allowed_fields for field in v)
+                    or len(set(v)) != len(v)
+                ):
+                    raise DomainError("invalid_field", "fields")
+                clean_detail[k] = list(v)
 
         entry["detail"] = clean_detail
 

@@ -99,6 +99,29 @@ test("CONDITION_COPY has exact EN, RU, and UK key parity", () => {
   }
 });
 
+test("step contexts use localized truthful timing labels and a scoped selector", () => {
+  for (const [language, context, conditionKey, hintKey] of [
+    ["en", "step_skip", "stepSkipCondition", "stepSkipHint"],
+    ["ru", "step_completion", "stepCompletionCondition", "stepCompletionHint"],
+    ["uk", "step_skip", "stepSkipCondition", "stepSkipHint"],
+  ]) {
+    const mounted = mount({
+      language,
+      context,
+      scope: `${language}-${context}`,
+    });
+    assert.equal(
+      mounted.fieldset.querySelector("legend").textContent,
+      CONDITION_COPY[language][conditionKey],
+    );
+    assert.ok(mounted.fieldset.textContent.includes(CONDITION_COPY[language][hintKey]));
+    assert.equal(
+      mounted.fieldset.dataset.conditionScope,
+      `${language}-${context}`,
+    );
+  }
+});
+
 test("an absent condition changes to a canonical mode without mutating the input", () => {
   const mounted = mount({ value: null });
   const kind = mounted.fieldset.querySelector("select");

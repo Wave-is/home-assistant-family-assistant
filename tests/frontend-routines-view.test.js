@@ -7,7 +7,7 @@ for (const k of ["window", "document", "HTMLElement", "customElements", "CustomE
   globalThis[k] = dom.window[k];
 }
 
-const { ROUTINES_COPY, renderRoutines } = await import(
+const { ROUTINES_COPY, renderRoutines, reconcileRoutineRefresh } = await import(
   "../custom_components/family_assistant/frontend/routines-view.js"
 );
 
@@ -37,7 +37,7 @@ function createMockCard({
       role,
       actor,
       settings: { timezone, modules },
-      members,
+      members: members.map((member) => ({revision: 1, ...member, ...(member.id === actor ? {role} : {})})),
       routines,
     },
     _config: { language: lang },
@@ -56,8 +56,9 @@ function createMockCard({
       btn.addEventListener("click", action);
       return btn;
     },
-    async command(action, payload) {
+    async command(action, payload, operationId) {
       commands.push({ action, payload });
+      card.lastOperationId = operationId;
       return { success: true };
     },
     render() {},
@@ -112,17 +113,12 @@ test("3. Stale identity, entry, generation, role and detached submit perform no 
         raw_offset: "0",
         confirmation: "manual",
         raw_escalate: "15",
-        skip_mode: "",
+        skip_when: null,
         skip_dirty: false,
-        raw_skip: null,
-        raw_entity_id: "",
-        raw_entity_state: "",
-        raw_entity_max_age: "120",
-        entity_dirty: false,
-        raw_completion: null,
+        completion_condition: null,
+        completion_dirty: false,
       },
     ],
-    scope: JSON.stringify([1, "entry_1", "parent", "p1"]),
   };
 
   const body = getConnectedContainer();
@@ -169,28 +165,20 @@ test("4. Parent template creation preserves step order and rejects descending of
       raw_offset: "10",
       confirmation: "manual",
       raw_escalate: "15",
-      skip_mode: "",
+      skip_when: null,
       skip_dirty: false,
-      raw_skip: null,
-      raw_entity_id: "",
-      raw_entity_state: "",
-      raw_entity_max_age: "120",
-      entity_dirty: false,
-      raw_completion: null,
+      completion_condition: null,
+      completion_dirty: false,
     },
     {
       title: "First Step",
       raw_offset: "5",
       confirmation: "manual",
       raw_escalate: "15",
-      skip_mode: "",
+      skip_when: null,
       skip_dirty: false,
-      raw_skip: null,
-      raw_entity_id: "",
-      raw_entity_state: "",
-      raw_entity_max_age: "120",
-      entity_dirty: false,
-      raw_completion: null,
+      completion_condition: null,
+      completion_dirty: false,
     },
   ];
 
@@ -277,6 +265,14 @@ test("5. Negated and complex conditions survive template metadata edits", async 
 
   renderRoutines(card, body);
   assert.equal(card._routineDraft?.type, "edit_template");
+  assert.equal(
+    body.querySelector('[data-condition-scope="step-0-skip"] legend').textContent,
+    "Skip this step when",
+  );
+  assert.equal(
+    body.querySelector('[data-condition-scope="step-0-completion"] legend').textContent,
+    "Complete this step automatically when",
+  );
 
   // Modify title only
   card._routineDraft.title = "Updated Routine Title";
@@ -294,7 +290,82 @@ test("5. Negated and complex conditions survive template metadata edits", async 
   assert.equal(payload.steps[0].escalate_minutes, null);
 });
 
-test("6. Failed submission preserves frozen payload for retry and verifies fresh revision", async () => {
+test("6. Conditional completion survives an in-draft manual toggle but saves null in manual mode", async () => {
+  const completion = {
+    kind: "entity_state",
+    entity_id: "binary_sensor.front_door",
+    state: "on",
+    max_age_seconds: 60,
+    negate: false,
+  };
+  const existingTemplate = {
+    id: "t1",
+    revision: 3,
+    title: "Toggle completion",
+    description: "",
+    enabled: true,
+    assignees: ["p1"],
+    rule: null,
+    skip_when: null,
+    steps: [
+      {
+        title: "Observed step",
+        offset_minutes: 0,
+        confirmation: "entity_state",
+        escalate_minutes: 15,
+        skip_when: null,
+        completion_condition: completion,
+      },
+    ],
+  };
+  const card = createMockCard({
+    routines: {
+      templates: [existingTemplate],
+      presets: [],
+      config: {
+        modes: ["normal"],
+        entity_allowlist: ["binary_sensor.front_door"],
+        revision: 1,
+      },
+      runs: [],
+    },
+  });
+  const body = getConnectedContainer();
+  renderRoutines(card, body);
+  [...body.querySelectorAll("button")]
+    .find((button) => button.textContent === ROUTINES_COPY.en.edit)
+    .click();
+  renderRoutines(card, body);
+
+  let confirmation = body.querySelector('[data-step-confirmation="0"]');
+  confirmation.value = "manual";
+  confirmation.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  assert.equal(body.querySelector('[data-condition-scope="step-0-completion"]'), null);
+  assert.ok(body.textContent.includes(ROUTINES_COPY.en.completion_inactive_notice));
+  assert.deepEqual(card._routineDraft.steps[0].completion_condition, completion);
+
+  confirmation = body.querySelector('[data-step-confirmation="0"]');
+  confirmation.value = "entity_state";
+  confirmation.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  assert.equal(
+    body.querySelector(
+      '[data-condition-scope="step-0-completion"] [data-condition-field="state"]',
+    ).value,
+    "on",
+  );
+
+  confirmation = body.querySelector('[data-step-confirmation="0"]');
+  confirmation.value = "manual";
+  confirmation.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  body
+    .querySelector("form")
+    .dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  assert.equal(card.commands.length, 1);
+  assert.equal(card.commands[0].payload.steps[0].confirmation, "manual");
+  assert.equal(card.commands[0].payload.steps[0].completion_condition, null);
+});
+
+test("7. A frozen draft without its original operation cannot be silently replayed", async () => {
   const card = createMockCard({ role: "parent" });
   const frozenPayload = {
     id: "run_1",
@@ -330,7 +401,7 @@ test("6. Failed submission preserves frozen payload for retry and verifies fresh
   );
   assert.ok(retryBtn, "Retry button must be visible when frozen and action error exists");
 
-  // If revision bumped in the background, retry must reject with conflict and close draft
+  // This legacy in-memory draft lacks the original operation ID. Do not invent one.
   activeRun.revision = 2;
   const form = body.querySelector("form");
   form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
@@ -340,7 +411,229 @@ test("6. Failed submission preserves frozen payload for retry and verifies fresh
   assert.equal(card._routineDraft, null);
 });
 
-test("7. Owner allowlist validation vs parent privileges and strict format rules", async () => {
+test("run-start frozen retry owns its operation independently of the global command slot", async () => {
+  const template={id:"U1",revision:1,title:"Routine",description:"",enabled:true,assignees:["c1"],steps:[]};
+  const card=createMockCard({routines:{templates:[template],runs:[],config:{revision:1,modes:["normal"],entity_allowlist:[]}}});
+  card._routineDraft={type:"start_run",template_id:"U1",revision:1,member:"c1",assignees:["c1"]};
+  const body=getConnectedContainer();
+  const calls=[];
+  card.command=async(action,payload,operationId)=>{calls.push({action,payload:structuredClone(payload),operationId});card._actionError="storage_error";};
+  renderRoutines(card,body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls.length,1);
+  assert.match(calls[0].operationId,/^[0-9a-f-]{36}$/);
+  card._pending={id:"another-operation",fingerprint:"unrelated"};
+  renderRoutines(card,body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(calls[1],calls[0]);
+});
+
+test("8. Step conditions use the current allowlist and untouched opaque values are not rewritten", async () => {
+  const opaque = { kind: "future_condition", future_payload: "KEEP-EXACT" };
+  const template = {
+    id: "opaque-template",
+    revision: 4,
+    title: "Opaque step",
+    description: "",
+    enabled: true,
+    assignees: ["p1"],
+    rule: null,
+    skip_when: null,
+    steps: [
+      {
+        title: "Future skip",
+        offset_minutes: 0,
+        confirmation: "manual",
+        escalate_minutes: 15,
+        skip_when: opaque,
+        completion_condition: null,
+      },
+    ],
+  };
+  const card = createMockCard({
+    routines: {
+      templates: [template],
+      presets: [],
+      config: {
+        modes: ["normal"],
+        entity_allowlist: ["binary_sensor.front_door"],
+        revision: 1,
+      },
+      runs: [],
+    },
+  });
+  const body = getConnectedContainer();
+  renderRoutines(card, body);
+  [...body.querySelectorAll("button")]
+    .find((button) => button.textContent === ROUTINES_COPY.en.edit)
+    .click();
+  renderRoutines(card, body);
+  assert.ok(body.textContent.includes("not supported by this editor"));
+  card._routineDraft.title = "Metadata only";
+  body
+    .querySelector("form")
+    .dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  assert.deepEqual(card.commands[0].payload.steps[0].skip_when, opaque);
+
+  const guarded = createMockCard({
+    routines: {
+      templates: [
+        {
+          ...template,
+          id: "allowlist-template",
+          steps: [
+            {
+              ...template.steps[0],
+              skip_when: {
+                kind: "entity_state",
+                entity_id: "binary_sensor.front_door",
+                state: "on",
+                negate: false,
+              },
+            },
+          ],
+        },
+      ],
+      presets: [],
+      config: {
+        modes: ["normal"],
+        entity_allowlist: ["binary_sensor.front_door"],
+        revision: 1,
+      },
+      runs: [],
+    },
+  });
+  const guardedBody = getConnectedContainer();
+  renderRoutines(guarded, guardedBody);
+  [...guardedBody.querySelectorAll("button")]
+    .find((button) => button.textContent === ROUTINES_COPY.en.edit)
+    .click();
+  renderRoutines(guarded, guardedBody);
+  guarded._data.routines.config.entity_allowlist = [];
+  guardedBody
+    .querySelector("form")
+    .dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  assert.equal(guarded.commands.length, 0);
+  assert.equal(guarded._actionError, ROUTINES_COPY.en.condition_error);
+  assert.equal(
+    guarded._routineDraft.steps[0].skip_when.entity_id,
+    "binary_sensor.front_door",
+  );
+});
+
+test("9. A frozen template request may replay after its first commit advanced revision", async () => {
+  const payload = {
+    id: "template-retry",
+    revision: 2,
+    title: "Frozen template",
+    description: "",
+    enabled: true,
+    assignees: ["p1"],
+    rule: null,
+    skip_when: null,
+    steps: [
+      {
+        title: "Frozen step",
+        offset_minutes: 0,
+        confirmation: "manual",
+        completion_condition: null,
+        skip_when: null,
+        escalate_minutes: 15,
+      },
+    ],
+  };
+  const card = createMockCard({
+    routines: {
+      templates: [{ ...payload, revision: 3 }],
+      presets: [],
+      config: { modes: ["normal"], entity_allowlist: [], revision: 1 },
+      runs: [],
+    },
+  });
+  card._actionError = "storage_error";
+  card._routineDraft = {
+    type: "edit_template",
+    id: payload.id,
+    revision: payload.revision,
+    title: payload.title,
+    description: payload.description,
+    enabled: payload.enabled,
+    assignees: [...payload.assignees],
+    rule: null,
+    skip_when: null,
+    steps: [
+      {
+        title: "Frozen step",
+        raw_offset: "0",
+        confirmation: "manual",
+        raw_escalate: "15",
+        skip_when: null,
+        skip_dirty: false,
+        completion_condition: null,
+        completion_dirty: false,
+      },
+    ],
+    frozenPayload: structuredClone(payload),
+    operationId: "synthetic-frozen-retry-id",
+  };
+  const body = getConnectedContainer();
+  renderRoutines(card, body);
+  body
+    .querySelector("form")
+    .dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  assert.equal(card.commands.length, 1);
+  assert.deepEqual(card.commands[0], { action: "routines.save", payload });
+  assert.equal(card.lastOperationId, "synthetic-frozen-retry-id");
+});
+
+function beginTemplate(card, body) {
+  renderRoutines(card, body);
+  [...body.querySelectorAll("button")].find((button) => button.textContent === ROUTINES_COPY.en.new_template).click();
+  card._routineDraft.title = "Synthetic repeat-safe routine";
+  card._routineDraft.assignees = ["p1"];
+  card._routineDraft.steps[0].title = "Synthetic step";
+  renderRoutines(card, body);
+}
+
+test("template creation retry keeps its own operation after an intervening command", async () => {
+  const card = createMockCard();
+  const body = getConnectedContainer();
+  beginTemplate(card, body);
+  const calls = [];
+  card.command = async (action, payload, operationId) => {
+    calls.push({action, payload: structuredClone(payload), operationId});
+    card._actionError = "storage_error";
+  };
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit", {cancelable: true}));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.length, 1);
+  assert.equal(typeof calls[0].operationId, "string");
+  assert.ok(calls[0].operationId.length > 10);
+  card._pending = {fingerprint: "unrelated-command", id: "different-operation"};
+  renderRoutines(card, body);
+  body.querySelector("form").dispatchEvent(new dom.window.Event("submit", {cancelable: true}));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls[1], calls[0]);
+});
+
+test("same-ID member epoch change revokes old form and forces focused refresh", () => {
+  for (const target of ["p1", "c1"]) {
+    const card = createMockCard();
+    const body = getConnectedContainer();
+    beginTemplate(card, body);
+    const previous = structuredClone(card._data);
+    card._data.members.find((member) => member.id === target).revision++;
+    body.querySelector("form").dispatchEvent(new dom.window.Event("submit", {cancelable: true}));
+    assert.equal(card.commands.length, 0);
+    assert.equal(reconcileRoutineRefresh(card, previous), true);
+    assert.equal(card._routineDraft, null);
+    assert.equal(card._actionError, "conflict");
+  }
+});
+
+test("10. Owner allowlist validation vs parent privileges and strict format rules", async () => {
   // Parent (not owner) has no allowlist editor
   const parentCard = createMockCard({ role: "parent" });
   const parentBody = getConnectedContainer();
@@ -388,7 +681,7 @@ test("7. Owner allowlist validation vs parent privileges and strict format rules
   ]);
 });
 
-test("8. Child can only confirm own active step with nonce; Parent can reasoned override", async () => {
+test("11. Child can only confirm own active step with nonce; Parent can reasoned override", async () => {
   const activeRun = {
     id: "run_c1",
     revision: 1,

@@ -10,6 +10,7 @@ from .shopping_history import record_event
 from .validation import DomainError, fields, number, revision, text
 
 TERMINAL_STATUSES = frozenset({"pending", "archived", "purchased", "merged"})
+METADATA_LIMITS = {"category": 80, "store": 80, "note": 500}
 
 
 def normalized_name(name: str) -> str:
@@ -17,6 +18,35 @@ def normalized_name(name: str) -> str:
     normalized = unicodedata.normalize("NFC", name)
     collapsed = " ".join(normalized.split())
     return collapsed.casefold()
+
+
+def _optional_text(value, field: str, maximum: int) -> str:
+    if not isinstance(value, str) or len(value) > maximum:
+        raise DomainError("invalid_field", field)
+    return value.strip()
+
+
+def _buyer(ctx: Context, value):
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise DomainError("invalid_field", "buyer")
+    member = ctx.member(value)
+    if member["role"] == "guest":
+        raise DomainError("invalid_field", "buyer")
+    if ctx.actor["role"] == "child" and member["id"] != ctx.actor_id:
+        raise DomainError("forbidden")
+    return member["id"]
+
+
+def _metadata(ctx: Context, payload: dict, *, existing=None) -> dict:
+    result = {}
+    for field, maximum in METADATA_LIMITS.items():
+        value = payload[field] if field in payload else (existing or {}).get(field, "")
+        result[field] = _optional_text(value, field, maximum)
+    value = payload["buyer"] if "buyer" in payload else (existing or {}).get("buyer")
+    result["buyer"] = _buyer(ctx, value)
+    return result
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -30,19 +60,15 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         fields(
             payload, {"name", "quantity", "unit", "category", "store", "note", "buyer"}, {"name"}
         )
-        buyer = payload.get("buyer")
-        if buyer:
-            ctx.member(buyer)
+        metadata = _metadata(ctx, payload)
+        unit = _optional_text(payload.get("unit", ""), "unit", 32)
         item = {
             "id": ctx.identifier("S"),
             "name": text(payload["name"], "name", 200),
             "quantity": round(number(payload.get("quantity", 1), "quantity", 0.001), 6),
             "purchased": 0.0,
-            "unit": str(payload.get("unit", ""))[:32],
-            "category": str(payload.get("category", ""))[:80],
-            "store": str(payload.get("store", ""))[:80],
-            "note": str(payload.get("note", ""))[:500],
-            "buyer": buyer,
+            "unit": unit,
+            **metadata,
             "creator": ctx.actor_id,
             "created_at": ctx.now.isoformat(),
             "status": "pending" if ctx.actor["role"] == "child" else "approved",
@@ -61,6 +87,35 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         )
         if item["status"] == "pending":
             ctx.notify("parents", "shopping_approval", {"id": item["id"]})
+        return item
+
+    if action == "edit":
+        fields(
+            payload,
+            {"id", "revision", "name", "category", "store", "note", "buyer"},
+            {"id", "revision", "name", "category", "store", "note", "buyer"},
+        )
+        item = ctx.record("shopping", payload["id"], revision(payload["revision"]))
+        if item.get("status") not in {"pending", "approved"}:
+            raise DomainError("invalid_transition")
+        role = ctx.actor["role"]
+        allowed = role in {"owner", "parent"} or (
+            role == "adult" and item.get("status") == "approved"
+        )
+        if role == "child":
+            allowed = item.get("status") == "pending" and item.get("creator") == ctx.actor_id
+        if not allowed:
+            raise DomainError("forbidden")
+        replacement = {
+            "name": text(payload["name"], "name", 200),
+            **_metadata(ctx, payload, existing=item),
+        }
+        changed = [field for field, value in replacement.items() if item.get(field) != value]
+        if not changed:
+            raise DomainError("invalid_transition")
+        item.update(replacement)
+        ctx.touch(item)
+        record_event(ctx, item["id"], "edit", {"fields": changed})
         return item
 
     if action == "merge":

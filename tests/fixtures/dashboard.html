@@ -42,7 +42,9 @@ if(view==="calendar"){
   data.calendar={config:{publish_to_ha:false,revision:0},events:[record],occurrences:[{...record,event_id:record.id}]};
   window.calendarFixture=data;window.calendarOperations=new Map();
 }
-window.calls=[];const card=document.createElement("family-assistant-card");card.setConfig({view,entry_id:"synthetic"});
+window.calls=[];window.shoppingOperations=new Map();window.fixture=data;
+data.shopping.forEach(item=>item.creator="owner");
+const card=document.createElement("family-assistant-card");window.card=card;card.setConfig({view,entry_id:"synthetic"});
 if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 if(query.has("kids")){data.settings.timezone="UTC";data.members[0].role="owner";data.members[1].role="child";data.kid_control={can_manage:data.role!=="child",writable:true,observed_at:"2026-09-06T08:00:00Z",plans:[],profiles:[{member:"child",name:"Child profile",device_names:["Phone"],observed:{disabled:"false",paused:"false",...Object.fromEntries(["mon","tue","wed","thu","fri","sat","sun"].map(d=>[d,"08:00-22:00"]))}}]};}
 if(query.has("kidstatus")){
@@ -178,7 +180,19 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
       }
       return rewardDone(req);
     }
-   if(message.action==="shopping.add")data.shopping.push({id:"S000003",...message.payload,purchased:0,status:"approved",revision:1});
+   if(["shopping.add","shopping.edit"].includes(message.action)){
+     if(window.shoppingOperations.has(message.operation_id))return structuredClone(window.shoppingOperations.get(message.operation_id));
+     const p=message.payload;let item;
+     if(message.action==="shopping.add"){
+       item={id:`S${String(data.shopping.length+1).padStart(6,"0")}`,...p,creator:data.actor,purchased:0,status:data.role==="child"?"pending":"approved",revision:1};data.shopping.push(item);
+     }else{
+       item=data.shopping.find(row=>row.id===p.id);if(!item||item.revision!==p.revision)throw {code:"conflict"};
+       Object.assign(item,p,{revision:item.revision+1});
+     }
+     window.shoppingOperations.set(message.operation_id,structuredClone(item));data.revision++;
+     if(window.commitThenLose&&!window.lostOnce){window.lostOnce=true;throw {code:"storage_error"};}
+     return structuredClone(item);
+   }
    if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,checklist:message.payload.checklist.map(text=>({text,done:false}))});
    if(message.action.startsWith("tasks.") && message.action!=="tasks.create" && !message.action.includes("series_")){
      const item=data.tasks.find(t=>t.id===message.payload.id),p=message.payload;

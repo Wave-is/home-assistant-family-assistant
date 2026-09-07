@@ -20,7 +20,23 @@ export const SHOPPING_ITEM_COPY = {
     action_cancel: "Cancel",
     action_retry: "Retry",
     action_submit: "Save",
+    action_edit: "Edit details",
+    action_review: "Review",
+    action_confirm_add: "Add to shopping list",
+    action_confirm_edit: "Save reviewed changes",
+    action_back: "Back",
+    action_start_new: "Start a new edit",
+    editor_add_title: "Add shopping item",
+    editor_edit_title: "Edit shopping item",
+    label_no_buyer: "No assigned buyer",
+    note_shared: "The note is visible to every active household member. It is not private.",
+    child_pending: "This child proposal will wait for parent approval.",
+    occurrence_only: "This changes only this generated occurrence, not its recurring template.",
+    uncertainty: "The request may already have succeeded. Check the list before starting a different edit.",
+    error_invalid_form: "Check the highlighted item details.",
+    changed_fields: "Changed fields",
     label_creator: "Added by",
+    label_name: "Name",
     label_buyer: "Assigned to",
     label_category: "Category",
     label_store: "Store",
@@ -46,6 +62,7 @@ export const SHOPPING_ITEM_COPY = {
     history_action_archive: "Archived",
     history_action_purchase: "Purchased",
     history_action_merge: "Merged sources into item",
+    history_action_edit: "Edited details",
     history_action_merged: "Merged into another item",
     history_show_more: "Show more history",
     unknown_member: "Unknown member",
@@ -72,7 +89,23 @@ export const SHOPPING_ITEM_COPY = {
     action_cancel: "Отмена",
     action_retry: "Повторить",
     action_submit: "Сохранить",
+    action_edit: "Изменить данные",
+    action_review: "Проверить",
+    action_confirm_add: "Добавить в список покупок",
+    action_confirm_edit: "Сохранить проверенные изменения",
+    action_back: "Назад",
+    action_start_new: "Начать новое изменение",
+    editor_add_title: "Добавить покупку",
+    editor_edit_title: "Изменить покупку",
+    label_no_buyer: "Покупатель не назначен",
+    note_shared: "Заметку видят все активные участники семьи. Она не является личной.",
+    child_pending: "Предложение ребёнка будет ждать подтверждения родителя.",
+    occurrence_only: "Изменится только эта созданная позиция, а не её регулярный шаблон.",
+    uncertainty: "Запрос уже мог выполниться. Проверьте список перед новым изменением.",
+    error_invalid_form: "Проверьте выделенные данные покупки.",
+    changed_fields: "Изменённые поля",
     label_creator: "Добавил(а)",
+    label_name: "Название",
     label_buyer: "Покупатель",
     label_category: "Категория",
     label_store: "Магазин",
@@ -98,6 +131,7 @@ export const SHOPPING_ITEM_COPY = {
     history_action_archive: "Архивировано",
     history_action_purchase: "Куплено",
     history_action_merge: "Объединены элементы в этот пункт",
+    history_action_edit: "Изменены данные",
     history_action_merged: "Объединено с другим элементом",
     history_show_more: "Показать больше истории",
     unknown_member: "Неизвестный участник",
@@ -124,7 +158,23 @@ export const SHOPPING_ITEM_COPY = {
     action_cancel: "Скасувати",
     action_retry: "Повторити",
     action_submit: "Зберегти",
+    action_edit: "Змінити дані",
+    action_review: "Перевірити",
+    action_confirm_add: "Додати до списку покупок",
+    action_confirm_edit: "Зберегти перевірені зміни",
+    action_back: "Назад",
+    action_start_new: "Почати нове редагування",
+    editor_add_title: "Додати покупку",
+    editor_edit_title: "Змінити покупку",
+    label_no_buyer: "Покупця не призначено",
+    note_shared: "Примітку бачать усі активні учасники родини. Вона не є приватною.",
+    child_pending: "Пропозиція дитини чекатиме на схвалення батьків.",
+    occurrence_only: "Зміниться лише ця створена позиція, а не її регулярний шаблон.",
+    uncertainty: "Запит уже міг виконатися. Перевірте список перед новим редагуванням.",
+    error_invalid_form: "Перевірте виділені дані покупки.",
+    changed_fields: "Змінені поля",
     label_creator: "Додав(ла)",
+    label_name: "Назва",
     label_buyer: "Покупець",
     label_category: "Категорія",
     label_store: "Магазин",
@@ -150,6 +200,7 @@ export const SHOPPING_ITEM_COPY = {
     history_action_archive: "Архівовано",
     history_action_purchase: "Куплено",
     history_action_merge: "Об'єднано елементи у цей пункт",
+    history_action_edit: "Змінено дані",
     history_action_merged: "Об'єднано з іншим пунктом",
     history_show_more: "Показати більше історії",
     unknown_member: "Невідомий учасник",
@@ -249,6 +300,349 @@ async function executeCardCommand(card, action, payload, generationAtStart) {
   }
 }
 
+function currentMember(card, id = card._data?.actor) {
+  return (card._data?.members || []).find(member => member?.id === id) || null;
+}
+
+function editorScope(card) {
+  const actor = currentMember(card);
+  if (!actor || actor.active !== true || !["owner", "parent", "adult", "child"].includes(actor.role) || actor.role !== card._data?.role || !Number.isSafeInteger(actor.revision) || actor.revision < 1) return null;
+  if (!(card._data?.settings?.modules || []).includes("shopping")) return null;
+  return {
+    generation: card._generation,
+    entry: card._entry,
+    actor: actor.id,
+    actorRevision: actor.revision,
+    role: card._data.role,
+    members: JSON.stringify((card._data.members || []).filter(member => member?.active === true && member.role !== "guest").map(member => [member.id, member.role, member.revision]).sort((a, b) => a[0].localeCompare(b[0])))
+  };
+}
+
+function sameEditorScope(card, source) {
+  const current = editorScope(card);
+  return Boolean(current && source && Object.keys(current).every(key => current[key] === source[key]));
+}
+
+function mayEdit(card, item) {
+  if (!item || !["pending", "approved"].includes(item.status)) return false;
+  const role = card._data?.role;
+  if (["owner", "parent"].includes(role)) return true;
+  if (role === "adult") return item.status === "approved";
+  return role === "child" && item.status === "pending" && item.creator === card._data?.actor;
+}
+
+function blankDraft(card, item = null) {
+  const source = editorScope(card);
+  if (!source || (item && !mayEdit(card, item))) return null;
+  return {
+    mode: item ? "edit" : "create",
+    step: "form",
+    source,
+    itemId: item?.id || null,
+    itemRevision: item?.revision || null,
+    itemStatus: item?.status || null,
+    itemCreator: item?.creator || null,
+    generated: Boolean(item?.series_id || item?.occurrence_id),
+    values: {
+      name: item?.name || "",
+      quantity: String(item?.quantity ?? 1),
+      unit: item?.unit || "",
+      category: item?.category || "",
+      store: item?.store || "",
+      note: item?.note || "",
+      buyer: item?.buyer || ""
+    },
+    original: item ? {
+      name: item.name || "",
+      category: item.category || "",
+      store: item.store || "",
+      note: item.note || "",
+      buyer: item.buyer || ""
+    } : null,
+    pending: null,
+    validation: false
+  };
+}
+
+export function openShoppingEditor(card, item = null) {
+  const draft = blankDraft(card, item);
+  if (!draft) return false;
+  card._shoppingEditorDraft = draft;
+  card._shoppingItemAction = null;
+  card._shoppingSeriesDraft = null;
+  card._shoppingSeriesFormOpen = false;
+  card._shoppingSeriesEditingItem = null;
+  card._form = false;
+  card._actionError = null;
+  if (typeof card.render === "function") card.render();
+  return true;
+}
+
+export function disposeShoppingEditor(card) {
+  card._shoppingEditorDraft = null;
+}
+
+export function reconcileShoppingEditorRefresh(card) {
+  const draft = card._shoppingEditorDraft;
+  const action = card._shoppingItemAction;
+  if (
+    action?.type?.startsWith("merge_") &&
+    !(card._actionError && action.frozenPayload)
+  ) {
+    const items = card._data?.shopping || [];
+    const snapshots = [action.targetSnapshot, ...(action.candidates || [])];
+    if (snapshots.some(snapshot => {
+      const current = items.find(item => item?.id === snapshot?.id);
+      return !current || current.revision !== snapshot.revision;
+    })) {
+      card._shoppingItemAction = null;
+      card._actionError = "conflict";
+      if (!draft) return true;
+    }
+  }
+  if (!draft) return false;
+  if (!sameEditorScope(card, draft.source)) {
+    disposeShoppingEditor(card);
+    return true;
+  }
+  if (draft.pending) return false;
+  if (draft.mode === "edit") {
+    const item = (card._data?.shopping || []).find(row => row?.id === draft.itemId);
+    if (
+      !mayEdit(card, item) ||
+      item.revision !== draft.itemRevision ||
+      item.status !== draft.itemStatus ||
+      item.creator !== draft.itemCreator
+    ) {
+      disposeShoppingEditor(card);
+      card._actionError = "conflict";
+      return true;
+    }
+  }
+  const buyer = draft.values?.buyer;
+  const selected = buyer ? currentMember(card, buyer) : null;
+  if (buyer && (!selected || selected.active !== true || selected.role === "guest")) {
+    disposeShoppingEditor(card);
+    card._actionError = "conflict";
+    return true;
+  }
+  return false;
+}
+
+function validDecimal(value) {
+  const raw = String(value ?? "").trim();
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0.001 && parsed <= 1000000 ? parsed : null;
+}
+
+function payloadFor(draft) {
+  const values = draft.values;
+  const common = {
+    name: values.name.trim(),
+    category: values.category.trim(),
+    store: values.store.trim(),
+    note: values.note.trim(),
+    buyer: values.buyer || null
+  };
+  if (draft.mode === "edit") {
+    return Object.freeze({id: draft.itemId, revision: draft.itemRevision, ...common});
+  }
+  return Object.freeze({
+    ...common,
+    quantity: validDecimal(values.quantity),
+    unit: values.unit.trim()
+  });
+}
+
+function validDraft(card, draft) {
+  const values = draft.values;
+  if (
+    typeof values.name !== "string" ||
+    !values.name.trim() ||
+    values.name.length > 200 ||
+    typeof values.category !== "string" ||
+    values.category.length > 80 ||
+    typeof values.store !== "string" ||
+    values.store.length > 80 ||
+    typeof values.note !== "string" ||
+    values.note.length > 500 ||
+    typeof values.buyer !== "string"
+  ) return false;
+  if (draft.mode === "create" && (validDecimal(values.quantity) === null || values.unit.length > 32)) return false;
+  const buyer = values.buyer ? currentMember(card, values.buyer) : null;
+  if (values.buyer && (!buyer || buyer.active !== true || buyer.role === "guest")) return false;
+  if (card._data?.role === "child" && values.buyer && values.buyer !== card._data.actor) return false;
+  if (draft.mode === "edit") {
+    const normalized = {
+      name: values.name.trim(),
+      category: values.category.trim(),
+      store: values.store.trim(),
+      note: values.note.trim(),
+      buyer: values.buyer
+    };
+    if (Object.keys(normalized).every(key => normalized[key] === draft.original?.[key])) return false;
+  }
+  return true;
+}
+
+async function submitShoppingDraft(card, draft) {
+  if (card._shoppingEditorDraft !== draft || !sameEditorScope(card, draft.source) || card._writing) return;
+  if (!draft.pending && (reconcileShoppingEditorRefresh(card) || !validDraft(card, draft))) {
+    card._actionError = "conflict";
+    card.render();
+    return;
+  }
+  if (!draft.pending) {
+    draft.pending = {
+      action: draft.mode === "edit" ? "shopping.edit" : "shopping.add",
+      payload: payloadFor(draft),
+      operationId: crypto.randomUUID()
+    };
+  }
+  const pending = draft.pending;
+  await card.command(pending.action, pending.payload, pending.operationId);
+  if (card._shoppingEditorDraft !== draft || !sameEditorScope(card, draft.source)) return;
+  if (!card._actionError) disposeShoppingEditor(card);
+  if (typeof card.render === "function") card.render();
+}
+
+function field(form, name, label, value, {type = "text", required = false, maximum} = {}) {
+  const wrap = el("label", label);
+  const input = name === "note" ? el("textarea") : el("input");
+  input.name = name;
+  if (input.tagName === "INPUT") input.type = type;
+  input.value = value;
+  input.required = required;
+  if (maximum) input.maxLength = maximum;
+  wrap.append(input);
+  form.append(wrap);
+  return input;
+}
+
+function appendReviewLine(host, label, value) {
+  host.append(el("p", `${label}: ${value || "—"}`, "sub"));
+}
+
+export function renderShoppingEditor(card, body) {
+  const copy = getCopy(card);
+  const toolbar = el("div", null, "toolbar");
+  toolbar.append(el("span", `${card._data?.shopping?.length || 0} ${card.t?.units || ""}`, "sub"));
+  if (!card._shoppingEditorDraft && card._data?.role !== "guest") {
+    toolbar.append(
+      card.button(copy.editor_add_title, () => openShoppingEditor(card), true)
+    );
+  }
+  body.append(toolbar);
+  const draft = card._shoppingEditorDraft;
+  if (!draft) return toolbar;
+
+  const host = el("section", null, "editor shopping-editor");
+  host.dataset.shoppingEditor = draft.mode;
+  host.append(el("strong", draft.mode === "edit" ? copy.editor_edit_title : copy.editor_add_title));
+  if (draft.generated) host.append(el("p", copy.occurrence_only, "notice"));
+  host.append(el("p", copy.note_shared, "sub"));
+  if (draft.source.role === "child") host.append(el("p", copy.child_pending, "notice"));
+
+  if (draft.step === "form" && !draft.pending) {
+    const form = el("form");
+    const controls = {};
+    controls.name = field(form, "name", copy.label_name, draft.values.name, {required: true, maximum: 200});
+    if (draft.mode === "create") {
+      const amountFields = el("div", null, "fields");
+      form.append(amountFields);
+      controls.quantity = field(amountFields, "quantity", copy.label_quantity, draft.values.quantity, {required: true});
+      controls.unit = field(amountFields, "unit", copy.label_unit, draft.values.unit, {maximum: 32});
+    }
+    controls.category = field(form, "category", copy.label_category, draft.values.category, {maximum: 80});
+    controls.store = field(form, "store", copy.label_store, draft.values.store, {maximum: 80});
+    controls.note = field(form, "note", copy.label_note, draft.values.note, {maximum: 500});
+    const buyerWrap = el("label", copy.label_buyer);
+    const buyer = el("select");
+    buyer.name = "buyer";
+    buyer.setAttribute("aria-label", copy.label_buyer);
+    const none = el("option", copy.label_no_buyer);
+    none.value = "";
+    buyer.append(none);
+    for (const member of (card._data?.members || []).filter(member =>
+      member?.active === true && member.role !== "guest" &&
+      (draft.source.role !== "child" || member.id === draft.source.actor)
+    )) {
+      const option = el("option", member.name);
+      option.value = member.id;
+      buyer.append(option);
+    }
+    buyer.value = draft.values.buyer;
+    buyerWrap.append(buyer);
+    form.append(buyerWrap);
+    controls.buyer = buyer;
+    for (const [name, control] of Object.entries(controls)) {
+      control.disabled = Boolean(card._writing);
+      control.addEventListener("input", event => {
+        if (card._shoppingEditorDraft !== draft || draft.pending || !sameEditorScope(card, draft.source)) return;
+        draft.values[name] = event.target.value;
+        draft.validation = false;
+      });
+    }
+    if (draft.validation) form.append(el("div", copy.error_invalid_form, "notice"));
+    const actions = el("div", null, "actions");
+    actions.append(card.button(copy.action_review, () => {
+      if (card._shoppingEditorDraft !== draft || !sameEditorScope(card, draft.source)) return;
+      if (!validDraft(card, draft)) {
+        draft.validation = true;
+        card.render();
+        return;
+      }
+      draft.validation = false;
+      draft.step = "review";
+      card.render();
+    }, true));
+    actions.append(card.button(copy.action_cancel, () => {
+      if (card._shoppingEditorDraft === draft) disposeShoppingEditor(card);
+      card._actionError = null;
+      card.render();
+    }));
+    form.append(actions);
+    host.append(form);
+  } else {
+    const review = el("div", null, "shopping-review");
+    review.dataset.shoppingReview = draft.mode;
+    appendReviewLine(review, copy.label_name, draft.values.name.trim());
+    if (draft.mode === "create") {
+      appendReviewLine(review, copy.label_quantity, `${draft.values.quantity} ${draft.values.unit}`.trim());
+    }
+    appendReviewLine(review, copy.label_category, draft.values.category.trim());
+    appendReviewLine(review, copy.label_store, draft.values.store.trim());
+    appendReviewLine(review, copy.label_note, draft.values.note.trim());
+    appendReviewLine(review, copy.label_buyer, draft.values.buyer ? getMemberName(card, draft.values.buyer) : copy.label_no_buyer);
+    if (draft.pending && card._actionError) review.append(el("p", copy.uncertainty, "notice"));
+    const actions = el("div", null, "actions");
+    actions.append(card.button(
+      draft.pending && card._actionError ? copy.action_retry :
+        draft.mode === "edit" ? copy.action_confirm_edit : copy.action_confirm_add,
+      () => submitShoppingDraft(card, draft),
+      true
+    ));
+    if (!draft.pending) {
+      actions.append(card.button(copy.action_back, () => { draft.step = "form"; card.render(); }));
+      actions.append(card.button(copy.action_cancel, () => { disposeShoppingEditor(card); card.render(); }));
+    } else if (card._actionError) {
+      actions.append(card.button(copy.action_start_new, () => {
+        if (card._shoppingEditorDraft !== draft) return;
+        const latest = draft.mode === "edit" ?
+          (card._data?.shopping || []).find(row => row?.id === draft.itemId) : null;
+        card._shoppingEditorDraft = draft.mode === "edit" && !latest ? null : blankDraft(card, latest);
+        card._actionError = null;
+        card.render();
+      }));
+    }
+    review.append(actions);
+    host.append(review);
+  }
+  body.append(host);
+  return host;
+}
+
 export function renderShoppingItem(card, list, item) {
   const row = el("li", null, "item");
   if (list && typeof list.append === "function") {
@@ -312,6 +706,10 @@ export function renderShoppingItem(card, list, item) {
     btn.disabled = disabled || isWriting;
     return btn;
   };
+
+  if (mayEdit(card, item)) {
+    actionsEl.append(makeBtn(copy.action_edit, () => openShoppingEditor(card, item)));
+  }
 
   // 1. Parent controls for pending items: Approve / Reject
   if (isParent && item.status === "pending") {
@@ -710,6 +1108,10 @@ export function renderShoppingItem(card, list, item) {
           if (entry.detail.sources && Array.isArray(entry.detail.sources)) {
             const srcNames = entry.detail.sources.map(sid => getItemDisplayName(card, sid));
             detailParts.push(`${copy.source_items_label}: ${srcNames.join(", ")}`);
+          }
+          if (entry.detail.fields && Array.isArray(entry.detail.fields)) {
+            const labels = entry.detail.fields.map(field => copy[`label_${field}`] || field);
+            detailParts.push(`${copy.changed_fields}: ${labels.join(", ")}`);
           }
           if (entry.detail.merged_into) {
             const tgtName = getItemDisplayName(card, entry.detail.merged_into);

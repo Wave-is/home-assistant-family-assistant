@@ -2,6 +2,15 @@
 
 ## English
 
+**Add item** and **Edit item** open a form and a named review before saving.
+Category, store, note and buyer are editable; notes are visible to the household.
+Editing preserves quantity, purchases, approval and recurrence links. Parents
+can edit open approved/pending items, adults approved ones, and children only
+their own pending proposals (still pending afterward, buyer self or unassigned).
+Editing an occurrence does not change its recurring template. A stale item or
+member change invalidates the draft; an uncertain save retains one exact retry.
+This metadata editor is currently a dashboard feature, not a Telegram/AI command.
+
 Use **Bought remaining** to record the full remaining quantity, or **Partial
 purchase** for an amount bought now. Quantities use six-decimal precision. Parents
 can approve/reject children's suggestions and archive items without deleting them.
@@ -44,6 +53,16 @@ data. A failed save keeps the draft. All schedules and occurrences live in local
 HA storage, outside HACS-managed source files. No real shopping purchase is placed.
 
 ## Русский
+
+**Добавить покупку** и **Изменить** открывают форму с проверкой перед сохранением.
+Можно изменить категорию, магазин, заметку и покупателя; заметку видит семья.
+Количество, уже купленный объём, согласование и связь с повторением сохраняются.
+Родители редактируют открытые согласованные/ожидающие позиции, взрослые —
+согласованные, дети — только свои ожидающие предложения, без автоматического
+одобрения и с покупателем «я» или без назначения. Правка отдельного повтора не
+меняет шаблон. Конфликт записи или изменение участника отменяют черновик;
+неопределённый результат сохранения оставляет точный повтор команды.
+Этот редактор пока доступен на дашборде, не через команду Telegram/ИИ.
 
 **Куплено: весь остаток** отмечает полную покупку, **Частичная покупка** — количество,
 купленное сейчас. Точность количества — шесть знаков после запятой. Родители могут
@@ -88,6 +107,15 @@ HA storage, outside HACS-managed source files. No real shopping purchase is plac
 заменяются обновлением HACS. Система ведёт список, а не оформляет заказ в магазине.
 
 ## Українська
+
+**Додати покупку** та **Редагувати** відкривають форму з перевіркою перед збереженням.
+Можна змінити категорію, магазин, примітку й покупця; примітку бачить родина.
+Кількість, уже куплений обсяг, погодження та зв’язок із повторенням зберігаються.
+Батьки редагують відкриті погоджені/очікувані пункти, дорослі — погоджені, діти —
+лише власні очікувані пропозиції, без автоматичного схвалення, з покупцем «я» або
+без призначення. Зміна окремого повтору не змінює шаблон. Конфлікт запису або
+зміна учасника скасовують чернетку; невизначений результат збереження залишає
+точний повтор команди. Редактор поки доступний на дашборді, не через Telegram/ШІ.
 
 **Куплено: увесь залишок** позначає повну покупку, **Часткова покупка** — кількість,
 куплену зараз. Точність кількості — шість знаків після коми. Батьки можуть
