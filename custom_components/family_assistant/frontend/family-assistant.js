@@ -27,6 +27,7 @@ import {renderToday} from "./today-view.js";
 import {renderHealth,reconcileHealthRefresh} from "./health-view.js";
 import {captureFocusRefresh,renderWithFocusRefresh} from "./focus-refresh.js";
 import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditorRefresh} from "./alarm-editor.js";
+import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -232,7 +233,7 @@ export class FamilyCard extends HTMLElement {
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
-    this._taskItemAction=null;this._taskCreateDraft=null;this._alarmEditorDraft=null;
+    this._taskItemAction=null;this._taskCreateDraft=null;this._taskSeriesDraft=null;this._alarmEditorDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;this._pollsDraft=null;this._presenceDraft=null;this._digestsDraft=null;
@@ -286,9 +287,10 @@ export class FamilyCard extends HTMLElement {
       const digestsForce = reconcileDigestsRefresh(this,previousData);
       const healthForce = reconcileHealthRefresh(this,previousData);
       const alarmEditorForce = reconcileAlarmEditorRefresh(this,previousData);
+      const taskSeriesForce = reconcileTaskSeriesRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -348,55 +350,6 @@ export class FamilyCard extends HTMLElement {
       const input=this.input(form,key,label,"number",String(value));input.min=String(min);input.max=String(max);input.step="1";
     }
   }
-  seriesForm(){
-    const identity=()=>JSON.stringify({entry:this._entry,generation:this._generation,actor:this._data?.actor,role:this._data?.role,members:this._data?.members});
-    const capturedIdentity=identity(),members=structuredClone(this._data.members),actor=members.find(m=>m.id===this._data.actor);
-    const form=el("form");this.input(form,"title",this.t.title);
-    const advanced=el("details"),advancedBody=el("div",null,"advanced");advanced.append(el("summary",this.t.advanced),advancedBody);
-    const people=el("fieldset");people.append(el("legend",this.t.assignee));form.append(people);
-    for(const member of this._data.members.filter(m=>m.active && m.role!=="guest")){
-      const label=el("label",member.name),box=el("input");box.type="checkbox";box.name="assignees";box.value=member.id;label.append(box);people.append(label);
-    }
-    const rotation=el("label",this.t.rotation),box=el("input");box.type="checkbox";box.name="rotation";rotation.append(box);form.append(rotation);
-    const frequency=el("label",this.t.frequency),select=el("select");select.name="frequency";
-    for(const key of ["daily","weekly","monthly"]){const option=el("option",this.t[key]);option.value=key;select.append(option);}frequency.append(select);form.append(frequency);
-    const zone=this._data.settings.timezone || this._hass?.config?.time_zone || "UTC";
-    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-    const date=["year","month","day"].map(key=>parts.find(p=>p.type===key).value).join("-");
-    this.input(form,"start_date",this.t.startDate,"date",date);
-    this.input(advancedBody,"until",this.t.untilDate,"date","",false);
-    this.input(form,"time",this.t.releaseTime,"time","07:00");
-    this.input(form,"due_time",this.t.dueTime,"time","20:00");
-    this.input(advancedBody,"timezone",this.t.timezone,"text",zone);
-    const interval=this.input(advancedBody,"interval",this.t.interval,"number","1");interval.min="1";interval.max="52";
-    const weekdays=el("fieldset");weekdays.append(el("legend",this.t.weeklyDays));form.append(weekdays);
-    this.t.dayNames.forEach((name,day)=>{const label=el("label",name),box=el("input");box.type="checkbox";box.name="weekdays";box.value=String(day);box.checked=day<5;label.append(box);weekdays.append(label);});
-    weekdays.hidden=select.value!=="weekly";select.addEventListener("change",()=>{weekdays.hidden=select.value!=="weekly";});
-    this.input(advancedBody,"exceptions",this.t.exceptions,"text","",false);
-    this.deadlinePolicy(advancedBody);form.append(advanced,el("div",this.t.seriesHint,"sub"));
-    const save=el("button",this.t.save,"primary");save.type="submit";form.append(save);
-    form.addEventListener("submit",event=>{
-      event.preventDefault();
-      if(!form.isConnected || this._writing || !this.parent || identity()!==capturedIdentity){this._actionError="conflict";this.render();return;}
-      const data=new FormData(form),v=Object.fromEntries(data),assignees=data.getAll("assignees");
-      this.command("tasks.series_save",{title:v.title,assignees,actor_revision:actor.revision,creator_revision:actor.revision,assignee_revisions:Object.fromEntries(assignees.map(id=>[id,members.find(m=>m.id===id)?.revision])),rotation:v.rotation==="on",due_time:v.due_time,
-        reminder_minutes:Number(v.reminder_minutes),grace_minutes:Number(v.grace_minutes),penalty:Number(v.penalty),
-        rule:{frequency:v.frequency,start_date:v.start_date,until:v.until || null,time:v.time,timezone:v.timezone,interval:Number(v.interval),weekdays:data.getAll("weekdays").map(Number),exceptions:v.exceptions.split(",").map(s=>s.trim()).filter(Boolean)}});
-    });return form;
-  }
-  renderSeries(body){
-    const series=this._data.task_series || [];
-    const actorRevision=this._data.members.find(m=>m.id===this._data.actor)?.revision;
-    if(this.parent)body.append(this.button(this._seriesForm?this.t.back:this.t.addSeries,()=>{this._seriesForm=!this._seriesForm;this._form=false;this.render();}));
-    if(this._seriesForm)body.append(this.seriesForm());
-    for(const item of series){
-      const row=el("div",null,"item");row.append(el("strong",`${this.t.recurring} · ${item.title}`));
-      const people=item.assignees.map(id=>this._data.members.find(m=>m.id===id)?.name || "").join(", ");
-      row.append(el("div",`${people} · ${item.rotation?this.t.rotation:this.t.eachPerson} · ${this.t[item.rule.frequency]} · ${item.rule.time} → ${item.due_time} · ${this.t[item.enabled?"enabled":"disabled"]}`,"sub"));
-      if(this.parent)row.append(this.button(this.t[item.enabled?"disable":"enable"],()=>this.command("tasks.series_enable",{id:item.id,revision:item.revision,actor_revision:actorRevision,enabled:!item.enabled})));
-      body.append(row);
-    }
-  }
   render() {
     const root=this.shadowRoot;root.replaceChildren(el("style",STYLES));
     const card=el("ha-card");root.append(card);
@@ -452,7 +405,10 @@ export class FamilyCard extends HTMLElement {
       this.renderAlarmRuns(body);
       if(renderAlarmEditor(this,body))return;
     }
-    if(this._view==="tasks")this.renderSeries(body);
+    if(this._view==="tasks" && !this._form && !this._taskMediaDraft){
+      renderTaskSeries(this,body);
+      if(this._taskSeriesDraft)return;
+    }
     if(this._view==="shopping")renderShoppingSeries(this,body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
     if(this._view==="alarms" && this.parent){

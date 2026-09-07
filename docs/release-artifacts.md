@@ -9,10 +9,18 @@ overwritten. This command does not tag, publish, update HACS or touch HA.
 The ZIP has `custom_components/family_assistant/` as its only root. It contains
 all runtime Python, translations, services, frontend modules and brand assets,
 not tests, documentation, caches or workstation dependencies. Source privacy
-checks run first; unknown runtime files and symlinks fail closed. Fixed ZIP
-metadata and sorted paths make identical source bytes reproducible on the same
-Python/zlib runtime. This is not a promise of identical compression across
-different zlib versions.
+checks run first; unknown runtime files, symlinks and Windows reparse
+points/junctions fail closed without being traversed. Every regular runtime file
+is captured once against a stable filesystem identity, and a second inventory
+must match before packaging. The manifest version is validated from those exact
+captured bytes rather than from an earlier read. Missing relative Python or
+JavaScript modules also fail the build. These checks validate declared local
+imports; Home Assistant can still load documented integration entry points that
+are not imported by another module.
+
+ZIP entry names are sorted in canonical POSIX order and have fixed metadata, so
+identical captured source bytes are reproducible on the same Python/zlib runtime.
+This is not a promise of identical compression across different zlib versions.
 
 HACS continues to use the existing repository layout (`zip_release` is not
 enabled). This candidate is a packaging/verification artifact, not an alternative

@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
+| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; deterministic runtime ZIP, source containment, exact manifest and declared import checks; packaged upgrade/migration gates still pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
 ## Baseline, 2026-09-06
@@ -49,6 +49,31 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
+The full recurring-task editor now reviews people, recurrence, deadline policy,
+report type and checklist in EN/RU/UK. Exact retries preserve the reviewed operation;
+harmless refresh preserves typed fields and stale authority detaches controls. Server
+lineage pins actor/creator/assignees and suspends stale series without silently
+assigning work to a replacement identity. Root verified 400 Node, 156 Chromium and
+the complete actual-HA suite; the narrow RU full review was visually inspected.
+
+Public-article transport and answer-only synthesis are implemented but are not yet
+connected to a user-facing endpoint or enabled by default. Real synthetic TLS tests
+exercise pinned host/address/port/family/protocol, redirect and response limits.
+Model input has no family view or source URL; authority rechecks precede fallback
+and health changes, completed responses are transient, and concurrency is bounded
+even during authority lookup. A deterministic runtime-only ZIP was built from exact
+staged source: 187 files; source symlinks/junctions, inventory drift, mismatched
+manifest bytes and missing declared local imports fail closed. Whole-export result:
+2272 Python passed, four host-specific skips, 23 subtests; Ruff/format/locales/privacy
+and full actual HA passed. This is not a published release, a packaged-upgrade
+acceptance, a real-model evaluation or existing-home migration.
+
+Automatic post-create guided Options handoff is now included and actual-HA-tested:
+the exact loaded new entry, duplicate reuse, manual-flow collision and strict
+sentinel work without changing Engine, Options, modification time or runtime.
+Per-entry weak locks also protect replacement-runtime races in unit tests.
+That checkpoint passed 2172 Python tests (three host skips, 23 subtests).
+
 The complete alarm schedule editor now supports all existing save fields with
 named review, current actor/member/source guards and immutable response-loss
 retry. The old reduced alarm form is removed. Shared passive-refresh focus and
@@ -62,7 +87,7 @@ The owner-only guided Options summary is localized, same-entry, resumable and
 read-only until a separate existing settings form is submitted. Actual HA
 verified unchanged Engine, Options, modification time and runtime on open/finish;
 2118 Python tests passed (three host skips, 23 subtests), with Ruff/format,
-locale parity and privacy checks. Automatic post-create handoff is not included.
+locale parity and privacy checks. The later post-create checkpoint above extends it.
 
 Actual HA encrypted archive acceptance now creates one protected local archive,
 rejects absent/wrong keys, compares all archived Family Assistant Store and media

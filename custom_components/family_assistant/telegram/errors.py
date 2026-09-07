@@ -2,6 +2,15 @@
 
 ERRORS = {
     "en": {
+        "article_invalid_url": "Use a public HTTPS page on the standard port, "
+        "without login details or a fragment.",
+        "article_timeout": "The page did not respond within the time limit. No "
+        "family action was performed.",
+        "article_unavailable": "The public page could not be retrieved.",
+        "article_unsupported": "This page format or encoding is not supported. Use "
+        "a plain-text or HTML article.",
+        "article_too_large": "The page exceeds the article reading size limit.",
+        "article_invalid_content": "The page did not contain readable text in a supported format.",
         "backup_in_progress": "A Home Assistant backup is being prepared. Try the "
         "same action after it finishes.",
         "invalid_field": "Check the entered value.",
@@ -144,6 +153,14 @@ ERRORS = {
         "expire automatically.",
     },
     "ru": {
+        "article_invalid_url": "Укажите публичную HTTPS-страницу со стандартным "
+        "портом, без логина, пароля и фрагмента.",
+        "article_timeout": "Страница не ответила вовремя. Никаких семейных действий не выполнено.",
+        "article_unavailable": "Не удалось загрузить публичную страницу.",
+        "article_unsupported": "Формат или кодировка страницы не поддерживается. "
+        "Нужна статья в HTML или обычном тексте.",
+        "article_too_large": "Страница превышает ограничение размера для чтения статей.",
+        "article_invalid_content": "На странице не найден читаемый текст в поддерживаемом формате.",
         "backup_in_progress": "Создаётся резервная копия Home Assistant. Повторите "
         "то же действие после её завершения.",
         "invalid_field": "Проверьте введённое значение.",
@@ -292,6 +309,15 @@ ERRORS = {
         "после истечения срока.",
     },
     "uk": {
+        "article_invalid_url": "Укажіть публічну HTTPS-сторінку зі стандартним "
+        "портом, без логіна, пароля та фрагмента.",
+        "article_timeout": "Сторінка не відповіла вчасно. Жодних сімейних дій не виконано.",
+        "article_unavailable": "Не вдалося завантажити публічну сторінку.",
+        "article_unsupported": "Формат або кодування сторінки не підтримується. "
+        "Потрібна стаття в HTML або звичайному тексті.",
+        "article_too_large": "Сторінка перевищує обмеження розміру для читання статей.",
+        "article_invalid_content": "На сторінці не знайдено читабельного тексту в "
+        "підтримуваному форматі.",
         "backup_in_progress": "Створюється резервна копія Home Assistant. Повторіть "
         "ту саму дію після її завершення.",
         "invalid_field": "Перевірте введене значення.",

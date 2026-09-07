@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import shutil
+import subprocess
 import zipfile
 
 import pytest
 
+from tools import build_release
 from tools.build_release import DOMAIN_PATH, build
 
 
@@ -41,6 +45,7 @@ def test_archive_is_deterministic_exact_runtime_only_and_complete_graph(source):
     assert first == second and report == second_report
     with zipfile.ZipFile(io.BytesIO(first)) as archive:
         names = archive.namelist()
+        assert names == sorted(names)
         assert all(name.startswith(DOMAIN_PATH.as_posix() + "/") for name in names)
         assert f"{DOMAIN_PATH.as_posix()}/frontend/child.js" in names
         assert len(names) == report["files"] == 8
@@ -82,3 +87,114 @@ def test_missing_language_blocks_package(source):
     (source / DOMAIN_PATH / "translations" / "uk.json").unlink()
     with pytest.raises(ValueError, match="incomplete_translations"):
         build(source, "1.2.3-beta.1")
+
+
+def test_missing_relative_python_import_blocks_package(source):
+    (source / DOMAIN_PATH / "__init__.py").write_text(
+        "from .missing_runtime_module import value\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="incomplete_runtime"):
+        build(source, "1.2.3-beta.1")
+
+
+def test_missing_relative_javascript_import_blocks_package(source):
+    (source / DOMAIN_PATH / "frontend" / "family-assistant.js").write_text(
+        'import "./missing-runtime-module.js";\n', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="incomplete_runtime"):
+        build(source, "1.2.3-beta.1")
+
+
+@pytest.mark.parametrize("keyword", ["import", "export"])
+def test_multiline_javascript_import_is_checked(source, keyword):
+    main = source / DOMAIN_PATH / "frontend" / "family-assistant.js"
+    declaration = keyword + ' {\n  child,\n} from "./child.js";\n'
+    main.write_text(declaration, encoding="utf-8")
+    build(source, "1.2.3-beta.1")
+    main.write_text(declaration.replace("./child.js", "./missing.js"), encoding="utf-8")
+    with pytest.raises(ValueError, match="incomplete_runtime"):
+        build(source, "1.2.3-beta.1")
+
+
+def test_manifest_is_validated_from_the_captured_archive_bytes(source, monkeypatch):
+    original = build_release._read_stable
+
+    def capture(path, expected, component):
+        content = original(path, expected, component)
+        if path.name == "manifest.json":
+            return json.dumps({"domain": "family_assistant", "version": "9.9.9"}).encode()
+        return content
+
+    monkeypatch.setattr(build_release, "_read_stable", capture)
+    with pytest.raises(ValueError, match="release_version_mismatch"):
+        build(source, "1.2.3-beta.1")
+
+
+def test_file_change_between_inventory_and_capture_fails_closed(source, monkeypatch):
+    original = build_release._read_stable
+    manifest = source / DOMAIN_PATH / "manifest.json"
+    changed = False
+
+    def capture(path, expected, component):
+        nonlocal changed
+        if path == manifest and not changed:
+            changed = True
+            path.write_text('{"domain":"family_assistant","version":"0"}', encoding="utf-8")
+        return original(path, expected, component)
+
+    monkeypatch.setattr(build_release, "_read_stable", capture)
+    with pytest.raises(ValueError, match="runtime_changed"):
+        build(source, "1.2.3-beta.1")
+
+
+def test_file_added_after_initial_inventory_fails_closed(source, monkeypatch):
+    original = build_release._runtime_inventory
+    calls = 0
+
+    def inventory(root, component):
+        nonlocal calls
+        result = original(root, component)
+        calls += 1
+        if calls == 1:
+            (component / "late.py").write_text("value = True\n", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(build_release, "_runtime_inventory", inventory)
+    with pytest.raises(ValueError, match="runtime_changed"):
+        build(source, "1.2.3-beta.1")
+
+
+def test_runtime_directory_symlink_is_rejected_without_traversal(source, tmp_path):
+    outside = tmp_path / "outside-symlink"
+    outside.mkdir()
+    (outside / "private.py").write_text("secret = True\n", encoding="utf-8")
+    link = source / DOMAIN_PATH / "linked"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks are unavailable")
+    with pytest.raises(ValueError, match="runtime_symlink"):
+        build(source, "1.2.3-beta.1")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="NTFS junction regression")
+def test_windows_runtime_junction_is_rejected_without_traversal(source, tmp_path):
+    outside = tmp_path / "outside-junction"
+    outside.mkdir()
+    (outside / "private.py").write_text("secret = True\n", encoding="utf-8")
+    junction = source / DOMAIN_PATH / "junction"
+    command = shutil.which("cmd.exe")
+    if command is None:
+        pytest.skip("cmd.exe is unavailable")
+    created = subprocess.run(  # noqa: S603 -- fixed executable and synthetic paths
+        [command, "/d", "/c", "mklink", "/J", str(junction), str(outside)],
+        capture_output=True,
+        check=False,
+    )
+    if created.returncode:
+        pytest.skip("directory junctions are unavailable")
+    try:
+        with pytest.raises(ValueError, match="runtime_symlink"):
+            build(source, "1.2.3-beta.1")
+    finally:
+        os.rmdir(junction)

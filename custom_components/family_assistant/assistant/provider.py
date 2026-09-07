@@ -1,6 +1,7 @@
 """Ollama JSON plans with an independent, explicitly configured fallback."""
 
 import asyncio
+import inspect
 import json
 import time
 
@@ -73,21 +74,43 @@ class Cascade:
         self.cooldown = {}
         self.lock = asyncio.Lock()
 
-    async def generate(self, messages, schema, validate):
+    @staticmethod
+    async def check_scope(scope_check):
+        if scope_check is None:
+            return
+        result = scope_check()
+        if inspect.isawaitable(result):
+            await result
+
+    async def generate(self, messages, schema, validate, *, scope_check=None):
         # One inference per household; the Telegram polling task never waits here.
         async with self.lock:
+            await self.check_scope(scope_check)
             last = "provider_unreachable"
             for index, provider in enumerate(self.providers):
+                await self.check_scope(scope_check)
                 if self.clock() < self.cooldown.get(index, 0):
                     continue
                 try:
-                    result = validate(await provider.generate(messages, schema))
+                    value = await provider.generate(messages, schema)
                 except DomainError as err:
+                    # A revoked request may not alter provider health/cooldown or
+                    # continue to a fallback based on its stale provider error.
+                    await self.check_scope(scope_check)
+                    last = err.code
+                    self.cooldown[index] = self.clock() + 30
+                    continue
+                await self.check_scope(scope_check)
+                try:
+                    result = validate(value)
+                except DomainError as err:
+                    await self.check_scope(scope_check)
                     last = err.code
                     self.cooldown[index] = self.clock() + 30
                     continue
                 self.health["conversation"] = "fallback" if index else "connected"
                 self.cooldown.pop(index, None)
                 return result
+            await self.check_scope(scope_check)
             self.health["conversation"] = last
             raise DomainError(last)

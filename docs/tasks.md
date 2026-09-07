@@ -19,6 +19,24 @@ Finished tasks remain in the collapsed archive. Recurring duties create separate
 tasks with optional rotation; edits preserve history and omitted optional fields.
 Automatic penalties default off. A text report cannot substitute for a required photo.
 
+The recurring-task editor reviews the complete definition before saving: the
+original creator, exact current assignees, rotation mode, recurrence, release and
+due times, checklist, report type, reminder, grace period and optional penalty.
+The original creator is immutable. A member revision change pauses the whole
+series, including rotation, until a parent explicitly reviews and saves the
+current identities; it never silently transfers work to a same-ID replacement.
+Older definitions without identity lineage are parent-visible but inert until
+reviewed. If the original creator is no longer an active parent, the series
+cannot be transferred or repaired, although it can be disabled.
+
+Saving a definition starts its newly reviewed schedule from that moment. It does
+not create a backlog or alter tasks already generated. A due time earlier than
+the release time means the next local day. Spring-gap times and nonexistent
+monthly dates are skipped; repeated autumn time uses the first occurrence. A
+zero-hour catchup setting still permits an approximately one-minute window.
+Photo-report series create ordinary private photo tasks; upload and submission
+remain separate explicit actions in the task card.
+
 For a photo report, choose one JPEG, PNG or WebP (up to 10 MiB), review it and
 explicitly confirm upload. Uploading alone does not submit the task: confirm
 **Submit photo report** separately. If a response is lost, the retry uses the
@@ -51,6 +69,24 @@ is still a release gate. See [media design and limits](media-design.md).
 Правка серии сохраняет историю и неуказанные дополнительные настройки.
 Автоштрафы по умолчанию выключены. Текст не подменяет обязательный фотоотчёт.
 
+Редактор регулярных задач перед сохранением показывает всю конфигурацию:
+первоначального создателя, точные текущие версии исполнителей, ротацию,
+расписание, время создания и срок, чек-лист, тип отчёта, напоминание, льготный
+период и необязательный штраф. Первоначальный создатель неизменяем. После смены
+версии участника вся серия, включая ротацию, приостанавливается до явной проверки
+и сохранения родителем; работа не переходит молча новому человеку с тем же ID.
+Старые серии без данных о версиях видны родителям, но не выполняются до проверки.
+Если создатель больше не активный родитель, серию нельзя передать или исправить,
+но можно выключить.
+
+Сохранение запускает заново проверенное расписание с этого момента: пропущенные
+задачи не создаются, уже созданные не меняются. Если срок раньше времени создания,
+он наступает на следующий местный день. Несуществующее весеннее время и
+несуществующие даты месяца пропускаются; при осеннем повторе берётся первое
+вхождение. Нулевое окно наверстывания всё равно даёт примерно одну минуту.
+Серия с фотоотчётом создаёт обычные приватные фотозадачи; загрузка и отправка
+остаются отдельными явными действиями в карточке задач.
+
 Для фотоотчёта выберите один JPEG, PNG или WebP до 10 МиБ, проверьте его и
 подтвердите загрузку. Она ещё не сдаёт задачу: отдельно подтвердите
 **Отправить фотоотчёт**. При потере ответа повторяется тот же файл и запрос;
@@ -82,6 +118,24 @@ is still a release gate. See [media design and limits](media-design.md).
 завдання, зокрема по черзі. Зміна серії зберігає історію та невказані додаткові
 налаштування. Автоштрафи за замовчуванням вимкнені. Текст не підміняє обов’язковий
 фотозвіт.
+
+Редактор регулярних завдань перед збереженням показує всю конфігурацію:
+початкового автора, точні поточні версії виконавців, ротацію, розклад, час
+створення і строк, чекліст, тип звіту, нагадування, пільговий період і
+необов’язковий штраф. Початковий автор незмінний. Після зміни версії учасника вся
+серія, зокрема ротація, призупиняється до явної перевірки й збереження батьками;
+робота не переходить мовчки новій людині з тим самим ID. Старі серії без даних
+про версії бачать батьки, але вони не виконуються до перевірки. Якщо автор більше
+не є активним із батьківською роллю, серію не можна передати чи виправити, але
+можна вимкнути.
+
+Збереження запускає заново перевірений розклад із цього моменту: пропущені
+завдання не створюються, уже створені не змінюються. Якщо строк раніше часу
+створення, він настає наступного місцевого дня. Неіснуючий весняний час і
+неіснуючі дати місяця пропускаються; при осінньому повторі береться перше
+входження. Нульове вікно наздоганяння все одно дає приблизно одну хвилину. Серія
+з фотозвітом створює звичайні приватні фотозавдання; завантаження й надсилання
+залишаються окремими явними діями у картці завдань.
 
 Для фотозвіту виберіть один JPEG, PNG або WebP до 10 МіБ, перевірте його й
 підтвердьте завантаження. Воно ще не здає завдання: окремо підтвердьте

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic recurring tasks</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 700px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const actor = query.get("actor") || "parent";
+    const raw = (window.seriesFixture = {
+      revision: 1,
+      actor,
+      settings: {
+        name: "Example family",
+        timezone: "Europe/Kyiv",
+        modules: ["tasks"],
+      },
+      members: [
+        {
+          id: "owner",
+          name: "Morgan",
+          role: "owner",
+          active: true,
+          revision: 1,
+        },
+        {
+          id: "parent",
+          name: "Alex",
+          role: "parent",
+          active: true,
+          revision: 3,
+        },
+        { id: "child", name: "Sam", role: "child", active: true, revision: 5 },
+        {
+          id: "adult",
+          name: "Jamie",
+          role: "adult",
+          active: true,
+          revision: 2,
+        },
+        {
+          id: "guest",
+          name: "Guest",
+          role: "guest",
+          active: true,
+          revision: 1,
+        },
+      ],
+      task_series: [
+        {
+          id: "D000001",
+          revision: 4,
+          creator: "parent",
+          creator_revision: 3,
+          title: "Take recycling out",
+          assignees: ["child"],
+          assignee_revisions: { child: 5 },
+          rotation: false,
+          enabled: true,
+          current: true,
+          rule: {
+            frequency: "weekly",
+            interval: 1,
+            start_date: "2026-09-07",
+            until: null,
+            time: "19:00",
+            timezone: "Europe/Kyiv",
+            weekdays: [0],
+            month_day: 7,
+            exceptions: [],
+            catchup_hours: 24,
+          },
+          due_time: "07:00",
+          report_type: "text",
+          checklist: ["Close the container"],
+          deadline_policy: {
+            reminder_minutes: 60,
+            grace_minutes: 30,
+            penalty: 0,
+          },
+          effective_at: "2026-09-07T08:00:00+00:00",
+        },
+      ],
+      tasks: [],
+      proposals: [],
+    });
+    const member = (id) => raw.members.find((item) => item.id === id);
+    const current = (row) =>
+      Boolean(
+        member(row.creator)?.active &&
+        ["owner", "parent"].includes(member(row.creator)?.role) &&
+        member(row.creator)?.revision === row.creator_revision &&
+        row.assignees.every(
+          (id) =>
+            member(id)?.active &&
+            member(id)?.role !== "guest" &&
+            member(id)?.revision === row.assignee_revisions?.[id],
+        ),
+      );
+    const projection = () => {
+      const self = member(raw.actor);
+      const parent = ["owner", "parent"].includes(self?.role);
+      return {
+        revision: raw.revision,
+        actor: raw.actor,
+        role: self?.role || "guest",
+        settings: structuredClone(raw.settings),
+        members: structuredClone(raw.members),
+        tasks: [],
+        proposals: [],
+        task_series:
+          !raw.settings.modules.includes("tasks") || self?.role === "guest"
+            ? []
+            : raw.task_series
+                .filter(
+                  (row) =>
+                    parent ||
+                    (row.assignees.includes(self.id) &&
+                      row.assignee_revisions?.[self.id] === self.revision),
+                )
+                .map((row) => {
+                  const result = structuredClone(row);
+                  result.current = current(row);
+                  if (!parent)
+                    for (const key of [
+                      "creator",
+                      "creator_revision",
+                      "assignee_revisions",
+                    ])
+                      delete result[key];
+                  return result;
+                }),
+      };
+    };
+    window.calls = [];
+    window.loseResponse = false;
+    const receipts = new Map();
+    const hass = {
+      user: { id: `ha-${actor}` },
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        window.calls.push(structuredClone(message));
+        if (receipts.has(message.operation_id))
+          return structuredClone(receipts.get(message.operation_id));
+        const p = message.payload;
+        let result;
+        if (message.action === "tasks.series_save") {
+          const id = p.id || "D000002",
+            revision = p.revision ? p.revision + 1 : 1;
+          const row = {
+            id,
+            revision,
+            creator: p.id
+              ? raw.task_series.find((x) => x.id === id).creator
+              : raw.actor,
+            creator_revision: p.creator_revision,
+            title: p.title,
+            assignees: structuredClone(p.assignees),
+            assignee_revisions: structuredClone(p.assignee_revisions),
+            rotation: p.rotation,
+            enabled: p.enabled,
+            rule: structuredClone(p.rule),
+            due_time: p.due_time,
+            report_type: p.report_type,
+            checklist: structuredClone(p.checklist),
+            deadline_policy: {
+              reminder_minutes: p.reminder_minutes,
+              grace_minutes: p.grace_minutes,
+              penalty: p.penalty,
+            },
+            effective_at: "2026-09-07T10:00:00+00:00",
+          };
+          const index = raw.task_series.findIndex((x) => x.id === id);
+          if (index < 0) raw.task_series.push(row);
+          else raw.task_series[index] = row;
+          result = structuredClone(row);
+        } else {
+          const row = raw.task_series.find((x) => x.id === p.id);
+          row.revision += 1;
+          row.enabled = p.enabled;
+          result = structuredClone(row);
+        }
+        receipts.set(message.operation_id, result);
+        if (window.loseResponse) {
+          window.loseResponse = false;
+          const error = new Error("lost");
+          error.code = "network";
+          throw error;
+        }
+        return structuredClone(result);
+      },
+    };
+    const card = (window.card = document.createElement("family-tasks-card"));
+    card._config = { language };
+    card._view = "tasks";
+    card._entry = "entry-1";
+    card._generation = 1;
+    card._data = projection();
+    card._hass = hass;
+    card._loading = false;
+    card._writing = false;
+    card._form = null;
+    card._taskCreateDraft = null;
+    card._taskMediaDraft = null;
+    card._taskSeriesDraft = null;
+    document.querySelector("main").append(card);
+    card.render();
+    window.rebindChild = async () => {
+      member("child").revision += 1;
+      await card.refresh();
+    };
+    window.revoke = async () => {
+      raw.settings.modules = [];
+      await card.refresh();
+    };
+  </script>
+</html>
