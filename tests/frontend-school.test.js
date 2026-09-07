@@ -372,7 +372,8 @@ test("real card is inert, localized, parent-full, child-own, and hidden from adu
     child.card.shadowRoot.textContent.includes("Former Child"),
     false,
   );
-  assert.equal(child.card.shadowRoot.querySelector("button"), null);
+  // School-work controls are child-authorized; timetable mutations are not.
+  assert.equal(child.card.shadowRoot.querySelector(".school-section button"), null);
 
   const adult = await setup(t, { role: "adult" });
   assert.equal(adult.card.shadowRoot.querySelector(".school-section"), null);

@@ -85,6 +85,24 @@ test("TASK_ITEM_COPY parity across en, ru, and uk locales", () => {
   assert.ok(enKeys.length > 20);
 });
 
+test("School homework keeps lifecycle controls but cannot open generic edit", () => {
+  const card = createMockCard();
+  const list = document.createElement("ul");
+  document.body.append(list);
+  const item = {
+    id: "TSCHOOL", revision: 1, title: "Homework", assignee: "child_1",
+    creator: "parent_1", status: "assigned", managed_by: "school",
+    checklist: [{ text: "Read chapter", done: false }],
+  };
+  renderTaskItem(card, list, item);
+  const labels = [...list.querySelectorAll("button")].map(button => button.textContent);
+  assert.ok(!labels.includes(TASK_ITEM_COPY.en.action_edit));
+  assert.ok(labels.includes(TASK_ITEM_COPY.en.action_cancel));
+  assert.match(list.textContent, /School card/);
+  assert.equal(list.querySelector('input[type="checkbox"]').disabled, false);
+  list.remove();
+});
+
 test("renderTaskItem displays friendly names and no raw member IDs", () => {
   const card = createMockCard();
   const ul = document.createElement("ul");

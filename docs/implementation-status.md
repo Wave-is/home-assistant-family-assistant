@@ -23,7 +23,7 @@ Nothing is production-ready solely because a mock test passes.
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
-| School | In progress / unit-, browser- and HA-tested | Parent-reviewed weekly timetables, current-child-only 14-day agenda/materials, exceptions and explicit pinned backpack routine; homework handoff, preparation reminders and reviewed imports pending |
+| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks and reviewed backpack routine starts; preparation reminders and reviewed imports pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse, manual repair history and card; media/documents and production acceptance pending |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
@@ -47,8 +47,41 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1378 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 259 frontend unit tests and 87 Chromium browser tests passed.
+- 1480 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 272 frontend unit tests and 104 Chromium browser tests passed.
+- School homework is explicitly created by parents or the current child subject
+  as an ordinary private task with a zero-penalty deadline policy. Parent edits
+  use the School route, not generic task reassignment. Same-identity edits retain
+  progress; a reviewed identity rebind resets current lifecycle and hides the
+  prior report/review from the child while preserving parent-only history. A
+  source-version oracle across children's lesson IDs is blocked. Failed Store
+  writes/batches, concurrent exact retries, module/role/epoch revocation, private
+  first/replay receipts, group/model exclusion and reload are tested. Materialized
+  homework survives timetable archive/School disable in the Tasks lifecycle.
+  Explicit backpack starts delegate to existing routines and store one opaque
+  timetable/date-to-run marker. The actual school day must be today/tomorrow,
+  with current member, timetable and usable pinned routine versions. A second
+  operation cannot start that same preparation again; unrelated active runs are
+  never adopted. Private history reports the actual run status, not completion
+  inferred from a start. Actual HA authenticated Options/WebSockets and reload
+  passed. Routines-disable correctly cancelled active fixtures; the smoke test
+  now explicitly starts a new ordinary run for its final nonce-persistence check
+  and compares the exact run Store rather than an obsolete fixed count.
+  RU mobile named homework review and UK own-child view were visually inspected.
+  Localized deadlines retain exact unchanged DST instants; actor/module/entry/
+  timezone changes revoke focused drafts; pre- and post-commit failures retain
+  the exact reviewed request where authority still permits it. AGY's bounded
+  documentation review identified ambiguous receipt wording, which was corrected;
+  its conditional history-leak concern is ruled out by real projection/replay
+  tests. School preparation notifications and imports remain subsequent work.
+  Browser fixtures now freeze their school-day clock and model current source/
+  replay authority and identity-reset post-state; added cases exercise those
+  boundaries. A full run exposed a blank older meal fixture: its trace records
+  `net::ERR_NO_BUFFER_SPACE` while loading an imported module. The test server's
+  default HTTP/1.0 created separate loopback connections per asset. Switching
+  only this loopback test server to HTTP/1.1 enables connection reuse; all 104
+  cases then passed with unchanged assertions/timeouts. No OS networking or
+  household services were modified.
 - Maintenance records parent-reviewed equipment, warranty, notes and consumables;
   explicitly reportable/current responsible scope controls fault creation. Faults
   create one ordinary private task. Service schedules reuse task recurrence,
@@ -82,8 +115,9 @@ is exercised with a synthetic entity, not by replacing its service registry.
   browser cases initially timed out on blank fixture pages, passed in isolation,
   then the complete 80-case run passed with four workers and failure tracing.
   No assertions/timeouts were relaxed and no cause is inferred from that retry.
-  School does not yet send reminders, start preparation, import media or publish
-  to Telegram, LLM or a HA calendar. See [school guide](school.md).
+  This initial timetable checkpoint did not start preparation; explicit handoffs
+  are now covered above. School-specific reminders, media imports and a HA calendar
+  remain pending. See [school guide](school.md).
 - Optional Mealie v3 uses owner-configured private options and fixed bounded GETs;
   bearer tokens are not prefilled, returned in views or reused for another URL.
   Parents explicitly search/select and correct missing ingredient quantities/units
@@ -412,7 +446,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   ad3fd17 (run 34064991218) and dietary profiles
   cd9cae8 (run 34066055297) and Mealie recipes
   59e6eeb (run 34067804708), then school follow-up
-  8d25ac0 (run 34069706131). The school feature's first actual-HA CI run exposed
+  8d25ac0 (run 34069706131), and maintenance
+  659e1ed (run 34071531113). The school feature's first actual-HA CI run exposed
   a fixture race with scheduled pantry reconciliation; the follow-up drains
   pending HA work before the explicit clock pass and verifies scheduler health.
   The separate native RouterOS CI also passed (run 34040076386). Its first run

@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-09-07T07:00:00Z"));
+});
+
 test("Stale pinned routine needs explicit removal or replacement before a title edit", async ({
   page,
 }) => {
@@ -135,7 +139,11 @@ test("UK child reads materials without controls and revision change clears focus
   await page.goto("/tests/fixtures/school.html?lang=uk&actor=child");
   const card = page.locator("family-school-card");
   await expect(card).toContainText("Notebook");
-  await expect(card.getByRole("button")).toHaveCount(0);
+  await expect(
+    card.getByRole("button", {
+      name: /Новий розклад|Змінити розклад|Архівувати розклад/,
+    }),
+  ).toHaveCount(0);
   await page.screenshot({
     path: "test-results/school-child-uk.png",
     fullPage: true,

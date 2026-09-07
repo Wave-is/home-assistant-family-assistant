@@ -238,7 +238,6 @@ async def main():
             from ha_school_smoke import verify_school
 
             school_id = await verify_school(hass, entry, user, child_id)
-            school_expected = entry.runtime_data.engine.snapshot()["school"]
             from ha_maintenance_smoke import verify_maintenance
 
             maintenance_ids = await verify_maintenance(hass, entry, user, child_id)
@@ -249,6 +248,17 @@ async def main():
                 for task_id in (
                     maintenance_ids["fault_task_id"],
                     maintenance_ids["service_task_id"],
+                )
+            }
+            from ha_school_work_smoke import verify_school_work
+
+            school_work_ids = await verify_school_work(hass, entry, user, child_id)
+            school_expected = entry.runtime_data.engine.snapshot()["school"]
+            school_tasks_expected = {
+                task_id: entry.runtime_data.engine.snapshot()["tasks"][task_id]
+                for task_id in (
+                    school_work_ids["child_homework_id"],
+                    school_work_ids["parent_homework_id"],
                 )
             }
             dietary_expected = entry.runtime_data.engine.snapshot()["dietary_profiles"]
@@ -262,6 +272,13 @@ async def main():
             assert entry.state == config_entries.ConfigEntryState.LOADED
             assert entry.runtime_data.engine.snapshot()["school"] == school_expected
             assert school_expected["timetables"][school_id]["status"] == "active"
+            for task_id, task in school_tasks_expected.items():
+                assert entry.runtime_data.engine.snapshot()["tasks"][task_id] == task
+                assert task["source"]["kind"] == "school_homework"
+            assert (
+                school_expected["preparations"][school_work_ids["preparation_id"]]["run_id"]
+                == school_work_ids["run_id"]
+            )
             assert entry.runtime_data.engine.snapshot()["maintenance"] == maintenance_expected
             assert entry.runtime_data.engine.snapshot()["task_series"] == maintenance_task_series
             for task_id, task in maintenance_tasks.items():
@@ -324,7 +341,7 @@ async def main():
             assert len(calendar_after_reload) == 3
             assert not entry.runtime_data.engine.snapshot()["settings"]["calendar"]["publish_to_ha"]
             routines_after_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
-            assert len(routines_after_reload) == 2
+            assert routines_after_reload == routines_before_reload
             assert (
                 routines_after_reload[active_routine["id"]]["steps"][0]["nonce"]
                 == active_routine["steps"][0]["nonce"]

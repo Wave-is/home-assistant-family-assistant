@@ -27,6 +27,8 @@ from . import (
     rewards,
     routines,
     school,
+    school_preparation,
+    school_work,
     settings,
     shopping,
     shopping_series,
@@ -269,6 +271,17 @@ class Engine:
             and "school" in self._state["settings"]["modules"]
         ):
             data["school"] = school.view(self._state, actor, now)
+            data["school"].update(school_preparation.view(self._state, actor))
+            data["school"]["homework"] = (
+                [
+                    task_access.public_task(task, parent=parent)
+                    for task in self._state["tasks"].values()
+                    if school_work.is_homework_task(task)
+                    and task_access.may_view(self._state, actor, task)
+                ]
+                if "tasks" in self._state["settings"]["modules"]
+                else []
+            )
         if actor["role"] != "guest" and "maintenance" in self._state["settings"]["modules"]:
             data["maintenance"] = maintenance.view(self._state, actor)
         if parent:
@@ -394,6 +407,19 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
             )
+        elif action.startswith("school.homework_"):
+            school_work.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "school-work-replay"),
+                action.split(".", 1)[1],
+                payload,
+            )
+        elif action == "school.backpack_start":
+            school_preparation.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "school-preparation-replay"),
+                "backpack_start",
+                payload,
+                result,
+            )
         elif module == "tasks":
             task_access.authorize_replay(self._state, self._actor(actor_id), result)
         elif module == "routines":
@@ -493,4 +519,9 @@ class Engine:
             and module not in ctx.state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")
+        if action == "tasks.revise":
+            task_id = payload.get("id")
+            task = ctx.state["tasks"].get(task_id) if isinstance(task_id, str) else None
+            if school_work.is_homework_task(task):
+                raise DomainError("forbidden")
         return HANDLERS[module](ctx, command, payload)

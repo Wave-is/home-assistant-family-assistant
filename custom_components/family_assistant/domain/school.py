@@ -1,8 +1,8 @@
 """Parent-reviewed school timetables with child-private projections.
 
-This first school slice stores manual weekly lessons and an optional, pinned
-backpack-routine reference.  It never starts routines, sends reminders, infers
-homework, or performs any Home Assistant/device action.
+Manual weekly lessons and pinned backpack references remain passive records.
+Explicit homework and preparation commands delegate to existing private tasks
+and routines; there is no independent school scheduler or device action.
 """
 
 from __future__ import annotations
@@ -400,9 +400,17 @@ def _archive(ctx: Context, payload: dict) -> dict:
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
-    """Apply one parent-reviewed timetable mutation and return an opaque receipt."""
+    """Route explicit school work or a parent-reviewed timetable mutation."""
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
+    if action in {"homework_create", "homework_revise"}:
+        from .school_work import handle as homework_command
+
+        return homework_command(ctx, action, payload)
+    if action == "backpack_start":
+        from .school_preparation import handle as preparation_command
+
+        return preparation_command(ctx, action, payload)
     _require_parent(ctx)
     if action == "timetable_save":
         return _save(ctx, payload)

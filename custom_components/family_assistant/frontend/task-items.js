@@ -17,6 +17,7 @@ export const TASK_ITEM_COPY = {
     action_start: "Start",
     action_submit_report: "Send report",
     action_edit: "Edit task",
+    school_managed: "Change this homework's title and deadline in the School card.",
     action_cancel: "Cancel task",
     action_complete: "Confirm done",
     action_request_changes: "Request changes",
@@ -67,6 +68,7 @@ export const TASK_ITEM_COPY = {
     action_start: "Начать",
     action_submit_report: "Сдать отчёт",
     action_edit: "Изменить задачу",
+    school_managed: "Название и срок домашнего задания меняются в карточке «Школа».",
     action_cancel: "Отменить задачу",
     action_complete: "Подтвердить выполнение",
     action_request_changes: "Вернуть на доработку",
@@ -117,6 +119,7 @@ export const TASK_ITEM_COPY = {
     action_start: "Почати",
     action_submit_report: "Здати звіт",
     action_edit: "Редагувати завдання",
+    school_managed: "Назва й термін домашнього завдання змінюються в картці «Школа».",
     action_cancel: "Скасувати завдання",
     action_complete: "Підтвердити виконання",
     action_request_changes: "Повернути на доопрацювання",
@@ -271,6 +274,9 @@ export function renderTaskItem(card, list, item) {
   }
   const metaSub = el("div", metaParts.join(" · "), "sub");
   row.append(metaSub);
+  if (item.managed_by === "school" && isParent && !isFinal) {
+    row.append(el("p", copy.school_managed, "sub"));
+  }
 
   // Checklist items: disabled for guests, submitted tasks, final tasks, and non-parent/non-assignee
   if (Array.isArray(item.checklist) && item.checklist.length > 0) {
@@ -344,12 +350,13 @@ export function renderTaskItem(card, list, item) {
   // Base permission flags according to actual domain rules:
   // Non-parent creator edit/cancel requires BOTH creator === actor AND assignee === actor (own-assigned).
   const canPerformAssigneeOps = !isGuest && !isFinal && (isAssignee || isParent);
-  const canEdit = !isGuest && !isFinal && !isSubmitted && (isParent || (isCreator && isAssignee));
+  const canEdit = item.managed_by !== "school" && !isGuest && !isFinal && !isSubmitted && (isParent || (isCreator && isAssignee));
   const canCancel = !isGuest && !isFinal && (isParent || (isCreator && isAssignee));
 
   // Stale check helper: returns false if rights were revoked or task status/revision changed
   const isActionStateStale = () => {
     if (!actionState || actionState.itemId !== item.id) return false;
+    if (actionState.type === "edit" && item.managed_by === "school") return true;
     if (!hasCurrentTarget()) return true;
     if (actionState.targetRevision !== undefined && actionState.targetRevision !== item.revision) {
       return true;

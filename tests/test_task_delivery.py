@@ -70,7 +70,9 @@ def test_current_direct_task_events(key, recipient, data, status):
     assert current_task_event(current, notification)
 
 
-@pytest.mark.parametrize("source_kind", ["maintenance_fault", "maintenance_service"])
+@pytest.mark.parametrize(
+    "source_kind", ["maintenance_fault", "maintenance_service", "school_homework"]
+)
 def test_private_task_epoch_is_required_even_with_current_event_stamp(source_kind):
     current = state()
     task = current["tasks"]["T1"]

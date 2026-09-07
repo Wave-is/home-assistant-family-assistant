@@ -12,7 +12,7 @@ def private_task(task):
     source = task.get("source")
     return task.get("delivery_scope") == "private" or (
         isinstance(source, dict)
-        and source.get("kind") in {"maintenance_fault", "maintenance_service"}
+        and source.get("kind") in {"maintenance_fault", "maintenance_service", "school_homework"}
     )
 
 
@@ -45,6 +45,8 @@ def public_task(task, *, parent):
     result = deepcopy(task)
     if private_task(task):
         result["delivery_scope"] = "private"
+        if isinstance(task.get("source"), dict) and task["source"].get("kind") == "school_homework":
+            result["managed_by"] = "school"
         if not parent:
             result.pop("source", None)
             result.pop("previous_reports", None)
