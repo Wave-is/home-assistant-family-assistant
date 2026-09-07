@@ -1,7 +1,7 @@
 # Legacy migration contract
 
-Status: read-only preflight, immutable source/member review and disabled-alarm
-conversion proposals; not a complete import or live cutover feature.
+Status: read-only preflight, immutable source/member review, private archive codec
+and joined conversion proposals; not a complete import or live cutover feature.
 The old private integrations remain running until a separately verified switch.
 Only synthetic examples belong in this repository.
 
@@ -108,3 +108,49 @@ persist its private archive atomically. This helper does not establish coherent
 capture, import other task/shopping/court records, expose an import endpoint, or
 permit partial household cutover. Private reminders and unknown shopping quantities
 must not be silently converted into shared tasks or an invented quantity of one.
+
+## Joined conversion review and private archive
+
+`migration.conversion.build_conversion_review(review, timezone, members=...)`
+collects alarm, task, shopping and current-score proposals in a single immutable
+review. Its summary exposes fixed codes, counts and fingerprints only. Every
+blocked row remains present in the owner-private source archive. Raw sources are
+stored once, with the reviewed mapping, not as repeated overlapping copies.
+There is still no apply endpoint or claim of coherent capture.
+
+`migration.archive.encode_private_review` produces **private bytes containing the
+entire source**, not a sanitized diagnostic export. Keep them only in owner-private
+local storage or backup; never send them to an LLM, public issue, ordinary family
+view or log. `decode_private_review` preserves the exact original Store-file bytes
+and revalidates all current target identities before accepting a saved review.
+Strict envelope/version/UTF-8/base64/size and JSON checks reject malformed input.
+Fingerprints detect changed inputs; they are not an authorization token or a
+signature against someone who can rewrite the archive. The codec does not itself
+read or write files. The isolated HA test roundtrips it through the real Store API.
+
+Shopping proposals preserve source creators, assigned buyers, partial quantities
+and current approval state. Unknown quantities, precision finer than the modern
+six-decimal model, unsupported states and names over 200 characters are explicit
+blockers, not guesses or silent truncation. Cancellation never becomes approval
+or a purchase. A cancelled pending proposal is non-active archived work; the
+original approval and history remain private. Legacy transport/history events
+are not fabricated as new authenticated shopping commands.
+
+Court proposals seed only uncancelled events from the **source open week**, keeping
+their original reasons and timestamps. Prior weeks and cancelled events remain
+in the full private archive, without resurrecting their scores. The source's
+current plus/minus counters must reconcile before review. A missing period or an
+unrepresentable current reason is a blocker. Old Telegram parent identifiers are
+not converted to a current authenticated actor; no role or approval is inferred.
+This requires explicit historical attribution handling at the future apply step.
+
+Task proposals currently cover ordinary no-report records with supported states,
+preserved dates and zero reminder/penalty settings. Overdue progress is not guessed
+or rewound if later acceptance/start evidence disagrees with the saved pre-overdue
+state. Personal reminders and report-required tasks remain blocked pending proper
+privacy/reviewer/media conversion. A Telegram photo reference is not a verified
+local attachment. All original notes and history remain in the private archive.
+**Zero reminder and penalty settings alone are not a shadow isolation mechanism:**
+an open overdue task can still produce an incident when its module is activated.
+The complete shadow runtime must keep all modules/transports/effects off, then
+explicitly review activation. These planners must not be used for partial cutover.

@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.4 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.5 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,8 +33,8 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.4, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only review and disabled-alarm proposals unit-tested | Strict Store-byte decoding, counts-only validation, immutable source/current-member fingerprints, disabled gentle/zero-penalty alarm proposals and private lossless archive; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.5, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores and no-report task proposals; explicit private-reminder/report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
 
@@ -48,6 +48,27 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+Published alpha.5 at `0379cf193a5e9d524d45c0939a794d90d68a39c9`. All seven
+CI jobs passed in `34153790263`, including frontend and actual HA. Tag and GitHub
+asset digest match the `c7f3d586...` runtime recorded below; 175 Chromium cases
+passed locally too. It is still an isolated-evaluation development release.
+
+The next alpha.6 slice joins private task/shopping/court/alarm conversion reviews
+and adds a strict exact-source archive codec. 63 shopping/court tests passed;
+the full suite at that point passed 2876 tests (five skips, 23 subtests). Archive,
+task and joined-review checks subsequently passed 97 tests. AGY delivered task
+files before timing out, but root found a failing preflight test and a lifecycle
+test that exercised a different record than intended. Root corrected them, added
+unhashable-field guards, preserved known lifecycle dates and refused to rewind
+progress recorded after a task became overdue. The full joined suite passed 2973
+Python tests, five host skips and 23 subtests, Ruff/format (392 files), privacy and
+locale checks. Exact runtime ZIP: 207 files, SHA256
+`6550342426637df6cfc6b27d0bfc56f00959af6fbd7df901b62e077b7a48e996`.
+The complete actual-HA suite passed, including the new private archive Store
+roundtrip/source-byte equality/plan reproducibility test. All five offline HACS
+install/failed-update rollback/upgrade phases passed this exact runtime against
+published alpha.3. CI/publication are next. No production data or transport changed.
 
 Published alpha.4: real Qwen3.5-9B synthetic evaluation passed 12 cases
 after reproducing and fixing envelope, command selection, alarm-day and quote

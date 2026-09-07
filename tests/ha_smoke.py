@@ -326,6 +326,9 @@ async def main():
             from ha_model_plan_smoke import verify_model_plan_reload, verify_model_plans
 
             model_plan_expected = await verify_model_plans(hass, entry, user, child_id)
+            from ha_legacy_archive_smoke import verify_legacy_archive
+
+            await verify_legacy_archive(hass)
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(
