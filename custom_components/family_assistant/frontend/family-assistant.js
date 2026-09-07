@@ -22,6 +22,9 @@ import {renderPolls,reconcilePollsRefresh} from "./polls-view.js";
 import {renderPresence,reconcilePresenceRefresh} from "./presence-view.js";
 import {renderDigests,reconcileDigestsRefresh} from "./digests-view.js";
 import {renderMealShopping} from "./meal-shopping-view.js";
+import {renderAvailabilityShell} from "./availability-shell.js";
+import {renderToday} from "./today-view.js";
+import {renderHealth,reconcileHealthRefresh} from "./health-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -278,9 +281,10 @@ export class FamilyCard extends HTMLElement {
       const pollsForce = reconcilePollsRefresh(this,previousData);
       const presenceForce = reconcilePresenceRefresh(this,previousData);
       const digestsForce = reconcileDigestsRefresh(this,previousData);
+      const healthForce = reconcileHealthRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -408,20 +412,35 @@ export class FamilyCard extends HTMLElement {
       if(this._error)body.append(this.button(this.t.retry,()=>this.refresh()));return;
     }
     if(this._error){body.append(this.button(this.t.retry,()=>this.refresh()));return;}
+    if(this._view==="today") {renderToday(this,body);return;}
     this.renderProposals(body);
-    if(this._view==="today") {this.renderToday(body);return;}
-    if(this._view==="health") {this.renderHealth(body);return;}
+    if(this._view==="health") {renderHealth(this,body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
+      if(renderAvailabilityShell(this,body,{module:"school",projection:this._data.school,state:this._data.role==="guest"?"role_unavailable":undefined})){
+        this._schoolDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;return;
+      }
       if(!this._schoolDraft && !this._schoolWorkDraft)renderSchoolReminders(this,body);
       if(!this._schoolDraft && !this._schoolReminderDraft)renderSchoolWork(this,body);
       if(!this._schoolWorkDraft && !this._schoolReminderDraft)renderSchool(this,body);
       return;
     }
-    if(this._view==="maintenance"){renderMaintenance(this,body);return;}
-    if(this._view==="polls"){renderPolls(this,body);return;}
-    if(this._view==="presence"){renderPresence(this,body);return;}
-    if(this._view==="digests"){renderDigests(this,body);return;}
+    if(this._view==="maintenance"){
+      if(renderAvailabilityShell(this,body,{module:"maintenance",projection:this._data.maintenance,state:this._data.role==="guest"?"role_unavailable":undefined})){this._maintenanceDraft=null;return;}
+      renderMaintenance(this,body);return;
+    }
+    if(this._view==="polls"){
+      if(renderAvailabilityShell(this,body,{module:"polls",projection:this._data.polls,state:this._data.role==="guest"?"role_unavailable":undefined})){this._pollsDraft=null;return;}
+      renderPolls(this,body);return;
+    }
+    if(this._view==="presence"){
+      if(renderAvailabilityShell(this,body,{module:"presence",projection:this._data.presence,state:this._data.role==="guest"?"role_unavailable":undefined})){this._presenceDraft=null;return;}
+      renderPresence(this,body);return;
+    }
+    if(this._view==="digests"){
+      if(renderAvailabilityShell(this,body,{module:"digests",projection:this._data.digests,state:this._data.role==="guest"?"role_unavailable":undefined})){this._digestsDraft=null;return;}
+      renderDigests(this,body);return;
+    }
     if(this._view==="meals"){
       if(!this._recipesDraft){renderMeals(this,body);renderMealShopping(this,body);renderDietaryProfiles(this,body);}
       renderRecipes(this,body);return;
@@ -556,47 +575,6 @@ export class FamilyCard extends HTMLElement {
       const actions=el("div",null,"actions");
       actions.append(this.button(this.t.confirmPlan,()=>this.command("conversation.confirm",{id:plan.id}),true),this.button(this.t.rejectPlan,()=>this.command("conversation.reject",{id:plan.id})));
       item.append(actions);section.append(item);
-    }
-  }
-  renderToday(body) {
-    const data=this._data, metrics=el("div",null,"metrics");body.append(metrics);
-    const counts=[
-      [this.t.tasks,data.tasks.filter(t=>!["completed","archived","cancelled"].includes(t.status)).length],
-      [this.t.shopping,data.shopping.filter(i=>["approved","pending"].includes(i.status)).length],
-      [this.t.awaiting,data.tasks.filter(t=>t.status==="submitted").length],
-    ];
-    for(const [label,value] of counts){const metric=el("div",null,"metric");metric.append(el("b",value),el("span",label));metrics.append(metric);}
-    const list=el("ul",null,"list");body.append(list);
-    for(const member of data.members.filter(m=>m.active && (this.parent || m.id===data.actor))){
-      const item=el("li",null,"item row"),title=el("div",member.name,"grow");
-      const balance=data.court.filter(r=>r.member===member.id && r.status==="active").reduce((s,r)=>s+r.points,0);
-      item.append(title,el("strong",String(balance)));list.append(item);
-    }
-    this.renderAlarmRuns(body);
-  }
-  renderHealth(body) {
-    if(!this.parent){body.append(el("div",this.t.parentsOnly,"empty"));return;}
-    for(const [module,status] of Object.entries(this._data.health || {})){
-      body.append(el("div",`${module} · ${this.t[status] || status}`,"item"));
-    }
-    const issues=this._data.delivery_issues || [];
-    if(!issues.length)body.append(el("div",this.t.noDeliveryIssues,"empty"));
-    for(const issue of issues){
-      const item=el("div",null,"item"),actions=el("div",null,"actions");
-      item.append(el("strong",`${issue.key} · ${this.t[issue.state] || issue.state}`));
-      item.append(el("div",new Date(issue.created_at).toLocaleString(this._hass?.language),"sub"));
-      item.append(actions);body.append(item);
-      const review=(retry)=>{
-        const form=el("form");form.append(el("div",retry?this.t.retryWarning:this.t.resolveWarning,"notice"));
-        this.input(form,"reason",this.t.reason);
-        if(retry){const wrap=el("label",this.t.retryConsent),checkbox=el("input");checkbox.type="checkbox";checkbox.name="confirmed";checkbox.required=true;wrap.append(checkbox);form.append(wrap);}
-        const save=el("button",this.t.save,"primary");save.type="submit";form.append(save);
-        form.addEventListener("submit",e=>{e.preventDefault();const values=Object.fromEntries(new FormData(form));this.command(retry?"notifications.retry":"notifications.resolve",{id:issue.id,reason:values.reason,...(retry?{confirmed:values.confirmed==="on"}:{})});});
-        actions.replaceChildren(form);
-      };
-      if(["uncertain","failed"].includes(issue.state)){
-        actions.append(this.button(this.t.retryDelivery,()=>review(true)),this.button(this.t.resolveDelivery,()=>review(false)));
-      }else item.append(el("div",this.t.channelHint,"sub"));
     }
   }
   renderAlarmRuns(body) {

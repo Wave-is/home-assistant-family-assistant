@@ -165,7 +165,7 @@ test("child does not see private network inventory",async({page})=>{
 
 test("model interpretation stays unexecuted until the user's confirmation",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await page.goto("/tests/fixtures/dashboard.html?view=today&lang=ru&proposal=1");
+ await page.goto("/tests/fixtures/dashboard.html?view=conversation&lang=ru&proposal=1");
  await expect(page.getByRole("heading",{name:"Проверьте, правильно ли я понял"})).toBeVisible();
  expect(await page.evaluate(()=>window.calls.length)).toBe(0);
  await page.screenshot({path:"test-results/proposal-mobile-ru.png",fullPage:true});

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant health view fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 620px;
+        margin: 0 auto;
+      }
+      .health-view,
+      .health-components,
+      .health-deliveries,
+      .health-review {
+        display: grid;
+        gap: 12px;
+      }
+      .health-view h3,
+      .health-view p {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+      import { renderHealth } from "/custom_components/family_assistant/frontend/health-view.js";
+
+      const params = new URLSearchParams(location.search);
+      const language = params.get("lang") || "en";
+      const role = params.get("role") || "owner";
+      const actor = role === "parent" ? "parent" : role;
+      const data = {
+        revision: 1,
+        actor,
+        role,
+        settings: { name: "Example family", modules: [], timezone: "Europe/Kyiv" },
+        members: [
+          { id: actor, name: "PRIVATE_NAME_CANARY", role, active: true, revision: 7 },
+        ],
+        health: {
+          digests: "digest_retention_attention",
+          scheduler: "scheduler_failed",
+          PRIVATE_MODULE_CANARY: "PRIVATE_STATUS_CANARY",
+        },
+        delivery_issues: [
+          {
+            id: "PRIVATE_EVENT_ID_CANARY",
+            recipient: "PRIVATE_RECIPIENT_CANARY",
+            key: "task_reminder",
+            state: "uncertain",
+            attempts: 2,
+            created_at: "2026-09-07T12:30:00+00:00",
+          },
+        ],
+      };
+      const card = (window.card = document.createElement("family-health-card"));
+      card.setConfig({ view: "health", language, entry_id: "entry-1" });
+      card._data = data;
+      window.calls = [];
+      card._hass = {
+        language,
+        user: { id: "fixture-user" },
+        callWS: async (request) => {
+          if (request.type === "family_assistant/execute") {
+            window.calls.push(structuredClone(request));
+            return { id: request.payload.id, state: "pending", reason: request.payload.reason };
+          }
+          return structuredClone(data);
+        },
+      };
+      document.querySelector("main").append(card);
+      card.render();
+      const body = card.shadowRoot.querySelector(".body");
+      body.replaceChildren();
+      renderHealth(card, body);
+      window.ready = Promise.resolve();
+    </script>
+  </body>
+</html>

@@ -19,6 +19,8 @@ court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помо
 data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
 data.shopping_series=[];
 data.members[0].role="owner";data.members[1].role="child";
+data.members.forEach(member=>member.revision=1);
+data.settings.timezone="Europe/Berlin";
 if(query.has("taskedit")) {
  data.settings.timezone="Europe/Berlin";
  Object.assign(data.tasks[0],{creator:"owner",report_type:"text",report:null,checklist:[{text:{ru:"Проверить почву",uk:"Перевірити ґрунт",en:"Check soil"}[language],done:false}],deadline_policy:{reminder_minutes:60,grace_minutes:30,penalty:0}});

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant availability shell fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 620px;
+        margin: 0 auto;
+      }
+      .availability-shell {
+        display: grid;
+        gap: 8px;
+        padding: 20px;
+      }
+      .availability-shell h3,
+      .availability-shell p {
+        margin: 0;
+      }
+      .availability-retry {
+        justify-self: start;
+        min-height: 44px;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search);
+      const language = params.get("lang") || "en";
+      const card = (window.card = document.createElement("family-polls-card"));
+      card.setConfig({ view: "polls", language, entry_id: "entry-1" });
+      document.querySelector("main").append(card);
+
+      const data = (state) => ({
+        revision: 1,
+        actor: state === "role_unavailable" ? "guest" : "parent",
+        role: state === "role_unavailable" ? "guest" : "parent",
+        settings: {
+          name: "Example family",
+          modules: state === "module_disabled" ? [] : ["polls"],
+          timezone: "UTC",
+        },
+        members: [
+          {
+            id: state === "role_unavailable" ? "guest" : "parent",
+            name: state === "role_unavailable" ? "Guest" : "Parent",
+            role: state === "role_unavailable" ? "guest" : "parent",
+            active: true,
+            revision: 1,
+          },
+        ],
+        private_payload: "PRIVATE_PAYLOAD_CANARY",
+        ...(state === "available"
+          ? { polls: { open: [], closed: [], archived: [] } }
+          : state === "role_unavailable"
+            ? { polls: { private: "PRIVATE_PROJECTION_CANARY" } }
+            : {}),
+      });
+
+      let current = params.get("state") || "role_unavailable";
+      card._hass = {
+        language,
+        user: { id: "fixture-user" },
+        callWS: async () => structuredClone(data(current)),
+      };
+
+      window.transition = async (state, draft = false) => {
+        current = state;
+        if (draft) card._pollsDraft = { private: "PRIVATE_DRAFT_CANARY" };
+        await card.refresh();
+      };
+      window.ready = card.refresh();
+    </script>
+  </body>
+</html>

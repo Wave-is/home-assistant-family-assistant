@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant Today fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search);
+      const language = params.get("lang") || "en";
+      const actorIds = {
+        parent: "parent-1",
+        adult: "adult-1",
+        child: "child-1",
+        guest: "guest-1",
+      };
+      const now = Date.now();
+      const iso = (hours) =>
+        new Date(now + hours * 60 * 60 * 1000).toISOString();
+      const local = (hours) => {
+        const value = new Date(now + hours * 60 * 60 * 1000);
+        return {
+          date: value.toISOString().slice(0, 10),
+          time: value.toISOString().slice(11, 16),
+        };
+      };
+      const lesson = local(3);
+      const alarm = local(4);
+      const alarmDay =
+        (new Date(`${alarm.date}T12:00:00Z`).getUTCDay() + 6) % 7;
+      const fixture = (window.fixture = {
+        actor: actorIds[params.get("actor")] || "parent-1",
+        revision: 1,
+        modules: [
+          "tasks",
+          "shopping",
+          "calendar",
+          "school",
+          "alarms",
+          "routines",
+          "presence",
+          "court",
+        ],
+        members: [
+          {
+            id: "parent-1",
+            name: "Morgan",
+            role: "parent",
+            active: true,
+            revision: 4,
+          },
+          {
+            id: "adult-1",
+            name: "Taylor",
+            role: "adult",
+            active: true,
+            revision: 3,
+          },
+          {
+            id: "child-1",
+            name: "Sam",
+            role: "child",
+            active: true,
+            revision: 7,
+          },
+          {
+            id: "guest-1",
+            name: "Guest",
+            role: "guest",
+            active: true,
+            revision: 2,
+          },
+        ],
+        // These canaries model data excluded by each existing projection.
+        raw: {
+          taskReport: "PRIVATE-TASK-REPORT",
+          media: "PRIVATE-MEDIA-ID",
+          room: "PRIVATE-SCHOOL-ROOM",
+          materials: "PRIVATE-SCHOOL-MATERIAL",
+          challenge: "PRIVATE-ALARM-CHALLENGE",
+          nonce: "PRIVATE-ROUTINE-NONCE",
+          coordinate: "PRIVATE-PRESENCE-COORDINATE",
+          healthCode: "PRIVATE-HEALTH-CODE",
+          deliveryRecipient: "PRIVATE-DELIVERY-RECIPIENT",
+        },
+        dates: { lesson, alarm, alarmDay },
+      });
+
+      const member = (id) => fixture.members.find((item) => item.id === id);
+      const base = () => ({
+        revision: fixture.revision,
+        actor: fixture.actor,
+        role: member(fixture.actor)?.role,
+        settings: {
+          name: "Example family",
+          timezone: "UTC",
+          modules: structuredClone(fixture.modules),
+        },
+        members: structuredClone(fixture.members),
+      });
+      window.project = () => {
+        const data = base();
+        if (data.role === "guest") return data;
+        if (fixture.modules.includes("tasks")) {
+          data.tasks = [
+            ...(["parent", "child"].includes(data.role)
+              ? [
+                  {
+                    id: "T1",
+                    title: "Pack school folder",
+                    assignee: "child-1",
+                    status: "assigned",
+                    due_at: iso(-2),
+                  },
+                ]
+              : []),
+            {
+              id: "T2",
+              title: "Water plants",
+              assignee: fixture.actor,
+              status: "in_progress",
+              due_at: iso(2),
+            },
+          ];
+          if (data.role === "parent")
+            data.tasks.push({
+              id: "T3",
+              title: "Check homework report",
+              assignee: "child-1",
+              status: "submitted",
+              due_at: iso(1),
+            });
+        }
+        if (fixture.modules.includes("shopping"))
+          data.shopping = [
+            { id: "S1", name: "Milk", status: "approved" },
+            { id: "S2", name: "Paint", status: "approved" },
+            ...(data.role === "parent"
+              ? [{ id: "S3", name: "Notebook", status: "pending" }]
+              : []),
+          ];
+        if (fixture.modules.includes("calendar"))
+          data.calendar = {
+            config: {},
+            events:
+              data.role === "parent"
+                ? [
+                    {
+                      id: "E1",
+                      title: "Private pending title not shown",
+                      status: "tentative",
+                      archived: false,
+                    },
+                  ]
+                : [],
+            occurrences: [
+              {
+                id: "EO1",
+                title: "Music lesson",
+                start: iso(2.5),
+                all_day: false,
+              },
+            ],
+          };
+        if (
+          fixture.modules.includes("school") &&
+          ["parent", "child"].includes(data.role)
+        )
+          data.school = {
+            upcoming: [
+              {
+                id: "ST1",
+                timetable_id: "ST-private",
+                member: "child-1",
+                date: lesson.date,
+                start: lesson.time,
+                end: "23:59",
+                subject: "Mathematics",
+              },
+            ],
+          };
+        if (fixture.modules.includes("alarms")) {
+          data.alarms = [
+            {
+              id: "A1",
+              member: fixture.actor,
+              name: "Morning alarm",
+              enabled: true,
+              time: alarm.time,
+              days: [alarmDay],
+              timezone: "UTC",
+              exceptions: [],
+            },
+          ];
+          data.alarm_runs = [
+            { id: "AR1", member: fixture.actor, stage: "waiting_second" },
+          ];
+        }
+        if (fixture.modules.includes("routines"))
+          data.routines = {
+            templates: [],
+            presets: [],
+            config: {},
+            runs: [
+              {
+                id: "RR1",
+                member: fixture.actor,
+                title: "Morning routine",
+                status: "active",
+              },
+            ],
+          };
+        if (fixture.modules.includes("presence"))
+          data.presence = {
+            self: {
+              member: fixture.actor,
+              member_revision: member(fixture.actor).revision,
+              binding_revision: 1,
+              subscription_revision: 1,
+              enabled: true,
+              can_edit: true,
+              status: "reported_home",
+              reason: "fresh",
+              observed_at: iso(-0.25),
+            },
+            shared:
+              data.role === "parent"
+                ? [
+                    {
+                      member: "adult-1",
+                      member_revision: 3,
+                      status: "reported_away",
+                      reason: "fresh",
+                      observed_at: iso(-0.5),
+                    },
+                  ]
+                : [],
+          };
+        if (fixture.modules.includes("court"))
+          data.court = [
+            {
+              id: "C1",
+              member: data.role === "parent" ? "child-1" : fixture.actor,
+              points: 5,
+              status: "active",
+            },
+            {
+              id: "C2",
+              member: data.role === "parent" ? "child-1" : fixture.actor,
+              points: -2,
+              status: "active",
+            },
+          ];
+        if (data.role === "parent") {
+          data.health = { telegram: "attention", backup: "attention" };
+          data.delivery_issues = [{ id: "D1", state: "pending" }];
+        }
+        return data;
+      };
+
+      window.calls = [];
+      const card = (window.card = document.createElement(
+        "family-assistant-card",
+      ));
+      card.setConfig({
+        type: "custom:family-assistant-card",
+        entry_id: "synthetic-today",
+        view: "today",
+        language,
+      });
+      card.hass = {
+        language,
+        callWS: async (message) => {
+          window.calls.push(structuredClone(message));
+          if (message.type === "family_assistant/view") return window.project();
+          throw Object.assign(new Error("unexpected request"), {
+            code: "unknown_action",
+          });
+        },
+      };
+      document.querySelector("main").append(card);
+
+      window.setRole = async (role) => {
+        fixture.actor = actorIds[role];
+        fixture.revision += 1;
+        await card.refresh();
+      };
+      window.disableModule = async (module) => {
+        fixture.modules = fixture.modules.filter((item) => item !== module);
+        fixture.revision += 1;
+        await card.refresh();
+      };
+    </script>
+  </body>
+</html>

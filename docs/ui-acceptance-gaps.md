@@ -49,6 +49,23 @@ skips), the complete actual-HA suite, Ruff, locale parity and privacy scanning.
 
 ## Live acceptance gates, not implementation defects
 
+UI checkpoint after the original audit: the five dedicated unavailable bodies
+now explain module/role availability without private record detail. Today is a
+bounded, display-only role-aware overview of projected deadlines, reviews,
+calendar/school/alarm agenda, shopping, runs, normalized presence, balances and
+attention counts. Health uses localized labels, generic unknown-code fallbacks,
+current-authority notification review and focused-form revocation. Healthy
+connections do not inflate attention. Original rows above remain audit history;
+their implemented portions are closed, while focus preservation, complete
+editors, onboarding, richer consequences and packaged/live acceptance remain.
+
+Root verification: 365 Node tests, 143 Chromium scenarios, 2092 Python tests
+(three host skips, 23 subtests), complete actual-HA suite, Ruff/locales/privacy.
+Root visually inspected EN parent Today, RU child Today, UK unavailable state
+and RU Health. A narrow Health timestamp layout issue found in screenshots was
+fixed and rerun with three Chromium and 31 focused Node tests. This is not a
+production migration or public release.
+
 The following remain release gates even after the UI gaps above are fixed:
 
 - install, upgrade, cache refresh, multi-entry unload/reload, and card discovery

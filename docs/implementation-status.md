@@ -49,6 +49,16 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
+Dashboard checkpoint: Today now presents bounded current role-projected tasks,
+reviews, agenda, shopping, routines/alarms, presence, balances and attention.
+Health labels are localized and unknown codes stay generic; notification review
+checks current authority and refresh clears focused private forms after revocation.
+Five dedicated cards explain unavailable states. Root verified 365 Node,
+143 Chromium and the complete actual-HA suite alongside 2092 Python tests
+(three host skips, 23 subtests), Ruff/format/locales/privacy. A visual Health
+timestamp fix additionally passed three Chromium/31 focused Node checks.
+Further focus, editors, onboarding and packaged/live acceptance remain open.
+
 Private digest acceptance adds a named owner policy review and independent member
 self-subscriptions, a seventeenth localized card and explicit-only authenticated
 preview. Content is rebuilt under current authority immediately before private
