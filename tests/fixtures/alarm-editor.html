@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant alarm editor fixture</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #eef3f7; font-family: Arial,sans-serif; }
+      main { max-width: 680px; margin: 0 auto; }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const query = new URLSearchParams(location.search);
+      const language = query.get("lang") || "en";
+      const requestedRole = query.get("role") || "parent";
+      const actor = requestedRole === "owner" ? "owner" : requestedRole === "child" ? "child" : "parent";
+      window.fixture = {
+        revision: 1,
+        actor,
+        role: requestedRole,
+        settings: { name: "Example family", timezone: "Europe/Kyiv", modules: ["alarms"] },
+        members: [
+          { id: "owner", name: "Alex", role: "owner", active: true, revision: 2 },
+          { id: "parent", name: "Morgan", role: "parent", active: true, revision: 4 },
+          { id: "child", name: "Sam", role: "child", active: true, revision: 7 },
+        ],
+        alarms: [{
+          id: "A000001", revision: 3, member: "child", name: "School days",
+          time: "07:15", timezone: "Europe/Kyiv", days: [0,1,2,3,4], enabled: true,
+          exceptions: ["2026-09-14"], second_min: 10, second_max: 16,
+          profile: "strict", recheck_grace: 45, penalty: -2,
+        }],
+        alarm_runs: [],
+      };
+      const projection = () => structuredClone(window.fixture);
+      const receipts = new Map();
+      window.calls = [];
+      window.failMode = null;
+      const conflict = () => { throw Object.assign(new Error("conflict"), { code: "conflict" }); };
+      const execute = (message) => {
+        window.calls.push(structuredClone(message));
+        if (message.action !== "alarms.save") conflict();
+        if (!window.fixture.settings.modules.includes("alarms") || !["owner","parent"].includes(window.fixture.role)) conflict();
+        if (receipts.has(message.operation_id)) return structuredClone(receipts.get(message.operation_id));
+        const payload = message.payload;
+        const editing = Object.hasOwn(payload, "id");
+        const expected = ["days","enabled","exceptions","member","name","penalty","profile","recheck_grace","second_max","second_min","time","timezone",...(editing?["id","revision"]:[])].sort();
+        if (JSON.stringify(Object.keys(payload).sort()) !== JSON.stringify(expected)) conflict();
+        const member = window.fixture.members.find((item) => item.id === payload.member);
+        if (!member?.active || member.role === "guest") conflict();
+        let current = null;
+        if (editing) {
+          current = window.fixture.alarms.find((item) => item.id === payload.id);
+          if (!current || current.revision !== payload.revision) conflict();
+        }
+        if (window.failMode === "before") {
+          window.failMode = null;
+          throw Object.assign(new Error("transport"), { code: "transport_error" });
+        }
+        const id = current?.id || `A${String(window.fixture.alarms.length + 1).padStart(6,"0")}`;
+        const revision = current ? current.revision + 1 : 1;
+        const saved = { ...structuredClone(payload), id, revision };
+        if (editing) window.fixture.alarms.splice(window.fixture.alarms.indexOf(current), 1, saved);
+        else window.fixture.alarms.push(saved);
+        window.fixture.revision += 1;
+        const receipt = structuredClone(saved);
+        receipts.set(message.operation_id, receipt);
+        if (window.failMode === "after") {
+          window.failMode = null;
+          throw Object.assign(new Error("lost"), { code: "response_lost" });
+        }
+        return receipt;
+      };
+
+      const card = window.card = document.createElement("family-alarms-card");
+      document.querySelector("main").append(card);
+      card.setConfig({ type: "custom:family-alarms-card", entry_id: "synthetic-alarm-editor", language });
+      card.hass = {
+        language,
+        config: { time_zone: "Europe/Kyiv" },
+        callWS: async (message) => {
+          if (message.type === "family_assistant/view") return projection();
+          if (message.type === "family_assistant/execute") return execute(message);
+          throw Object.assign(new Error("unknown"), { code: "unknown_action" });
+        },
+      };
+    </script>
+  </body>
+</html>

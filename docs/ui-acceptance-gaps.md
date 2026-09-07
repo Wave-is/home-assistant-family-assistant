@@ -49,6 +49,18 @@ skips), the complete actual-HA suite, Ruff, locale parity and privacy scanning.
 
 ## Live acceptance gates, not implementation defects
 
+Further checkpoint: passive refresh restores uniquely identified controls and
+disclosures only within unchanged entry/user/actor/revision/module scope, and
+never reclaims focus moved outside the card. Disclosure restoration does not
+masquerade as a user toggle. The full alarm editor replaces the former reduced
+creation path and includes days, exceptions, second-check range, grace and
+penalty, with named review and exact response-loss retry. Existing explicit
+physical-test confirmation remains separate. Root verified 386 Node and 152
+Chromium tests, then 31 focused Chromium tests after removing the obsolete form;
+the full actual-HA suite also passed the exact staged source. RU mobile review
+was visually inspected. Task-series editing and broader screen-reader/busy
+semantics remain open; this does not close every original focus/editor finding.
+
 UI checkpoint after the original audit: the five dedicated unavailable bodies
 now explain module/role availability without private record detail. Today is a
 bounded, display-only role-aware overview of projected deadlines, reviews,

@@ -49,6 +49,15 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
+The complete alarm schedule editor now supports all existing save fields with
+named review, current actor/member/source guards and immutable response-loss
+retry. The old reduced alarm form is removed. Shared passive-refresh focus and
+disclosure restoration fails closed on authority/scope drift and respects user
+focus movement. Root verified 386 Node and 152 Chromium scenarios, a subsequent
+31-scenario focused Chromium pass, and the full actual-HA suite on exact staged
+source; the RU mobile alarm review was visually checked. This does not certify
+physical audibility or atomically pin target member epochs in `alarms.save`.
+
 The owner-only guided Options summary is localized, same-entry, resumable and
 read-only until a separate existing settings form is submitted. Actual HA
 verified unchanged Engine, Options, modification time and runtime on open/finish;

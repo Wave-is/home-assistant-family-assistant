@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant focus refresh fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+      }
+      #outside {
+        margin-block-end: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <label>Outside the card <input id="outside" /></label>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search);
+      const view = params.get("view") === "polls" ? "polls" : "tasks";
+      const fixture = (window.fixture = {
+        revision: 14,
+        actor: view === "polls" ? "adult-1" : "parent-1",
+        role: view === "polls" ? "adult" : "parent",
+        modules: [view],
+        members: [
+          {
+            id: "parent-1",
+            name: "Parent One",
+            role: "parent",
+            active: true,
+            revision: 4,
+          },
+          {
+            id: "adult-1",
+            name: "Adult One",
+            role: "adult",
+            active: true,
+            revision: 3,
+          },
+          {
+            id: "child-1",
+            name: "Child One",
+            role: "child",
+            active: true,
+            revision: 7,
+          },
+        ],
+      });
+
+      window.project = () => {
+        const data = {
+          revision: fixture.revision,
+          actor: fixture.actor,
+          role: fixture.role,
+          settings: {
+            name: "Keyboard family",
+            timezone: "UTC",
+            modules: structuredClone(fixture.modules),
+          },
+          members: structuredClone(fixture.members),
+        };
+        if (view === "tasks") {
+          data.tasks = [];
+          data.task_series = [];
+        } else if (
+          fixture.modules.includes("polls") &&
+          fixture.role !== "guest"
+        ) {
+          data.polls = {
+            open: [
+              {
+                id: "PL000001",
+                revision: 1,
+                definition_revision: 1,
+                status: "open",
+                question: "Weekend plan?",
+                options: [
+                  { id: "O1", label: "Garden" },
+                  { id: "O2", label: "Museum" },
+                ],
+                closes_at: "2030-09-08T18:00:00+00:00",
+                ballot_mode: "private_mapping",
+                eligible_count: 2,
+                can_vote: true,
+                own_ballot: null,
+              },
+            ],
+            closed: [],
+            archived: [],
+          };
+        }
+        return data;
+      };
+
+      window.calls = [];
+      let deferred = null;
+      window.deferNextView = () => {
+        if (deferred) throw new Error("view already deferred");
+        let resolve;
+        const promise = new Promise((done) => {
+          resolve = done;
+        });
+        deferred = { promise, resolve };
+      };
+      window.releaseView = () => {
+        const current = deferred;
+        if (!current) throw new Error("no deferred view");
+        current.resolve();
+      };
+
+      const tag = view === "polls" ? "family-polls-card" : "family-tasks-card";
+      const card = (window.card = document.createElement(tag));
+      card.setConfig({
+        type: `custom:${tag}`,
+        entry_id: "synthetic-focus",
+        language: "en",
+      });
+      card.hass = {
+        language: "en",
+        user: { id: "ha-user-1" },
+        callWS: async (message) => {
+          window.calls.push(structuredClone(message));
+          if (message.type !== "family_assistant/view")
+            throw Object.assign(new Error("unexpected request"), {
+              code: "unknown_action",
+            });
+          if (deferred) {
+            const current = deferred;
+            await current.promise;
+            if (deferred === current) deferred = null;
+          }
+          return window.project();
+        },
+      };
+      document.querySelector("main").append(card);
+
+      window.refreshDone = async () => {
+        await card.refresh();
+      };
+      window.revoke = (kind) => {
+        if (kind === "module") fixture.modules = [];
+        if (kind === "role") {
+          fixture.actor = "child-1";
+          fixture.role = "child";
+        }
+        if (kind === "revision") fixture.revision += 1;
+      };
+    </script>
+  </body>
+</html>

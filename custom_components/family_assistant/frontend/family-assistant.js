@@ -25,6 +25,8 @@ import {renderMealShopping} from "./meal-shopping-view.js";
 import {renderAvailabilityShell} from "./availability-shell.js";
 import {renderToday} from "./today-view.js";
 import {renderHealth,reconcileHealthRefresh} from "./health-view.js";
+import {captureFocusRefresh,renderWithFocusRefresh} from "./focus-refresh.js";
+import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditorRefresh} from "./alarm-editor.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -230,7 +232,7 @@ export class FamilyCard extends HTMLElement {
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
-    this._taskItemAction=null;this._taskCreateDraft=null;
+    this._taskItemAction=null;this._taskCreateDraft=null;this._alarmEditorDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;this._pollsDraft=null;this._presenceDraft=null;this._digestsDraft=null;
@@ -260,6 +262,7 @@ export class FamilyCard extends HTMLElement {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
     const generation = this._generation;
+    const focusSnapshot = captureFocusRefresh(this);
     try {
       if (!this._entry) {
         const entries = await this._hass.callWS({type:"family_assistant/households"});
@@ -282,9 +285,10 @@ export class FamilyCard extends HTMLElement {
       const presenceForce = reconcilePresenceRefresh(this,previousData);
       const digestsForce = reconcileDigestsRefresh(this,previousData);
       const healthForce = reconcileHealthRefresh(this,previousData);
+      const alarmEditorForce = reconcileAlarmEditorRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -327,17 +331,6 @@ export class FamilyCard extends HTMLElement {
       const fields=el("div",null,"fields");form.append(fields);
       const amount=this.input(fields,"quantity",this.t.amount,"number","1");amount.min="0.001";amount.step="any";
       this.input(fields,"unit",this.t.unit,"text","",false).placeholder=this.t.unitPlaceholder;
-    } else if(this._view==="alarms") {
-      this.memberSelect(form);
-      this.input(form,"name",this.t.name,"text","",false);
-      this.input(form,"time",this.t.alarmTime,"time","07:30");
-      this.input(form,"timezone",this.t.timezone,"text",this._hass?.config?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-      const wrap=el("label",this.t.days),days=el("select");days.name="days";
-      for(const [value,label] of [["weekdays",this.t.weekdays],["weekends",this.t.weekends],["everyday",this.t.everyday]]){const option=el("option",label);option.value=value;days.append(option);}wrap.append(days);form.append(wrap);
-      const profiles=el("label",this.t.profile),select=el("select");select.name="profile";
-      for(const value of ["gentle","strict"]){const option=el("option",this.t[value]);option.value=value;select.append(option);}profiles.append(select);form.append(profiles);
-      const penalty=this.input(form,"penalty",this.t.alarmPenalty,"number","0");penalty.min="-10";penalty.max="0";penalty.step="1";
-      form.append(el("div",this.t.alarmDeviceHint,"sub"));
     } else if(this._view==="court") {
       this.memberSelect(form);
       const points=this.input(form,"points",this.t.points,"number","1");points.min="-100";points.max="100";points.step="1";
@@ -348,7 +341,6 @@ export class FamilyCard extends HTMLElement {
       event.preventDefault();const values=Object.fromEntries(new FormData(form));
       if(this._view==="shopping") this.command("shopping.add",{...values,quantity:Number(values.quantity)});
       if(this._view==="court") this.command("court.award",{member:values.assignee,points:Number(values.points),reason:values.reason});
-      if(this._view==="alarms") this.command("alarms.save",{member:values.assignee,name:values.name,time:values.time,timezone:values.timezone,days:values.days==="weekdays"?[0,1,2,3,4]:values.days==="weekends"?[5,6]:[0,1,2,3,4,5,6],profile:values.profile,penalty:Number(values.penalty)});
     });return form;
   }
   deadlinePolicy(form){
@@ -451,11 +443,17 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="court"){renderCourt(this,body);renderRewards(this,body);return;}
     if(this._view==="calendar"){renderCalendar(this,body);return;}
     if(this._view==="pantry"){renderPantry(this,body);return;}
-    if(this._view==="alarms")this.renderAlarmRuns(body);
+    if(this._view==="alarms"){
+      this.renderAlarmRuns(body);
+      if(renderAlarmEditor(this,body))return;
+    }
     if(this._view==="tasks")this.renderSeries(body);
     if(this._view==="shopping")renderShoppingSeries(this,body);
     const toolbar=el("div",null,"toolbar");toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
-    if(this._data.role!=="guest" && (!["court","alarms"].includes(this._view) || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
+    if(this._view==="alarms" && this.parent){
+      const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
+      toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
+    } else if(this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
     body.append(toolbar);if(this._form)body.append(this.form());
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);
@@ -614,6 +612,8 @@ export class FamilyCard extends HTMLElement {
     row.append(meta);const actions=el("div",null,"actions");row.append(actions);
     const command=(action,extra={})=>this.command(action,{id:item.id,revision:item.revision,...extra});
     if(this._view==="alarms" && this.parent){
+      const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
+      actions.append(this.button(copy.edit,()=>openAlarmEditor(this,item)));
       actions.append(this.button(item.enabled?this.t.disable:this.t.enable,()=>command("alarms.enable",{enabled:!item.enabled})));
       actions.append(this.button(this.t.testAlarm,()=>{
         const confirm=el("div",this.t.testAlarmWarning,"notice");
