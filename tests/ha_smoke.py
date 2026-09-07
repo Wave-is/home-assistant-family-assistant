@@ -336,6 +336,12 @@ async def main():
 
             personal_id = await verify_personal_tasks(hass, entry, user, child_id)
             personal_before_reload = entry.runtime_data.engine.snapshot()["tasks"][personal_id]
+            text_history_before_reload = {
+                key: task
+                for key, task in entry.runtime_data.engine.snapshot()["tasks"].items()
+                if task.get("report_type") == "text" and task.get("previous_reports")
+            }
+            assert text_history_before_reload
             # Reload reads the same Store; HACS code updates do not replace it.
             members_before_reload = entry.runtime_data.engine.snapshot()["members"]
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
@@ -345,6 +351,8 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
+            for key, task in text_history_before_reload.items():
+                assert entry.runtime_data.engine.snapshot()["tasks"][key] == task
             assert (
                 entry.runtime_data.engine.snapshot()["tasks"][personal_id] == personal_before_reload
             )
@@ -743,6 +751,11 @@ async def verify_task_controls(hass, entry, owner, child_id):
                         "report": "Synthetic corrected report",
                     },
                 )
+                assert item["report"] == "Synthetic corrected report"
+                assert "review_note" not in item
+                assert item["previous_reports"][0]["report"] == "Synthetic first report"
+                assert item["previous_reports"][0]["review_note"] == "Synthetic review note"
+                assert item["previous_reports"][0]["submitted_at"] <= item["submitted_at"]
                 item = await command("complete", {"id": item["id"], "revision": item["revision"]})
                 assert item["status"] == "completed" and item["checklist"][0]["done"]
     finally:

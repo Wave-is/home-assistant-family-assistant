@@ -337,10 +337,13 @@ def test_report_required_task_blocked_with_task_report_review_required(report_ty
     _, plan = plan_for(*args)
     assert plan.summary()["record_proposals_count"] == 0
     assert plan.summary()["blocked_items_count"] == 1
-    assert plan.summary()["issues"] == [{"code": "task_report_review_required", "count": 1}]
-    assert plan.private_data()["blocked"] == [
-        {"source_task": "T000001", "code": "task_report_review_required"}
-    ]
+    code = (
+        "task_report_identity_review_required"
+        if report_type == "text"
+        else "task_report_review_required"
+    )
+    assert plan.summary()["issues"] == [{"code": code, "count": 1}]
+    assert plan.private_data()["blocked"] == [{"source_task": "T000001", "code": code}]
 
 
 def test_task_with_reviewer_blocked_with_task_report_review_required():
@@ -387,7 +390,7 @@ def test_title_validation(title):
         from custom_components.family_assistant.migration.task_plan import _record
 
         with pytest.raises(TaskPlanError, match="^task_title_unsupported$"):
-            _record(args[0]["tasks"]["T000001"], args[2])
+            _record(args[0]["tasks"]["T000001"], args[2], args[0]["history"], args[3]["members"])
 
 
 def test_lossless_archive_preserves_every_task_reminder_and_history():

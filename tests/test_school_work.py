@@ -432,6 +432,8 @@ def test_epoch_refresh_archives_parent_only_report_and_resets_current_state(engi
             "report": "PRIVATE OLD REPORT",
             "review_note": "PRIVATE REVIEW NOTE",
             "reassigned_at": (now + timedelta(minutes=1)).isoformat(),
+            "assignee_revision": 1,
+            "submitted_at": now.isoformat(),
         }
     ]
     assert "previous_reports" not in task_access.public_task(task, parent=False)

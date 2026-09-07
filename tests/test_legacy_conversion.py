@@ -26,15 +26,15 @@ def test_all_buckets_joined_with_personal_record_and_single_archive():
     summary, private = result.summary(), result.private_data()
     assert set(summary["modules"]) == {"alarms", "tasks", "shopping", "court"}
     assert summary["blocked_records_count"] == 0
-    assert (
-        summary["source_counts"]["tasks"]
-        == summary["source_counts"]["reminders"]
-        == summary["source_counts"]["shopping"]
-        == 1
-    )
+    assert summary["source_counts"]["tasks"] == 2
+    assert summary["source_counts"]["reminders"] == summary["source_counts"]["shopping"] == 1
     assert summary["coherence_verified"] is summary["import_available"] is False
     assert private["plans"]["tasks"]["blocked"] == []
     assert private["plans"]["tasks"]["proposals"][1]["record"]["delivery_scope"] == "personal"
+    assert (
+        private["plans"]["tasks"]["proposals"][2]["record"]["previous_reports"][0]["report"]
+        == "Fictional first report"
+    )
     assert all("archive" not in plan for plan in private["plans"].values())
     assert private["plans"]["alarms"]["proposals"][0]["payload"]["enabled"] is False
     restored = decode_private_review(result.private_archive_bytes(), members=members)

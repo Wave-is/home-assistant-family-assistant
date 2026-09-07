@@ -59,7 +59,74 @@ def synthetic_source():
         ledger["history"].append(
             {"sequence": sequence, "task_id": identifier, "actor": "old-parent", "at": stamp}
         )
-    ledger.update(next_task_sequence=4, next_event_sequence=4)
+    ledger["tasks"]["T000004"] = {
+        "task_id": "T000004",
+        "kind": "task",
+        "state": "submitted",
+        "title": "Fictional reviewed text task",
+        "creator": "old-parent",
+        "assignee": "old-child",
+        "reviewer": "old-parent",
+        "created_at": stamp,
+        "due_at": "2026-09-10T08:00:00+00:00",
+        "requires_report": True,
+        "report_type": "text",
+        "last_note": "Fictional corrected report",
+        "submitted_at": "2026-09-07T08:03:00+00:00",
+        "metadata": {},
+    }
+    for sequence, kind, actor, before, after, details in [
+        (
+            4,
+            "created",
+            "old-parent",
+            None,
+            "assigned",
+            {
+                "assignee": "old-child",
+                "reviewer": "old-parent",
+                "requires_report": True,
+                "report_type": "text",
+            },
+        ),
+        (
+            5,
+            "submitted",
+            "old-child",
+            "assigned",
+            "submitted",
+            {"report": "Fictional first report"},
+        ),
+        (
+            6,
+            "changes_requested",
+            "old-parent",
+            "submitted",
+            "needs_changes",
+            {"note": "Fictional review feedback"},
+        ),
+        (
+            7,
+            "submitted",
+            "old-child",
+            "needs_changes",
+            "submitted",
+            {"report": "Fictional corrected report"},
+        ),
+    ]:
+        ledger["history"].append(
+            {
+                "sequence": sequence,
+                "task_id": "T000004",
+                "type": kind,
+                "actor": actor,
+                "at": f"2026-09-07T08:0{sequence - 4}:00+00:00",
+                "from_state": before,
+                "to_state": after,
+                "details": details,
+            }
+        )
+    ledger.update(next_task_sequence=5, next_event_sequence=8)
     court = {
         "schema_version": 1,
         "week_id": "source-period",
@@ -141,9 +208,14 @@ async def verify_legacy_archive(hass):
     assert restored.summary() == review.summary()
     assert proposals(restored, members) == expected
     assert expected[0]["proposals"][0]["payload"]["enabled"] is False
-    assert len(expected[3]["proposals"]) == 2
+    assert len(expected[3]["proposals"]) == 3
     assert expected[3]["blocked"] == []
     assert expected[3]["proposals"][1]["record"]["delivery_scope"] == "personal"
+    text_report = expected[3]["proposals"][2]["record"]
+    assert text_report["report"] == "Fictional corrected report"
+    assert text_report["previous_reports"][0]["report"] == "Fictional first report"
+    assert text_report["previous_reports"][0]["review_note"] == "Fictional review feedback"
+    assert "review_note" not in text_report
     changed = deepcopy(members)
     changed["child"]["telegram_id"] = 778899
     try:

@@ -157,7 +157,16 @@ Task proposals currently cover ordinary no-report records with supported states,
 preserved dates and zero reminder/penalty settings. Overdue progress is not guessed
 or rewound if later acceptance/start evidence disagrees with the saved pre-overdue
 state. Convertible no-report personal reminders retain their self-only scope;
-report-required tasks remain blocked pending proper reviewer/media conversion.
+text-report tasks can now produce proposals from complete explicit event history.
+Their reviewer and review actors must map to current owner/parent identities;
+the proposal explicitly states the modern `household_parents` review policy.
+The source history, submission timestamps, prior reports, feedback and separate
+completion/cancellation/archive notes remain distinct. An old empty report is
+preserved as empty, not fabricated or automatically completed. Unknown events,
+inconsistent timestamps/notes and reassignment history are explicit blockers.
+Nonparent designated reviewers require a separate authority review. The complete
+old/new reviewer-set comparison still belongs to capture/cutover acceptance;
+the proposal does not grant a role or constitute authorization to import.
 A Telegram photo reference is not a verified
 local attachment. All original notes and history remain in the private archive.
 **Zero reminder and penalty settings alone are not a shadow isolation mechanism:**

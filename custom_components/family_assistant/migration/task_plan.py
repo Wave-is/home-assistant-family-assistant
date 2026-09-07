@@ -10,6 +10,7 @@ from datetime import datetime
 
 from .preflight import _text
 from .review import LegacyReview
+from .task_reports import ReportHistoryError, project_text_history
 
 SUPPORTED_STATES = frozenset(
     {"assigned", "accepted", "in_progress", "completed", "cancelled", "archived"}
@@ -42,7 +43,7 @@ class TaskPlan:
         return json.loads(self._private_payload)
 
 
-def _record(row: dict, mapping: dict) -> dict:
+def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
     kind = row.get("kind")
     if kind not in {"task", "reminder"}:
         raise TaskPlanError("task_kind_unsupported")
@@ -55,21 +56,28 @@ def _record(row: dict, mapping: dict) -> dict:
         raise TaskPlanError("task_report_settings_unsupported")
 
     report_type = row.get("report_type")
+    report_projection = None
     if requires_report:
-        if type(report_type) is str and report_type in {"text", "photo"}:
+        if report_type == "text":
+            try:
+                report_projection = project_text_history(row, history, mapping, members)
+            except ReportHistoryError as error:
+                raise TaskPlanError(str(error)) from None
+        elif report_type == "photo":
             raise TaskPlanError("task_report_review_required")
-        raise TaskPlanError("task_report_settings_unsupported")
+        else:
+            raise TaskPlanError("task_report_settings_unsupported")
 
-    # Any task requiring review or reviewer authority is blocked from automatic proposal.
-    if row.get("reviewer") is not None:
+    # A no-report record must not silently lose a separate reviewer authority.
+    if not requires_report and row.get("reviewer") is not None:
         raise TaskPlanError("task_report_review_required")
 
-    # requires_report is False
-    if report_type is not None:
+    # No-report notes/submissions still need an explicit semantic conversion.
+    if not requires_report and report_type is not None:
         raise TaskPlanError("task_report_settings_unsupported")
-    if row.get("submitted_at") is not None:
+    if not requires_report and row.get("submitted_at") is not None:
         raise TaskPlanError("task_report_settings_unsupported")
-    if row.get("last_note") is not None:
+    if not requires_report and row.get("last_note") is not None:
         raise TaskPlanError("task_report_settings_unsupported")
 
     lifecycle = {}
@@ -86,21 +94,23 @@ def _record(row: dict, mapping: dict) -> dict:
         lifecycle[key] = value
 
     state = row.get("state")
+    supported = SUPPORTED_STATES | ({"submitted", "needs_changes"} if requires_report else set())
     if state == "overdue":
         metadata = row.get("metadata")
         if not isinstance(metadata, dict):
             raise TaskPlanError("task_overdue_state_unsupported")
         overdue_from = metadata.get("overdue_from_state")
-        if type(overdue_from) is not str or overdue_from not in OVERDUE_FROM_STATES:
+        overdue_states = OVERDUE_FROM_STATES | ({"needs_changes"} if requires_report else set())
+        if type(overdue_from) is not str or overdue_from not in overdue_states:
             raise TaskPlanError("task_overdue_state_unsupported")
         # Legacy acceptance/start while already overdue did not update the saved
         # pre-overdue state. Do not silently rewind subsequently recorded progress.
         if (overdue_from == "assigned" and "accepted_at" in lifecycle) or (
-            overdue_from != "in_progress" and "started_at" in lifecycle
+            overdue_from in {"assigned", "accepted"} and "started_at" in lifecycle
         ):
             raise TaskPlanError("task_overdue_progress_review_required")
         status = overdue_from
-    elif state in SUPPORTED_STATES:
+    elif state in supported:
         status = state
     else:
         raise TaskPlanError("task_state_unsupported")
@@ -131,13 +141,21 @@ def _record(row: dict, mapping: dict) -> dict:
         projected_lifecycle["closed_at"] = lifecycle[close_key]
     if status == "archived" and row.get("archived_from_state") is not None:
         previous = row["archived_from_state"]
-        if type(previous) is not str or previous not in SUPPORTED_STATES - {"archived"}:
+        if type(previous) is not str or previous not in supported - {"archived"}:
             raise TaskPlanError("task_archive_state_unsupported")
         projected_lifecycle["previous_status"] = previous
+        archived_close = {"completed": "completed_at", "cancelled": "cancelled_at"}.get(previous)
+        if archived_close in lifecycle:
+            projected_lifecycle["closed_at"] = lifecycle[archived_close]
 
     return {
         "source_task": row["task_id"],
-        "target_bindings": {"creator": creator, "assignee": assignee},
+        "target_bindings": {
+            "creator": creator,
+            "assignee": assignee,
+            **({"reviewer": report_projection["reviewer"]} if report_projection else {}),
+        },
+        **({"review_policy": report_projection["review_policy"]} if report_projection else {}),
         "record": {
             "title": row["title"],
             "creator": creator["member_id"],
@@ -156,6 +174,7 @@ def _record(row: dict, mapping: dict) -> dict:
             "checklist": [],
             **({"delivery_scope": "personal"} if kind == "reminder" else {}),
             **projected_lifecycle,
+            **(report_projection["fields"] if report_projection else {}),
         },
     }
 
@@ -177,7 +196,14 @@ def build_task_plan(review: LegacyReview, *, members=None) -> TaskPlan:
     issues = Counter()
     for identifier, row in sorted(rows.items()):
         try:
-            proposals.append(_record(row, mapping))
+            proposals.append(
+                _record(
+                    row,
+                    mapping,
+                    [event for event in archive["history"] if event["task_id"] == identifier],
+                    members,
+                )
+            )
         except TaskPlanError as error:
             code = str(error)
             issues[code] += 1

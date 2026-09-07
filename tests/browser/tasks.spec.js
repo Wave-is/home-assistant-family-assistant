@@ -1,5 +1,29 @@
 import {test,expect} from "@playwright/test";
 
+for(const [language,title,more] of [
+  ["en","Previous reports","Show earlier reports"],
+  ["ru","Предыдущие отчёты","Показать более ранние отчёты"],
+  ["uk","Попередні звіти","Показати давніші звіти"],
+])test(`text report history ${language}: parent paging and role revocation`,async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${language}&taskedit=1`);
+  await expect(page.locator(".body > ul.list > li.item").first()).toBeVisible();
+  await page.evaluate(()=>{
+    const card=document.querySelector("family-assistant-card"),task=card._data.tasks[0];
+    task.previous_reports=Array.from({length:22},(_,i)=>({report:`Synthetic report ${i}`,review_note:`Synthetic feedback ${i}`,submitted_at:"2026-09-07T08:00:00Z"}));
+    task.report="Current corrected report";task.report_type="text";card.render();
+  });
+  const history=page.locator("[data-report-history]").first();
+  await history.locator("summary").filter({hasText:title}).click();
+  await expect(history.locator("li")).toHaveCount(20);
+  await history.getByRole("button",{name:more,exact:true}).click();
+  await expect(history.locator("li")).toHaveCount(22);
+  await page.screenshot({path:`test-results/report-history-${language}.png`,fullPage:true});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.evaluate(()=>{const card=document.querySelector("family-assistant-card");card._data.role="child";card._data.actor="child";card.render();});
+  await expect(page.locator("[data-report-history] details")).toHaveCount(0);
+});
+
 for(const [lang,label,add,save,done,report] of [
   ["en","Personal reminder — only for me","Add","Save","Confirm done","Send report"],
   ["ru","Личное напоминание — только для меня","Добавить","Сохранить","Подтвердить выполнение","Сдать отчёт"],

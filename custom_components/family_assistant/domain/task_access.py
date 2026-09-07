@@ -60,6 +60,10 @@ def archive_report(ctx, task, reason):
             "review_note": task.get("review_note"),
             reason: ctx.now.isoformat(),
         }
+        if task.get("submitted_at") is not None:
+            previous["submitted_at"] = task["submitted_at"]
+        if task.get("assignee_revision") is not None:
+            previous["assignee_revision"] = task["assignee_revision"]
         if task.get("report_media"):
             previous.update(
                 assignee_revision=task.get("assignee_revision"),
@@ -77,6 +81,7 @@ def archive_report(ctx, task, reason):
     task.pop("report_media_purged_at", None)
     task["report"] = None
     task.pop("review_note", None)
+    task.pop("submitted_at", None)
 
 
 def public_task(task, *, parent, state=None, actor=None, now=None):

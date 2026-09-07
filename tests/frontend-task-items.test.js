@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
+import { REPORT_HISTORY_COPY } from "../custom_components/family_assistant/frontend/task-report-history.js";
 
 const dom = new JSDOM("<!doctype html><body></body>", { url: "http://localhost" });
 for (const key of ["window", "document", "HTMLElement", "customElements", "CustomEvent", "FormData"]) {
@@ -19,6 +20,36 @@ function renderTaskItem(card,list,item) {
 await import("../custom_components/family_assistant/frontend/family-assistant.js");
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test("report history translations have exact key parity",()=>{
+  for(const lang of ["ru","uk"])assert.deepEqual(Object.keys(REPORT_HISTORY_COPY[lang]).sort(),Object.keys(REPORT_HISTORY_COPY.en).sort());
+});
+
+for(const language of ["en","ru","uk"])test(`parent text report history ${language} paginates literal text`,()=>{
+  const card=createMockCard({_config:{language}}), list=document.createElement("ul");
+  const item={id:"T99",revision:1,title:"History",assignee:"child_1",creator:"parent_1",status:"completed",report_type:"text",report:"Current",
+    previous_reports:Array.from({length:43},(_,i)=>({report:`<b>Report ${i}</b>`,review_note:`Review ${i}`,submitted_at:"2026-09-07T08:00:00Z"})),completion_note:"Accepted after review"};
+  renderTaskItem(card,list,item);
+  const history=list.querySelector("[data-report-history]"), details=history.querySelector("details");
+  assert.equal(details.querySelectorAll("li").length,20);
+  assert.match(details.querySelector("li").textContent,/<b>Report 42<\/b>/);
+  assert.equal(details.querySelectorAll("b").length,0);
+  details.querySelector("button").click();assert.equal(details.querySelectorAll("li").length,40);
+  details.querySelector("button").click();assert.equal(details.querySelectorAll("li").length,43);
+  assert.equal(details.querySelector("button").hidden,true);
+  assert.match(history.textContent,/Accepted after review/);
+});
+
+test("child never renders prior report payload; a stale parent pager is revoked",()=>{
+  const item={id:"T99",revision:1,title:"History",assignee:"child_1",creator:"parent_1",status:"completed",report_type:"text",previous_reports:Array.from({length:23},()=>({report:"Private old report"}))};
+  const child=createMockCard(), childList=document.createElement("ul");child._data.role="child";child._data.actor="child_1";
+  renderTaskItem(child,childList,item);assert.equal(childList.querySelector("[data-report-history]"),null);
+  for(const revoke of [card=>{card._data.role="child";},card=>{card._data.actor="other";},card=>{card._data.actor_revision=99;},card=>{card._generation++;},card=>{card._data.tasks[0]={...item,revision:2};}]){
+    const parent=createMockCard(), list=document.createElement("ul");renderTaskItem(parent,list,item);
+    const button=list.querySelector("[data-report-history] button");revoke(parent);button.click();
+    assert.equal(list.querySelector("[data-report-history]"),null);
+  }
+});
 
 const baseData = {
   revision: 1,

@@ -3,6 +3,7 @@
 import { wallTime, wallTimeCandidates } from "./local-time.js";
 import { renderTaskMedia } from "./task-media-view.js";
 import { personalTaskCopy } from "./personal-task-copy.js";
+import { renderReportHistory } from "./task-report-history.js";
 
 export const TASK_ITEM_COPY = {
   en: {
@@ -345,6 +346,8 @@ export function renderTaskItem(card, list, item) {
     noteBox.append(el("strong", `${copy.label_review_note}: `), el("span", item.review_note));
     row.append(noteBox);
   }
+  const reportHistory = renderReportHistory(card, item, hasCurrentTarget);
+  if (reportHistory) row.append(reportHistory);
 
   // Actions Container
   const actionsEl = el("div", null, "actions");

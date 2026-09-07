@@ -199,7 +199,9 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 report = payload.get("report")
                 if item["report_type"] != "none":
                     report = text(report, "report", 2000)
+                task_access.archive_report(ctx, item, "resubmitted_at")
                 item["report"] = report
+            item["submitted_at"] = ctx.now.isoformat()
             item["status"] = "submitted"
             ctx.notify("parents", "task_review", task_events.member_stamp(ctx, item))
         elif action == "check":

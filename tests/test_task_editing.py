@@ -100,8 +100,10 @@ async def test_reassignment_preserves_report_and_supersedes_old_private_assignme
     assert reassigned["previous_reports"] == [
         {
             "assignee": "child",
+            "assignee_revision": 1,
             "report": "Old report",
             "review_note": "Review note",
+            "submitted_at": now.isoformat(),
             "reassigned_at": now.isoformat(),
         }
     ]

@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.7 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.8 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,10 +33,48 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.7 runtime ZIP/tag verified, all eight Checks jobs passed at e64dbc3 (34159231878), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.8 candidate pending; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report task and personal reminder proposals; explicit report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.8 runtime ZIP/tag verified, all eight Checks jobs passed at 8f7e854 (34163195733), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.9 candidate pending; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+
+## Text report checkpoint, 2026-09-08
+
+The alpha.9 slice fixes text resubmission history and stale review notes, retaining
+submission times and identity stamps. Parent-only RU/UK/EN history paging is
+browser-tested, including role revocation and literal rendering. Legacy text
+reports now require explicit submission/review history and a current parent
+reviewer mapping; ambiguous/reassigned/photo records remain blocked and privately
+archived. Eighteen fictional scenarios generated through the actual private legacy
+ledger API passed without reading household records or changing production.
+The complete actual-HA suite passed report/review/resubmission, Store/reload and
+private conversion-archive reproducibility. Final exact-artifact CI is still a
+release gate. The first full local run exposed two stale fixture expectations:
+the added source report task changed counts, and archived school reports now
+include identity/timestamps. Both expectations were corrected, not bypassed.
+
+AGY's read-only runtime review identified the genuine text-history/stale-note
+defects. Its helper implementation timed out without files; root authored and
+tested the converter. A subsequent AGY review's raw-input/privacy claims did not
+account for the validated immutable review or parent projection and were not
+accepted as bugs. Its equivalent-ISO-timestamp observation led to preserving the
+current source row's exact timestamp spelling after instant equality validation.
+Archived completed/cancelled tasks also retain the original close timestamp.
+
+Final local checks:3145 Python tests passed, five host skips and23 subtests;
+Ruff/format411, locale/privacy checks;440 main Node tests plus six pretest cases,
+185 Chromium scenarios. Exact final candidate:214 runtime files,2817524 runtime
+bytes,757480 ZIP bytes, SHA256
+`919dbd060ee4d72e704702e7ec7d576edd4d1b80bb022ba6b97b2ce05ad640a6`.
+The complete actual-HA gate passed before the final exact-offset/archived-close
+preservation additions;155 focused cases and the full Python run cover those
+additions, and exact final CI remains required before publication.
 
 ## Personal reminder checkpoint, 2026-09-08
+
+Published alpha.8 at `8f7e85484e660e0815558188fd125111264809df`: all eight
+Checks jobs passed in `34163195733`. Tag and GitHub asset digest match the exact
+candidate below, including final calendar-link refusal. Local final suite passed
+3100 Python tests, five skips,23 subtests and182 Chromium scenarios, plus Node,
+lint/format, locale and privacy checks. No production cutover occurred.
 
 Alpha.8 adds explicit self-only reminders, not ordinary parent-visible private
 tasks. Current identity is enforced on view/mutation/replay, mixed audit batches,
