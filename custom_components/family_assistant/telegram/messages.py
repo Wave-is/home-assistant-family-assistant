@@ -1,6 +1,9 @@
 """Localized notification envelopes; no parse_mode for user-supplied text."""
 
+from ..domain.validation import DomainError, timestamp
 from ..notifications import DeliveryError
+
+MAX_SCHOOL_MATERIALS = 20
 
 MESSAGES = {
     "en": {
@@ -37,6 +40,11 @@ MESSAGES = {
         "pantry_expiry": (
             "📦 Pantry reminder: {name} has the recorded expiry date {expires_on}. "
             "Check it manually. This is not a food-safety assessment, and stock was not changed."
+        ),
+        "school_preparation_reminder": (
+            "🎒 School preparation for {member} on {date} · {timetable}. "
+            "Pinned routine: {routine}. Materials: {materials}. "
+            "Review them and start the routine yourself; nothing was started automatically."
         ),
         "court_appeal": "⚖️ An appeal needs a parent's review: {id}",
         "court_appeal_resolved": "⚖️ Appeal {id}: {decision}. The reason is in the court card.",
@@ -81,6 +89,11 @@ MESSAGES = {
         "pantry_expiry": (
             "📦 Напоминание о запасах: для «{name}» записан срок годности: {expires_on}. "
             "Проверьте вручную. Это не оценка безопасности продукта; остаток не изменён."
+        ),
+        "school_preparation_reminder": (
+            "🎒 Подготовка к школе для {member} на {date} · {timetable}. "
+            "Закреплённая рутина: {routine}. Что взять: {materials}. "
+            "Проверьте всё и запустите рутину сами; автоматически ничего не запускалось."
         ),
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
         "court_appeal_resolved": "⚖️ Апелляция {id}: {decision}. Причина — в карточке суда.",
@@ -128,6 +141,11 @@ MESSAGES = {
             "📦 Нагадування про запаси: для «{name}» записано термін придатності: {expires_on}. "
             "Перевірте вручну. Це не оцінка безпечності продукту; залишок не змінено."
         ),
+        "school_preparation_reminder": (
+            "🎒 Підготовка до школи для {member} на {date} · {timetable}. "
+            "Закріплена рутина: {routine}. Що взяти: {materials}. "
+            "Перевірте все й запустіть рутину самі; автоматично нічого не запускалося."
+        ),
         "court_appeal": "⚖️ Апеляція чекає рішення батьків: {id}",
         "court_appeal_resolved": "⚖️ Апеляція {id}: {decision}. Причина — у картці суду.",
         "court_weekly": (
@@ -136,6 +154,82 @@ MESSAGES = {
         ),
     },
 }
+
+
+def _school_reminder_source_current(event, state):
+    """Recheck current sources when no dispatch-time clock is available here.
+
+    The durable worker checks the real current time both before claim and before
+    transport.  Target resolution and rendering use ``created_at`` only to
+    validate the same source-bound event without pretending it is the current
+    delivery time.
+    """
+    from ..domain.school_reminders import delivery_allowed
+
+    try:
+        created_at = timestamp(event.get("created_at"), "created_at")
+        return delivery_allowed(state, event, created_at)
+    except (DomainError, KeyError, TypeError, ValueError, OverflowError, OSError):
+        return False
+
+
+def _school_reminder_content(event, target, state, language):
+    from ..domain import recurrence, school
+
+    if not _school_reminder_source_current(event, state):
+        raise DeliveryError("delivery_revoked")
+    data = event["data"]
+    member = state.get("members", {}).get(data["member"])
+    timetable = state.get("school", {}).get("timetables", {}).get(data["timetable_id"])
+    routine = state.get("routines", {}).get(data["routine_id"])
+    if not all(isinstance(item, dict) for item in (member, timetable, routine)):
+        raise DeliveryError("notification_template_invalid")
+    recipient = state.get("members", {}).get(event["recipient"], {})
+    if not isinstance(recipient, dict) or target.get("id") != recipient.get("telegram_id"):
+        raise DeliveryError("delivery_revoked")
+    labels = {
+        "en": ("none recorded", "more"),
+        "ru": ("не указано", "ещё"),
+        "uk": ("не вказано", "ще"),
+    }.get(language, ("none recorded", "more"))
+    values = {
+        "member": (member.get("name"), 80),
+        "timetable": (timetable.get("title"), 120),
+        "routine": (routine.get("title"), 255),
+    }
+    if any(
+        not isinstance(value, str) or not value.strip() or len(value) > maximum
+        for value, maximum in values.values()
+    ):
+        raise DeliveryError("notification_template_invalid")
+    day = recurrence.local_date(data["date"])
+    rows = [
+        row
+        for row in school._occurrences(state, [timetable], day)
+        if row.get("timetable_id") == data["timetable_id"] and row.get("date") == data["date"]
+    ]
+    materials = []
+    seen = set()
+    for row in rows:
+        if not isinstance(row.get("materials"), list):
+            raise DeliveryError("notification_template_invalid")
+        for material in row["materials"]:
+            if not isinstance(material, str) or not material.strip() or len(material) > 120:
+                raise DeliveryError("notification_template_invalid")
+            normalized = material.strip()
+            identity = normalized.casefold()
+            if identity not in seen:
+                seen.add(identity)
+                materials.append(normalized)
+    visible = materials[:MAX_SCHOOL_MATERIALS]
+    materials_text = ", ".join(visible) if visible else labels[0]
+    if len(materials) > len(visible):
+        materials_text += f" … (+{len(materials) - len(visible)} {labels[1]})"
+    return {
+        **{key: value.strip() for key, (value, _maximum) in values.items()},
+        "date": data["date"],
+        "materials": materials_text,
+    }
 
 
 def targets(event, state):
@@ -176,6 +270,19 @@ def targets(event, state):
             }
             for member in people
         ]
+    if key == "school_preparation_reminder":
+        if not _school_reminder_source_current(event, state):
+            return []
+        member = state.get("members", {}).get(recipient, {})
+        if not member.get("telegram_id"):
+            return []
+        return [
+            {
+                "channel": "telegram",
+                "id": member["telegram_id"],
+                "language": member.get("language", language),
+            }
+        ]
     if recipient == "family":
         return [{"channel": "telegram", "id": group, "language": language}] if group else []
     people = [
@@ -201,6 +308,12 @@ def render(event, target, state):
                 "message_id": data["reply_to"],
                 "allow_sending_without_reply": True,
             }
+    elif event["key"] == "school_preparation_reminder":
+        template = t.get(event["key"])
+        if template is None:
+            raise DeliveryError("notification_template_missing")
+        data.update(_school_reminder_content(event, target, state, language))
+        result = {"chat_id": target["id"], "text": template.format(**data)[:4000]}
     else:
         template = t.get(event["key"])
         if template is None:

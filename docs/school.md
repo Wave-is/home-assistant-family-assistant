@@ -1,7 +1,8 @@
 # School / Школа / Школа
 
 Development feature: a private weekly timetable, lesson materials and a 14-day
-agenda, explicit private homework and reviewed backpack starts. Enable **School timetable** in Family Assistant options and add the
+agenda, explicit private homework, reviewed backpack starts and opt-in private
+preparation reminders. Enable **School timetable** in Family Assistant options and add the
 **School** card (`custom:family-school-card`). The visual card editor selects the
 household and language; the authenticated account determines access.
 
@@ -55,9 +56,30 @@ after its timetable is archived or School is disabled.
 
 Existing private task and routine notifications apply; school timetables and
 homework content are not published to a family group or automatically sent to
-LLM/search. This stage does **not** create homework automatically, add school
-preparation reminders, publish a HA calendar, import photographs/calendars or
-control devices. Reviewed imports and preparation reminders remain separate work.
+LLM/search. This stage does **not** create homework automatically, publish a HA
+calendar, import photographs/calendars or control devices. Preparation reminders
+require the separate explicit controls described below.
+
+For preparation reminders, the owner enables the global switch in integration
+**Settings**, chooses the school day (0) or previous day (1) and a household-local
+`HH:MM` time. Defaults are **off**, previous day, `20:00`. Each parent or child
+then opens **School preparation reminders** in the School card and selects
+**Enable for me**, checks the named child/recipient and saves. A parent subscribes
+only their own personal chat; a child only their own timetable. Nobody silently
+enrolls another recipient. Each recipient must first link their personal Telegram
+chat to their family member. A saved preference while global reminders or Routines
+are off does not schedule a message.
+
+An intent is created only within five minutes of the configured time, for an
+actual school day with a current approved timetable and pinned usable backpack
+routine. No missed-window backlog is generated. Quiet hours and transport retry
+may defer a created message, but it expires at the first lesson. Nonexistent DST
+times are skipped; repeated times use only the first occurrence. A changed source,
+member identity, subscription or policy invalidates old queued content. Starting
+that timetable/date's preparation suppresses its reminder. There is at most one
+intent per recipient/timetable/day, including after edits or re-enabling: there is
+no same-day automatic replacement. The message does not start a routine, create
+homework, control a device or award/deduct points.
 
 ## Русский
 
@@ -105,9 +127,27 @@ control devices. Reviewed imports and preparation reminders remain separate work
 
 Работают существующие личные уведомления задач и распорядков. Расписание и содержимое
 домашней работы не публикуются в семейную группу и не отправляются автоматически
-в ИИ или поиск. Автосоздание домашней работы, подготовительные школьные напоминания,
-публикация календаря HA и проверяемый импорт фото/календаря ещё предстоят.
+в ИИ или поиск. Автосоздание домашней работы, публикация календаря HA и
+проверяемый импорт фото/календаря ещё предстоят.
 Этот модуль не управляет устройствами.
+
+Для напоминаний о сборах владелец включает общий переключатель в **Настройках**
+интеграции и задаёт время `ЧЧ:ММ` в часовом поясе семьи: в учебный день (0) или
+накануне (1). По умолчанию выключено, накануне, `20:00`. Затем каждый родитель или
+ребёнок сам нажимает **Включить для меня** в «Школе», проверяет указанного ребёнка
+и личного получателя и сохраняет выбор. Родитель подписывает только себя, ребёнок
+— только себя на своё расписание. Личный Telegram-чат должен быть связан с
+участником семьи. Сохранённый выбор не включает общий переключатель или «Рутины».
+
+Запись для отправки создаётся в пятиминутное окно и только для настоящего учебного
+дня с актуальными расписанием и рутиной рюкзака. Пропущенные окна не догоняются.
+Тихие часы и повтор доставки могут отложить сообщение, но после начала первого
+урока оно уже не отправляется. При переводе часов несуществующее время пропускается,
+повторяющееся используется один раз, в первое вхождение. Изменение источника,
+профиля, подписки или правил отменяет актуальность старого сообщения; начатая
+подготовка подавляет напоминание. Не более одной записи на получателя/расписание/день,
+в том числе после правок и повторного включения. Напоминание само не запускает
+рутины, не создаёт задания и не меняет баллы.
 
 ## Українська
 
@@ -153,9 +193,26 @@ control devices. Reviewed imports and preparation reminders remain separate work
 
 Діють наявні приватні сповіщення завдань і розпорядків. Розклад і вміст домашньої
 роботи не публікуються в сімейну групу та не передаються автоматично до ШІ чи пошуку.
-Автостворення домашньої роботи, шкільні підготовчі нагадування, календар HA та
+Автостворення домашньої роботи, календар HA та
 підтверджуваний імпорт фото/календаря залишаються наступними етапами.
 Модуль не керує пристроями.
+
+Для нагадувань власник вмикає загальний перемикач у **Налаштуваннях** інтеграції,
+обирає навчальний день (0) або напередодні (1) та час `ГГ:ХХ` у часовому поясі
+сім'ї. Типово вимкнено, напередодні, `20:00`. Кожен одержувач сам натискає
+**Увімкнути для мене** в «Школі», перевіряє дитину й особистого одержувача та
+зберігає вибір. Батьки підписують лише себе; дитина — лише себе на власний розклад.
+Особистий Telegram-чат має бути пов'язаний з учасником. Збереження вибору не вмикає
+загальне правило чи модуль «Рутини».
+
+Запис для надсилання створюється лише в п'ятихвилинне вікно для фактичного
+навчального дня з чинним розкладом і рутиною рюкзака. Пропущені вікна не надолужуються.
+Тихі години й повтор доставки можуть відкласти повідомлення, але воно прострочується
+на початку першого уроку. Неіснуючий час переходу на літній час пропускається,
+повторений час використовується лише вперше. Зміна джерела, профілю, підписки або
+правил скасовує актуальність старого повідомлення; почата підготовка пригнічує
+нагадування. Не більш ніж один запис на одержувача/розклад/день навіть після змін
+і повторного ввімкнення. Жодні рутини, завдання, пристрої чи бали не змінюються.
 
 ## API and privacy contract
 
@@ -176,6 +233,16 @@ control devices. Reviewed imports and preparation reminders remain separate work
   School and Routines, an actual lesson today/tomorrow, current source/participant
   authority and no already-started preparation for that timetable/date.
   Returns only `{id,revision,status,run_id}`, never step confirmation nonces.
+- `school.preparation_reminder_access_set`: exact `member`, `member_revision`,
+  `recipient_revision`, `subscription_revision` (null only for a first opt-in),
+  `enabled` (strict bool). The authenticated actor is the recipient. Returns
+  only `{member,enabled,revision}`. The view exposes only this actor's
+  `preparation_reminders.policy` and `self_targets`; subscriptions for other
+  recipients are never projected.
+- Owner settings: `school_preparation_reminders` (bool),
+  `school_preparation_days_before` (strict integer 0 or 1),
+  `school_preparation_time` (zero-padded `HH:MM`). Omitted values preserve current
+  preferences; old Stores default to off without rewriting user data.
 - Timetable/homework receipts contain only `{id,revision,status}`; backpack
   receipts additionally contain `run_id`. Timetables stay under `school.timetables`,
   start markers under `school.preparations`, homework under `tasks`, and routine
@@ -206,3 +273,13 @@ school broadcast. Ordinary HA
 administrators and backups may access the underlying local storage: these are
 application permissions, not encryption from the administrator. Archive is not
 deletion and does not erase backups.
+
+Preparation subscriptions and dedup markers use separate subkeys in `school`.
+Their outbox intent contains only IDs, versions, date, policy fingerprint and
+expiry. Current authorized names and at most 20 unique material labels are
+resolved only for private delivery; overflow is stated, link previews disabled.
+Current authority is checked both before claiming and again before transport.
+An already in-flight network request cannot be recalled. Lifetime marker capacity
+is bounded at 10,000; safe retention and a capacity health signal remain required
+before the public release. The cap prevents unbounded growth, not a substitute
+for that remaining retention work.

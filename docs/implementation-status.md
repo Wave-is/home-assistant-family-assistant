@@ -23,7 +23,7 @@ Nothing is production-ready solely because a mock test passes.
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
-| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks and reviewed backpack routine starts; preparation reminders and reviewed imports pending |
+| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks, reviewed backpack routine starts and opt-in private preparation reminders; reviewed imports and reminder retention health pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse, manual repair history and card; media/documents and production acceptance pending |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
@@ -47,8 +47,36 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1480 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 272 frontend unit tests and 104 Chromium browser tests passed.
+- 1561 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 281 frontend unit tests and 111 Chromium browser tests passed.
+- School preparation reminders default off and need both an owner-selected global
+  household-local time/day policy and an exact actor-private subscription. Parents
+  subscribe only their own recipient, children only their own timetable. Creation
+  has a five-minute window, current actual lessons and a usable pinned routine;
+  missed windows are not replayed. The first DST fold is used once; gaps are
+  skipped. Stable per-recipient/timetable/day markers prevent edit/re-enable spam.
+  The outbox stores only IDs, revisions, date, expiry and policy fingerprint.
+  Private EN/RU/UK rendering resolves current names and bounded materials only at
+  send time, never family broadcast or automatic routine/task/device/point changes.
+  Quiet hours/retries cannot extend delivery past the first lesson. Both claim
+  and post-persistence dispatch recheck source, identity, subscription and expiry;
+  the production adapter injects a live clock sampled after lock acquisition, so
+  earlier waits cannot retain the old tick time. A newly active quiet period
+  returns the unsent claim to pending; an in-flight request is not recalled.
+  Store failures, batches, replay/restart, stale Options, recipient isolation,
+  delayed claims/expiry and quiet-hour races passed real domain/adapter tests.
+  The named review card preserves exact pre/post-commit retries and clears revoked
+  drafts. RU narrow review and UK child views were visually inspected; shared
+  checkbox CSS was corrected without relaxing viewport tests. The complete isolated
+  actual HA Options/WebSocket/scheduler/Store suite passed after live-clock
+  hardening. Its synthetic Telegram rate-limit test now advances the injected
+  clock explicitly and restores production time afterwards; passing a future
+  tick no longer overrides the production live clock. The first test-helper edit
+  had an out-of-scope function reference; that fixture error was corrected and
+  lint plus the entire HA suite rerun successfully. AGY's read-only review
+  identified the lifetime 10,000-marker cap as a retention/health release gate;
+  claimed DST/replay/transaction bugs were ruled out against the actual Engine
+  and existing adversarial tests. Photo/media work remains a separate next slice.
 - School homework is explicitly created by parents or the current child subject
   as an ordinary private task with a zero-penalty deadline policy. Parent edits
   use the School route, not generic task reassignment. Same-identity edits retain
@@ -447,7 +475,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   cd9cae8 (run 34066055297) and Mealie recipes
   59e6eeb (run 34067804708), then school follow-up
   8d25ac0 (run 34069706131), and maintenance
-  659e1ed (run 34071531113). The school feature's first actual-HA CI run exposed
+  659e1ed (run 34071531113), and School homework/preparation
+  61229b3 (run 34073656489). The school feature's first actual-HA CI run exposed
   a fixture race with scheduled pantry reconciliation; the follow-up drains
   pending HA work before the explicit clock pass and verifies scheduler health.
   The separate native RouterOS CI also passed (run 34040076386). Its first run
@@ -485,6 +514,8 @@ service call does not prove physical sound or volume.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
+- School reminder lifetime marker retention must avoid replay after clock rollback
+  and expose capacity health; the present 10,000-marker bound is not release-ready.
 - Live model evaluation is pending; local Ollama was not reachable on its default
   port during this checkpoint. No server was started or production provider changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.

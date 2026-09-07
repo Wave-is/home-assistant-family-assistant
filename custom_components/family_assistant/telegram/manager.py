@@ -23,7 +23,12 @@ class TelegramManager:
         self.hass, self.entry, self.runtime = hass, entry, runtime
         self.client, self.bot = client, bot
         self.enrollment = Enrollment(runtime.engine)
-        self.notifications = Notifications(runtime.engine, self._targets, self._send_notification)
+        self.notifications = Notifications(
+            runtime.engine,
+            self._targets,
+            self._send_notification,
+            clock=dt_util.utcnow,
+        )
         self._tasks = []
         self._stopped = False
         from ..assistant.jobs import Jobs

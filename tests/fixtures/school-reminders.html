@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic school reminder preferences</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef2f7;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 780px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    const NativeDate = Date;
+    const FIXED_NOW = "2026-09-07T17:02:00Z";
+    globalThis.Date = class extends NativeDate {
+      constructor(...args) {
+        super(...(args.length ? args : [FIXED_NOW]));
+      }
+      static now() {
+        return NativeDate.parse(FIXED_NOW);
+      }
+    };
+
+    await import("../../custom_components/family_assistant/frontend/family-assistant.js");
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const actorKind = query.get("actor") || "parent";
+    const actor = actorKind === "child" ? "child-1" : actorKind === "owner" ? "owner-1" : "parent-1";
+    const role = actorKind;
+    const fixture = (window.fixture = {
+      revision: 1,
+      actor,
+      role,
+      settings: {
+        name: "Example family",
+        timezone: "Europe/Kyiv",
+        modules: ["school", ...(query.get("routines") === "off" ? [] : ["routines"])],
+        school_preparation_reminders: query.get("policy") !== "off",
+        school_preparation_days_before: 1,
+        school_preparation_time: "20:00",
+      },
+      members: [
+        { id: "owner-1", name: "Morgan", role: "owner", active: true, revision: 2 },
+        { id: "parent-1", name: "Alex", role: "parent", active: true, revision: 4 },
+        { id: "child-1", name: "Sam", role: "child", active: true, revision: 7 },
+        { id: "child-2", name: "Jamie", role: "child", active: true, revision: 9 },
+        { id: "adult-1", name: "Taylor", role: "adult", active: true, revision: 3 },
+      ],
+      subscriptions: {
+        "parent-1|child-2": {
+          recipient: "parent-1",
+          recipient_revision: 4,
+          member: "child-2",
+          member_revision: 9,
+          enabled: true,
+          revision: 3,
+        },
+      },
+      school: {
+        timetables: [
+          {
+            id: "ST000001",
+            member: "child-1",
+            member_revision: 7,
+            title: "Sam school week",
+            valid_from: "2026-01-01",
+            valid_until: null,
+            exceptions: [],
+            lessons: [
+              {
+                weekday: 1,
+                start: "08:30",
+                end: "09:15",
+                subject: "Mathematics",
+                room: "12",
+                materials: ["Workbook"],
+              },
+            ],
+            backpack_routine: { id: "RT000001", revision: 5 },
+            status: "active",
+            revision: 6,
+            created_by: "parent-1",
+            created_at: "2026-01-01T10:00:00Z",
+            history: [{ actor: "parent-1", at: "2026-01-01T10:00:00Z", action: "created" }],
+          },
+          {
+            id: "ST000002",
+            member: "child-2",
+            member_revision: 9,
+            title: "CROSS-CHILD-TIMETABLE",
+            valid_from: "2026-01-01",
+            valid_until: null,
+            exceptions: [],
+            lessons: [
+              {
+                weekday: 1,
+                start: "10:00",
+                end: "10:45",
+                subject: "CROSS-CHILD-SUBJECT",
+                room: "CROSS-CHILD-ROOM",
+                materials: ["CROSS-CHILD-MATERIAL"],
+              },
+            ],
+            backpack_routine: { id: "RT000002", revision: 8 },
+            status: "active",
+            revision: 10,
+            created_by: "parent-1",
+            created_at: "2026-01-02T10:00:00Z",
+            history: [{ actor: "parent-1", at: "2026-01-02T10:00:00Z", action: "created" }],
+          },
+        ],
+        upcoming: [
+          {
+            id: "ST000001:2026-09-08:0",
+            timetable_id: "ST000001",
+            member: "child-1",
+            date: "2026-09-08",
+            start: "08:30",
+            end: "09:15",
+            subject: "Mathematics",
+            room: "12",
+            materials: ["Workbook"],
+            backpack_routine: { id: "RT000001", revision: 5, title: "Pack Sam's bag" },
+          },
+          {
+            id: "ST000002:2026-09-08:0",
+            timetable_id: "ST000002",
+            member: "child-2",
+            date: "2026-09-08",
+            start: "10:00",
+            end: "10:45",
+            subject: "CROSS-CHILD-SUBJECT",
+            room: "CROSS-CHILD-ROOM",
+            materials: ["CROSS-CHILD-MATERIAL"],
+            backpack_routine: { id: "RT000002", revision: 8, title: "CROSS-CHILD-ROUTINE" },
+          },
+        ],
+        homework: [],
+        preparations: [],
+      },
+      routines: {
+        templates: [
+          {
+            id: "RT000001",
+            revision: 5,
+            title: "Pack Sam's bag",
+            description: "",
+            creator: "parent-1",
+            enabled: true,
+            assignees: ["child-1"],
+            steps: [{ title: "Pack books", confirmation: "manual", assignee: null }],
+          },
+          {
+            id: "RT000002",
+            revision: 8,
+            title: "CROSS-CHILD-ROUTINE",
+            description: "CROSS-CHILD-PRIVATE-SOURCE",
+            creator: "parent-1",
+            enabled: true,
+            assignees: ["child-2"],
+            steps: [{ title: "CROSS-CHILD-STEP", confirmation: "manual", assignee: null }],
+          },
+        ],
+      },
+      tasks: [],
+    });
+
+    const member = (id) => fixture.members.find((item) => item.id === id);
+    const key = (recipient, child) => `${recipient}|${child}`;
+    const currentRole = () => member(fixture.actor)?.role;
+    const projectedSubscription = (recipient, child) => {
+      const recipientMember = member(recipient),
+        childMember = member(child),
+        record = fixture.subscriptions[key(recipient, child)];
+      const revision = Number.isSafeInteger(record?.revision) && record.revision > 0 ? record.revision : null;
+      return {
+        member: child,
+        member_revision: childMember.revision,
+        recipient_revision: recipientMember.revision,
+        enabled: Boolean(
+          revision &&
+            record.recipient === recipient &&
+            record.recipient_revision === recipientMember.revision &&
+            record.member === child &&
+            record.member_revision === childMember.revision &&
+            record.enabled === true,
+        ),
+        subscription_revision: revision,
+      };
+    };
+    const currentRoutine = (record) => {
+      const link = record.backpack_routine,
+        routine = fixture.routines.templates.find((item) => item.id === link?.id);
+      return routine?.enabled && routine.revision === link.revision && routine.assignees.includes(record.member)
+        ? { id: routine.id, revision: routine.revision, title: routine.title }
+        : null;
+    };
+    const projection = () => {
+      const data = structuredClone(fixture),
+        actorMember = member(fixture.actor),
+        activeRole = actorMember?.active && ["owner", "parent", "child"].includes(currentRole()),
+        schoolEnabled = fixture.settings.modules.includes("school");
+      data.role = currentRole();
+      delete data.subscriptions;
+      if (!schoolEnabled) {
+        delete data.school;
+        data.routines = { templates: [] };
+        return data;
+      }
+      const parent = ["owner", "parent"].includes(data.role);
+      if (!activeRole) {
+        data.school = {
+          timetables: [],
+          upcoming: [],
+          homework: [],
+          preparations: [],
+          preparation_reminders: { policy: null, self_targets: [] },
+        };
+        data.routines = { templates: [] };
+        return data;
+      }
+      const allowedChildren = parent
+        ? fixture.members.filter((item) => item.active && item.role === "child").map((item) => item.id)
+        : [fixture.actor];
+      data.school.timetables = fixture.school.timetables
+        .filter((item) => parent || (item.member === fixture.actor && item.status === "active"))
+        .map((item) => {
+          const row = structuredClone(item),
+            routine = currentRoutine(item);
+          if (parent) row.backpack_routine_current = routine;
+          else {
+            row.backpack_routine = routine;
+            delete row.created_by;
+            delete row.created_at;
+            delete row.history;
+          }
+          return row;
+        });
+      data.school.upcoming = fixture.school.upcoming.filter((item) => parent || item.member === fixture.actor);
+      data.school.preparation_reminders = {
+        policy: {
+          enabled: fixture.settings.school_preparation_reminders,
+          days_before: fixture.settings.school_preparation_days_before,
+          time: fixture.settings.school_preparation_time,
+          timezone: fixture.settings.timezone,
+        },
+        self_targets: allowedChildren.map((child) => projectedSubscription(fixture.actor, child)),
+      };
+      data.routines.templates = fixture.routines.templates.filter(
+        (item) => parent || item.assignees.includes(fixture.actor),
+      );
+      return data;
+    };
+
+    window.project = projection;
+    window.calls = [];
+    window.failMode = null;
+    const receipts = new Map();
+    const conflict = () => {
+      const error = new Error("conflict");
+      error.code = "conflict";
+      throw error;
+    };
+    const execute = (message) => {
+      window.calls.push(structuredClone(message));
+      if (receipts.has(message.operation_id)) {
+        const receipt = receipts.get(message.operation_id),
+          payload = message.payload,
+          record = fixture.subscriptions[key(fixture.actor, payload.member)];
+        if (
+          !record ||
+          record.revision !== receipt.revision ||
+          record.enabled !== receipt.enabled ||
+          member(fixture.actor)?.revision !== payload.recipient_revision ||
+          member(payload.member)?.revision !== payload.member_revision
+        )
+          conflict();
+        return structuredClone(receipt);
+      }
+      if (message.action !== "school.preparation_reminder_access_set") conflict();
+      const payload = message.payload,
+        expectedFields = ["enabled", "member", "member_revision", "recipient_revision", "subscription_revision"];
+      if (JSON.stringify(Object.keys(payload).sort()) !== JSON.stringify(expectedFields)) conflict();
+      const recipient = member(fixture.actor),
+        child = member(payload.member);
+      if (
+        !fixture.settings.modules.includes("school") ||
+        !recipient?.active ||
+        !["owner", "parent", "child"].includes(recipient.role) ||
+        recipient.revision !== payload.recipient_revision ||
+        !child?.active ||
+        child.role !== "child" ||
+        child.revision !== payload.member_revision ||
+        (recipient.role === "child" && recipient.id !== child.id) ||
+        typeof payload.enabled !== "boolean"
+      )
+        conflict();
+      const subscriptionKey = key(recipient.id, child.id),
+        previous = fixture.subscriptions[subscriptionKey];
+      if (
+        (previous && previous.revision !== payload.subscription_revision) ||
+        (!previous && payload.subscription_revision !== null) ||
+        (!previous && payload.enabled !== true) ||
+        (previous?.recipient_revision === recipient.revision &&
+          previous?.member_revision === child.revision &&
+          previous?.enabled === payload.enabled)
+      )
+        conflict();
+      if (window.failMode === "before") {
+        window.failMode = null;
+        const error = new Error("transport before commit");
+        error.code = "transport_error";
+        throw error;
+      }
+      const revision = previous ? previous.revision + 1 : 1,
+        record = {
+          recipient: recipient.id,
+          recipient_revision: recipient.revision,
+          member: child.id,
+          member_revision: child.revision,
+          enabled: payload.enabled,
+          revision,
+        },
+        receipt = { member: child.id, enabled: payload.enabled, revision };
+      fixture.subscriptions[subscriptionKey] = record;
+      receipts.set(message.operation_id, receipt);
+      if (window.failMode === "after") {
+        window.failMode = null;
+        const error = new Error("response lost");
+        error.code = "response_lost";
+        throw error;
+      }
+      return structuredClone(receipt);
+    };
+
+    const card = (window.card = document.createElement("family-school-card"));
+    card.setConfig({
+      type: "custom:family-school-card",
+      entry_id: "synthetic-school",
+      language,
+    });
+    card.hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type === "family_assistant/execute") return execute(message);
+        throw { code: "unknown_action" };
+      },
+    };
+    document.querySelector("main").append(card);
+  </script>
+</html>

@@ -206,6 +206,18 @@ async def test_school_reviewed_child_identity_change_requires_explicit_fresh_rev
         "upcoming": [],
         "homework": [],
         "preparations": [],
+        "preparation_reminders": {
+            "policy": {"enabled": False, "days_before": 1, "time": "20:00", "timezone": "UTC"},
+            "self_targets": [
+                {
+                    "member": "child",
+                    "member_revision": 4,
+                    "recipient_revision": 4,
+                    "enabled": False,
+                    "subscription_revision": None,
+                }
+            ],
+        },
     }
     refreshed = await save(
         school_engine,
@@ -247,6 +259,18 @@ async def test_school_one_active_archive_and_full_replacement(school_engine, now
         "upcoming": [],
         "homework": [],
         "preparations": [],
+        "preparation_reminders": {
+            "policy": {"enabled": False, "days_before": 1, "time": "20:00", "timezone": "UTC"},
+            "self_targets": [
+                {
+                    "member": "child",
+                    "member_revision": 1,
+                    "recipient_revision": 1,
+                    "enabled": False,
+                    "subscription_revision": None,
+                }
+            ],
+        },
     }
     with pytest.raises(DomainError, match="invalid_transition"):
         await save(

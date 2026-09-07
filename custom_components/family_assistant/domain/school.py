@@ -411,6 +411,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         from .school_preparation import handle as preparation_command
 
         return preparation_command(ctx, action, payload)
+    if action == "preparation_reminder_access_set":
+        from .school_reminders import handle as reminder_command
+
+        return reminder_command(ctx, action, payload)
     _require_parent(ctx)
     if action == "timetable_save":
         return _save(ctx, payload)

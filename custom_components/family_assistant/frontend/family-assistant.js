@@ -15,6 +15,7 @@ import {renderDietaryProfiles,reconcileDietaryRefresh} from "./dietary-view.js";
 import {renderRecipes,reconcileRecipesRefresh} from "./recipes-view.js";
 import {renderSchool,reconcileSchoolRefresh} from "./school-view.js";
 import {renderSchoolWork,reconcileSchoolWorkRefresh} from "./school-work-view.js";
+import {renderSchoolReminders,reconcileSchoolRemindersRefresh} from "./school-reminders-view.js";
 import {renderMaintenance,reconcileMaintenanceRefresh} from "./maintenance-view.js";
 import {renderMealShopping} from "./meal-shopping-view.js";
 const COPY = {
@@ -224,7 +225,7 @@ export class FamilyCard extends HTMLElement {
     this._taskItemAction=null;this._taskCreateDraft=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
-    this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;
+    this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;
     this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
     this.render();
     if (this._hass) this.refresh();
@@ -258,9 +259,10 @@ export class FamilyCard extends HTMLElement {
       const recipesForce = reconcileRecipesRefresh(this,previousData);
       const schoolForce = reconcileSchoolRefresh(this,previousData);
       const schoolWorkForce = reconcileSchoolWorkRefresh(this,previousData);
+      const schoolReminderForce = reconcileSchoolRemindersRefresh(this,previousData);
       const maintenanceForce = reconcileMaintenanceRefresh(this,previousData);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || maintenanceForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
     } catch(error) { if (generation === this._generation) { this._error=error.code || this.t.failure; this.render(); } }
     finally { this._loading = false; }
   }
@@ -392,8 +394,9 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="health") {this.renderHealth(body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
-      if(!this._schoolDraft)renderSchoolWork(this,body);
-      if(!this._schoolWorkDraft)renderSchool(this,body);
+      if(!this._schoolDraft && !this._schoolWorkDraft)renderSchoolReminders(this,body);
+      if(!this._schoolDraft && !this._schoolReminderDraft)renderSchoolWork(this,body);
+      if(!this._schoolWorkDraft && !this._schoolReminderDraft)renderSchool(this,body);
       return;
     }
     if(this._view==="maintenance"){renderMaintenance(this,body);return;}

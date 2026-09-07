@@ -183,7 +183,7 @@
         }
       },
       "general": {
-        "description": "Optional pantry reminders go privately to linked parents after 09:00 in the household time zone, once per item revision. Only recorded dates from today through the lead window are included; no expired backlog or stock changes. This is a reminder to check the item, not a food-safety assessment.",
+        "description": "Optional pantry reminders go privately to linked parents after 09:00 in the household time zone, once per item revision. Only recorded dates from today through the lead window are included; no expired backlog or stock changes. This is a reminder to check the item, not a food-safety assessment. School preparation reminders also require this global switch; each recipient must separately subscribe themselves for a child in the School card. They use the household time zone and do not create tasks or automatically start routines or devices.",
         "title": "Household preferences",
         "data": {
           "name": "Household name",
@@ -196,6 +196,9 @@
           "daily_penalty_cap": "Maximum automatic negative points per person per day",
           "pantry_expiry_reminders": "Remind parents about recorded pantry expiry dates",
           "pantry_expiry_days": "Days before the recorded date (0 = that day only; 0–30)",
+          "school_preparation_reminders": "Allow private school preparation reminders",
+          "school_preparation_days_before": "School-day lead (0 = same day, 1 = day before)",
+          "school_preparation_time": "Reminder time in the household time zone (HH:MM)",
           "timezone": "Time zone",
           "conversation": "Conversation",
           "mikrotik": "MikroTik network",

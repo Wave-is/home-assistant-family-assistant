@@ -235,6 +235,9 @@ async def main():
             from ha_pantry_expiry_smoke import verify_pantry_expiry
 
             await verify_pantry_expiry(hass, user)
+            from ha_school_reminders_smoke import verify_school_reminders
+
+            await verify_school_reminders(hass, user)
             from ha_school_smoke import verify_school
 
             school_id = await verify_school(hass, entry, user, child_id)

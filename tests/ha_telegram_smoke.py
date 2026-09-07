@@ -411,6 +411,20 @@ class SyntheticTelegram:
         return True
 
 
+async def flush_at(entry, moment):
+    # Production samples a live clock after lock/claim waits. Advance the
+    # injected clock explicitly for this synthetic rate-limit test rather
+    # than relying on run(moment) to override the production clock.
+    worker = entry.runtime_data.telegram.notifications
+    live_clock = worker.clock
+    assert callable(live_clock)
+    worker.clock = lambda: moment
+    try:
+        await worker.run(moment)
+    finally:
+        worker.clock = live_clock
+
+
 async def run(hass, entry, owner_user, child_id):
     SyntheticTelegram.sent = []
     with (
@@ -501,9 +515,7 @@ async def run(hass, entry, owner_user, child_id):
         await receive("/task Parent | Unauthorized task", user_id=1002)
         assert not engine.snapshot()["tasks"]
         for seconds in (2, 4, 6):
-            await entry.runtime_data.telegram.notifications.run(
-                datetime.now(UTC) + timedelta(seconds=seconds)
-            )
+            await flush_at(entry, datetime.now(UTC) + timedelta(seconds=seconds))
         assert any("I'm here" in event["text"] for event in SyntheticTelegram.sent)
         assert any("Synthetic oranges" in event["text"] for event in SyntheticTelegram.sent)
         assert all("parse_mode" not in event for event in SyntheticTelegram.sent)
@@ -513,9 +525,7 @@ async def run(hass, entry, owner_user, child_id):
         )
         task = next(iter(engine.snapshot()["tasks"].values()))
         for seconds in (10, 12, 14):
-            await entry.runtime_data.telegram.notifications.run(
-                datetime.now(UTC) + timedelta(seconds=seconds)
-            )
+            await flush_at(entry, datetime.now(UTC) + timedelta(seconds=seconds))
         receipt = next(
             i
             for i, sent in enumerate(SyntheticTelegram.sent, 1)
@@ -621,9 +631,7 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
         proposal = next(iter(engine.snapshot()["proposals"]))
         assert engine.snapshot()["proposals"][proposal]["status"] == "pending"
         for seconds in (20, 22, 24):
-            await entry.runtime_data.telegram.notifications.run(
-                datetime.now(UTC) + timedelta(seconds=seconds)
-            )
+            await flush_at(entry, datetime.now(UTC) + timedelta(seconds=seconds))
         assert any(
             "fp:confirm:" in str(sent.get("reply_markup", {})) for sent in SyntheticTelegram.sent
         )

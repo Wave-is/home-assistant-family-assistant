@@ -28,6 +28,7 @@ from . import (
     routines,
     school,
     school_preparation,
+    school_reminders,
     school_work,
     settings,
     shopping,
@@ -119,6 +120,9 @@ def new_state(
             "timezone": household.timezone(timezone),
             "pantry_expiry_reminders": False,
             "pantry_expiry_days": 3,
+            "school_preparation_reminders": False,
+            "school_preparation_days_before": 1,
+            "school_preparation_time": "20:00",
         },
         "members": {
             "owner": {
@@ -272,6 +276,7 @@ class Engine:
         ):
             data["school"] = school.view(self._state, actor, now)
             data["school"].update(school_preparation.view(self._state, actor))
+            data["school"].update(school_reminders.view(self._state, actor))
             data["school"]["homework"] = (
                 [
                     task_access.public_task(task, parent=parent)
@@ -407,6 +412,13 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
             )
+        elif action == "school.preparation_reminder_access_set":
+            school_reminders.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "school-reminder-replay"),
+                "preparation_reminder_access_set",
+                payload,
+                result,
+            )
         elif action.startswith("school.homework_"):
             school_work.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "school-work-replay"),
@@ -471,6 +483,7 @@ class Engine:
             rewards.tick(ctx)
             family_calendar.tick(ctx)
             routines.tick(ctx, routine_observations)
+            school_reminders.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

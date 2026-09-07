@@ -3,6 +3,7 @@
 from ..const import LANGUAGES, MODULES
 from .context import Context
 from .household import timezone
+from .recurrence import clock
 from .validation import DomainError, enum, fields, text
 
 
@@ -22,6 +23,9 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "timezone",
             "pantry_expiry_reminders",
             "pantry_expiry_days",
+            "school_preparation_reminders",
+            "school_preparation_days_before",
+            "school_preparation_time",
         },
         {"name", "language", "modules"},
     )
@@ -36,6 +40,20 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         expiry_days = payload["pantry_expiry_days"]
         if type(expiry_days) is not int or not 0 <= expiry_days <= 30:
             raise DomainError("invalid_field", "pantry_expiry_days")
+    if (
+        "school_preparation_reminders" in payload
+        and type(payload["school_preparation_reminders"]) is not bool
+    ):
+        raise DomainError("invalid_field", "school_preparation_reminders")
+    if "school_preparation_days_before" in payload:
+        days_before = payload["school_preparation_days_before"]
+        if type(days_before) is not int or days_before not in {0, 1}:
+            raise DomainError("invalid_field", "school_preparation_days_before")
+    if "school_preparation_time" in payload:
+        try:
+            clock(payload["school_preparation_time"])
+        except DomainError:
+            raise DomainError("invalid_field", "school_preparation_time") from None
     ctx.state["settings"].update(
         {
             "name": text(payload["name"], "name", 80),
@@ -58,4 +76,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         ctx.state["settings"]["pantry_expiry_reminders"] = payload["pantry_expiry_reminders"]
     if "pantry_expiry_days" in payload:
         ctx.state["settings"]["pantry_expiry_days"] = payload["pantry_expiry_days"]
+    if "school_preparation_reminders" in payload:
+        ctx.state["settings"]["school_preparation_reminders"] = payload[
+            "school_preparation_reminders"
+        ]
+    if "school_preparation_days_before" in payload:
+        ctx.state["settings"]["school_preparation_days_before"] = payload[
+            "school_preparation_days_before"
+        ]
+    if "school_preparation_time" in payload:
+        ctx.state["settings"]["school_preparation_time"] = payload["school_preparation_time"]
     return ctx.state["settings"]

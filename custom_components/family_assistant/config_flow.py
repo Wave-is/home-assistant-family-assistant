@@ -26,6 +26,28 @@ CONFIGURABLE_MODULES = (
 )
 
 
+def school_preparation_days(value):
+    """Accept only the two supported integer lead days; bool is not an integer here."""
+    if type(value) is not int or value not in {0, 1}:
+        raise vol.Invalid("school_preparation_days_before")
+    return value
+
+
+def school_preparation_clock(value):
+    """Validate a strict, zero-padded household-local HH:MM clock."""
+    from .domain.recurrence import clock
+
+    if not isinstance(value, str):
+        raise vol.Invalid("school_preparation_time")
+    try:
+        normalized = clock(value)
+    except DomainError:
+        raise vol.Invalid("school_preparation_time") from None
+    if normalized != value:
+        raise vol.Invalid("school_preparation_time")
+    return value
+
+
 def select(options, translation_key=None):
     config = {"options": list(options)}
     if translation_key:
@@ -487,7 +509,8 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         except DomainError as err:
             return self.async_abort(reason=err.code)
         errors = {}
-        current_modules = runtime.engine.snapshot()["settings"]["modules"]
+        current_settings = runtime.engine.snapshot()["settings"]
+        current_modules = current_settings["modules"]
         if user_input is not None:
             try:
                 result = await runtime.engine.execute(
@@ -510,19 +533,27 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                         "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
                         "pantry_expiry_reminders": user_input.get(
                             "pantry_expiry_reminders",
-                            runtime.engine.snapshot()["settings"].get(
-                                "pantry_expiry_reminders", False
-                            ),
+                            current_settings.get("pantry_expiry_reminders", False),
                         ),
                         "pantry_expiry_days": user_input.get(
                             "pantry_expiry_days",
-                            runtime.engine.snapshot()["settings"].get("pantry_expiry_days", 3),
+                            current_settings.get("pantry_expiry_days", 3),
+                        ),
+                        "school_preparation_reminders": user_input.get(
+                            "school_preparation_reminders",
+                            current_settings.get("school_preparation_reminders", False),
+                        ),
+                        "school_preparation_days_before": user_input.get(
+                            "school_preparation_days_before",
+                            current_settings.get("school_preparation_days_before", 1),
+                        ),
+                        "school_preparation_time": user_input.get(
+                            "school_preparation_time",
+                            current_settings.get("school_preparation_time", "20:00"),
                         ),
                         "timezone": user_input.get(
                             "timezone",
-                            runtime.engine.snapshot()["settings"].get(
-                                "timezone", self.hass.config.time_zone
-                            ),
+                            current_settings.get("timezone", self.hass.config.time_zone),
                         ),
                     },
                     f"options:{uuid.uuid4()}",
@@ -556,6 +587,18 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(
                         "pantry_expiry_days", default=settings.get("pantry_expiry_days", 3)
                     ): vol.All(int, vol.Range(min=0, max=30)),
+                    vol.Required(
+                        "school_preparation_reminders",
+                        default=settings.get("school_preparation_reminders", False),
+                    ): bool,
+                    vol.Required(
+                        "school_preparation_days_before",
+                        default=settings.get("school_preparation_days_before", 1),
+                    ): school_preparation_days,
+                    vol.Required(
+                        "school_preparation_time",
+                        default=settings.get("school_preparation_time", "20:00"),
+                    ): school_preparation_clock,
                     **{
                         vol.Required(m, default=m in settings["modules"]): bool
                         for m in CONFIGURABLE_MODULES

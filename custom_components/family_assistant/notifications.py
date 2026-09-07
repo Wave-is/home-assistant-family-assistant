@@ -16,6 +16,12 @@ from zoneinfo import ZoneInfo
 
 from .domain.engine import Engine
 from .domain.pantry_expiry import current_event as current_pantry_expiry_event
+from .domain.school_reminders import (
+    KEY as SCHOOL_REMINDER_KEY,
+)
+from .domain.school_reminders import (
+    delivery_allowed as school_reminder_delivery_allowed,
+)
 from .domain.task_delivery import TASK_EVENTS, current_task_event
 from .domain.validation import timestamp
 
@@ -54,15 +60,34 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
     return datetime.combine(end_day, end, tzinfo=zone)
 
 
+def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
+    """Recheck events whose private source can be revoked before transport."""
+    if event.get("key") == "pantry_expiry":
+        return current_pantry_expiry_event(state, event, now)
+    if event.get("key") == SCHOOL_REMINDER_KEY:
+        return school_reminder_delivery_allowed(state, event, now)
+    if event.get("key") in TASK_EVENTS:
+        return current_task_event(state, event)
+    return True
+
+
 class Notifications:
     def __init__(
         self,
         engine: Engine,
         resolve: Callable[[dict, dict], list[dict]],
         send: Callable[[dict, dict], Awaitable[str]],
+        *,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.engine, self.resolve, self.send = engine, resolve, send
+        self.clock = clock
         self._lock = asyncio.Lock()
+
+    def _current_time(self, fallback: datetime) -> datetime:
+        """Use a live adapter clock when supplied, or the caller's fixed test clock."""
+        current = self.clock() if self.clock is not None else fallback
+        return timestamp(current, "now")
 
     async def run(self, now: datetime, limit: int = 5) -> int:
         if self._lock.locked():
@@ -103,17 +128,21 @@ class Notifications:
         """
 
         def authorize(ctx):
+            ctx.now = self._current_time(ctx.now)
             event = ctx.state["outbox"].get(event_id)
             if event is None or event["state"] != "sending":
                 return None
             delivery = event.get("deliveries", {}).get(delivery_id)
             if delivery is None or delivery["state"] != "sending":
                 return None
-            if (
-                event["key"] == "pantry_expiry"
-                and not current_pantry_expiry_event(ctx.state, event, now)
-            ) or (event["key"] in TASK_EVENTS and not current_task_event(ctx.state, event)):
+            if not _delivery_current(ctx.state, event, ctx.now):
                 delivery["state"] = "superseded"
+                self._aggregate(event)
+                return None
+            policy = ctx.state["settings"].get("notifications", {})
+            if event["key"] not in URGENT and quiet_until(ctx.now, policy):
+                delivery["state"] = "pending"
+                delivery.pop("lease_until", None)
                 self._aggregate(event)
                 return None
             current_targets = self.resolve(deepcopy(event), deepcopy(ctx.state))
@@ -135,16 +164,12 @@ class Notifications:
         )
 
     def _claim(self, ctx):
+        ctx.now = self._current_time(ctx.now)
         policy = ctx.state["settings"].get("notifications", {})
         for event in ctx.state["outbox"].values():
             if event["state"] in {"sent", "superseded", "failed", "uncertain", "resolved"}:
                 continue
-            if event["state"] != "sending" and (
-                event["key"] == "pantry_expiry"
-                and not current_pantry_expiry_event(ctx.state, event, ctx.now)
-                or event["key"] in TASK_EVENTS
-                and not current_task_event(ctx.state, event)
-            ):
+            if event["state"] != "sending" and not _delivery_current(ctx.state, event, ctx.now):
                 if not event.get("deliveries"):
                     event["state"] = "superseded"
                 else:
@@ -225,10 +250,11 @@ class Notifications:
 
     async def _finish(self, event_id, delivery_id, now, *, receipt=None, error=None):
         def finish(ctx):
+            ctx.now = self._current_time(ctx.now)
             event = ctx.state["outbox"][event_id]
             delivery = event["deliveries"][delivery_id]
             if error is None:
-                delivery.update(state="sent", receipt=str(receipt), sent_at=now.isoformat())
+                delivery.update(state="sent", receipt=str(receipt), sent_at=ctx.now.isoformat())
             elif error.uncertain:
                 delivery.update(state="uncertain", error=error.code)
             elif error.retryable and delivery["attempts"] < 5:
@@ -236,7 +262,7 @@ class Notifications:
                 delivery.update(
                     state="pending",
                     error=error.code,
-                    next_at=(now + timedelta(seconds=delay)).isoformat(),
+                    next_at=(ctx.now + timedelta(seconds=delay)).isoformat(),
                 )
             else:
                 delivery.update(state="failed", error=error.code)
