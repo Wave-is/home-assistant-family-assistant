@@ -17,7 +17,7 @@ from aiohttp import ClientSession
 from homeassistant import bootstrap, config_entries, loader
 from homeassistant.auth.const import GROUP_ID_ADMIN
 from homeassistant.components.siren import DATA_COMPONENT, SirenEntity, SirenEntityFeature
-from homeassistant.core import Context, HomeAssistant
+from homeassistant.core import Context, CoreState, HomeAssistant
 from homeassistant.setup import async_setup_component
 
 
@@ -73,6 +73,11 @@ async def main():
         )
         user = await hass.auth.async_create_user("Synthetic owner", group_ids=[GROUP_ID_ADMIN])
         try:
+            # Bootstrap loads integrations; the real lifecycle transition is
+            # separate. BackupManager correctly remains blocked until started.
+            await hass.async_start()
+            await hass.async_block_till_done()
+            assert hass.state is CoreState.running
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -286,6 +291,9 @@ async def main():
             from ha_backup_recovery_smoke import verify_backup_recovery
 
             await verify_backup_recovery(hass, user)
+            from ha_encrypted_archive_smoke import verify_encrypted_archive
+
+            await verify_encrypted_archive(hass, entry, user, media_expected)
             school_expected = entry.runtime_data.engine.snapshot()["school"]
             school_tasks_expected = {
                 task_id: entry.runtime_data.engine.snapshot()["tasks"][task_id]
