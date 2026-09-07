@@ -809,7 +809,12 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
     }
     await request(child, "pantry.item_save", payload, error="forbidden")
     item = await request(owner, "pantry.item_save", payload)
+    # A WebSocket write schedules background reconciliation. Scheduler.run is
+    # deliberately single-flight and can return while that earlier tick still
+    # owns the lock; first drain it before forcing the assertion's clock pass.
+    await hass.async_block_till_done()
     await entry.runtime_data.scheduler.run(datetime.now(UTC))
+    assert "scheduler" not in entry.runtime_data.health
     parent_view = (await request(owner, "view", {}))["pantry"]
     child_view = (await request(child, "view", {}))["pantry"]
     assert child_view["items"][0]["expiry_status"] == "expiring"
