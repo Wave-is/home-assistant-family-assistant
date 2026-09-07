@@ -15,6 +15,8 @@ const STYLE = `
   .task-media-actions{display:flex;flex-wrap:wrap;gap:8px}.task-media-confirm{display:flex;gap:8px;align-items:flex-start}
   .task-media-confirm input{flex:0 0 auto;margin-top:3px}.task-media-preview{display:block;max-width:100%;max-height:360px;object-fit:contain}
   .task-media-file{overflow-wrap:anywhere}.task-media-attachment{padding:8px;border:1px solid var(--divider-color,#ddd);border-radius:8px}
+  .task-media-purge{display:grid;gap:8px;padding:10px;border:1px solid var(--error-color,#b3261e);border-radius:8px}
+  .task-media-purge textarea{box-sizing:border-box;width:100%;min-height:72px}
   @media(max-width:520px){.task-media-actions>button{width:100%}}
 `;
 
@@ -137,8 +139,65 @@ function exactAttachment(value) {
   );
 }
 
+function reportSlot(item, generation) {
+  if (!validRevision(generation)) return null;
+  if (item?.report_generation === generation) return item;
+  const matches = (Array.isArray(item?.previous_reports) ? item.previous_reports : [])
+    .filter((report) => report?.report_generation === generation);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function purgeAccess(card, item, value, generation) {
+  const snapshot = access(card, item);
+  const slot = reportSlot(item, generation);
+  if (
+    !snapshot ||
+    snapshot.role !== "owner" ||
+    !exactAttachment(value) ||
+    attachment(item, value.id) !== value ||
+    !slot ||
+    !Array.isArray(slot.report_attachments) ||
+    slot.report_attachments.length !== 1 ||
+    slot.report_attachments[0]?.id !== value.id
+  ) return null;
+  return {
+    ...snapshot,
+    reportGeneration: generation,
+    mediaId: value.id,
+    mediaRevision: value.revision,
+  };
+}
+
+function purgeDraftCurrent(card, draft) {
+  const currentTask = task(card, draft?.access?.taskId);
+  if (!currentTask || !frameCurrent(card, draft.access)) return false;
+  const currentValue = attachment(currentTask, draft.access.mediaId);
+  if (
+    currentTask.revision === draft.access.taskRevision &&
+    sameAccess(
+      purgeAccess(
+        card,
+        currentTask,
+        currentValue,
+        draft.access.reportGeneration,
+      ),
+      draft.access,
+    )
+  ) return true;
+  const slot = reportSlot(currentTask, draft.access.reportGeneration);
+  return Boolean(
+    draft.purgePending &&
+      validRevision(currentTask.revision) &&
+      currentTask.revision >= draft.access.taskRevision + 1 &&
+      !currentValue &&
+      typeof slot?.report_media_purged_at === "string" &&
+      slot.report_media_purged_at.length > 0
+  );
+}
+
 function draftCurrent(card, draft) {
   if (!draft?.access) return false;
+  if (draft.kind === "purge") return purgeDraftCurrent(card, draft);
   const currentTask = task(card, draft.access.taskId);
   const currentAccess = access(card, currentTask, { upload: true });
   if (sameAccess(currentAccess, draft.access)) return true;
@@ -240,6 +299,7 @@ function errorCode(error) {
     "media_too_large",
     "media_unavailable",
     "module_disabled",
+    "invalid_field",
     "photo_required",
     "storage_error",
   ].includes(error?.code)
@@ -417,7 +477,81 @@ async function loadAttachment(card, item, value) {
   if (frameCurrent(card, scope) && typeof card.render === "function") card.render();
 }
 
-function renderAttachment(card, section, item, value, label, copy) {
+function beginPurge(card, item, value, generation) {
+  const snapshot = purgeAccess(card, item, value, generation);
+  if (!snapshot || !live(card)) return false;
+  if (card._taskMediaDraft) clearDraft(card);
+  card._taskMediaDraft = {
+    kind: "purge",
+    access: Object.freeze({ ...snapshot }),
+    hass: card._hass,
+    stage: "reason",
+    reason: "",
+    request: null,
+    purgePending: false,
+  };
+  return true;
+}
+
+function freezePurge(card, draft) {
+  if (!live(card, draft) || draft.stage !== "reason") return false;
+  const reason = typeof draft.reason === "string" ? draft.reason.trim() : "";
+  if (!reason || reason.length > 500) return false;
+  draft.reason = reason;
+  draft.request = Object.freeze({
+    action: "tasks.report_media_purge",
+    payload: Object.freeze({
+      id: draft.access.taskId,
+      revision: draft.access.taskRevision,
+      report_generation: draft.access.reportGeneration,
+      media_id: draft.access.mediaId,
+      media_revision: draft.access.mediaRevision,
+      reason,
+      confirmed: true,
+    }),
+    operation_id: crypto.randomUUID(),
+  });
+  draft.stage = "review";
+  return true;
+}
+
+async function purgePhoto(card, draft) {
+  if (!live(card, draft) || !draft.request) return;
+  draft.purgePending = true;
+  const writeOwner = {};
+  card._taskMediaWriteOwner = writeOwner;
+  card._writing = true;
+  card._actionError = null;
+  try {
+    const receipt = await execute(card, draft, draft.request);
+    if (
+      !validReceipt(
+        receipt,
+        draft.access.taskStatus,
+        draft.access.taskId,
+        draft.access.taskRevision + 1,
+      )
+    ) throw Object.assign(new Error("media_invalid"), { code: "media_invalid" });
+    if (
+      card._taskMediaDraft !== draft ||
+      !frameCurrent(card, draft.access) ||
+      !draftCurrent(card, draft)
+    ) return;
+    clearDraft(card);
+  } catch (error) {
+    if (card._taskMediaDraft === draft && frameCurrent(card, draft.access))
+      card._actionError = errorCode(error);
+  } finally {
+    const ownsWrite = card._taskMediaWriteOwner === writeOwner;
+    if (ownsWrite) {
+      card._taskMediaWriteOwner = null;
+      card._writing = false;
+    }
+    if (ownsWrite && frameCurrent(card, draft.access)) await refresh(card);
+  }
+}
+
+function renderAttachment(card, section, item, value, generation, label, copy) {
   if (!exactAttachment(value)) return;
   const box = el("div", null, "task-media-attachment");
   box.append(
@@ -440,6 +574,16 @@ function renderAttachment(card, section, item, value, label, copy) {
       }),
     );
   } else box.append(button(card, copy.download, () => loadAttachment(card, item, value)));
+  if (purgeAccess(card, item, value, generation))
+    box.append(
+      button(card, copy.remove_retained, () => {
+        const currentTask = task(card, item.id);
+        const currentValue = attachment(currentTask, value.id);
+        if (!beginPurge(card, currentTask, currentValue, generation)) return;
+        card._actionError = null;
+        if (typeof card.render === "function") card.render();
+      }),
+    );
   section.append(box);
 }
 
@@ -452,6 +596,7 @@ function beginReview(card, item, file) {
   if (card._taskMediaDraft) clearDraft(card);
   const frozenAccess = Object.freeze({ ...snapshot });
   card._taskMediaDraft = {
+    kind: "upload",
     access: frozenAccess,
     // Keep using the authenticated session object that began the reviewed flow.
     hass: card._hass,
@@ -495,6 +640,74 @@ function bindSubmitRequest(draft) {
       media: Object.freeze({ id: draft.available.id, revision: draft.available.revision }),
     }),
   });
+}
+
+function renderPurge(card, section, draft, copy) {
+  if (!purgeDraftCurrent(card, draft)) {
+    clearDraft(card, { conflict: true });
+    section.append(el("p", copy.stale, "sub"));
+    return;
+  }
+  const review = el("div", null, "task-media-purge");
+  review.dataset.taskMediaPurge = draft.access.mediaId;
+  review.append(el("h5", copy.remove_title), el("p", copy.remove_warning, "sub"));
+  if (draft.stage === "reason") {
+    const label = el("label", copy.remove_reason);
+    const input = el("textarea");
+    input.name = "purge_reason";
+    input.maxLength = 500;
+    input.required = true;
+    input.value = draft.reason;
+    input.addEventListener("input", () => {
+      draft.reason = input.value;
+      action.disabled = !input.value.trim() || input.value.trim().length > 500 || card._writing;
+    });
+    label.append(input);
+    const action = button(card, copy.review_remove, () => {
+      if (!freezePurge(card, draft)) return;
+      if (typeof card.render === "function") card.render();
+    }, true);
+    action.disabled = !draft.reason.trim();
+    const actions = el("div", null, "task-media-actions");
+    actions.append(
+      action,
+      button(card, copy.cancel, () => {
+        if (!live(card, draft)) return;
+        clearDraft(card);
+        if (typeof card.render === "function") card.render();
+      }),
+    );
+    review.append(label, actions);
+  } else {
+    review.append(
+      el("p", copy.remove_reviewed),
+      el("p", draft.reason, "task-media-file"),
+    );
+    const confirmation = confirmRow(copy.confirm_remove, "confirm_purge");
+    confirmation.input.checked = draft.purgePending;
+    confirmation.input.disabled = draft.purgePending;
+    const action = button(
+      card,
+      draft.purgePending ? copy.retry_remove : copy.remove_confirmed,
+      () => purgePhoto(card, draft),
+      true,
+    );
+    action.disabled = !draft.purgePending;
+    confirmation.input.addEventListener("change", () => {
+      action.disabled = !confirmation.input.checked || card._writing;
+    });
+    const actions = el("div", null, "task-media-actions");
+    actions.append(
+      action,
+      button(card, copy.cancel, () => {
+        if (!live(card, draft)) return;
+        clearDraft(card);
+        if (typeof card.render === "function") card.render();
+      }),
+    );
+    review.append(confirmation.label, actions);
+  }
+  section.append(review);
 }
 
 export function reconcileTaskMediaRefresh(card) {
@@ -546,18 +759,35 @@ export function renderTaskMedia(card, item) {
   section.dataset.taskMediaId = item.id || "";
   section.append(el("style", STYLE), el("h4", copy.title));
   for (const value of Array.isArray(item.report_attachments) ? item.report_attachments : [])
-    renderAttachment(card, section, item, value, copy.current, copy);
+    renderAttachment(card, section, item, value, item.report_generation, copy.current, copy);
+  if (typeof item.report_media_purged_at === "string")
+    section.append(el("p", copy.removed_marker, "sub"));
   if (PRIVILEGED.has(card?._data?.role))
-    for (const report of Array.isArray(item.previous_reports) ? item.previous_reports : [])
+    for (const report of Array.isArray(item.previous_reports) ? item.previous_reports : []) {
       for (const value of Array.isArray(report?.report_attachments)
         ? report.report_attachments
         : [])
-        renderAttachment(card, section, item, value, copy.previous, copy);
+        renderAttachment(
+          card,
+          section,
+          item,
+          value,
+          report.report_generation,
+          copy.previous,
+          copy,
+        );
+      if (typeof report?.report_media_purged_at === "string")
+        section.append(el("p", copy.removed_previous_marker, "sub"));
+    }
 
   const currentAccess = access(card, item, { upload: true });
   const draft = card._taskMediaDraft?.access?.taskId === item.id
     ? card._taskMediaDraft
     : null;
+  if (draft?.kind === "purge") {
+    renderPurge(card, section, draft, copy);
+    return section;
+  }
   if ((!currentAccess || !OPEN.has(item.status)) && !draft) return section;
   if (!draft) {
     const form = el("form", null, "task-media-form");

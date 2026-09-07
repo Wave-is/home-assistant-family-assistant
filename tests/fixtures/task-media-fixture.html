@@ -91,6 +91,7 @@
             task_id: historyTask.id,
             assignee: "child",
             assignee_revision: 3,
+            report_generation: 1,
             historical: true,
           },
         ],
@@ -101,6 +102,7 @@
     window.receipts = new Map();
     window.losePut = false;
     window.loseSubmit = false;
+    window.losePurge = false;
     window.failNextView = false;
     window.objectUrls = new Set();
     window.revokedUrls = [];
@@ -180,7 +182,7 @@
       const prior = window.receipts.get(message.operation_id);
       if (!prior) return null;
       if (
-        prior.actor !== actor.id || prior.action !== message.action ||
+        prior.actor !== actor.id || prior.role !== actor.role || prior.action !== message.action ||
         JSON.stringify(prior.payload) !== JSON.stringify(message.payload)
       ) throw { code: "conflict" };
       if (message.action === "media.reserve") {
@@ -204,6 +206,7 @@
     const saveReceipt = (message, actor, result) => {
       window.receipts.set(message.operation_id, {
         actor: actor.id,
+        role: actor.role,
         action: message.action,
         payload: clone(message.payload),
         result: clone(result),
@@ -242,6 +245,50 @@
         });
         return saveReceipt(message, actor, { id, revision: 1, status: "reserved" });
       }
+      if (message.action === "tasks.report_media_purge") {
+        if (!exact(message.payload, [
+          "id", "revision", "report_generation", "media_id", "media_revision",
+          "reason", "confirmed",
+        ])) throw { code: "invalid_field" };
+        if (actor.role !== "owner") throw { code: "forbidden" };
+        if (
+          message.payload.confirmed !== true ||
+          typeof message.payload.reason !== "string" ||
+          !message.payload.reason.trim() ||
+          message.payload.reason.length > 500
+        ) throw { code: "invalid_field" };
+        const item = targetTask(message.payload.id);
+        if (item.revision !== message.payload.revision) throw { code: "conflict" };
+        const slots = [item, ...(item.previous_reports || [])].filter((report) =>
+          report.report_generation === message.payload.report_generation &&
+          report.report_attachments?.length === 1 &&
+          report.report_attachments[0].id === message.payload.media_id);
+        const record = window.fixture.media.get(message.payload.media_id);
+        if (
+          slots.length !== 1 || !record || record.status !== "attached" ||
+          record.revision !== message.payload.media_revision ||
+          record.task_id !== item.id ||
+          record.report_generation !== message.payload.report_generation
+        ) throw { code: "conflict" };
+        const slot = slots[0];
+        delete slot.report_media;
+        slot.report_attachments = [];
+        slot.report_media_purged_at = new Date().toISOString();
+        record.status = "deleting";
+        record.revision += 1;
+        item.revision += 1;
+        window.fixture.revision += 1;
+        const result = saveReceipt(message, actor, {
+          id: item.id,
+          revision: item.revision,
+          status: item.status,
+        });
+        if (window.losePurge) {
+          window.losePurge = false;
+          throw new Error("Synthetic lost purge response");
+        }
+        return result;
+      }
       if (message.action !== "tasks.submit" ||
           !exact(message.payload, ["id", "revision", "media"]) ||
           !exact(message.payload.media, ["id", "revision"]))
@@ -257,6 +304,7 @@
       record.status = "attached";
       record.revision = 3;
       item.report_generation += 1;
+      record.report_generation = item.report_generation;
       item.report_media = [record.id];
       item.report_attachments = [visibleAttachment(record)];
       item.status = "submitted";

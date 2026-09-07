@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
+from datetime import timedelta
 
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
@@ -11,10 +12,11 @@ from homeassistant.util import dt as dt_util
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
-from .context import reply_refs, result_refs
+from .context import reply_quote, reply_refs, result_refs
 from .enrollment import Enrollment
 from .errors import ERRORS
 from .messages import render, targets
+from .polls import route as route_polls
 from .router import COPY, addressed, route
 
 
@@ -33,10 +35,13 @@ class TelegramManager:
         self._stopped = False
         from ..assistant.jobs import Jobs
 
-        self.jobs = Jobs(runtime.engine)
+        self.jobs = Jobs(runtime.engine, clock=dt_util.utcnow)
 
     def _targets(self, event, state):
-        if event["key"] == "telegram_reply" and event["data"].get("bot_id") != self.bot["id"]:
+        if (
+            event["key"] in {"telegram_reply", "telegram_poll_reply"}
+            and event["data"].get("bot_id") != self.bot["id"]
+        ):
             return []
         return [{**target, "bot_id": self.bot["id"]} for target in targets(event, state)]
 
@@ -76,6 +81,7 @@ class TelegramManager:
         backoff = 5
         while not self._stopped:
             try:
+                await self.runtime.engine.async_wait_writable()
                 if self.runtime.health.get("telegram") != "connected":
                     await self.client.inspect()
                 state = self.runtime.engine.snapshot()
@@ -97,6 +103,10 @@ class TelegramManager:
                     return  # Do not fight another consumer or change its webhook.
                 await asyncio.sleep(max(backoff, err.retry_after))
                 backoff = min(120, backoff * 2)
+            except DomainError as error:
+                if error.code != "backup_in_progress":
+                    raise
+                await self.runtime.engine.async_wait_writable()
             except OSError:
                 self._issue("storage_error")
                 await asyncio.sleep(5)
@@ -128,14 +138,18 @@ class TelegramManager:
 
     async def _send_notification(self, event, target):
         result = await self.client.call(
-            "sendMessage", render(event, target, self.runtime.engine.snapshot())
+            "sendMessage",
+            render(event, target, self.runtime.engine.snapshot(), now=dt_util.utcnow()),
         )
         return str(result["message_id"])
 
     async def _conversations(self):
+        # Keep an already computed answer through a transient Store failure.
+        # This is process-local, not an exactly-once promise across a crash.
+        completion = None
         while not self._stopped:
             try:
-                if (job := self.jobs.next(self.bot["id"])) is not None:
+                if completion is None and (job := self.jobs.next(self.bot["id"])) is not None:
                     cancelled = False
                     try:
                         actor = self.jobs.authorize(job, dt_util.utcnow())
@@ -152,14 +166,25 @@ class TelegramManager:
                         self.jobs.authorize(job, dt_util.utcnow())
                     except (DomainError, TimeoutError) as err:
                         code = err.code if isinstance(err, DomainError) else "provider_timeout"
+                        if code == "backup_in_progress":
+                            raise
                         cancelled = code == "forbidden"
                         response = COPY[job["language"]]["error"].format(
                             error=ERRORS[job["language"]].get(code, code)
                         )
+                    completion = (job, response, cancelled)
+                if completion is not None:
+                    job, response, cancelled = completion
                     await self.jobs.finish(job, response, dt_util.utcnow(), cancelled=cancelled)
+                    completion = None
+                    self.runtime.health.pop("conversation_storage", None)
                     self.runtime.updated()
+            except DomainError as error:
+                if error.code != "backup_in_progress":
+                    raise
+                await self.runtime.engine.async_wait_writable()
             except OSError:
-                self.runtime.health["conversation"] = "storage_error"
+                self.runtime.health["conversation_storage"] = "storage_error"
             await asyncio.sleep(1)
 
     async def process(self, update):
@@ -189,6 +214,7 @@ class TelegramManager:
             except DomainError:
                 actor = None
             if actor:
+                actor_revision = engine.snapshot()["members"][actor]["revision"]
                 language = next(
                     m["language"] for m in engine.view(actor)["members"] if m["id"] == actor
                 )
@@ -200,7 +226,17 @@ class TelegramManager:
                         if not isinstance(content, str) or len(content.encode()) > 64:
                             raise DomainError("invalid_field")
                         parts = content.rsplit(":", 2)
-                        if content.startswith("fr:"):
+                        if content.startswith(("ps:", "pr:")):
+                            response = await route_polls(
+                                engine,
+                                actor,
+                                content,
+                                f"tg:{self.bot['id']}:{update_id}:action",
+                                now,
+                                private=chat.get("type") == "private",
+                            )
+                            parts = None
+                        elif content.startswith("fr:"):
                             from . import routines
 
                             if chat.get("type") != "private":
@@ -263,21 +299,32 @@ class TelegramManager:
                                 bot_id=self.bot["id"],
                                 chat_id=chat["id"],
                                 reply_to=envelope.get("message_id"),
-                                quoted_text=message.get("reply_to_message", {}).get("text", ""),
+                                quoted_text=reply_quote(engine.snapshot(), message, self.bot),
                             )
 
-                        response = await route(
+                        response = await route_polls(
                             engine,
                             actor,
                             content,
                             f"tg:{self.bot['id']}:{update_id}:action",
                             now,
-                            reply_refs(engine.snapshot(), message, self.bot),
-                            fallback=slow,
                             private=chat.get("type") == "private",
                         )
+                        if response is None:
+                            response = await route(
+                                engine,
+                                actor,
+                                content,
+                                f"tg:{self.bot['id']}:{update_id}:action",
+                                now,
+                                reply_refs(engine.snapshot(), message, self.bot),
+                                fallback=slow,
+                                private=chat.get("type") == "private",
+                            )
                 except (DomainError, ValueError) as err:
                     code = err.code if isinstance(err, DomainError) else "invalid_field"
+                    if code == "backup_in_progress":
+                        raise
                     # Codes are bounded and translatable; never echo raw provider errors.
                     response = t["error"].format(
                         error=ERRORS.get(language, ERRORS["en"]).get(code, code)
@@ -293,6 +340,21 @@ class TelegramManager:
                             for event in ctx.state["outbox"].values()
                         ):
                             return
+                        if isinstance(response, dict):
+                            ctx.notify(
+                                actor,
+                                "telegram_poll_reply",
+                                {
+                                    "descriptor": response,
+                                    "actor": actor,
+                                    "actor_revision": actor_revision,
+                                    "bot_id": self.bot["id"],
+                                    "chat_id": chat["id"],
+                                    "reply_to": envelope.get("message_id"),
+                                    "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                                },
+                            )
+                            return
                         processed = (
                             ctx.state["processed"]
                             .get(f"tg:{self.bot['id']}:{update_id}:action", {})
@@ -304,6 +366,7 @@ class TelegramManager:
                             {
                                 "text": response,
                                 "actor": actor,
+                                "actor_revision": actor_revision,
                                 "bot_id": self.bot["id"],
                                 "chat_id": chat["id"],
                                 "reply_to": envelope.get("message_id"),
@@ -318,7 +381,7 @@ class TelegramManager:
                             },
                         )
 
-                    await engine.system_update("telegram_reply", now, reply)
+                    await engine.background_update("telegram_reply", now, reply)
                     self.runtime.updated()
                 if callback:
                     with suppress(DeliveryError):
@@ -330,4 +393,4 @@ class TelegramManager:
             offsets = ctx.state["telegram"].setdefault("offsets", {})
             offsets[str(self.bot["id"])] = max(offsets.get(str(self.bot["id"]), -1), update_id + 1)
 
-        await engine.system_update("telegram_offset", now, advance)
+        await engine.background_update("telegram_offset", now, advance)

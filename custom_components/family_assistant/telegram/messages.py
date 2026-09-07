@@ -240,7 +240,20 @@ def targets(event, state):
         return []
     language = state["settings"]["language"]
     group = state["telegram"].get("group_id")
+    if key == "telegram_poll_reply":
+        from .poll_delivery import current
+
+        if not current(event, state, event.get("created_at")):
+            return []
+        actor = state["members"][event["data"]["actor"]]
+        return [
+            {"channel": "telegram", "id": event["data"]["chat_id"], "language": actor["language"]}
+        ]
     if key == "telegram_reply":
+        from .reply_delivery import current
+
+        if not current(event, state, event.get("created_at")):
+            return []
         actor = state["members"].get(event["data"]["actor"], {})
         chat = event["data"]["chat_id"]
         if (
@@ -297,11 +310,37 @@ def targets(event, state):
     ]
 
 
-def render(event, target, state):
+def render(event, target, state, *, now=None):
     language = target.get("language", "en")
     t = MESSAGES.get(language, MESSAGES["en"])
     data = dict(event["data"])
-    if event["key"] == "telegram_reply":
+    if event["key"] == "telegram_poll_reply":
+        from datetime import UTC, datetime
+
+        from .poll_delivery import current
+        from .polls import render_reply
+
+        now = now if now is not None else datetime.now(UTC)
+        if not current(event, state, now) or target.get("id") != data["chat_id"]:
+            raise DeliveryError("delivery_revoked")
+        result = {
+            **render_reply(state, data["actor"], data["descriptor"], now, language),
+            "chat_id": target["id"],
+        }
+        if data.get("reply_to"):
+            result["reply_parameters"] = {
+                "message_id": data["reply_to"],
+                "allow_sending_without_reply": True,
+            }
+    elif event["key"] == "telegram_reply":
+        from datetime import UTC, datetime
+
+        from .reply_delivery import current
+
+        if not current(event, state, now if now is not None else datetime.now(UTC)) or (
+            "actor_revision" in data and target.get("id") != data["chat_id"]
+        ):
+            raise DeliveryError("delivery_revoked")
         result = {"chat_id": target["id"], "text": data["text"][:4000]}
         if data.get("reply_to"):
             result["reply_parameters"] = {

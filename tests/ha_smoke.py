@@ -222,6 +222,9 @@ async def main():
             from ha_telegram_smoke import run as telegram_smoke
 
             await telegram_smoke(hass, entry, user, child_id)
+            from ha_background_backup_smoke import verify_background_backup_loops
+
+            await verify_background_backup_loops(hass, entry, user)
             await run_websocket(hass, entry, user, child_id)
             from ha_member_revision_smoke import verify_member_revision_options
 
@@ -259,6 +262,12 @@ async def main():
             from ha_media_smoke import verify_media, verify_media_reload
 
             media_expected = await verify_media(hass, entry, user, child_id)
+            from ha_media_retention_smoke import verify_media_retention
+
+            await verify_media_retention(hass, entry, user, child_id)
+            from ha_polls_smoke import verify_polls
+
+            await verify_polls(hass, entry, user, child_id)
             from ha_backup_smoke import verify_backup
 
             await verify_backup(hass, entry, user, media_expected)
@@ -833,7 +842,7 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
     )
     schema_fields = {key.schema for key in options["data_schema"].schema}
     assert {"routines", "pantry", "school", "maintenance"} <= schema_fields
-    assert "polls" not in schema_fields
+    assert "polls" in schema_fields
     options = await hass.config_entries.options.async_configure(
         options["flow_id"],
         {

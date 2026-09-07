@@ -46,7 +46,13 @@ async function eventually(predicate, message = "condition was not reached") {
 }
 
 function baseState(role = "child") {
-  const actor = role === "parent" ? "parent_1" : role === "guest" ? "guest_1" : "child_1";
+  const actor = role === "owner"
+    ? "owner_1"
+    : role === "parent"
+      ? "parent_1"
+      : role === "guest"
+        ? "guest_1"
+        : "child_1";
   return {
     revision: 1,
     actor,
@@ -57,6 +63,7 @@ function baseState(role = "child") {
       { id: "child_1", role: "child", active: true, revision: 7 },
       { id: "child_2", role: "child", active: true, revision: 9 },
       { id: "guest_1", role: "guest", active: true, revision: 2 },
+      { id: "owner_1", role: "owner", active: true, revision: 11 },
     ],
     tasks: [
       {
@@ -67,6 +74,7 @@ function baseState(role = "child") {
         assignee: "child_1",
         assignee_revision: 7,
         report_type: "photo",
+        report_generation: 1,
         report_attachments: [],
       },
     ],
@@ -97,6 +105,7 @@ function makeCard(t, { role = "child", language = "en" } = {}) {
   let loseReserve = false;
   let loseUpload = false;
   let loseSubmit = false;
+  let losePurge = false;
   let mediaAvailable = null;
   let uploadGate = null;
   let submitGate = null;
@@ -130,7 +139,9 @@ function makeCard(t, { role = "child", language = "en" } = {}) {
 
   host._hass = {
     language,
-    user: { id: role === "parent" ? "ha_parent" : "ha_child" },
+    user: {
+      id: role === "owner" ? "ha_owner" : role === "parent" ? "ha_parent" : "ha_child",
+    },
     async callWS(message) {
       wsCalls.push(clone(message));
       if (receipts.has(message.operation_id)) return clone(receipts.get(message.operation_id));
@@ -139,6 +150,28 @@ function makeCard(t, { role = "child", language = "en" } = {}) {
         receipts.set(message.operation_id, receipt);
         if (loseReserve) {
           loseReserve = false;
+          throw Object.assign(new Error("response lost"), { code: "response_lost" });
+        }
+        return clone(receipt);
+      }
+      if (message.action === "tasks.report_media_purge") {
+        const task = state.tasks[0];
+        const slot = task.report_generation === message.payload.report_generation
+          ? task
+          : task.previous_reports?.find(
+            (report) => report.report_generation === message.payload.report_generation,
+          );
+        assert.ok(slot);
+        assert.equal(task.revision, message.payload.revision);
+        assert.equal(slot.report_attachments[0].id, message.payload.media_id);
+        assert.equal(slot.report_attachments[0].revision, message.payload.media_revision);
+        slot.report_attachments = [];
+        slot.report_media_purged_at = "2026-09-07T07:00:00Z";
+        task.revision += 1;
+        const receipt = { id: task.id, revision: task.revision, status: task.status };
+        receipts.set(message.operation_id, receipt);
+        if (losePurge) {
+          losePurge = false;
           throw Object.assign(new Error("response lost"), { code: "response_lost" });
         }
         return clone(receipt);
@@ -196,6 +229,7 @@ function makeCard(t, { role = "child", language = "en" } = {}) {
     loseReserve: () => (loseReserve = true),
     loseUpload: () => (loseUpload = true),
     loseSubmit: () => (loseSubmit = true),
+    losePurge: () => (losePurge = true),
     deferUpload() {
       let release;
       uploadGate = new Promise((resolve) => (release = resolve));
@@ -568,4 +602,150 @@ test("current and parent historical photos download only on click and revoke on 
   fixture.state.tasks[0].revision += 1;
   assert.equal(reconcileTaskMediaRefresh(fixture.host), true);
   assert.ok(revokedUrls.includes(url));
+});
+
+function retainedPhoto(id = "M33333333333333333333333333333333", revision = 3) {
+  return {
+    id,
+    revision,
+    purpose: "task_report",
+    mime_type: "image/png",
+    size_bytes: 4,
+    status: "attached",
+  };
+}
+
+function beginRemoval(host, reason = "Reviewed duplicate private photo") {
+  button(host, TASK_MEDIA_COPY.en.remove_retained).click();
+  const input = host.querySelector('[name="purge_reason"]');
+  input.value = reason;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  button(host, TASK_MEDIA_COPY.en.review_remove).click();
+}
+
+test("only owner can review removal of current and historical retained photos", (t) => {
+  for (const role of ["child", "parent", "guest"]) {
+    const fixture = makeCard(t, { role });
+    fixture.state.tasks[0].report_attachments = [retainedPhoto()];
+    fixture.host.render();
+    assert.equal(button(fixture.host, TASK_MEDIA_COPY.en.remove_retained), undefined);
+  }
+
+  const owner = makeCard(t, { role: "owner" });
+  owner.state.tasks[0].report_attachments = [retainedPhoto()];
+  owner.state.tasks[0].previous_reports = [
+    {
+      report_generation: 2,
+      report_attachments: [retainedPhoto("M44444444444444444444444444444444", 8)],
+    },
+  ];
+  owner.host.render();
+  assert.equal(
+    [...owner.host.querySelectorAll("button")].filter(
+      (item) => item.textContent === TASK_MEDIA_COPY.en.remove_retained,
+    ).length,
+    2,
+  );
+});
+
+test("owner removal freezes exact revisions and requires reason plus confirmation", async (t) => {
+  const fixture = makeCard(t, { role: "owner" });
+  const photo = retainedPhoto();
+  fixture.state.tasks[0].report_attachments = [photo];
+  fixture.host.render();
+  button(fixture.host, TASK_MEDIA_COPY.en.remove_retained).click();
+  const reason = fixture.host.querySelector('[name="purge_reason"]');
+  assert.equal(button(fixture.host, TASK_MEDIA_COPY.en.review_remove).disabled, true);
+  reason.value = `<img src=x> ${"r".repeat(20)}`;
+  reason.dispatchEvent(new Event("input", { bubbles: true }));
+  button(fixture.host, TASK_MEDIA_COPY.en.review_remove).click();
+  assert.equal(fixture.host.querySelectorAll("img").length, 0);
+  assert.match(fixture.host.textContent, /<img src=x>/);
+  const frozen = fixture.host._taskMediaDraft.request;
+  assert.ok(Object.isFrozen(frozen) && Object.isFrozen(frozen.payload));
+  assert.equal(button(fixture.host, TASK_MEDIA_COPY.en.remove_confirmed).disabled, true);
+
+  confirmAndClick(fixture.host, "confirm_purge", TASK_MEDIA_COPY.en.remove_confirmed);
+  await eventually(() => fixture.host._taskMediaDraft === null && !fixture.host._writing);
+  assert.deepEqual(fixture.wsCalls.at(-1), {
+    type: "family_assistant/execute",
+    entry_id: "entry_1",
+    action: "tasks.report_media_purge",
+    payload: {
+      id: "TPHOTO_1",
+      revision: 5,
+      report_generation: 1,
+      media_id: photo.id,
+      media_revision: 3,
+      reason: `<img src=x> ${"r".repeat(20)}`,
+      confirmed: true,
+    },
+    operation_id: frozen.operation_id,
+  });
+  assert.equal(fixture.state.tasks[0].status, "in_progress");
+  assert.equal(fixture.state.tasks[0].report_attachments.length, 0);
+  assert.ok(fixture.state.tasks[0].report_media_purged_at);
+});
+
+test("committed removal response loss preserves one exact retry", async (t) => {
+  const fixture = makeCard(t, { role: "owner" });
+  fixture.state.tasks[0].report_attachments = [retainedPhoto()];
+  fixture.host.render();
+  beginRemoval(fixture.host);
+  fixture.losePurge();
+  confirmAndClick(fixture.host, "confirm_purge", TASK_MEDIA_COPY.en.remove_confirmed);
+  await eventually(
+    () => !fixture.host._writing && fixture.state.tasks[0].report_attachments.length === 0,
+  );
+  const first = clone(fixture.wsCalls.at(-1));
+  assert.equal(fixture.host._taskMediaDraft.purgePending, true);
+  assert.ok(button(fixture.host, TASK_MEDIA_COPY.en.retry_remove));
+  button(fixture.host, TASK_MEDIA_COPY.en.retry_remove).click();
+  await eventually(() => fixture.host._taskMediaDraft === null);
+  assert.deepEqual(fixture.wsCalls.at(-1), first);
+  assert.equal(
+    fixture.wsCalls.filter((call) => call.action === "tasks.report_media_purge").length,
+    2,
+  );
+});
+
+test("committed removal keeps only its exact replay across later task changes", async (t) => {
+  const fixture = makeCard(t, { role: "owner" });
+  fixture.state.tasks[0].report_attachments = [retainedPhoto()];
+  fixture.host.render();
+  beginRemoval(fixture.host);
+  fixture.losePurge();
+  confirmAndClick(fixture.host, "confirm_purge", TASK_MEDIA_COPY.en.remove_confirmed);
+  await eventually(
+    () => !fixture.host._writing && fixture.state.tasks[0].report_attachments.length === 0,
+  );
+  const first = clone(fixture.wsCalls.at(-1));
+  fixture.state.tasks[0].revision += 1;
+  fixture.state.tasks[0].status = "archived";
+  fixture.host.render();
+  assert.ok(button(fixture.host, TASK_MEDIA_COPY.en.retry_remove));
+  button(fixture.host, TASK_MEDIA_COPY.en.retry_remove).click();
+  await eventually(() => fixture.host._taskMediaDraft === null);
+  assert.deepEqual(fixture.wsCalls.at(-1), first);
+});
+
+test("uncommitted removal draft is revoked by exact task, actor, module, and media drift", (t) => {
+  const changes = [
+    (fixture) => (fixture.state.tasks[0].revision += 1),
+    (fixture) => (fixture.state.tasks[0].report_generation += 1),
+    (fixture) => (fixture.state.tasks[0].report_attachments[0].revision += 1),
+    (fixture) => (fixture.state.members.at(-1).revision += 1),
+    (fixture) => (fixture.state.role = "parent"),
+    (fixture) => (fixture.state.settings.modules = []),
+  ];
+  for (const change of changes) {
+    const fixture = makeCard(t, { role: "owner" });
+    fixture.state.tasks[0].report_attachments = [retainedPhoto()];
+    fixture.host.render();
+    beginRemoval(fixture.host);
+    change(fixture);
+    assert.equal(reconcileTaskMediaRefresh(fixture.host), true);
+    assert.equal(fixture.host._taskMediaDraft, null);
+    assert.equal(fixture.wsCalls.length, 0);
+  }
 });

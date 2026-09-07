@@ -24,6 +24,8 @@ from . import (
     media,
     members,
     pantry,
+    poll_reviews,
+    polls,
     proposals,
     rewards,
     routines,
@@ -58,6 +60,7 @@ HANDLERS = {
     "school": school.handle,
     "maintenance": maintenance.handle,
     "media": media.handle,
+    "polls": polls.handle,
 }
 BUCKETS = (
     "members",
@@ -81,6 +84,8 @@ BUCKETS = (
     "maintenance",
     "media",
     "polls",
+    "poll_ballots",
+    "poll_reviews",
     "outbox",
     "processed",
     "sequences",
@@ -165,12 +170,17 @@ class Engine:
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
         self._state.setdefault("media", {})
+        self._state.setdefault("polls", {})
+        self._state.setdefault("poll_ballots", {})
+        self._state.setdefault("poll_reviews", {})
         self._persist = persist
         self._lock = asyncio.Lock()
         # This process-local lease is deliberately absent from persisted state.
         # A restarted Engine is writable and cannot accept a token from its predecessor.
         self._backup_owner = _NO_BACKUP
         self._ended_backup_owner = _NO_BACKUP
+        self._writable = asyncio.Event()
+        self._writable.set()
 
     def _require_writable(self) -> None:
         if self._backup_owner is not _NO_BACKUP:
@@ -185,6 +195,7 @@ class Engine:
                 raise DomainError("conflict")
             token = object()
             self._backup_owner = token
+            self._writable.clear()
             return token
 
     async def async_end_backup(self, token: object) -> None:
@@ -193,10 +204,30 @@ class Engine:
             if self._backup_owner is token:
                 self._backup_owner = _NO_BACKUP
                 self._ended_backup_owner = token
+                self._writable.set()
                 return
             if self._backup_owner is _NO_BACKUP and self._ended_backup_owner is token:
                 return
             raise DomainError("conflict")
+
+    async def async_wait_writable(self) -> None:
+        """Let owned background work wait for backup without spinning or thawing it."""
+        await self._writable.wait()
+
+    async def background_update(self, kind: str, now: datetime, change: Callable) -> dict:
+        """Persist the same in-flight effect/receipt after backup, without redoing I/O.
+
+        Only trusted adapters use this. User commands still reject immediately
+        through execute/system_update; cancellation never releases a backup lease.
+        The synchronous change callback runs against fresh state under its lock.
+        """
+        while True:
+            await self.async_wait_writable()
+            try:
+                return await self.system_update(kind, now, change)
+            except DomainError as error:
+                if error.code != "backup_in_progress":
+                    raise
 
     def snapshot(self) -> dict:
         """Trusted persistence/migration access, never return directly to a channel."""
@@ -331,6 +362,8 @@ class Engine:
             )
         if actor["role"] != "guest" and "maintenance" in self._state["settings"]["modules"]:
             data["maintenance"] = maintenance.view(self._state, actor)
+        if actor["role"] != "guest" and "polls" in self._state["settings"]["modules"]:
+            data["polls"] = polls.view(self._state, actor, now)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -456,6 +489,13 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
             )
+        elif module == "polls":
+            polls.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "polls-replay"),
+                action.split(".", 1)[1],
+                payload,
+                result,
+            )
         elif module == "media":
             media.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "media-replay"),
@@ -537,6 +577,8 @@ class Engine:
             family_calendar.tick(ctx)
             routines.tick(ctx, routine_observations)
             school_reminders.tick(ctx)
+            polls.tick(ctx)
+            poll_reviews.prune(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

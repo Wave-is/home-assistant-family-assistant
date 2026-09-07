@@ -113,7 +113,7 @@ class AlarmDevices:
             record = ctx.state["alarm_outputs"].setdefault(entity, {})
             record.update(values)
 
-        await self.engine.system_update("alarm_output", now, update)
+        await self.engine.background_update("alarm_output", now, update)
 
     async def _failed(self, entity: str, now: datetime, code: str) -> None:
         def failed(ctx):
@@ -125,7 +125,7 @@ class AlarmDevices:
                 ctx.notify("parents", "alarm_device_error", {"entity_id": entity, "error": code})
                 record["notified"] = True
 
-        await self.engine.system_update("alarm_output_error", now, failed)
+        await self.engine.background_update("alarm_output_error", now, failed)
 
     async def close_incidents(self, now: datetime) -> None:
         def update(ctx):
@@ -137,4 +137,4 @@ class AlarmDevices:
                     ctx.notify("parents", "alarm_device_recovered", {"entity_id": entity})
                     record["notified"] = False
 
-        await self.engine.system_update("alarm_output_recovered", now, update)
+        await self.engine.background_update("alarm_output_recovered", now, update)

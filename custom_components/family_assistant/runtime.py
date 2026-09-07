@@ -334,11 +334,18 @@ async def async_configure_network(hass, entry):
 def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
     """Construct a counts-only export; do not attempt to blacklist every secret."""
     state = runtime.engine.snapshot()
+    from .domain.media import health_stats
+
+    try:
+        media_capacity = health_stats(state, dt_util.utcnow())
+    except DomainError:
+        media_capacity = {"capacity": "unavailable"}
     return {
         "schema_version": state["schema_version"],
         "revision": state["revision"],
         "modules": state["settings"]["modules"],
         "health": dict(runtime.health),
+        "media_capacity": media_capacity,
         "counts": {
             key: len(state[key])
             for key in ("members", "shopping", "tasks", "court", "alarms", "alarm_runs", "outbox")

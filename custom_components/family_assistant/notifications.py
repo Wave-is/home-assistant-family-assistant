@@ -62,6 +62,14 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
 
 def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
     """Recheck events whose private source can be revoked before transport."""
+    if event.get("key") == "telegram_reply":
+        from .telegram.reply_delivery import current
+
+        return current(event, state, now)
+    if event.get("key") == "telegram_poll_reply":
+        from .telegram.poll_delivery import current
+
+        return current(event, state, now)
     if event.get("key") == "pantry_expiry":
         return current_pantry_expiry_event(state, event, now)
     if event.get("key") == SCHOOL_REMINDER_KEY:
@@ -95,7 +103,7 @@ class Notifications:
         count = 0
         async with self._lock:
             for _ in range(min(max(limit, 0), 20)):
-                claimed = await self.engine.system_update("outbox_claim", now, self._claim)
+                claimed = await self.engine.background_update("outbox_claim", now, self._claim)
                 if claimed is None:
                     break
                 event, delivery = claimed
@@ -152,7 +160,7 @@ class Notifications:
                 return None
             return deepcopy(event), deepcopy(delivery)
 
-        return await self.engine.system_update("outbox_dispatch", now, authorize)
+        return await self.engine.background_update("outbox_dispatch", now, authorize)
 
     @staticmethod
     def _target_current(target, current_targets):
@@ -268,4 +276,4 @@ class Notifications:
                 delivery.update(state="failed", error=error.code)
             self._aggregate(event)
 
-        await self.engine.system_update("outbox_receipt", now, finish)
+        await self.engine.background_update("outbox_receipt", now, finish)

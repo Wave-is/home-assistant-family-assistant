@@ -120,7 +120,7 @@ class NetworkManager:
                             )
                             current["notified"] = progress["status"]
 
-                    await self.runtime.engine.system_update(
+                    await self.runtime.engine.background_update(
                         "network_progress", dt_util.utcnow(), save
                     )
 
@@ -204,7 +204,7 @@ class NetworkManager:
                         is True,
                     )
 
-                await self.runtime.engine.system_update("network_inventory", now, save)
+                await self.runtime.engine.background_update("network_inventory", now, save)
                 self.runtime.health["mikrotik"] = "network_connected"
                 self.runtime.updated()
             except (DomainError, OSError, TimeoutError) as err:

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic family polls</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const initialActor = query.get("actor") || "parent";
+    const members = [
+      { id: "owner", name: "Morgan", role: "owner", active: true, revision: 1 },
+      { id: "parent", name: "Alex", role: "parent", active: true, revision: 3 },
+      { id: "child", name: "Sam", role: "child", active: true, revision: 5 },
+      { id: "adult", name: "Jamie", role: "adult", active: true, revision: 2 },
+      { id: "guest", name: "Guest", role: "guest", active: true, revision: 1 },
+    ];
+    const options = (first = "Park", second = "Museum") => [
+      { id: "O1", label: first },
+      { id: "O2", label: second },
+    ];
+    const raw = (window.pollFixture = {
+      revision: 1,
+      actor: initialActor,
+      settings: {
+        name: "Example family",
+        modules: ["polls"],
+        timezone: "Europe/Kyiv",
+      },
+      members,
+      polls: [
+        {
+          id: "PL000001",
+          revision: 1,
+          definition_revision: 1,
+          status: "open",
+          ballot_mode: "private_mapping",
+          question: "Weekend destination?",
+          options: options("River park", "History museum"),
+          eligible: [
+            { member: "parent", member_revision: 3 },
+            { member: "child", member_revision: 5 },
+            { member: "adult", member_revision: 2 },
+          ],
+          closes_at: "2026-10-10T17:00:00+00:00",
+          created_by: "parent",
+          created_at: "2026-10-01T08:00:00+00:00",
+          closed_at: null,
+          archived_at: null,
+        },
+        {
+          id: "PL000002",
+          revision: 2,
+          definition_revision: 1,
+          status: "closed",
+          ballot_mode: "private_mapping",
+          question: "Family film?",
+          options: options("Comedy", "Documentary"),
+          eligible: [
+            { member: "parent", member_revision: 3 },
+            { member: "child", member_revision: 5 },
+            { member: "adult", member_revision: 2 },
+          ],
+          closes_at: "2026-09-28T17:00:00+00:00",
+          created_by: "parent",
+          created_at: "2026-09-20T08:00:00+00:00",
+          closed_at: "2026-09-28T17:00:00+00:00",
+          archived_at: null,
+        },
+        {
+          id: "PL000003",
+          revision: 3,
+          status: "archived",
+          ballot_mode: "private_mapping",
+          question: "Archived outing?",
+          options: options("Lake", "Forest"),
+          closes_at: "2026-08-20T17:00:00+00:00",
+          closed_at: "2026-08-20T17:00:00+00:00",
+          archived_at: "2026-08-21T09:00:00+00:00",
+          results: [
+            { option_id: "O1", count: 2 },
+            { option_id: "O2", count: 1 },
+          ],
+          cast_count: 3,
+          eligible_count: 3,
+        },
+      ],
+      ballots: {
+        PL000001: {
+          adult: { option_id: "O1", revision: 1, member_revision: 2 },
+        },
+        PL000002: {
+          parent: { option_id: "O1", revision: 1, member_revision: 3 },
+          child: { option_id: "O2", revision: 1, member_revision: 5 },
+          adult: { option_id: "O1", revision: 1, member_revision: 2 },
+        },
+      },
+    });
+
+    const currentMember = (id) => raw.members.find((item) => item.id === id);
+    const isCurrent = (entry) => {
+      const value = currentMember(entry.member);
+      return Boolean(
+        value?.active &&
+        value.role !== "guest" &&
+        value.revision === entry.member_revision,
+      );
+    };
+    const resultFor = (record) => {
+      const counts = Object.fromEntries(
+        record.options.map((item) => [item.id, 0]),
+      );
+      let cast = 0;
+      for (const [memberId, ballot] of Object.entries(
+        raw.ballots[record.id] || {},
+      )) {
+        const eligible = record.eligible?.find(
+          (entry) =>
+            entry.member === memberId &&
+            entry.member_revision === ballot.member_revision,
+        );
+        if (eligible && ballot.option_id in counts) {
+          counts[ballot.option_id] += 1;
+          cast += 1;
+        }
+      }
+      return {
+        results: record.options.map((item) => ({
+          option_id: item.id,
+          count: counts[item.id],
+        })),
+        cast_count: cast,
+      };
+    };
+    const projection = () => {
+      const actor = currentMember(raw.actor);
+      const parent = ["owner", "parent"].includes(actor?.role);
+      const data = {
+        revision: raw.revision,
+        actor: raw.actor,
+        role: actor?.role || "guest",
+        settings: structuredClone(raw.settings),
+        members: structuredClone(raw.members),
+        polls: { open: [], closed: [], archived: [] },
+      };
+      if (
+        !raw.settings.modules.includes("polls") ||
+        !actor?.active ||
+        actor.role === "guest"
+      )
+        return data;
+      for (const record of raw.polls) {
+        if (record.status === "archived") {
+          if (parent) {
+            data.polls.archived.push({
+              ...structuredClone(record),
+              can_vote: false,
+              own_ballot: null,
+              can_close: false,
+              can_archive: false,
+              can_purge: actor.role === "owner",
+            });
+          }
+          continue;
+        }
+        const electorate = record.eligible || [];
+        const ownEntry = electorate.find(
+          (entry) =>
+            entry.member === actor.id &&
+            entry.member_revision === actor.revision,
+        );
+        if (!parent && !ownEntry) continue;
+        const ballot = (raw.ballots[record.id] || {})[actor.id];
+        const row = {
+          id: record.id,
+          revision: record.revision,
+          definition_revision: record.definition_revision,
+          status: record.status,
+          question: record.question,
+          options: structuredClone(record.options),
+          closes_at: record.closes_at,
+          ballot_mode: record.ballot_mode,
+          eligible_count: electorate.length,
+          can_vote: record.status === "open" && Boolean(ownEntry),
+          own_ballot:
+            ballot?.member_revision === actor.revision
+              ? { option_id: ballot.option_id, revision: ballot.revision }
+              : null,
+        };
+        if (record.status === "closed")
+          Object.assign(row, {
+            closed_at: record.closed_at,
+            ...resultFor(record),
+          });
+        if (parent)
+          Object.assign(row, {
+            eligible: electorate.map((entry) => ({
+              ...structuredClone(entry),
+              current: isCurrent(entry),
+            })),
+            created_by: record.created_by,
+            created_at: record.created_at,
+            can_close: record.status === "open",
+            can_archive: record.status === "closed",
+            can_purge: false,
+          });
+        data.polls[record.status].push(row);
+      }
+      return data;
+    };
+
+    window.calls = [];
+    window.loseResponse = false;
+    const receipts = new Map();
+    const execute = (message) => {
+      window.calls.push(structuredClone(message));
+      if (message.action === "pantry.meal_save")
+        return { id: "MP000001", revision: 1, status: "draft" };
+      if (receipts.has(message.operation_id))
+        return structuredClone(receipts.get(message.operation_id));
+      const payload = message.payload;
+      const actor = currentMember(raw.actor);
+      if (!raw.settings.modules.includes("polls"))
+        throw { code: "module_disabled" };
+      if (!actor?.active || actor.role === "guest") throw { code: "forbidden" };
+      let result;
+      if (message.action === "polls.create") {
+        if (
+          !["owner", "parent"].includes(actor.role) ||
+          payload.actor_revision !== actor.revision ||
+          payload.confirm_private_ballot_limits !== true
+        )
+          throw { code: "forbidden" };
+        for (const entry of payload.eligible) {
+          if (currentMember(entry.member)?.revision !== entry.revision)
+            throw { code: "conflict" };
+        }
+        const id = `PL${String(raw.polls.length + 1).padStart(6, "0")}`;
+        raw.polls.push({
+          id,
+          revision: 1,
+          definition_revision: 1,
+          status: "open",
+          ballot_mode: "private_mapping",
+          question: payload.question,
+          options: payload.options.map((label, index) => ({
+            id: `O${index + 1}`,
+            label,
+          })),
+          eligible: payload.eligible.map((entry) => ({
+            member: entry.member,
+            member_revision: entry.revision,
+          })),
+          closes_at: payload.closes_at,
+          created_by: actor.id,
+          created_at: new Date().toISOString(),
+          closed_at: null,
+          archived_at: null,
+        });
+        result = { id, revision: 1, status: "open" };
+      } else if (message.action === "polls.vote") {
+        const record = raw.polls.find((item) => item.id === payload.id);
+        const existing = (raw.ballots[record.id] || {})[actor.id];
+        if (
+          record.status !== "open" ||
+          record.definition_revision !== payload.definition_revision ||
+          actor.revision !== payload.voter_revision ||
+          (existing?.revision ?? null) !== payload.ballot_revision
+        )
+          throw { code: "conflict" };
+        const revision = existing ? existing.revision + 1 : 1;
+        raw.ballots[record.id] ||= {};
+        raw.ballots[record.id][actor.id] = {
+          option_id: payload.option_id,
+          revision,
+          member_revision: actor.revision,
+        };
+        result = { id: record.id, ballot_revision: revision };
+      } else if (message.action === "polls.close") {
+        const record = raw.polls.find((item) => item.id === payload.id);
+        if (
+          record.revision !== payload.revision ||
+          payload.actor_revision !== actor.revision
+        )
+          throw { code: "conflict" };
+        record.status = "closed";
+        record.revision += 1;
+        record.closed_at = new Date().toISOString();
+        result = { id: record.id, revision: record.revision, status: "closed" };
+      } else if (message.action === "polls.archive") {
+        const record = raw.polls.find((item) => item.id === payload.id);
+        if (
+          record.status !== "closed" ||
+          record.revision !== payload.revision ||
+          payload.actor_revision !== actor.revision
+        )
+          throw { code: "conflict" };
+        Object.assign(record, resultFor(record));
+        record.status = "archived";
+        record.revision += 1;
+        record.archived_at = new Date().toISOString();
+        delete record.eligible;
+        delete record.definition_revision;
+        delete record.created_by;
+        delete raw.ballots[record.id];
+        result = {
+          id: record.id,
+          revision: record.revision,
+          status: "archived",
+        };
+      } else if (message.action === "polls.purge") {
+        const index = raw.polls.findIndex((item) => item.id === payload.id);
+        const record = raw.polls[index];
+        if (
+          actor.role !== "owner" ||
+          record.status !== "archived" ||
+          record.revision !== payload.revision ||
+          payload.actor_revision !== actor.revision ||
+          payload.confirm_delete !== true
+        )
+          throw { code: "forbidden" };
+        raw.polls.splice(index, 1);
+        result = { id: payload.id, status: "deleted" };
+      } else throw { code: "unknown_action" };
+      raw.revision += 1;
+      receipts.set(message.operation_id, result);
+      if (window.loseResponse) {
+        window.loseResponse = false;
+        throw { code: "storage_error" };
+      }
+      return structuredClone(result);
+    };
+
+    const hass = {
+      language,
+      user: { id: `${initialActor}-ha` },
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type === "family_assistant/execute")
+          return execute(message);
+        throw { code: "unknown_action" };
+      },
+    };
+    const card = document.createElement("family-polls-card");
+    card.setConfig({
+      type: "custom:family-polls-card",
+      entry_id: "synthetic",
+      language,
+    });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+    window.project = projection;
+  </script>
+</html>

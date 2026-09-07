@@ -25,8 +25,11 @@ MAX_VERIFIED_BYTES = 250 * 1024 * 1024
 MAX_PENDING_MEMBER = 5
 MAX_PENDING_HOUSEHOLD = 20
 MAX_RECORDS = 10_000
+MAX_TOMBSTONES = 1_000
+MAX_REAP = 100
 RESERVED_TTL = timedelta(hours=1)
 AVAILABLE_TTL = timedelta(hours=24)
+TOMBSTONE_TTL = timedelta(hours=24)
 PENDING = frozenset({"reserved", "available"})
 STATUSES = frozenset({"reserved", "available", "attached", "deleting", "deleted"})
 OPEN_TASK_STATUSES = frozenset({"assigned", "accepted", "in_progress", "needs_changes"})
@@ -35,6 +38,14 @@ PUBLIC_FIELDS = ("id", "revision", "purpose", "mime_type", "size_bytes", "status
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _OPAQUE_ID = re.compile(r"M[0-9a-f]{32}")
 _BLOB_KEY = re.compile(r"[0-9a-f]{64}")
+_TOMBSTONE_FIELDS = {
+    "id",
+    "revision",
+    "status",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+}
 
 
 def _version(value, field="revision") -> int:
@@ -140,13 +151,15 @@ def _record(state: dict, media_id) -> dict:
 
 
 def _pending_and_budget(media: dict, uploader: str) -> tuple[int, int, int]:
-    member_pending = household_pending = verified_budget = 0
-    if len(media) >= MAX_RECORDS:
-        raise DomainError("quota_exceeded")
+    member_pending = household_pending = verified_budget = live_records = tombstones = 0
     for record in media.values():
         if not isinstance(record, dict) or record.get("status") not in STATUSES:
             raise DomainError("invalid_field", "media")
         status = record["status"]
+        if status != "deleted":
+            live_records += 1
+        else:
+            tombstones += 1
         if status in PENDING:
             household_pending += 1
             if record.get("uploader") == uploader:
@@ -166,6 +179,8 @@ def _pending_and_budget(media: dict, uploader: str) -> tuple[int, int, int]:
                 verified_budget += size
             else:
                 raise DomainError("invalid_field", "size_bytes")
+    if live_records >= MAX_RECORDS or tombstones >= MAX_TOMBSTONES:
+        raise DomainError("quota_exceeded")
     return member_pending, household_pending, verified_budget
 
 
@@ -211,6 +226,24 @@ def _blob_key(record: dict) -> str:
     if not isinstance(value, str) or not _BLOB_KEY.fullmatch(value):
         raise DomainError("invalid_field", "blob_key")
     return value
+
+
+def _tombstone_time(media_id: str, record: dict):
+    """Validate the exact content-free deletion record before forgetting it."""
+    if (
+        not isinstance(record, dict)
+        or set(record) != _TOMBSTONE_FIELDS
+        or record.get("id") != media_id
+        or record.get("status") != "deleted"
+    ):
+        raise DomainError("invalid_field", "media")
+    _version(record.get("revision"))
+    created_at = timestamp(record.get("created_at"), "created_at")
+    updated_at = timestamp(record.get("updated_at"), "updated_at")
+    deleted_at = timestamp(record.get("deleted_at"), "deleted_at")
+    if created_at > deleted_at or updated_at != deleted_at:
+        raise DomainError("invalid_field", "media")
+    return deleted_at
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
@@ -382,6 +415,64 @@ def attach_task_report(ctx: Context, task: dict, reference: dict) -> dict:
     return _receipt(record)
 
 
+def purge_task_report(
+    ctx: Context,
+    task: dict,
+    report_generation,
+    media_id,
+    media_revision,
+) -> dict:
+    """Detach one reviewed retained photo and begin its crash-safe deletion."""
+    _modules(ctx.state)
+    if ctx.actor.get("role") != "owner":
+        raise DomainError("forbidden")
+    if not isinstance(task, dict) or ctx.state.get("tasks", {}).get(task.get("id")) is not task:
+        raise DomainError("not_found")
+    generation = _version(report_generation, "report_generation")
+    requested_revision = _version(media_revision, "media_revision")
+    record = _record(ctx.state, media_id)
+    if record["revision"] != requested_revision:
+        raise DomainError("conflict")
+    if record["status"] != "attached":
+        raise DomainError("invalid_transition")
+    scope = record.get("scope")
+    if (
+        not isinstance(scope, dict)
+        or scope.get("kind") != "task_report"
+        or scope.get("task_id") != task.get("id")
+        or scope.get("report_generation") != generation
+    ):
+        raise DomainError("conflict")
+
+    reports = []
+    if task.get("report_generation") == generation and task.get("report_media") == [record["id"]]:
+        reports.append(task)
+    history = task.get("previous_reports", [])
+    if not isinstance(history, list):
+        raise DomainError("invalid_field", "previous_reports")
+    reports.extend(
+        report
+        for report in history
+        if isinstance(report, dict)
+        and report.get("report_generation") == generation
+        and report.get("report_media") == [record["id"]]
+    )
+    if len(reports) != 1:
+        raise DomainError("conflict")
+    if _version(task.get("revision")) == 2**53 - 1:
+        raise DomainError("invalid_field", "revision")
+    _ensure_advance(record)
+
+    report = reports[0]
+    report.pop("report_media", None)
+    report.pop("report_attachments", None)
+    report["report_media_purged_at"] = timestamp(ctx.now, "now").isoformat()
+    record["status"] = "deleting"
+    _advance(ctx, record)
+    ctx.touch(task)
+    return _receipt(record)
+
+
 def _attached_reference(state: dict, actor: dict, record: dict) -> bool:
     scope = record.get("scope")
     if not isinstance(scope, dict) or scope.get("kind") != "task_report":
@@ -483,6 +574,12 @@ def finish_delete(ctx: Context, media_id, revision) -> dict:
         raise DomainError("invalid_transition")
     if record["revision"] != requested_revision:
         raise DomainError("conflict")
+    tombstones = sum(
+        isinstance(item, dict) and item.get("status") == "deleted"
+        for item in _bucket(ctx.state).values()
+    )
+    if tombstones >= MAX_TOMBSTONES:
+        raise DomainError("quota_exceeded")
     _ensure_advance(record)
     created_at = timestamp(record.get("created_at"), "created_at").isoformat()
     next_revision = record["revision"] + 1
@@ -497,6 +594,69 @@ def finish_delete(ctx: Context, media_id, revision) -> dict:
         deleted_at=now,
     )
     return _receipt(record)
+
+
+def reap_deleted(ctx: Context) -> dict:
+    """Forget at most one bounded batch of old content-free tombstones."""
+    now = timestamp(ctx.now, "now")
+    cutoff = now - TOMBSTONE_TTL
+    media = _mutable_bucket(ctx)
+    candidates = []
+    for media_id, record in media.items():
+        if not isinstance(record, dict) or record.get("status") != "deleted":
+            continue
+        deleted_at = _tombstone_time(media_id, record)
+        if deleted_at <= cutoff:
+            candidates.append((deleted_at, media_id))
+    selected = [media_id for _deleted_at, media_id in sorted(candidates)[:MAX_REAP]]
+    for media_id in selected:
+        del media[media_id]
+    return {"reaped": len(selected)}
+
+
+def health_stats(state: dict, now) -> dict:
+    """Return aggregate capacity facts without exposing media identity or content."""
+    cutoff = timestamp(now, "now") - TOMBSTONE_TTL
+    counts = {
+        "nondeleted": 0,
+        "tombstones": 0,
+        "reapable_tombstones": 0,
+        "pending": 0,
+        "deleting": 0,
+        "verified_bytes": 0,
+    }
+    for media_id, record in _bucket(state).items():
+        if not isinstance(record, dict) or record.get("status") not in STATUSES:
+            raise DomainError("invalid_field", "media")
+        status = record["status"]
+        if status == "deleted":
+            counts["tombstones"] += 1
+            if _tombstone_time(media_id, record) <= cutoff:
+                counts["reapable_tombstones"] += 1
+            continue
+        counts["nondeleted"] += 1
+        if status in PENDING:
+            counts["pending"] += 1
+        if status == "deleting":
+            counts["deleting"] += 1
+        if status == "reserved" or (status == "deleting" and record.get("size_bytes") is None):
+            counts["verified_bytes"] += MAX_FILE_BYTES
+        elif status in {"available", "attached", "deleting"}:
+            size = record.get("size_bytes")
+            if type(size) is not int or not 1 <= size <= MAX_FILE_BYTES:
+                raise DomainError("invalid_field", "size_bytes")
+            counts["verified_bytes"] += size
+    if counts["nondeleted"] >= MAX_RECORDS or counts["tombstones"] >= MAX_TOMBSTONES:
+        capacity = "blocked"
+    elif (
+        counts["nondeleted"] >= MAX_RECORDS * 9 // 10
+        or counts["tombstones"] >= MAX_TOMBSTONES * 9 // 10
+        or counts["verified_bytes"] >= MAX_VERIFIED_BYTES * 9 // 10
+    ):
+        capacity = "near_limit"
+    else:
+        capacity = "ok"
+    return {**counts, "capacity": capacity}
 
 
 def deleting_blob(state: dict, media_id, revision) -> str:

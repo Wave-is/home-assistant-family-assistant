@@ -44,7 +44,8 @@ def may_view(state, actor, task):
 
 def archive_report(ctx, task, reason):
     """Retain report identity stamps before replacing the current attachment slot."""
-    if task.get("report") is not None or task.get("report_media"):
+    purged_at = task.get("report_media_purged_at")
+    if task.get("report") is not None or task.get("report_media") or purged_at is not None:
         previous = {
             "assignee": task["assignee"],
             "report": task.get("report"),
@@ -57,8 +58,15 @@ def archive_report(ctx, task, reason):
                 report_media=list(task["report_media"]),
                 report_generation=task.get("report_generation", 0),
             )
+        elif purged_at is not None:
+            previous.update(
+                assignee_revision=task.get("assignee_revision"),
+                report_generation=task.get("report_generation", 0),
+                report_media_purged_at=purged_at,
+            )
         task.setdefault("previous_reports", []).append(previous)
     task.pop("report_media", None)
+    task.pop("report_media_purged_at", None)
     task["report"] = None
     task.pop("review_note", None)
 

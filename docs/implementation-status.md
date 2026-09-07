@@ -16,7 +16,7 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Fourteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance; richer editors and other module cards pending |
+| Today and module cards | Fifteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls; richer editors and other module cards pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
@@ -25,7 +25,8 @@ Nothing is production-ready solely because a mock test passes.
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks, reviewed backpack routine starts and opt-in private preparation reminders; reviewed imports and reminder retention health pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
-| Polls, digests, presence | Planned | Consent, permissions and fallbacks |
+| Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
+| Digests, presence | Planned | Consent, permissions and fallbacks; presence source/consent slice is in progress, not part of the checkpoint |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
@@ -47,11 +48,39 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1721 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, private media authority/real-file recovery/decoder/HTTP/replay/backup, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts). In-progress polls files are not part of this checkpoint or count.
-- 304 frontend unit tests and 118 Chromium browser tests passed. The latest full
-  Chromium run used two workers after a four-worker Windows run failed to fetch
-  two module scripts with `ERR_NO_BUFFER_SPACE`; traces showed blank fixtures,
-  not failing domain assertions. No product assertions were weakened.
+- 1827 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
+  23 subtests. This checkpoint includes polls, retained-photo purge and background
+  backup/response-authority regressions alongside the earlier domain/adapters.
+  In-progress presence files are excluded from this checkpoint and count.
+- 317 frontend unit tests and 124 Chromium browser tests passed. The full Chromium
+  run used two workers. Narrow RU poll review and photo-purge review were visually
+  inspected; EN/RU/UK copy is included. The full isolated actual HA suite also passed.
+- Poll definitions and each member's private ballot have independent revisions.
+  Fresh member/source authority, exact retries, revotes, close/archive/purge and
+  aggregate privacy are enforced by the domain. The localized card and private
+  Telegram confirmations use the same commands. Poll transport envelopes retain
+  opaque descriptors, not questions/choices; delivery rechecks current identity,
+  binding, source and expiry. Private bot poll quotes do not enter model context.
+  Actual HA verified authenticated WebSockets, Telegram review/revote, module
+  revocation, Store reload and replay without task/points/notification effects.
+  Synthetic clock and reload-baseline helper issues were corrected before rerunning
+  the complete suite; normal HA alarm-output shutdown is not a poll side effect.
+  See [polls guide](polls.md).
+- An explicit owner-only retained-photo purge detaches the exact task/report/media
+  revision, immediately revokes HTTP reads and lets the collector unlink the blob.
+  Task status, report text/history and other retained photos survive. The card has
+  a named irreversible review and exact lost-response retry. Deleted tombstones
+  expire after 24 hours with bounded cleanup and counts-only capacity diagnostics.
+  Existing backups may still contain photos; no automatic retained-report purge or
+  backup deletion is performed. Actual HA tested the complete lifecycle and retry.
+  See [media retention](media-retention.md).
+- Background notification receipts, Telegram updates and completed model answers
+  wait for backup thaw while interactive mutations still reject frozen writes.
+  Store failure retries saving an already generated answer without rerunning its
+  provider within that process. Claim/dispatch/completion recheck current authority;
+  revoked member epochs or bindings cancel stale replies. Actual HA ran the real
+  Telegram polling/conversation loops through backup races and injected Store
+  failures. Exactly-once model execution across a process crash is not claimed.
 - Private task photo reports now use an opaque versioned reservation, raw bounded
   authenticated upload, isolated Pillow 12.3.0 JPEG/PNG/WebP validation, immutable
   blob publication and a separate atomic task submission. Current actor, assignment
@@ -72,8 +101,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   visually checked. Original EXIF is retained and clearly disclosed, not stripped.
   Public privacy checks reject the private data directory, temp names, opaque blob
   basenames and non-brand image files. Two-phase pending expiry is implemented;
-  permanent tombstone capacity, retained-report purge, complete archive restore,
-  maintenance documents and School imports remain gates.
+  tombstone capacity and retained-report purge are covered above; complete archive
+  restore, maintenance documents and School imports remain gates.
   AGY's read-only review exposed the subprocess cancellation cleanup gap, fixed
   with spawn/reap regressions. A later review confirmed a crash-only hard-link/temp
   residue issue for the upcoming recovery slice; normal cancellation cleanup and

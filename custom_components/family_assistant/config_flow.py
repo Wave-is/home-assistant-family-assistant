@@ -23,6 +23,7 @@ CONFIGURABLE_MODULES = (
     "pantry",
     "school",
     "maintenance",
+    "polls",
 )
 
 

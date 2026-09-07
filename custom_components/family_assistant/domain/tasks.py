@@ -13,6 +13,13 @@ ACTION_FIELDS = {
     "submit": {"report", "media"},
     "check": {"checklist_index", "done"},
     "request_changes": {"note"},
+    "report_media_purge": {
+        "report_generation",
+        "media_id",
+        "media_revision",
+        "reason",
+        "confirmed",
+    },
     **{key: set() for key in ("accept", "start", "complete", "cancel", "archive")},
 }
 
@@ -78,6 +85,25 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if action not in ACTION_FIELDS:
         raise DomainError("unknown_action")
     fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id", "revision"})
+    if action == "report_media_purge":
+        from . import media
+
+        required = {"id", "revision"} | ACTION_FIELDS[action]
+        fields(payload, required, required)
+        if ctx.actor.get("role") != "owner":
+            raise DomainError("forbidden")
+        if payload["confirmed"] is not True:
+            raise DomainError("invalid_field", "confirmed")
+        text(payload["reason"], "reason", 500)
+        item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
+        media.purge_task_report(
+            ctx,
+            item,
+            payload["report_generation"],
+            payload["media_id"],
+            payload["media_revision"],
+        )
+        return {key: item[key] for key in ("id", "revision", "status")}
     item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
     if task_access.private_task(item) and not task_access.may_view(ctx.state, ctx.actor, item):
         raise DomainError("forbidden")

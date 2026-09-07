@@ -27,7 +27,8 @@
           "routines": "Family routines",
           "pantry": "Pantry and household stock",
           "school": "School timetable",
-          "maintenance": "Home maintenance"
+          "maintenance": "Home maintenance",
+          "polls": "Family polls"
         }
       }
     },
@@ -212,7 +213,8 @@
           "routines": "Family routines",
           "pantry": "Pantry and household stock",
           "school": "School timetable",
-          "maintenance": "Home maintenance"
+          "maintenance": "Home maintenance",
+          "polls": "Family polls"
         }
       },
       "alarm_device": {

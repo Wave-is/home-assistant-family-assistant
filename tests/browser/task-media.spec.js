@@ -330,3 +330,105 @@ test("parent explicitly loads history and every hidden preview revokes its Blob 
   }));
   expect(state).toEqual({ urls: 0, revoked: 2 });
 });
+
+test("Russian owner reviews historical removal and lost response retries exact command", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tests/fixtures/task-media-fixture.html?lang=ru&actor=owner");
+  const card = page.locator("family-assistant-card");
+  const item = card.locator("li.item").filter({ hasText: "Private prior photo task" });
+  const attachment = item.locator(".task-media-attachment").filter({
+    hasText: "Предыдущее фото отчёта",
+  });
+  await attachment
+    .getByRole("button", { name: "Удалить сохранённое фото", exact: true })
+    .click();
+  const review = item.locator(".task-media-purge");
+  await review.locator('[name="purge_reason"]').fill("Проверено владельцем");
+  await review
+    .getByRole("button", { name: "Проверить удаление", exact: true })
+    .click();
+  await expect(review).toContainText("версия отчёта и версия фото зафиксированы");
+  await expect(review).not.toContainText("M00000000000000000000000000000001");
+  await page.screenshot({
+    path: "test-results/task-media-retention-review-ru.png",
+    fullPage: true,
+  });
+
+  await review.locator('[name="confirm_purge"]').check();
+  await page.evaluate(() => (window.losePurge = true));
+  await review
+    .getByRole("button", {
+      name: "Удалить сохранённое фото безвозвратно",
+      exact: true,
+    })
+    .click();
+  const retry = item.getByRole("button", {
+    name: "Повторить точное удаление",
+    exact: true,
+  });
+  await expect(retry).toBeVisible();
+  let state = await page.evaluate(() => ({
+    task: window.fixture.tasks.find((value) => value.id === "T000002"),
+    media: window.fixture.media.get("M00000000000000000000000000000001"),
+    calls: window.calls.filter((call) => call.action === "tasks.report_media_purge"),
+  }));
+  expect(state.task.status).toBe("needs_changes");
+  expect(state.task.previous_reports[0].report_attachments).toEqual([]);
+  expect(state.task.previous_reports[0].report_media_purged_at).toBeTruthy();
+  expect(state.media).toMatchObject({ status: "deleting", revision: 4 });
+  expect(state.calls).toHaveLength(1);
+  expect(state.calls[0].payload).toEqual({
+    id: "T000002",
+    revision: 1,
+    report_generation: 1,
+    media_id: "M00000000000000000000000000000001",
+    media_revision: 3,
+    reason: "Проверено владельцем",
+    confirmed: true,
+  });
+  const frozen = state.calls[0];
+  await retry.click();
+  await expect(retry).toHaveCount(0);
+  state = await page.evaluate(() => ({
+    task: window.fixture.tasks.find((value) => value.id === "T000002"),
+    media: window.fixture.media.get("M00000000000000000000000000000001"),
+    calls: window.calls.filter((call) => call.action === "tasks.report_media_purge"),
+  }));
+  expect(state.calls).toHaveLength(2);
+  expect(state.calls[1]).toEqual(frozen);
+  expect(state.task).toMatchObject({ revision: 2, status: "needs_changes" });
+  expect(state.media).toMatchObject({ revision: 4, status: "deleting" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("retained-photo removal is owner-only and stale reviewed authority sends nothing", async ({
+  page,
+}) => {
+  for (const actor of ["child", "parent"]) {
+    await page.goto(`/tests/fixtures/task-media-fixture.html?lang=en&actor=${actor}`);
+    const card = page.locator("family-assistant-card");
+    await expect(
+      card.getByRole("button", { name: "Remove retained photo", exact: true }),
+    ).toHaveCount(0);
+  }
+
+  await page.goto("/tests/fixtures/task-media-fixture.html?lang=en&actor=owner");
+  const card = page.locator("family-assistant-card");
+  const item = card.locator("li.item").filter({ hasText: "Private prior photo task" });
+  await item
+    .getByRole("button", { name: "Remove retained photo", exact: true })
+    .click();
+  await item.locator('[name="purge_reason"]').fill("Reviewed stale removal");
+  await item.getByRole("button", { name: "Review removal", exact: true }).click();
+  await page.evaluate(async () => {
+    window.fixture.tasks.find((value) => value.id === "T000002").revision += 1;
+    await window.syncCard();
+  });
+  await expect(item.locator(".task-media-purge")).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      window.calls.filter((call) => call.action === "tasks.report_media_purge").length),
+  ).toBe(0);
+});

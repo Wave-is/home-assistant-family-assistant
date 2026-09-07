@@ -517,6 +517,17 @@ class MediaStorage:
         self._active += 1
         try:
             await self._recover_files()
+            try:
+
+                def reap(ctx):
+                    ctx.now = self.clock()
+                    return media.reap_deleted(ctx)
+
+                await self.engine.system_update("media_tombstones", self.clock(), reap)
+            except DomainError as error:
+                if error.code == "backup_in_progress":
+                    raise
+                self._scan_problem = True
             state = self.engine.snapshot()
             if not isinstance(state.get("media", {}), dict):
                 raise DomainError("media_unavailable")
