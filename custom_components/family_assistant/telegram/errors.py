@@ -4,6 +4,14 @@ ERRORS = {
     "en": {
         "article_invalid_url": "Use a public HTTPS page on the standard port, "
         "without login details or a fragment.",
+        "chat_unavailable": "Conversation has changed or is unavailable. Refresh "
+        "the card before sending again.",
+        "chat_busy": "Several conversations are already in progress. Try again "
+        "shortly; no new action was started.",
+        "chat_context_expired": "This request's retry context has expired. Check "
+        "the current result before sending a new command.",
+        "chat_context_full": "The safe retry-context limit is reached. Existing "
+        "commands are not repeated; try again later.",
         "article_timeout": "The page did not respond within the time limit. No "
         "family action was performed.",
         "article_unavailable": "The public page could not be retrieved.",
@@ -155,6 +163,15 @@ ERRORS = {
     "ru": {
         "article_invalid_url": "Укажите публичную HTTPS-страницу со стандартным "
         "портом, без логина, пароля и фрагмента.",
+        "chat_unavailable": "Разговорный модуль изменился или недоступен. Обновите "
+        "карточку перед новой отправкой.",
+        "chat_busy": "Несколько обращений уже обрабатываются. Попробуйте чуть "
+        "позже; новое действие не запускалось.",
+        "chat_context_expired": "Контекст повторной отправки этого запроса истёк. "
+        "Проверьте текущий результат перед новой командой.",
+        "chat_context_full": "Достигнут безопасный предел контекстов повторной "
+        "отправки. Прежние команды не повторяются; попробуйте "
+        "позднее.",
         "article_timeout": "Страница не ответила вовремя. Никаких семейных действий не выполнено.",
         "article_unavailable": "Не удалось загрузить публичную страницу.",
         "article_unsupported": "Формат или кодировка страницы не поддерживается. "
@@ -311,6 +328,15 @@ ERRORS = {
     "uk": {
         "article_invalid_url": "Укажіть публічну HTTPS-сторінку зі стандартним "
         "портом, без логіна, пароля та фрагмента.",
+        "chat_unavailable": "Розмовний модуль змінився або недоступний. Оновіть "
+        "картку перед новим надсиланням.",
+        "chat_busy": "Кілька звернень уже обробляються. Спробуйте трохи пізніше; "
+        "нову дію не запущено.",
+        "chat_context_expired": "Контекст повторного надсилання цього запиту сплив. "
+        "Перевірте поточний результат перед новою командою.",
+        "chat_context_full": "Досягнуто безпечної межі контекстів повторного "
+        "надсилання. Попередні команди не повторюються; "
+        "спробуйте пізніше.",
         "article_timeout": "Сторінка не відповіла вчасно. Жодних сімейних дій не виконано.",
         "article_unavailable": "Не вдалося завантажити публічну сторінку.",
         "article_unsupported": "Формат або кодування сторінки не підтримується. "

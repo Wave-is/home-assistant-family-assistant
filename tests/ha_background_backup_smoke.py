@@ -97,6 +97,8 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
     health_before = deepcopy(runtime.health)
     poll_client = PollClient()
     poll_manager = TelegramManager(hass, entry, runtime, poll_client, bot)
+    telegram_before = runtime.telegram
+    runtime.telegram = poll_manager
     execute_before = engine.execute
     execute_attempts = 0
     backup_rejected = asyncio.Event()
@@ -145,10 +147,36 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
             await engine.async_end_backup(poll_token)
         await _cancel(poll_task)
         poll_manager._stopped = True
+        runtime.telegram = telegram_before
         engine.execute = execute_before
 
     job_id = "synthetic-background-backup-conversation"
     manager = TelegramManager(hass, entry, runtime, poll_client, bot)
+    telegram_before = runtime.telegram
+    runtime.telegram = manager
+
+    provider_started = asyncio.Event()
+    provider_release = asyncio.Event()
+    provider_returned = asyncio.Event()
+
+    class Provider:
+        def __init__(self):
+            self.calls = 0
+
+        async def generate(self, _messages, _schema, validate, *, scope_check=None):
+            self.calls += 1
+            provider_started.set()
+            await provider_release.wait()
+            provider_returned.set()
+            if scope_check is not None:
+                scope_check()
+            return validate({"kind": "answer", "text": "Synthetic completion"})
+
+    provider = Provider()
+    assistant_before = runtime.assistant
+    from custom_components.family_assistant.assistant.service import Assistant
+
+    runtime.assistant = Assistant(engine, provider)
     await manager.jobs.enqueue(
         actor,
         "Synthetic private request",
@@ -159,43 +187,28 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
         chat_id=telegram_id,
         reply_to=None,
     )
-
-    provider_started = asyncio.Event()
-    provider_release = asyncio.Event()
-    provider_returned = asyncio.Event()
-
-    class Provider:
-        def __init__(self):
-            self.calls = 0
-
-        async def respond(self, selected_actor, content, operation_id, *_args, **_kwargs):
-            self.calls += 1
-            assert (selected_actor, content, operation_id) == (
-                actor,
-                "Synthetic private request",
-                job_id,
-            )
-            provider_started.set()
-            await provider_release.wait()
-            provider_returned.set()
-            return "Synthetic completion"
-
-    provider = Provider()
-    assistant_before = runtime.assistant
-    runtime.assistant = provider
-    background_update_before = engine.background_update
+    system_update_before = engine.system_update
+    wait_writable_before = engine.async_wait_writable
     finish_waiting = asyncio.Event()
     finish_persisted = asyncio.Event()
 
-    async def observed_background_update(kind, now, change):
+    async def observed_wait_writable():
+        # ScopedEngine waits for the backup lease before entering system_update.
+        # Observe that wait without bypassing it or claiming a Store call started.
+        if provider_returned.is_set():
+            finish_waiting.set()
+        await wait_writable_before()
+
+    async def observed_system_update(kind, now, change, **kwargs):
         if kind == "assistant_finished":
             finish_waiting.set()
-        result = await background_update_before(kind, now, change)
+        result = await system_update_before(kind, now, change, **kwargs)
         if kind == "assistant_finished":
             finish_persisted.set()
         return result
 
-    engine.background_update = observed_background_update
+    engine.system_update = observed_system_update
+    engine.async_wait_writable = observed_wait_writable
     conversation_task = asyncio.create_task(manager._conversations())
     conversation_token = None
     try:
@@ -231,15 +244,17 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
             if event["id"].startswith(job_id + ":model-result:")
         ]
         assert len(results) == 1
-        assert results[0]["data"]["text"] == "Synthetic completion"
+        assert "Synthetic completion" in results[0]["data"]["text"]
     finally:
         provider_release.set()
         if conversation_token is not None:
             await engine.async_end_backup(conversation_token)
         await _cancel(conversation_task)
         manager._stopped = True
-        engine.background_update = background_update_before
+        engine.system_update = system_update_before
+        engine.async_wait_writable = wait_writable_before
         runtime.assistant = assistant_before
+        runtime.telegram = telegram_before
         runtime.health.clear()
         runtime.health.update(health_before)
 
@@ -252,13 +267,20 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
         def __init__(self):
             self.calls = []
 
-        async def respond(self, selected_actor, _content, operation_id, *_args, **_kwargs):
-            assert selected_actor == actor and operation_id in retry_ids
+        async def generate(self, _messages, _schema, validate, *, scope_check=None):
+            operation_id = retry_ids[len(self.calls)]
             self.calls.append(operation_id)
-            return "Frozen completion " + operation_id
+            if scope_check is not None:
+                scope_check()
+            return validate({"kind": "answer", "text": "Frozen completion " + operation_id})
 
     retry_provider = RetryProvider()
     retry_manager = TelegramManager(hass, entry, runtime, poll_client, bot)
+    telegram_before = runtime.telegram
+    runtime.telegram = retry_manager
+    assistant_before = runtime.assistant
+    health_before_retry = deepcopy(runtime.health)
+    runtime.assistant = Assistant(engine, retry_provider)
     await retry_manager.jobs.enqueue(
         actor,
         "Synthetic persisted completion",
@@ -269,11 +291,8 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
         chat_id=telegram_id,
         reply_to=None,
     )
-    assistant_before = runtime.assistant
-    health_before_retry = deepcopy(runtime.health)
-    runtime.assistant = retry_provider
     persist_before = engine._persist
-    background_update_before = engine.background_update
+    system_update_before = engine.system_update
     failed_once = dict.fromkeys(retry_ids, False)
     failure_events = {retry_id: asyncio.Event() for retry_id in retry_ids}
     completion_events = {retry_id: asyncio.Event() for retry_id in retry_ids}
@@ -287,8 +306,8 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
                 raise OSError("synthetic one-shot completion persistence failure")
         await persist_before(candidate)
 
-    async def observe_completion(kind, now, change):
-        result = await background_update_before(kind, now, change)
+    async def observe_completion(kind, now, change, **kwargs):
+        result = await system_update_before(kind, now, change, **kwargs)
         if kind == "assistant_finished":
             current = engine.snapshot()["assistant_jobs"]
             for retry_id in retry_ids:
@@ -297,7 +316,7 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
         return result
 
     engine._persist = fail_one_completion
-    engine.background_update = observe_completion
+    engine.system_update = observe_completion
     retry_task = asyncio.create_task(retry_manager._conversations())
     original_revision = None
     try:
@@ -378,9 +397,10 @@ async def verify_background_backup_loops(hass, entry, owner_user) -> None:
     finally:
         await _cancel(retry_task)
         retry_manager._stopped = True
-        engine.background_update = background_update_before
+        engine.system_update = system_update_before
         engine._persist = persist_before
         runtime.assistant = assistant_before
+        runtime.telegram = telegram_before
         if original_revision is not None:
 
             def restore_binding(ctx):

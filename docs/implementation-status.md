@@ -14,7 +14,7 @@ Nothing is production-ready solely because a mock test passes.
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
-| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; ordinary-chat lifecycle hardening, real-model eval and external agent delegation pending |
+| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real-model eval and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; supported ownership-safe Lovelace registration and full module-graph versioning; richer overview/editors and packaged HACS upgrade acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest passed on main; deterministic runtime ZIP, containment, exact manifest/import checks; local two-process synthetic application upgrade passed; new upgrade CI, HACS-installed acceptance and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS, Hassfest and two-process application upgrade passed on main; deterministic runtime ZIP, containment, exact manifest/import checks; HACS-installed acceptance and legacy migration remain pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
 ## Baseline, 2026-09-06
@@ -48,6 +48,44 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+The joined command-scope candidate passed 2464 Python tests, five host skips
+and 23 subtests, Ruff/format, privacy and locale checks. The complete actual-HA
+suite passed with guarded Telegram commands, background job/provider changes,
+Assist and LLM tools, ordinary chat, and generic service/WebSocket execution.
+Queued work cannot silently adopt a replacement member or retired runtime.
+The exact runtime-only ZIP contains 197 files; SHA256:
+`7ffd4df708fb48efdc244d38fce954c63062488111e248be7cda64678a254221`.
+The two-process actual-HA application-upgrade gate passed for this exact
+candidate too, preserving the synthetic Config Entry, Options and domain data
+from the reviewed unshipped alpha.1 baseline. HACS installer acceptance remains
+a distinct gate.
+
+Actual-HA testing caught an over-strict post-command check for a legitimate
+owner self-profile edit. The exception now requires the exact durable operation
+receipt and current result, unchanged role/active status/HA binding, and a fresh
+user/runtime check. Altered receipts, later edits and changed authority remain
+rejected. Fifteen focused scope tests and the full real-HA suite passed after
+the fix. This is a verified development checkpoint, not a production migration.
+
+Dashboard chat now owns bounded asynchronous requests, pins the current member,
+provider configuration and runtime, and saves content-free retry context before
+interpretation. A lost response can be retried with the original operation and
+references, without silently sending a new instruction. The localized card
+provides exact Retry plus an explicit new-request reset with an uncertainty
+warning. Model plans are bound to the member revision; legacy plans are retained
+but cannot be adopted by a replacement identity. Engine writes have in-lock
+authority guards, cancellation-safe persistence settlement and permanent
+retirement after successful unload.
+
+Root verified 2426 Python tests (five host skips, 23 subtests), 422 Node tests,
+166 Chromium scenarios and the complete actual-HA suite on the reviewed dashboard
+slice. Actual HA exercised response loss, exact replay after reload, provider
+revocation, failed-unload hook preservation and rejection of retired Engine
+writes. Its runtime-only ZIP SHA256 was
+`fb5f1a314cf42496444f7b9ce5a395a33912ad1e72e6ad8335a34aed1c8ae5f3`.
+That dashboard-only checkpoint was subsequently joined with the Telegram,
+Assist/LLM and generic HA-command scope repairs verified above.
 
 Explicit article reading is now connected to owner-reviewed Options and the
 Conversation card. It remains off by default, with a separate child policy,
@@ -69,8 +107,8 @@ replay receipts survived. Candidate runtime ZIP SHA256:
 `9779a5ce97213e1bbc872d487f3a1a9291fafca4449064452a0e25cbd793d9eb`.
 This is not HACS-installed acceptance, a production upgrade, full HA restore or
 legacy migration. No release has been published. Review identified ordinary-chat
-request lifecycle, stale-authority and lost-response retry defects; those are
-being fixed before the first prerelease, not claimed as completed by this gate.
+request lifecycle, stale-authority and lost-response retry defects; the later
+joined checkpoint above verifies their fixes separately from this upgrade gate.
 
 The full recurring-task editor now reviews people, recurrence, deadline policy,
 report type and checklist in EN/RU/UK. Exact retries preserve the reviewed operation;
@@ -729,8 +767,9 @@ service call does not prove physical sound or volume.
 
 - Legacy pending plans without required revisions need explicit review during
   migration; do not silently rebase an old instruction to current household records.
-- Some controls are still API-only: advanced alarm exceptions/delay fields,
-  task-series editing and advanced per-step routine conditions.
+- Advanced per-step routine conditions still need a complete card editor.
+  Alarm exceptions/delay fields and task-series editing now have reviewed card
+  forms; their implemented portions are documented in the checkpoints above.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.

@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import re
 from contextlib import suppress
 from datetime import timedelta
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
+from ..assistant.chat_service import conversation_digest
+from ..assistant.service import Assistant
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
@@ -20,10 +26,57 @@ from .polls import route as route_polls
 from .router import COPY, addressed, route
 
 
+def _digest(value):
+    try:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+    except (TypeError, ValueError, RecursionError):
+        raise DomainError("forbidden") from None
+    return hashlib.sha256(encoded).hexdigest()
+
+
+class _ScopedEngine:
+    """Delegate trusted reads while guarding every locked mutation."""
+
+    def __init__(self, engine, guard):
+        self._engine, self._guard = engine, guard
+
+    def snapshot(self):
+        return self._engine.snapshot()
+
+    def view(self, actor, *, now=None):
+        return self._engine.view(actor, now=now)
+
+    async def execute(self, actor, action, payload, operation_id, now):
+        return await self._engine.execute(
+            actor, action, payload, operation_id, now, guard=self._guard
+        )
+
+    async def system_update(self, kind, now, change):
+        return await self._engine.system_update(kind, now, change, guard=self._guard)
+
+    async def background_update(self, kind, now, change):
+        while True:
+            await self._engine.async_wait_writable()
+            try:
+                return await self.system_update(kind, now, change)
+            except DomainError as error:
+                if error.code != "backup_in_progress":
+                    raise
+
+
 class TelegramManager:
     def __init__(self, hass, entry, runtime, client, bot):
         self.hass, self.entry, self.runtime = hass, entry, runtime
         self.client, self.bot = client, bot
+        self._client_identity = client
+        self._bot_digest = _digest(bot)
+        self._telegram_options_digest = _digest(dict(entry.options).get("telegram"))
         self.enrollment = Enrollment(runtime.engine)
         self.notifications = Notifications(
             runtime.engine,
@@ -35,7 +88,100 @@ class TelegramManager:
         self._stopped = False
         from ..assistant.jobs import Jobs
 
-        self.jobs = Jobs(runtime.engine, clock=dt_util.utcnow)
+        self.jobs = Jobs(
+            runtime.engine,
+            clock=dt_util.utcnow,
+            provider_scope=self._provider_scope,
+        )
+
+    def _manager_guard(self, _state=None):
+        entry = self.hass.config_entries.async_get_entry(self.entry.entry_id)
+        entries = self.hass.data.get(DOMAIN, {}).get("entries", {})
+        if (
+            self._stopped
+            or entry is not self.entry
+            or self.entry.state is not ConfigEntryState.LOADED
+            or entries.get(self.entry.entry_id) is not self.runtime
+            or self.entry.runtime_data is not self.runtime
+            or self.runtime.engine is not getattr(self.enrollment, "engine", None)
+            or self.runtime.telegram is not self
+            or self.client is not self._client_identity
+            or _digest(self.bot) != self._bot_digest
+            or _digest(dict(self.entry.options).get("telegram")) != self._telegram_options_digest
+        ):
+            raise DomainError("forbidden")
+
+    def _provider_scope(self):
+        self._manager_guard()
+        assistant = self.runtime.assistant
+        digest = self.runtime.assistant_config_digest
+        if (
+            assistant is None
+            or getattr(assistant, "cascade", None) is None
+            or not isinstance(digest, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            or digest != conversation_digest(dict(self.entry.options).get("conversation"))
+        ):
+            raise DomainError("forbidden")
+        return digest
+
+    def _command_guard(
+        self,
+        *,
+        actor,
+        actor_revision,
+        role,
+        language,
+        telegram_id,
+        chat_id,
+        private,
+    ):
+        def guard(state):
+            self._manager_guard(state)
+            member = state.get("members", {}).get(actor)
+            group_id = state.get("telegram", {}).get("group_id")
+            if (
+                not isinstance(member, dict)
+                or member.get("active") is not True
+                or member.get("revision") != actor_revision
+                or member.get("role") != role
+                or member.get("language") != language
+                or member.get("telegram_id") != telegram_id
+                or (private and (chat_id != telegram_id or chat_id <= 0))
+                or (not private and group_id != chat_id)
+            ):
+                raise DomainError("forbidden")
+
+        return guard
+
+    def _conversation_guard(self, job, assistant, cascade, search, source_revision):
+        """Pin one queued inference to this manager, provider and sender epoch."""
+        from ..assistant.jobs import Jobs
+
+        provider_marker = self._provider_scope()
+        if not isinstance(source_revision, str) or not re.fullmatch(
+            r"[0-9a-f]{32}", source_revision
+        ):
+            raise DomainError("forbidden")
+
+        def guard(state):
+            self._manager_guard(state)
+            stored = state.get("assistant_jobs", {}).get(job.get("id"))
+            current_assistant = self.runtime.assistant
+            if (
+                not isinstance(stored, dict)
+                or stored.get("status") != "pending"
+                or not Jobs._same_job(job, stored)
+                or self._provider_scope() != provider_marker
+                or self.runtime.assistant_revision != source_revision
+                or current_assistant is not assistant
+                or getattr(current_assistant, "cascade", None) is not cascade
+                or getattr(current_assistant, "search", None) is not search
+                or Jobs._authority_error(state, stored, dt_util.utcnow()) is not None
+            ):
+                raise DomainError("forbidden")
+
+        return guard
 
     def _targets(self, event, state):
         if (
@@ -151,19 +297,38 @@ class TelegramManager:
             try:
                 if completion is None and (job := self.jobs.next(self.bot["id"])) is not None:
                     cancelled = False
+                    from ..assistant.jobs import Jobs
+
+                    finish_jobs = Jobs(
+                        _ScopedEngine(self.runtime.engine, self._manager_guard),
+                        clock=dt_util.utcnow,
+                        provider_scope=self._provider_scope,
+                    )
                     try:
                         actor = self.jobs.authorize(job, dt_util.utcnow())
-                        if not self.runtime.assistant:
+                        assistant = self.runtime.assistant
+                        if not assistant:
                             raise DomainError("provider_not_configured")
-                        response = await self.runtime.assistant.respond(
+                        cascade = assistant.cascade
+                        search = assistant.search
+                        guard = self._conversation_guard(
+                            job,
+                            assistant,
+                            cascade,
+                            search,
+                            self.runtime.assistant_revision,
+                        )
+                        scoped_engine = _ScopedEngine(self.runtime.engine, guard)
+                        response = await Assistant(scoped_engine, cascade, search).respond(
                             actor,
                             job["content"],
                             job["id"],
                             dt_util.parse_datetime(job["created_at"]),
                             job["refs"],
                             quoted_text=job.get("quoted_text", ""),
+                            scope_check=lambda guard=guard: guard(self.runtime.engine.snapshot()),
                         )
-                        self.jobs.authorize(job, dt_util.utcnow())
+                        guard(self.runtime.engine.snapshot())
                     except (DomainError, TimeoutError) as err:
                         code = err.code if isinstance(err, DomainError) else "provider_timeout"
                         if code == "backup_in_progress":
@@ -172,10 +337,10 @@ class TelegramManager:
                         response = COPY[job["language"]]["error"].format(
                             error=ERRORS[job["language"]].get(code, code)
                         )
-                    completion = (job, response, cancelled)
+                    completion = (job, response, cancelled, finish_jobs)
                 if completion is not None:
-                    job, response, cancelled = completion
-                    await self.jobs.finish(job, response, dt_util.utcnow(), cancelled=cancelled)
+                    job, response, cancelled, finish_jobs = completion
+                    await finish_jobs.finish(job, response, dt_util.utcnow(), cancelled=cancelled)
                     completion = None
                     self.runtime.health.pop("conversation_storage", None)
                     self.runtime.updated()
@@ -194,13 +359,20 @@ class TelegramManager:
         if type(update_id) is not int:
             return
         engine = self.runtime.engine
+        self._manager_guard(engine.snapshot())
+        bot_id = self.bot["id"]
         offset = engine.snapshot()["telegram"].get("offsets", {}).get(str(self.bot["id"]), -1)
         if update_id < offset:
             return
         now = dt_util.utcnow()
         message = update.get("message")
         callback = update.get("callback_query")
-        captured = message and await self.enrollment.capture(message, self.bot["username"], now)
+        manager_engine = _ScopedEngine(engine, self._manager_guard)
+        captured = message and await Enrollment(manager_engine).capture(
+            message, self.bot["username"], now
+        )
+        self._manager_guard(engine.snapshot())
+        command_guard = None
         if not captured and (message or callback):
             sender = (message or callback).get("from", {})
             envelope = message or callback.get("message", {})
@@ -214,10 +386,22 @@ class TelegramManager:
             except DomainError:
                 actor = None
             if actor:
-                actor_revision = engine.snapshot()["members"][actor]["revision"]
-                language = next(
-                    m["language"] for m in engine.view(actor)["members"] if m["id"] == actor
+                state = engine.snapshot()
+                member = state["members"][actor]
+                actor_revision = member["revision"]
+                language = member["language"]
+                private = chat.get("type") == "private"
+                command_guard = self._command_guard(
+                    actor=actor,
+                    actor_revision=actor_revision,
+                    role=member["role"],
+                    language=language,
+                    telegram_id=sender.get("id"),
+                    chat_id=chat.get("id"),
+                    private=private,
                 )
+                command_guard(state)
+                scoped_engine = _ScopedEngine(engine, command_guard)
                 t = COPY.get(language, COPY["en"])
                 response = None
                 try:
@@ -228,7 +412,7 @@ class TelegramManager:
                         parts = content.rsplit(":", 2)
                         if content.startswith(("ps:", "pr:")):
                             response = await route_polls(
-                                engine,
+                                scoped_engine,
                                 actor,
                                 content,
                                 f"tg:{self.bot['id']}:{update_id}:action",
@@ -241,7 +425,7 @@ class TelegramManager:
 
                             if chat.get("type") != "private":
                                 raise DomainError("forbidden")
-                            result = await engine.execute(
+                            result = await scoped_engine.execute(
                                 actor,
                                 "routines.confirm",
                                 routines.callback(content),
@@ -257,7 +441,7 @@ class TelegramManager:
                             and parts[1] in {"confirm", "cancel"}
                         ):
                             response = await route(
-                                engine,
+                                scoped_engine,
                                 actor,
                                 f"/{'net' if parts[0] == 'fn' else ''}{parts[1]} {parts[2]}",
                                 f"tg:{self.bot['id']}:{update_id}:action",
@@ -269,7 +453,7 @@ class TelegramManager:
                         ):
                             raise DomainError("unknown_action")
                         if parts is not None:
-                            result = await engine.execute(
+                            result = await scoped_engine.execute(
                                 actor,
                                 "alarms.answer",
                                 {
@@ -288,39 +472,52 @@ class TelegramManager:
                     elif (content := addressed(message, self.bot)) is not None:
 
                         async def slow(actor, content, operation_id, received, refs):
+                            command_guard(engine.snapshot())
                             if not self.runtime.assistant:
                                 return t["unknown"]
-                            return await self.jobs.enqueue(
+                            from ..assistant.jobs import Jobs
+
+                            scoped_jobs = Jobs(
+                                scoped_engine,
+                                clock=dt_util.utcnow,
+                                provider_scope=self._provider_scope,
+                            )
+                            result = await scoped_jobs.enqueue(
                                 actor,
                                 content,
                                 operation_id,
                                 received,
                                 refs,
-                                bot_id=self.bot["id"],
+                                bot_id=bot_id,
                                 chat_id=chat["id"],
                                 reply_to=envelope.get("message_id"),
-                                quoted_text=reply_quote(engine.snapshot(), message, self.bot),
+                                quoted_text=reply_quote(
+                                    scoped_engine.snapshot(), message, self.bot
+                                ),
                             )
+                            command_guard(engine.snapshot())
+                            return result
 
                         response = await route_polls(
-                            engine,
+                            scoped_engine,
                             actor,
                             content,
-                            f"tg:{self.bot['id']}:{update_id}:action",
+                            f"tg:{bot_id}:{update_id}:action",
                             now,
                             private=chat.get("type") == "private",
                         )
                         if response is None:
                             response = await route(
-                                engine,
+                                scoped_engine,
                                 actor,
                                 content,
-                                f"tg:{self.bot['id']}:{update_id}:action",
+                                f"tg:{bot_id}:{update_id}:action",
                                 now,
-                                reply_refs(engine.snapshot(), message, self.bot),
+                                reply_refs(scoped_engine.snapshot(), message, self.bot),
                                 fallback=slow,
                                 private=chat.get("type") == "private",
                             )
+                    command_guard(engine.snapshot())
                 except (DomainError, ValueError) as err:
                     code = err.code if isinstance(err, DomainError) else "invalid_field"
                     if code == "backup_in_progress":
@@ -330,9 +527,10 @@ class TelegramManager:
                         error=ERRORS.get(language, ERRORS["en"]).get(code, code)
                     )
                 if response:
+                    command_guard(engine.snapshot())
 
                     def reply(ctx):
-                        ctx.operation_id = f"tg:{self.bot['id']}:{update_id}:reply"
+                        ctx.operation_id = f"tg:{bot_id}:{update_id}:reply"
                         # The reply is deduplicated by input update, even if a status
                         # report would render differently after an offset-save failure.
                         if any(
@@ -348,7 +546,7 @@ class TelegramManager:
                                     "descriptor": response,
                                     "actor": actor,
                                     "actor_revision": actor_revision,
-                                    "bot_id": self.bot["id"],
+                                    "bot_id": bot_id,
                                     "chat_id": chat["id"],
                                     "reply_to": envelope.get("message_id"),
                                     "expires_at": (now + timedelta(minutes=5)).isoformat(),
@@ -357,7 +555,7 @@ class TelegramManager:
                             return
                         processed = (
                             ctx.state["processed"]
-                            .get(f"tg:{self.bot['id']}:{update_id}:action", {})
+                            .get(f"tg:{bot_id}:{update_id}:action", {})
                             .get("result", {})
                         )
                         ctx.notify(
@@ -367,7 +565,7 @@ class TelegramManager:
                                 "text": response,
                                 "actor": actor,
                                 "actor_revision": actor_revision,
-                                "bot_id": self.bot["id"],
+                                "bot_id": bot_id,
                                 "chat_id": chat["id"],
                                 "reply_to": envelope.get("message_id"),
                                 "network_plan_id": processed.get("id")
@@ -375,22 +573,26 @@ class TelegramManager:
                                 else None,
                                 "refs": result_refs(
                                     ctx.state["processed"]
-                                    .get(f"tg:{self.bot['id']}:{update_id}:action", {})
+                                    .get(f"tg:{bot_id}:{update_id}:action", {})
                                     .get("result", {})
                                 ),
                             },
                         )
 
-                    await engine.background_update("telegram_reply", now, reply)
+                    await scoped_engine.background_update("telegram_reply", now, reply)
+                    command_guard(engine.snapshot())
                     self.runtime.updated()
                 if callback:
                     with suppress(DeliveryError):
+                        command_guard(engine.snapshot())
                         await self.client.call(
                             "answerCallbackQuery", {"callback_query_id": callback["id"]}
                         )
+                        command_guard(engine.snapshot())
 
         def advance(ctx):
             offsets = ctx.state["telegram"].setdefault("offsets", {})
             offsets[str(self.bot["id"])] = max(offsets.get(str(self.bot["id"]), -1), update_id + 1)
 
-        await engine.background_update("telegram_offset", now, advance)
+        offset_engine = _ScopedEngine(engine, command_guard or self._manager_guard)
+        await offset_engine.background_update("telegram_offset", now, advance)

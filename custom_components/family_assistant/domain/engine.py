@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
 import json
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
@@ -192,18 +193,74 @@ class Engine:
         # A restarted Engine is writable and cannot accept a token from its predecessor.
         self._backup_owner = _NO_BACKUP
         self._ended_backup_owner = _NO_BACKUP
+        self._closed = False
         self._writable = asyncio.Event()
         self._writable.set()
 
     def _require_writable(self) -> None:
+        if self._closed:
+            raise DomainError("not_ready")
         if self._backup_owner is not _NO_BACKUP:
             raise DomainError("backup_in_progress")
 
+    def _guard(self, guard: Callable[[dict], None] | None) -> None:
+        """Run a synchronous guard against the latest state without exposing it to mutation."""
+        if guard is None:
+            return
+        if not callable(guard):
+            raise DomainError("invalid_field", "guard")
+        result = guard(deepcopy(self._state))
+        if inspect.isawaitable(result):
+            close = getattr(result, "close", None)
+            if callable(close):
+                close()
+            raise DomainError("invalid_field", "guard")
+
+    async def _commit(self, working: dict) -> None:
+        """Settle persistence under cancellation, then publish exactly what reached disk."""
+        task = asyncio.ensure_future(self._persist(deepcopy(working)))
+        cancellation: asyncio.CancelledError | None = None
+        while True:
+            try:
+                await asyncio.shield(task)
+                break
+            except asyncio.CancelledError as error:
+                if cancellation is None:
+                    cancellation = error
+                if task.done():
+                    break
+            except BaseException:
+                # A persistence failure and caller cancellation may become ready
+                # in the same loop turn. Cancellation remains the caller-visible
+                # outcome, while task.exception() below consumes the store error.
+                current = asyncio.current_task()
+                if cancellation is not None or (current is not None and current.cancelling()):
+                    cancellation = cancellation or asyncio.CancelledError()
+                    break
+                raise
+
+        if task.cancelled():
+            if cancellation is not None:
+                raise cancellation
+            await task
+
+        failure = task.exception()
+        if failure is None:
+            self._state = working
+        if cancellation is not None:
+            raise cancellation
+        if failure is not None:
+            raise failure
+
     async def async_begin_backup(self) -> object:
         """Drain current persistence, then freeze new mutations under one opaque lease."""
+        if self._closed:
+            raise DomainError("not_ready")
         if self._backup_owner is not _NO_BACKUP:
             raise DomainError("conflict")
         async with self._lock:
+            if self._closed:
+                raise DomainError("not_ready")
             if self._backup_owner is not _NO_BACKUP:
                 raise DomainError("conflict")
             token = object()
@@ -225,7 +282,36 @@ class Engine:
 
     async def async_wait_writable(self) -> None:
         """Let owned background work wait for backup without spinning or thawing it."""
+        if self._closed:
+            raise DomainError("not_ready")
         await self._writable.wait()
+        if self._closed:
+            raise DomainError("not_ready")
+
+    async def async_close(self) -> None:
+        """Permanently reject writes and wait for the current transaction to settle."""
+        self._closed = True
+        # A background update may be waiting for a backup lease that will never
+        # make this Engine writable again. Wake it so it can fail with not_ready.
+        self._writable.set()
+
+        async def drain() -> None:
+            async with self._lock:
+                return
+
+        task = asyncio.create_task(drain())
+        cancellation: asyncio.CancelledError | None = None
+        while True:
+            try:
+                await asyncio.shield(task)
+                break
+            except asyncio.CancelledError as error:
+                if cancellation is None:
+                    cancellation = error
+                if task.done():
+                    break
+        if cancellation is not None:
+            raise cancellation
 
     async def background_update(self, kind: str, now: datetime, change: Callable) -> dict:
         """Persist the same in-flight effect/receipt after backup, without redoing I/O.
@@ -337,11 +423,15 @@ class Engine:
             )
             if not maintenance.is_managed_series(record)
         ]
-        data["proposals"] = [
-            {k: record[k] for k in ("id", "status", "preview", "expires_at")}
-            for record in self._state["proposals"].values()
-            if record["actor"] == actor_id and record["status"] == "pending"
-        ]
+        data["proposals"] = (
+            [
+                projected
+                for record in self._state["proposals"].values()
+                if (projected := proposals.project(record, actor)) is not None
+            ]
+            if "conversation" in self._state["settings"]["modules"]
+            else []
+        )
         data["learned_phrases"] = [
             {key: record[key] for key in ("id", "source", "canonical", "active", "revision")}
             for record in self._state["memory"].get("phrases", {}).values()
@@ -413,7 +503,14 @@ class Engine:
         return member
 
     async def execute(
-        self, actor_id: str, action: str, payload: dict, operation_id: str, now: datetime
+        self,
+        actor_id: str,
+        action: str,
+        payload: dict,
+        operation_id: str,
+        now: datetime,
+        *,
+        guard: Callable[[dict], None] | None = None,
     ) -> dict:
         self._require_writable()
         text(operation_id, "operation_id", 180)
@@ -432,6 +529,7 @@ class Engine:
         fingerprint = hashlib.sha256(encoded.encode()).hexdigest()
         async with self._lock:
             self._require_writable()
+            self._guard(guard)
             actor = self._actor(actor_id)
             prior = self._state["processed"].get(operation_id)
             if prior:
@@ -482,8 +580,7 @@ class Engine:
                 "result": result,
                 "role": actor["role"],
             }
-            await self._persist(deepcopy(working))
-            self._state = working
+            await self._commit(working)
             return deepcopy(result)
 
     def _replay_scope(self, actor_id, action, payload, result, now):
@@ -501,6 +598,13 @@ class Engine:
         if action == "settings.digest_policy":
             digest_settings.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "digest-policy-replay"),
+                payload,
+                result,
+            )
+        elif action in {"conversation.confirm", "conversation.reject"}:
+            proposals.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "proposal-replay"),
+                action.split(".", 1)[1],
                 payload,
                 result,
             )
@@ -635,11 +739,17 @@ class Engine:
                     "revision": working["revision"],
                 }
             )
-            await self._persist(deepcopy(working))
-            self._state = working
+            await self._commit(working)
             return True
 
-    async def system_update(self, kind: str, now: datetime, change: Callable) -> object:
+    async def system_update(
+        self,
+        kind: str,
+        now: datetime,
+        change: Callable,
+        *,
+        guard: Callable[[dict], None] | None = None,
+    ) -> object:
         """Internal adapters may persist bounded state; channels cannot call this.
 
         The callback is synchronous and cannot perform network I/O inside the lock.
@@ -649,6 +759,7 @@ class Engine:
         timestamp(now, "now")
         async with self._lock:
             self._require_writable()
+            self._guard(guard)
             working = deepcopy(self._state)
             ctx = Context(
                 working, {"id": "system", "role": "system"}, now, f"{kind}:{now.isoformat()}"
@@ -656,8 +767,7 @@ class Engine:
             result = change(ctx)
             if working != self._state:
                 working["revision"] += 1
-                await self._persist(deepcopy(working))
-                self._state = working
+                await self._commit(working)
             return deepcopy(result)
 
     @staticmethod

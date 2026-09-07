@@ -19,7 +19,7 @@ it. Choose a name, your display name, language, IANA time zone (for example
 `Europe/Berlin`) and template. The additional people in templates have no
 linked accounts and cannot access anything until the owner links them.
 
-Select the modules you need. Options → Members lets the owner rename people,
+Select the modules you need. Configure → Add or edit a family member lets the owner rename people,
 change roles/language, link HA users and add aliases, one per line. Use aliases
 for grammatical forms or nicknames; ambiguous names require clarification.
 Owner and parent roles may approve tasks; adults do not automatically receive
@@ -102,8 +102,12 @@ requests do not change state. There is no hidden developer provider or automatic
    API-key fields preserve the key; changing a URL requires a new key or clearing it.
 4. For web questions configure your SearXNG URL and enable `json` in its
    `search.formats`. A language model alone does not have internet access. This
-   version summarizes search snippets with filtered public source links; full
-   article reading and alternative search adapters remain pending.
+   version summarizes search snippets with filtered public source links.
+   Reading a full public article is a separate opt-in: enable Public article
+   reading in Configure, review its child policy, then explicitly review a
+   public HTTPS URL in the Conversation card. It is not automatic URL reading
+   in Telegram and sends no family context to article synthesis. See the
+   [article guide](articles.md). Alternative search adapters remain pending.
 5. Unknown addressed messages enter a durable worker queue. Ping, task commands
    and wake-up buttons do not wait for inference. Quoted text is untrusted
    context, never authorization. Model mutations are previewed first; confirm

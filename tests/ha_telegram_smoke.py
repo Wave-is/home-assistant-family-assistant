@@ -324,7 +324,7 @@ async def run_network(hass, entry, owner, child_id):
                 },
             },
         }
-        await receiver.process(update)
+        await process_current(entry.runtime_data, receiver, update)
         await manager._effects_task
         controlled = engine.snapshot()["network"]["kid_plans"]["K000001"]
         assert controlled["status"] == "applied", controlled
@@ -338,7 +338,7 @@ async def run_network(hass, entry, owner, child_id):
         stale_view = engine.view(child_id, now=datetime.now(UTC) + timedelta(minutes=4))
         assert stale_view["kid_control"]["profiles"][0]["status"]["allows"] is None
         count = len(writes)
-        await receiver.process(update)
+        await process_current(entry.runtime_data, receiver, update)
         assert len(writes) == count
         events = list(engine.snapshot()["outbox"].values())
         notification = next(
@@ -386,6 +386,16 @@ async def run_network(hass, entry, owner, child_id):
         "PASS: real HA Kid Control adoption, Telegram confirmation/replay, "
         "scoped native guards, private result, configured status/freshness and expiry closure"
     )
+
+
+async def process_current(runtime, receiver, update):
+    """Deliver a synthetic update through the explicitly registered test adapter."""
+    previous = runtime.telegram
+    runtime.telegram = receiver
+    try:
+        return await receiver.process(update)
+    finally:
+        runtime.telegram = previous
 
 
 class SyntheticTelegram:
@@ -537,6 +547,9 @@ async def run(hass, entry, owner_user, child_id):
         # A different bot's cursor must not suppress this bot's legitimate update.
         assert str(1000) in engine.snapshot()["telegram"]["offsets"]
         await run_assistant(hass, entry, owner_user, child_id, receive, options, submit)
+        from ha_telegram_command_scope_smoke import verify_telegram_command_scope
+
+        await verify_telegram_command_scope(hass, entry, owner_user)
         flow = await options("telegram")
         flow = await submit(flow, {"enabled": False})
         assert flow["type"] == "create_entry"

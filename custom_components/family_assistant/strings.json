@@ -35,6 +35,10 @@
       }
     },
     "error": {
+      "chat_unavailable": "Conversation has changed or is unavailable. Refresh the card before sending again.",
+      "chat_busy": "Several conversations are already in progress. Try again shortly; no new action was started.",
+      "chat_context_expired": "This request's retry context has expired. Check the current result before sending a new command.",
+      "chat_context_full": "The safe retry-context limit is reached. Existing commands are not repeated; try again later.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "invalid_field": "Check the entered value.",
       "forbidden": "You do not have permission for this action.",
@@ -296,7 +300,7 @@
       },
       "search": {
         "title": "Internet search (SearXNG)",
-        "description": "Enter your own SearXNG base URL. Enable json in search.formats in SearXNG settings.yml. Saving tests a public query. Search sends only a phrase grounded in the current request, not stored family records. Results are filtered for internal addresses and treated as untrusted snippets. Full article fetching is not available yet.",
+        "description": "Enter your own SearXNG base URL. Enable json in search.formats in SearXNG settings.yml. Saving tests a public query. Search sends only a phrase grounded in the current request, not stored family records. Results are filtered for internal addresses and treated as untrusted snippets. Full public articles require separate opt-in and explicit URL review in the Conversation card; links are not fetched automatically.",
         "data": {
           "enabled": "Enable search",
           "url": "SearXNG base URL",
@@ -388,6 +392,10 @@
     },
     "error": {
       "article_invalid_url": "Use a public HTTPS page on the standard port, without login details or a fragment.",
+      "chat_unavailable": "Conversation has changed or is unavailable. Refresh the card before sending again.",
+      "chat_busy": "Several conversations are already in progress. Try again shortly; no new action was started.",
+      "chat_context_expired": "This request's retry context has expired. Check the current result before sending a new command.",
+      "chat_context_full": "The safe retry-context limit is reached. Existing commands are not repeated; try again later.",
       "article_timeout": "The page did not respond within the time limit. No family action was performed.",
       "article_unavailable": "The public page could not be retrieved.",
       "article_unsupported": "This page format or encoding is not supported. Use a plain-text or HTML article.",
@@ -556,6 +564,10 @@
     }
   },
   "exceptions": {
+    "chat_unavailable": {"message": "Conversation has changed or is unavailable. Refresh the card before sending again."},
+    "chat_busy": {"message": "Several conversations are already in progress. Try again shortly; no new action was started."},
+    "chat_context_expired": {"message": "This request's retry context has expired. Check the current result before sending a new command."},
+    "chat_context_full": {"message": "The safe retry-context limit is reached. Existing commands are not repeated; try again later."},
     "article_invalid_url": {"message": "Use a public HTTPS page on the standard port, without login details or a fragment."},
     "article_timeout": {"message": "The page did not respond within the time limit. No family action was performed."},
     "article_unavailable": {"message": "The public page could not be retrieved."},

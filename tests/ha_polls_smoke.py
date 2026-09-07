@@ -272,7 +272,12 @@ async def verify_polls(hass, entry, owner, child_id):
         else:
             envelope["text"] = text
             update["message"] = envelope
-        await telegram.process(update)
+        previous_manager = entry.runtime_data.telegram
+        entry.runtime_data.telegram = telegram
+        try:
+            await telegram.process(update)
+        finally:
+            entry.runtime_data.telegram = previous_manager
         prefix = f"tg:{bot_id}:{update_id}:reply:"
         event = next(
             event

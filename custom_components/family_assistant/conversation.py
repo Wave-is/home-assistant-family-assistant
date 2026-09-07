@@ -14,9 +14,9 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, LANGUAGES
-from .domain.validation import DomainError
+from .domain.validation import DomainError, text
 from .telegram.errors import ERRORS
-from .telegram.router import COPY, route
+from .telegram.router import COPY
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -44,6 +44,7 @@ class FamilyConversation(ConversationEntity):
     _attr_supported_features = ConversationEntityFeature.CONTROL
 
     def __init__(self, entry):
+        self._entry = entry
         self._runtime = entry.runtime_data
         self._attr_unique_id = f"{entry.entry_id}_conversation"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
@@ -54,7 +55,11 @@ class FamilyConversation(ConversationEntity):
 
     @property
     def available(self):
-        return "conversation" in self._runtime.engine.snapshot()["settings"]["modules"]
+        return bool(
+            self._entry.runtime_data is self._runtime
+            and self._runtime.chat is not None
+            and "conversation" in self._runtime.engine.snapshot()["settings"]["modules"]
+        )
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -64,54 +69,52 @@ class FamilyConversation(ConversationEntity):
     async def _async_handle_message(self, user_input, chat_log):
         language = user_input.language if user_input.language in LANGUAGES else "en"
         response = intent.IntentResponse(language=language)
+        failed = False
+        result_conversation_id = chat_log.conversation_id
         try:
-            engine = self._runtime.engine
-            actor = engine.actor_for_ha(user_input.context.user_id)
-            role = engine.view(actor)["role"]
-            if not self.available:
-                raise DomainError("module_disabled")
+            from .assistant.ha_scope import capture, retire_legacy_refs
+
+            context = user_input.context
+            context_id = text(getattr(context, "id", None), "context_id", 128)
+            content = text(user_input.text, "text", 4096)
+            scope = await capture(
+                self.hass,
+                self._entry.entry_id,
+                getattr(context, "user_id", None),
+                expected_runtime=self._runtime,
+            )
+            language = scope.language
             operation = (
                 "assist:"
                 + hashlib.sha256(
-                    f"{actor}:{user_input.context.id}:{user_input.text}".encode()
+                    f"{scope.actor}:{scope.actor_revision}:{context_id}".encode()
                 ).hexdigest()
             )
-            conversation_key = hashlib.sha256(
-                f"{actor}:{chat_log.conversation_id}".encode()
-            ).hexdigest()
-            # Only receipts from this actor/session are usable, never arbitrary chat_log text.
-            refs = (
-                engine.snapshot()["memory"].get("conversation_refs", {}).get(conversation_key, [])
+            conversation_id = chat_log.conversation_id or context_id
+            result_conversation_id = conversation_id
+            session = (
+                "assist-session:"
+                + hashlib.sha256(
+                    f"{scope.actor}:{scope.actor_revision}:{conversation_id}".encode()
+                ).hexdigest()
             )
-
-            async def fallback(actor, content, operation_id, now, refs):
-                if not self._runtime.assistant:
-                    raise DomainError("provider_not_configured")
-                return await self._runtime.assistant.respond(
-                    actor, content, operation_id, now, refs
-                )
-
-            reply = await route(
-                engine, actor, user_input.text, operation, dt_util.utcnow(), refs, fallback=fallback
+            now = dt_util.utcnow()
+            await retire_legacy_refs(scope, now)
+            reply = await scope.chat.answer(
+                runtime=scope.runtime,
+                actor=scope.actor,
+                actor_revision=scope.actor_revision,
+                content=content,
+                operation_id=operation,
+                session_id=session,
+                now=now,
+                guard=scope.locked_guard,
+                scope_check=scope.check,
+                on_commit=scope.notify,
             )
-            if (
-                engine.actor_for_ha(user_input.context.user_id) != actor
-                or engine.view(actor)["role"] != role
-            ):
-                raise DomainError("forbidden")
-
-            def save_refs(ctx):
-                from .telegram.context import result_refs
-
-                result = ctx.state["processed"].get(operation, {}).get("result", {})
-                if result:
-                    ctx.state["memory"].setdefault("conversation_refs", {})[conversation_key] = (
-                        result_refs(result)
-                    )
-
-            await engine.system_update("conversation_context", dt_util.utcnow(), save_refs)
-            self._runtime.updated()
+            await scope.check()
         except (DomainError, TimeoutError, OSError) as err:
+            failed = True
             code = (
                 err.code
                 if isinstance(err, DomainError)
@@ -121,5 +124,8 @@ class FamilyConversation(ConversationEntity):
         chat_log.async_add_assistant_content_without_tools(
             AssistantContent(agent_id=user_input.agent_id, content=reply)
         )
-        response.async_set_speech(reply)
-        return ConversationResult(response=response, conversation_id=chat_log.conversation_id)
+        if failed:
+            response.async_set_error(intent.IntentResponseErrorCode.FAILED_TO_HANDLE, reply)
+        else:
+            response.async_set_speech(reply)
+        return ConversationResult(response=response, conversation_id=result_conversation_id)

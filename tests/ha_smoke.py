@@ -243,6 +243,15 @@ async def main():
             from ha_article_smoke import verify_articles
 
             await verify_articles(hass, entry, user, child_id)
+            from ha_chat_scope_smoke import verify_chat_scope
+
+            await verify_chat_scope(hass, entry, user, child_id)
+            from ha_assistant_scope_smoke import verify_ha_assistant_scope
+
+            await verify_ha_assistant_scope(hass, entry, user, child_id)
+            from ha_command_scope_smoke import verify_command_scope
+
+            await verify_command_scope(hass, entry, user)
             engine = entry.runtime_data.engine
             from ha_member_revision_smoke import verify_member_revision_options
 
@@ -313,6 +322,7 @@ async def main():
                 )
             }
             dietary_expected = entry.runtime_data.engine.snapshot()["dietary_profiles"]
+            shopping_expected = entry.runtime_data.engine.snapshot()["shopping"]
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(
@@ -344,7 +354,8 @@ async def main():
             verify_dietary_reload(entry, dietary_expected)
             await verify_media_reload(entry, media_expected)
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
-            assert len(shopping_after_reload) == 8
+            assert entry.runtime_data.engine.snapshot()["shopping"] == shopping_expected
+            assert len(shopping_after_reload) == len(shopping_expected)
             pantry_after_reload = entry.runtime_data.engine.snapshot()["pantry"]
             assert len(pantry_after_reload["items"]) == 1
             assert next(iter(pantry_after_reload["items"].values()))["quantity"] == 0.5
@@ -482,6 +493,10 @@ async def run_websocket(hass, entry, owner, child_id):
                         "text": "/ping",
                         "operation_id": "ws-chat-" + user.id,
                         "session_id": "synthetic-session",
+                        "actor_revision": engine.snapshot()["members"][
+                            "owner" if user is owner else child_id
+                        ]["revision"],
+                        "source_revision": entry.runtime_data.assistant_revision,
                     }
                 )
                 result = await ws.receive_json()
@@ -1092,7 +1107,7 @@ async def verify_calendar_controls(hass, entry, owner, child, child_id, request)
 
 async def verify_routine_controls(hass, entry, owner, child, child_id, request):
     """Actual HA state reports, authenticated ordered steps, private callbacks and reload data."""
-    from ha_telegram_smoke import SyntheticTelegram
+    from ha_telegram_smoke import SyntheticTelegram, process_current
 
     from custom_components.family_assistant.telegram.manager import TelegramManager
     from custom_components.family_assistant.telegram.messages import render
@@ -1191,10 +1206,10 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
             },
         },
     }
-    await receiver.process(update)
+    await process_current(entry.runtime_data, receiver, update)
     run = entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]]
     assert run["steps"][0]["status"] == "completed"
-    await receiver.process(update)
+    await process_current(entry.runtime_data, receiver, update)
     assert entry.runtime_data.engine.snapshot()["routine_runs"][run["id"]] == run
     assert run["steps"][1]["status"] == "active"
     hass.states.async_set("binary_sensor.synthetic_routine", "unavailable")

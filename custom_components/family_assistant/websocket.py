@@ -7,11 +7,12 @@ from homeassistant.components import websocket_api
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .domain.validation import DomainError, text
+from .domain.validation import DomainError
 
 
 def async_register_api(hass):
     from .assistant.article_api import article
+    from .assistant.chat_api import chat
     from .digest_api import preview as digest_preview
     from .recipes.api import recipes
 
@@ -58,7 +59,11 @@ async def view(hass, connection, msg):
         data = runtime.engine.view(actor_id, now=now)
         if data["role"] != "guest" and "conversation" in data["settings"]["modules"]:
             from .assistant.article_api import source_view as article_source_view
+            from .assistant.chat_api import source_view as conversation_source_view
 
+            data["conversation_source"] = conversation_source_view(
+                hass.config_entries.async_get_entry(msg["entry_id"]), runtime, actor_id
+            )
             data["article_source"] = article_source_view(
                 hass.config_entries.async_get_entry(msg["entry_id"]), runtime, actor_id
             )
@@ -94,80 +99,28 @@ async def view(hass, connection, msg):
 )
 @websocket_api.async_response
 async def execute(hass, connection, msg):
-    from .runtime import get_runtime
+    from .command_scope import capture
 
     try:
-        runtime = get_runtime(hass, msg["entry_id"])
-        actor_id = runtime.engine.actor_for_ha(connection.user.id)
-        result = await runtime.engine.execute(
-            actor_id, msg["action"], msg["payload"], msg["operation_id"], dt_util.utcnow()
+        scope = await capture(hass, msg["entry_id"], connection.user.id, connection.user)
+        await scope.check()
+        result = await scope.engine.execute(
+            scope.actor,
+            msg["action"],
+            msg["payload"],
+            msg["operation_id"],
+            dt_util.utcnow(),
+            guard=scope.guard,
         )
-        runtime.updated()
+        scope = await scope.after_execute(
+            msg["action"], msg["payload"], msg["operation_id"], result
+        )
+        scope.notify()
         connection.send_result(msg["id"], result)
     except DomainError as err:
         connection.send_error(msg["id"], err.code, err.code)
     except OSError:
         connection.send_error(msg["id"], "storage_error", "storage_error")
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): "family_assistant/chat",
-        vol.Required("entry_id"): str,
-        vol.Required("text"): str,
-        vol.Required("operation_id"): str,
-        vol.Required("session_id"): str,
-    }
-)
-@websocket_api.async_response
-async def chat(hass, connection, msg):
-    import hashlib
-
-    from .runtime import get_runtime
-    from .telegram.context import result_refs
-    from .telegram.router import route
-
-    try:
-        content = text(msg["text"], "text", 4096)
-        operation = text(msg["operation_id"], "operation_id", 100)
-        session_id = text(msg["session_id"], "session_id", 100)
-        runtime = get_runtime(hass, msg["entry_id"])
-        actor = runtime.engine.actor_for_ha(connection.user.id)
-        role = runtime.engine.view(actor)["role"]
-        if "conversation" not in runtime.engine.view(actor)["settings"]["modules"]:
-            raise DomainError("module_disabled")
-        key = hashlib.sha256(f"{actor}:{session_id}".encode()).hexdigest()
-        refs = runtime.engine.snapshot()["memory"].get("dashboard_refs", {}).get(key, [])
-
-        async def fallback(actor, content, operation_id, now, refs):
-            if not runtime.assistant:
-                raise DomainError("provider_not_configured")
-            return await runtime.assistant.respond(actor, content, operation_id, now, refs)
-
-        reply = await route(
-            runtime.engine, actor, content, operation, dt_util.utcnow(), refs, fallback=fallback
-        )
-        if (
-            runtime.engine.actor_for_ha(connection.user.id) != actor
-            or runtime.engine.view(actor)["role"] != role
-        ):
-            raise DomainError("forbidden")
-
-        def save(ctx):
-            result = ctx.state["processed"].get(operation, {}).get("result", {})
-            if result:
-                ctx.state["memory"].setdefault("dashboard_refs", {})[key] = result_refs(result)
-
-        await runtime.engine.system_update("dashboard_context", dt_util.utcnow(), save)
-        runtime.updated()
-        connection.send_result(msg["id"], {"reply": reply})
-    except (DomainError, OSError, TimeoutError) as err:
-        code = (
-            err.code
-            if isinstance(err, DomainError)
-            else ("provider_timeout" if isinstance(err, TimeoutError) else "storage_error")
-        )
-        connection.send_error(msg["id"], code, code)
 
 
 @websocket_api.websocket_command(

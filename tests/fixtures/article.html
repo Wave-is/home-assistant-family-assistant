@@ -81,6 +81,12 @@
         },
         members: structuredClone(fixture.members),
         article_source: source(),
+        conversation_source: {
+          enabled: fixture.modules.includes("conversation"),
+          configured: fixture.configured,
+          allowed: fixture.role !== "guest" && fixture.modules.includes("conversation"),
+          revision: fixture.role !== "guest" && fixture.modules.includes("conversation") ? "c".repeat(32) : null,
+        },
         proposals: [],
         learned_phrases: [],
       });

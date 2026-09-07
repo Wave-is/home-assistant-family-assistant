@@ -15,6 +15,7 @@ from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..domain.validation import revision as strict_revision
 from .article_options import _conversation_ready, _digest, _policy
+from .chat_service import conversation_digest as provider_digest
 
 _LANGUAGES = {"en", "ru", "uk"}
 _ROLES = {"owner", "parent", "adult", "child"}
@@ -114,6 +115,8 @@ async def _current_scope(hass: Any, connection: Any, entry_id: str) -> _Scope:
             raise DomainError("module_disabled")
         options = dict(entry.options)
         conversation_digest = _digest(options.get("conversation"))
+        if runtime.assistant_config_digest != provider_digest(options.get("conversation")):
+            raise DomainError("article_unavailable")
         policy = _policy(options)
         if policy.get("enabled") is not True:
             raise DomainError("article_unavailable")
@@ -230,6 +233,7 @@ def source_view(entry: Any, runtime: Any, actor: str) -> dict[str, Any]:
             permission
             and enabled
             and configured
+            and runtime.assistant_config_digest == provider_digest(conversation)
             and _conversation_ready(runtime, state, options)
             and service is not None
             and cascade is not None

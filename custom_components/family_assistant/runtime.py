@@ -31,6 +31,9 @@ class Runtime:
     scheduler: Any = None
     telegram: Any = None
     assistant: Any = None
+    chat: Any = None
+    assistant_revision: str = ""
+    assistant_config_digest: str = ""
     articles: Any = None
     article_revision: str = ""
     network: Any = None
@@ -122,17 +125,26 @@ async def _async_setup_runtime(hass, entry) -> bool:
         async_register_media(hass)
 
         async def execute(call):
+            from .command_scope import capture
+
             try:
-                selected = get_runtime(hass, call.data["entry_id"])
-                actor_id = selected.engine.actor_for_ha(call.context.user_id)
-                result = await selected.engine.execute(
-                    actor_id,
+                scope = await capture(hass, call.data["entry_id"], call.context.user_id)
+                await scope.check()
+                result = await scope.engine.execute(
+                    scope.actor,
                     call.data["action"],
                     call.data.get("payload", {}),
                     call.data["operation_id"],
                     dt_util.utcnow(),
+                    guard=scope.guard,
                 )
-                selected.updated()
+                scope = await scope.after_execute(
+                    call.data["action"],
+                    call.data.get("payload", {}),
+                    call.data["operation_id"],
+                    result,
+                )
+                scope.notify()
                 return {"result": result}
             except DomainError as err:
                 raise HomeAssistantError(
@@ -191,7 +203,12 @@ async def _async_setup_runtime(hass, entry) -> bool:
 
         async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
+        # Platforms are forwarded before optional managers are configured. In
+        # particular the Assist entity must publish its now-ready chat state
+        # even when the scheduler has no domain change to announce.
+        runtime.updated()
     except Exception:
+        await async_stop_chat(runtime)
         await async_stop_articles(runtime)
         await async_stop_media(runtime)
         if runtime.network:
@@ -202,6 +219,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
             await runtime.scheduler.stop()
         await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
         data["entries"].pop(entry.entry_id, None)
+        await runtime.engine.async_close()
         raise
     return True
 
@@ -253,6 +271,7 @@ async def _async_unload_runtime(hass, entry) -> bool:
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    await async_stop_chat(runtime)
     await async_stop_articles(runtime)
     await async_stop_media(runtime)
     if runtime.network:
@@ -261,6 +280,9 @@ async def _async_unload_runtime(hass, entry) -> bool:
         await runtime.telegram.stop()
     if runtime.scheduler:
         await runtime.scheduler.stop()
+    # Retire this exact Store writer before another runtime loads its state.
+    # Failed platform unload above deliberately leaves the live Engine open.
+    await runtime.engine.async_close()
     runtime.listeners.clear()
     return True
 
@@ -300,14 +322,30 @@ async def async_configure_telegram(hass, entry):
 
 
 async def async_options_updated(hass, entry):
-    async with entry.runtime_data.options_lock:
-        await async_configure_presence(hass, entry)
-        await async_stop_articles(entry.runtime_data)
-        async_configure_assistant(hass, entry)
-        async_configure_recipes(hass, entry)
-        await async_configure_network(hass, entry)
-        await async_configure_telegram(hass, entry)
-        entry.runtime_data.updated()
+    data = hass.data.get(DOMAIN, {})
+    lock = data.setdefault("setup_lock", asyncio.Lock())
+    selected = entry.runtime_data
+    while True:
+        async with lock:
+            if (
+                data.get("entries", {}).get(entry.entry_id) is not selected
+                or entry.runtime_data is not selected
+                or selected is None
+            ):
+                return
+            coordinator = data.get("backup")
+            if coordinator is None:
+                async with selected.options_lock:
+                    await async_stop_chat(selected)
+                    await async_stop_articles(selected)
+                    await async_configure_presence(hass, entry)
+                    async_configure_assistant(hass, entry)
+                    async_configure_recipes(hass, entry)
+                    await async_configure_network(hass, entry)
+                    await async_configure_telegram(hass, entry)
+                    selected.updated()
+                return
+        await coordinator.released.wait()
 
 
 async def async_configure_presence(hass, entry):
@@ -357,20 +395,38 @@ async def async_stop_articles(runtime):
         await previous.async_stop()
 
 
+async def async_stop_chat(runtime):
+    """Invalidate and settle owned dashboard requests before replacing providers."""
+    previous = runtime.chat
+    runtime.chat = None
+    runtime.assistant_revision = uuid4().hex
+    if previous is not None:
+        await previous.async_stop()
+
+
 def async_configure_assistant(hass, entry):
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .assistant.article_service import ArticleService
+    from .assistant.chat_service import ChatService, conversation_digest
     from .assistant.provider import Cascade, Ollama
     from .assistant.search import Search
     from .assistant.service import Assistant
 
     runtime = entry.runtime_data
+    if runtime.chat is not None:
+        runtime.chat.close()
+    runtime.chat = None
+    runtime.assistant_revision = uuid4().hex
+    runtime.assistant_config_digest = conversation_digest(dict(entry.options).get("conversation"))
     if runtime.articles is not None:
         runtime.articles.close()
     runtime.articles = None
     runtime.article_revision = uuid4().hex
     runtime.assistant = None
+    if "conversation" in runtime.engine.snapshot()["settings"]["modules"]:
+        # Deterministic family commands do not require an enabled model.
+        runtime.chat = ChatService()
     config = entry.options.get("conversation", {})
     if config.get("enabled") and config.get("primary"):
         session = async_get_clientsession(hass)

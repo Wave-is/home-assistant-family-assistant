@@ -33,7 +33,7 @@ if(query.has("shoppingseries"))data.shopping_series=[{id:"B000001",revision:3,na
 data.alarm_runs=query.has("ringing")?[{id:"W000001",member:"child",stage:"first",siren_desired:true,test:true,challenge:{nonce:"synthetic-nonce",question:"3 + 4",choices:[5,7,9,6]}}]:[];
 data.health={telegram:"connected"};data.delivery_issues=[{id:"synthetic-delivery",recipient:"child",key:"task_assigned",state:"uncertain",created_at:"2026-09-06T08:00:00Z",attempts:1}];
 if(query.has("proposal")){data.settings.modules.push("conversation");data.proposals=[{id:"Psynthetic",status:"pending",preview:"Полить цветы · Ребёнок 1 · завтра 20:00",expires_at:"2099-09-06T08:00:00Z"}];}
-if(view==="conversation"){data.settings.modules.push("conversation");data.learned_phrases=[];}
+if(view==="conversation"){data.settings.modules.push("conversation");data.learned_phrases=[];data.conversation_source={enabled:true,configured:false,allowed:true,revision:"c".repeat(32)};}
 if(view==="mikrotik"){data.settings.modules.push("mikrotik");data.network={inventory:{observed_at:"2026-09-06T08:00:00Z",fasttrack:true,ipv6:"disabled",capabilities:{wifi:"network_missing"},devices:[{mac:"02:11:22:33:44:55",addresses:["198.51.100.10"],comments:["Existing comment"],hostnames:["mobile"],sources:["leases","arp"],warnings:["locally_administered"],suggested_name:"Example phone",suggestions:[{name:"Example phone",evidence:["exact_mac"],confidence:100,area:"Bedroom"}]}]}};}
 if(view==="calendar"){
   data.settings.modules.push("calendar");data.settings.timezone="Europe/Kyiv";
@@ -76,7 +76,7 @@ if(query.has("rewards")&&view==="court"){
   window.rewardFixture=data;
   window.rewardOperations=new Map();
 }
-card.hass={language,callWS:async message=>{
+card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
   if(message.type.endsWith("/network_refresh")){window.calls.push(message);return structuredClone(data.network);}
   if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
   if(message.type.endsWith("/execute")){

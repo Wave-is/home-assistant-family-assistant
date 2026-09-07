@@ -14,6 +14,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 import voluptuous as vol
 
+from custom_components.family_assistant.assistant.chat_service import conversation_digest
 from custom_components.family_assistant.const import DOMAIN
 from custom_components.family_assistant.domain.validation import DomainError
 
@@ -234,6 +235,9 @@ def _environment(*, role="adult", allow_children=False, admin=False):
         assistant=assistant,
         articles=service,
         article_revision=ARTICLE_REVISION,
+        assistant_config_digest=conversation_digest(
+            _options(allow_children=allow_children)["conversation"]
+        ),
     )
     entry = SimpleNamespace(
         entry_id=ENTRY_ID,
@@ -536,3 +540,24 @@ def test_source_view_is_bounded_and_fail_closed(article_api):
         "allowed": False,
         "revision": None,
     }
+
+
+@pytest.mark.parametrize("field", ["url", "model", "enabled"])
+@pytest.mark.asyncio
+async def test_options_before_listener_cannot_use_old_article_provider(article_api, field):
+    env = _environment()
+    before = deepcopy(env.engine.state)
+    if field == "enabled":
+        env.entry.options["conversation"]["enabled"] = False
+    else:
+        env.entry.options["conversation"]["primary"][field] = (
+            "https://replacement.example" if field == "url" else "replacement-model"
+        )
+    # Options already changed; its async listener has not replaced the runtime.
+    projected = article_api.source_view(env.entry, env.runtime, "member")
+    assert projected["allowed"] is False and projected["revision"] is None
+    await article_api.article(env.hass, env.connection, _message())
+    assert env.connection.results == []
+    assert env.connection.errors == [(11, "article_unavailable", "article_unavailable")]
+    assert env.service.calls == []
+    assert env.engine.state == before

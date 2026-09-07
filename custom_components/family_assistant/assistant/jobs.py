@@ -9,9 +9,38 @@ from .language import COPY
 
 
 class Jobs:
-    def __init__(self, engine, *, clock: Callable[[], datetime] | None = None):
+    def __init__(
+        self,
+        engine,
+        *,
+        clock: Callable[[], datetime] | None = None,
+        provider_scope: Callable[[], str] | None = None,
+    ):
         self.engine = engine
         self.clock = clock
+        self.provider_scope = provider_scope
+
+    def _provider_marker(self):
+        if self.provider_scope is None:
+            return None
+        marker = self.provider_scope()
+        if (
+            not isinstance(marker, str)
+            or len(marker) != 64
+            or any(character not in "0123456789abcdef" for character in marker)
+        ):
+            raise DomainError("forbidden")
+        return marker
+
+    def _provider_matches(self, job):
+        if self.provider_scope is None:
+            # The compatibility runner may handle only its own unscoped rows;
+            # omitting provenance must never grant access to scoped work.
+            return isinstance(job, dict) and job.get("provider_scope") is None
+        try:
+            return isinstance(job, dict) and job.get("provider_scope") == self._provider_marker()
+        except DomainError:
+            return False
 
     def _now(self, fallback):
         return timestamp(self.clock() if self.clock is not None else fallback, "now")
@@ -75,12 +104,14 @@ class Jobs:
                 "reply_to",
                 "created_at",
                 "expires_at",
+                "provider_scope",
             )
         )
 
     async def enqueue(
         self, actor, content, operation_id, now, refs, *, bot_id, chat_id, reply_to, quoted_text=""
     ):
+        provider_marker = self._provider_marker()
         before = self.engine.snapshot()
         selected = before["members"].get(actor) if isinstance(actor, str) else None
         telegram_id = selected.get("telegram_id") if isinstance(selected, dict) else None
@@ -88,6 +119,8 @@ class Jobs:
         role = selected.get("role") if isinstance(selected, dict) else None
 
         def save(ctx):
+            if self._provider_marker() != provider_marker:
+                raise DomainError("forbidden")
             if "conversation" not in ctx.state["settings"]["modules"]:
                 raise DomainError("module_disabled")
             member = self._binding(ctx.state, actor, telegram_id, chat_id)
@@ -102,6 +135,12 @@ class Jobs:
             jobs = ctx.state["assistant_jobs"]
             if operation_id in jobs:
                 prior = jobs[operation_id]
+                if (
+                    not self._provider_matches(prior)
+                    or prior.get("member_revision") != member_revision
+                    or prior.get("role") != role
+                ):
+                    raise DomainError("forbidden")
                 if (prior["actor"], prior["content"], prior["chat_id"], prior["bot_id"]) != (
                     actor,
                     content,
@@ -133,6 +172,7 @@ class Jobs:
                 "status": "pending",
                 "created_at": ctx.now.isoformat(),
                 "expires_at": (ctx.now + timedelta(minutes=5)).isoformat(),
+                "provider_scope": provider_marker,
             }
             return member["language"]
 
@@ -154,6 +194,8 @@ class Jobs:
         stored = current["assistant_jobs"].get(job.get("id")) if isinstance(job, dict) else None
         if stored is None or stored.get("status") != "pending" or not self._same_job(job, stored):
             raise DomainError("forbidden")
+        if not self._provider_matches(stored):
+            raise DomainError("forbidden")
         if error := self._authority_error(current, stored, self._now(now)):
             raise DomainError(error)
         return stored["actor"]
@@ -172,6 +214,7 @@ class Jobs:
                 cancelled
                 or not self._same_job(job, stored)
                 or self._authority_error(ctx.state, stored, ctx.now) is not None
+                or not self._provider_matches(stored)
             )
             stored.update(
                 status="cancelled" if stale else "complete", finished_at=ctx.now.isoformat()

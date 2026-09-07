@@ -29,6 +29,7 @@ import {captureFocusRefresh,renderWithFocusRefresh} from "./focus-refresh.js";
 import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditorRefresh} from "./alarm-editor.js";
 import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js";
 import {renderArticle,reconcileArticleRefresh,disposeArticle} from "./article-view.js";
+import {renderConversation,reconcileConversationRefresh,disposeConversation} from "./conversation-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -238,7 +239,7 @@ export class FamilyCard extends HTMLElement {
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;this._pollsDraft=null;this._presenceDraft=null;this._digestsDraft=null;
-    this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";this._articleDraft=null;
+    this._conversationDraft=null;this._articleDraft=null;
     this.render();
     if (this._hass) this.refresh();
   }
@@ -259,7 +260,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); disposeConversation(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -290,9 +291,10 @@ export class FamilyCard extends HTMLElement {
       const alarmEditorForce = reconcileAlarmEditorRefresh(this,previousData);
       const taskSeriesForce = reconcileTaskSeriesRefresh(this,previousData);
       const articleForce = reconcileArticleRefresh(this,previousData);
+      const conversationForce = reconcileConversationRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -501,30 +503,7 @@ export class FamilyCard extends HTMLElement {
   }
   renderConversation(body) {
     renderArticle(this,body);
-    if(this._chatReply){const reply=el("div",this._chatReply,"item");reply.style.whiteSpace="pre-wrap";reply.setAttribute("aria-live","polite");body.append(reply);}
-    const form=el("form");const input=this.input(form,"message",this.t.message,"text",this._chatDraft || "");input.maxLength=4096;input.autocomplete="off";
-    const send=el("button",this.t.send,"primary");send.type="submit";send.disabled=!!this._writing;form.append(send);body.append(form);
-    if(this._writing){const status=el("p",this.t.thinking,"notice");status.setAttribute("role","status");body.append(status);}
-    form.addEventListener("submit",async event=>{
-      event.preventDefault();if(this._writing)return;
-      const content=new FormData(form).get("message");this._chatDraft=content;
-      if(this._chatPending?.content!==content)this._chatPending={content,id:crypto.randomUUID()};
-      const generation=this._generation;this._writing=true;this.render();
-      try{
-        const result=await this._hass.callWS({type:"family_assistant/chat",entry_id:this._entry,text:content,operation_id:this._chatPending.id,session_id:this._chatSession});
-        if(generation!==this._generation)return;
-        this._chatReply=result.reply;this._chatPending=null;this._chatDraft="";this._actionError=null;
-      }catch(error){if(generation===this._generation)this._actionError=error.code || this.t.failure;}
-      finally{this._writing=false;await this.refresh();this.render();}
-    });
-    const details=el("details");details.append(el("summary",this.t.learnPhrase));body.append(details);
-    details.append(el("p",this.t.learningHint,"sub"));const learn=el("form");details.append(learn);
-    this.input(learn,"source",this.t.sourcePhrase);this.input(learn,"canonical",this.t.canonicalPhrase);
-    const save=el("button",this.t.save,"primary");save.type="submit";learn.append(save);
-    learn.addEventListener("submit",event=>{event.preventDefault();this.command("conversation.learn",Object.fromEntries(new FormData(learn)));});
-    for(const phrase of (this._data.learned_phrases || []).filter(p=>p.active)){
-      const item=el("div",null,"item");item.append(el("strong",phrase.source),el("p",phrase.canonical,"sub"),this.button(this.t.forgetPhrase,()=>this.command("conversation.forget",{id:phrase.id})));details.append(item);
-    }
+    renderConversation(this,body);
   }
   renderProposals(body) {
     if(!this._data.settings.modules?.includes("conversation"))return;
