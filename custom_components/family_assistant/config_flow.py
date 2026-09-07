@@ -13,6 +13,7 @@ from homeassistant.util import dt as dt_util
 from .const import DEFAULT_MODULES, DOMAIN, LANGUAGES, ROLES
 from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
+from .onboarding_options import GuidedOnboardingMixin
 
 CONFIGURABLE_MODULES = (
     *DEFAULT_MODULES,
@@ -122,7 +123,7 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class FamilyOptionsFlow(config_entries.OptionsFlow):
+class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
     @callback
     def async_create_entry(
         self,
@@ -148,6 +149,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
+                "guided_onboarding",
                 "general",
                 "member",
                 "alarm_device",

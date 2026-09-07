@@ -32,7 +32,7 @@ Nothing is production-ready solely because a mock test passes.
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
-| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy via actual HA backup callbacks, admin-confirmed generation-bound failed-release Repair; full encrypted archive/restore and migration pending; no live legacy data modified |
+| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
@@ -48,6 +48,18 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+The owner-only guided Options summary is localized, same-entry, resumable and
+read-only until a separate existing settings form is submitted. Actual HA
+verified unchanged Engine, Options, modification time and runtime on open/finish;
+2118 Python tests passed (three host skips, 23 subtests), with Ruff/format,
+locale parity and privacy checks. Automatic post-create handoff is not included.
+
+Actual HA encrypted archive acceptance now creates one protected local archive,
+rejects absent/wrong keys, compares all archived Family Assistant Store and media
+bytes and rehydrates them through fresh application objects. It deletes only the
+generated ID using the supported API and restores prior local-agent settings.
+This is not a full HA restore, production backup operation or legacy migration.
 
 Dashboard checkpoint: Today now presents bounded current role-projected tasks,
 reviews, agenda, shopping, routines/alarms, presence, balances and attention.

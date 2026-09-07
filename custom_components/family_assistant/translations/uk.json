@@ -160,6 +160,7 @@
       "init": {
         "title": "Налаштування родини",
         "menu_options": {
+          "guided_onboarding": "Покрокове налаштування родини",
           "member": "Додавання або зміна учасника",
           "general": "Параметри родини",
           "alarm_device": "Сирена будильника",
@@ -172,6 +173,21 @@
           "presence_sources": "Джерела присутності",
           "digests": "Розклад дайджестів",
           "mikrotik": "Мережа MikroTik"
+        }
+      },
+      "guided_onboarding": {
+        "title": "Покрокове налаштування родини",
+        "description": "Родина: {household_status}. Учасники: {members_status} (активних: {active_members}; прив’язано до Home Assistant: {ha_linked_members}; до особистого Telegram: {telegram_linked_members}). Модулі: {modules_status} (увімкнено: {enabled_modules}). Власний Telegram: {telegram_status} (особистих чатів: {private_chats}; сімейних груп: {group_links}). Моделі: {models_status} (джерел пошуку: {search_enabled}). Сирени будильника: {siren_status} (прив’язок: {siren_bindings}). Це локальна структурна перевірка, а не перевірка зв’язку чи фізичного пристрою. Виберіть один розділ; кожна підтверджена зміна завершує цей Options Flow. Завершіть поки й знову відкрийте «Налаштувати», щоб продовжити.",
+        "menu_options": {
+          "general": "Родина й модулі",
+          "member": "Учасники родини",
+          "telegram": "Власний Telegram-бот",
+          "telegram_member": "Прив’язати особистий чат Telegram",
+          "telegram_group": "Прив’язати сімейну групу Telegram",
+          "conversation": "Мовна модель",
+          "search": "Інтернет-пошук",
+          "alarm_device": "Окрема сирена будильника",
+          "guided_finish": "Завершити поки"
         }
       },
       "member": {
@@ -456,6 +472,7 @@
       "quota_exceeded": "Квота фото заповнена. Неприкріплені завантаження видаляються після закінчення строку."
     },
     "abort": {
+      "guided_finished": "Нічого не змінено. Щоб продовжити покрокове налаштування, знову відкрийте «Налаштувати».",
       "backup_in_progress": "Home Assistant готує резервну копію. Повторіть ту саму дію після її завершення.",
       "forbidden": "Ви не маєте права на цю дію.",
       "not_ready": "Родинний простір не завантажено.",
@@ -814,6 +831,14 @@
     }
   },
   "selector": {
+    "onboarding_status": {
+      "options": {
+        "ready": "Готово",
+        "attention": "Перевірити",
+        "optional": "Необов’язково",
+        "off": "Вимкнено"
+      }
+    },
     "role": {
       "options": {
         "owner": "Власник",

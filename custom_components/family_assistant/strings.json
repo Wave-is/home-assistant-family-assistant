@@ -160,6 +160,7 @@
       "init": {
         "title": "Family settings",
         "menu_options": {
+          "guided_onboarding": "Guided family setup",
           "member": "Add or edit a family member",
           "general": "Household preferences",
           "alarm_device": "Wake-up siren",
@@ -172,6 +173,21 @@
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
           "mikrotik": "MikroTik network"
+        }
+      },
+      "guided_onboarding": {
+        "title": "Guided family setup",
+        "description": "Household: {household_status}. Members: {members_status} ({active_members} active; {ha_linked_members} linked to Home Assistant; {telegram_linked_members} linked to private Telegram). Modules: {modules_status} ({enabled_modules} enabled). Own Telegram: {telegram_status} ({private_chats} private chats; {group_links} family groups). Models: {models_status} (search sources: {search_enabled}). Wake-up sirens: {siren_status} ({siren_bindings} bindings). This is a local structural guide, not a live connection or physical-device test. Choose one area; each confirmed change finishes this Options flow. Finish for now and reopen Configure to resume.",
+        "menu_options": {
+          "general": "Household and modules",
+          "member": "Family members",
+          "telegram": "Own Telegram bot",
+          "telegram_member": "Link a private Telegram chat",
+          "telegram_group": "Link the family Telegram group",
+          "conversation": "Language model",
+          "search": "Internet search",
+          "alarm_device": "Dedicated wake-up siren",
+          "guided_finish": "Finish for now"
         }
       },
       "member": {
@@ -456,6 +472,7 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "guided_finished": "Nothing was changed. Reopen Configure whenever you want to continue guided setup.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "forbidden": "You do not have permission for this action.",
       "not_ready": "The household is not loaded.",
@@ -814,6 +831,14 @@
     }
   },
   "selector": {
+    "onboarding_status": {
+      "options": {
+        "ready": "Ready",
+        "attention": "Review",
+        "optional": "Optional",
+        "off": "Off"
+      }
+    },
     "role": {
       "options": {
         "owner": "Owner",

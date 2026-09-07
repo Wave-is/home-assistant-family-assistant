@@ -160,6 +160,7 @@
       "init": {
         "title": "Настройки семьи",
         "menu_options": {
+          "guided_onboarding": "Пошаговая настройка семьи",
           "member": "Добавление или изменение участника",
           "general": "Параметры семьи",
           "alarm_device": "Сирена будильника",
@@ -172,6 +173,21 @@
           "presence_sources": "Источники присутствия",
           "digests": "Расписание дайджестов",
           "mikrotik": "Сеть MikroTik"
+        }
+      },
+      "guided_onboarding": {
+        "title": "Пошаговая настройка семьи",
+        "description": "Семья: {household_status}. Участники: {members_status} (активных: {active_members}; привязано к Home Assistant: {ha_linked_members}; к личному Telegram: {telegram_linked_members}). Модули: {modules_status} (включено: {enabled_modules}). Свой Telegram: {telegram_status} (личных чатов: {private_chats}; семейных групп: {group_links}). Модели: {models_status} (источников поиска: {search_enabled}). Сирены будильника: {siren_status} (привязок: {siren_bindings}). Это локальная структурная проверка, а не проверка связи или физического устройства. Выберите один раздел; каждое подтверждённое изменение завершает этот Options Flow. Завершите пока и снова откройте «Настроить», чтобы продолжить.",
+        "menu_options": {
+          "general": "Семья и модули",
+          "member": "Участники семьи",
+          "telegram": "Свой Telegram-бот",
+          "telegram_member": "Привязать личный чат Telegram",
+          "telegram_group": "Привязать семейную группу Telegram",
+          "conversation": "Языковая модель",
+          "search": "Интернет-поиск",
+          "alarm_device": "Отдельная сирена будильника",
+          "guided_finish": "Завершить пока"
         }
       },
       "member": {
@@ -456,6 +472,7 @@
       "quota_exceeded": "Квота фото заполнена. Неприкреплённые загрузки удаляются после истечения срока."
     },
     "abort": {
+      "guided_finished": "Ничего не изменено. Чтобы продолжить пошаговую настройку, снова откройте «Настроить».",
       "backup_in_progress": "Home Assistant готовит резервную копию. Повторите то же действие после её завершения.",
       "forbidden": "У вас нет права на это действие.",
       "not_ready": "Семейное пространство не загружено.",
@@ -814,6 +831,14 @@
     }
   },
   "selector": {
+    "onboarding_status": {
+      "options": {
+        "ready": "Готово",
+        "attention": "Проверить",
+        "optional": "Необязательно",
+        "off": "Выключено"
+      }
+    },
     "role": {
       "options": {
         "owner": "Владелец",
