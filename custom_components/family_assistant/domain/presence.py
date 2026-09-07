@@ -179,6 +179,14 @@ def _subscription_record(value, member_id: str) -> dict:
         "created_at",
         "updated_at",
     }
+    if isinstance(value, dict) and ("guardian" in value or "guardian_revision" in value):
+        allowed |= {"guardian", "guardian_revision"}
+        if (
+            _member_id(value.get("guardian"), "guardian") == member_id
+            or "guardian_revision" not in value
+        ):
+            raise DomainError("invalid_field", "guardian")
+        strict_revision(value["guardian_revision"])
     if (
         not isinstance(value, dict)
         or set(value) != allowed
@@ -252,6 +260,17 @@ def _valid_subscription(state: dict, member_id: str, binding: dict) -> dict | No
             or record.get("binding_revision") != binding.get("revision")
         ):
             return None
+        if "guardian" in record:
+            child = _current_member(state, member_id)
+            guardian = _current_member(state, record["guardian"])
+            if (
+                child.get("role") != "child"
+                or guardian.get("role") not in PRIVILEGED
+                or guardian.get("revision") != record["guardian_revision"]
+                or not isinstance(guardian.get("ha_user_id"), str)
+                or not guardian["ha_user_id"]
+            ):
+                return None
         return record
     except DomainError:
         return None
@@ -331,15 +350,34 @@ def _receipt(record: dict) -> dict:
     }
 
 
+def _authority(ctx: Context, action: str, member_id: str, member_revision: int) -> dict:
+    """Keep adult consent self-only; explicit guardians may manage current children."""
+    actor = _current_actor(ctx)
+    if action == "access_set":
+        if actor["id"] != member_id or actor["revision"] != member_revision:
+            raise DomainError("forbidden" if actor["id"] != member_id else "conflict")
+        return {}
+    if action != "guardian_access_set":
+        raise DomainError("unknown_action")
+    child = _current_member(ctx.state, member_id)
+    if actor["role"] not in PRIVILEGED or child.get("role") != "child":
+        raise DomainError("forbidden")
+    if child["revision"] != member_revision:
+        raise DomainError("conflict")
+    return {"guardian": actor["id"], "guardian_revision": actor["revision"]}
+
+
+def _stored_authority(record: dict) -> dict:
+    return {key: record[key] for key in ("guardian", "guardian_revision") if key in record}
+
+
 def handle(ctx: Context, action: str, payload: dict) -> dict:
-    """Apply a self-consent change and return a content-free receipt."""
-    if action != "access_set":
+    """Apply explicit self or guardian consent and return a content-free receipt."""
+    if action not in {"access_set", "guardian_access_set"}:
         raise DomainError("unknown_action")
     _module(ctx.state)
-    actor = _current_actor(ctx)
     member_id, member_revision, binding_revision, subscription_revision, enabled = _payload(payload)
-    if actor["id"] != member_id or actor["revision"] != member_revision:
-        raise DomainError("forbidden" if actor["id"] != member_id else "conflict")
+    authority = _authority(ctx, action, member_id, member_revision)
     binding = _binding(ctx.state, member_id, member_revision, binding_revision)
     if enabled and binding["status"] != "active":
         raise DomainError("invalid_transition")
@@ -365,6 +403,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             old.get("status") == ("enabled" if enabled else "disabled")
             and old.get("member_revision") == member_revision
             and old.get("binding_revision") == binding_revision
+            and _stored_authority(old) == authority
         ):
             raise DomainError("invalid_transition")
         revision = old_revision + 1
@@ -377,6 +416,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         "status": "enabled" if enabled else "disabled",
         "created_at": created_at,
         "updated_at": ctx.now.isoformat(),
+        **authority,
     }
     subscriptions[member_id] = record
     return _receipt(record)
@@ -384,13 +424,11 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
 
 def authorize_replay(ctx: Context, action: str, payload: dict, result: dict) -> None:
     """Recheck the current member, source lineage, and consent receipt."""
-    if action != "access_set":
+    if action not in {"access_set", "guardian_access_set"}:
         raise DomainError("unknown_action")
     _module(ctx.state)
-    actor = _current_actor(ctx)
     member_id, member_revision, binding_revision, _, enabled = _payload(payload)
-    if actor["id"] != member_id or actor["revision"] != member_revision:
-        raise DomainError("forbidden" if actor["id"] != member_id else "conflict")
+    authority = _authority(ctx, action, member_id, member_revision)
     binding = _binding(ctx.state, member_id, member_revision, binding_revision)
     if enabled and binding["status"] != "active":
         raise DomainError("conflict")
@@ -408,6 +446,7 @@ def authorize_replay(ctx: Context, action: str, payload: dict, result: dict) -> 
         or _receipt(record) != result
         or result.get("member") != member_id
         or result.get("status") != expected_status
+        or _stored_authority(record) != authority
     ):
         raise DomainError("conflict")
 
@@ -504,6 +543,26 @@ def view(state: dict, actor: dict, options, observations, now: datetime) -> dict
         result = {"self": own, "shared": []}
         if current.get("role") not in PRIVILEGED:
             return result
+        result["managed"] = []
+        for member_id, child in state.get("members", {}).items():
+            if (
+                not isinstance(child, dict)
+                or child.get("id") != member_id
+                or child.get("active") is not True
+                or child.get("role") != "child"
+            ):
+                continue
+            row = _self_row(state, child, config, observations, now)
+            record = _bucket(state)["subscriptions"].get(member_id)
+            try:
+                record = _subscription_record(record, member_id)
+            except DomainError:
+                record = None
+            row["consent_kind"] = (
+                "guardian" if record and "guardian" in record else "self" if record else "none"
+            )
+            row["guardian"] = record.get("guardian") if record else None
+            result["managed"].append(row)
         selected = select_sources(state, current, options)
         for member_id in selected:
             if member_id == current["id"]:

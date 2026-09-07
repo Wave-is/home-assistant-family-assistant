@@ -241,7 +241,7 @@ async def verify_presence(hass, entry, owner_user):
             assert entity_id == first_id and policy == POLICY_READ
             return False
 
-    denied_user = SimpleNamespace(id=owner_user.id, permissions=DeniedPermissions())
+    denied_user = SimpleNamespace(id=owner_user.id, is_active=True, permissions=DeniedPermissions())
     with _state_reads(hass) as reads:
         denied = presence_observations.project(
             hass,
@@ -395,7 +395,148 @@ async def verify_presence(hass, entry, owner_user):
     for bucket in ("outbox", "audit", "processed", "memory"):
         assert private_zone not in repr(final_state[bucket])
         assert private_attribute not in repr(final_state[bucket])
+    await _verify_guardian_presence(hass, entry, owner_user, registry)
     print(
         "PASS: actual HA presence source review, self consent, permission-scoped "
         "ephemeral projection, replacement, revocation and Store reload"
+    )
+
+
+async def _verify_guardian_presence(hass, entry, owner_user, registry):
+    """Real authenticated transport, no child HA account, native Store and revocation."""
+    from custom_components.family_assistant import presence_observations
+
+    child_id = "synthetic-presence-managed-child"
+    adult_id = "synthetic-presence-adult"
+    for identifier, member_id, role in ((201, child_id, "child"), (202, adult_id, "adult")):
+        created = await _request(
+            hass,
+            entry,
+            owner_user,
+            identifier,
+            "members.save",
+            {
+                "id": member_id,
+                "name": f"Synthetic presence {role}",
+                "role": role,
+            },
+        )
+        assert created["success"], created
+        assert created["result"]["ha_user_id"] is None
+    source = registry.async_get_or_create(
+        "person",
+        "family_assistant",
+        "synthetic-guardian-child-source",
+        suggested_object_id="synthetic_guardian_child",
+    )
+    hass.states.async_set(source.entity_id, "home", {"latitude": "GUARDIAN_COORDINATE_CANARY"})
+    await _presence_source(hass, entry, owner_user, child_id, True, source.entity_id)
+    request = {
+        "member": child_id,
+        "member_revision": 1,
+        "binding_revision": 1,
+        "subscription_revision": None,
+        "enabled": True,
+    }
+    engine = entry.runtime_data.engine
+    protected = _protected(engine)
+    cross_self = await _request(hass, entry, owner_user, 203, "presence.access_set", request)
+    assert not cross_self["success"] and cross_self["error"]["code"] == "forbidden"
+    cross_adult = await _request(
+        hass,
+        entry,
+        owner_user,
+        204,
+        "presence.guardian_access_set",
+        {**request, "member": adult_id},
+    )
+    assert not cross_adult["success"] and cross_adult["error"]["code"] == "forbidden"
+    enabled = await _request(
+        hass, entry, owner_user, 205, "presence.guardian_access_set", request, "guardian-ha-enable"
+    )
+    assert enabled["success"] and enabled["result"] == {
+        "member": child_id,
+        "revision": 1,
+        "status": "enabled",
+    }
+    with _state_reads(hass) as reads:
+        current = await _request(hass, entry, owner_user, 206)
+    assert current["success"] and reads == [source.entity_id]
+    row = next(row for row in current["result"]["presence"]["managed"] if row["member"] == child_id)
+    assert row["enabled"] and row["status"] == "reported_home" and row["guardian"] == "owner"
+    assert row["consent_kind"] == "guardian"
+    assert source.entity_id not in repr(current["result"]["presence"])
+    assert "GUARDIAN_COORDINATE_CANARY" not in repr(current["result"])
+
+    class DeniedPermissions:
+        def check_entity(self, entity_id, policy):
+            return False
+
+    denied_user = SimpleNamespace(id=owner_user.id, is_active=True, permissions=DeniedPermissions())
+    with _state_reads(hass) as reads:
+        denied = presence_observations.project(
+            hass, entry, entry.runtime_data, "owner", denied_user, datetime.now(UTC)
+        )
+    assert not reads
+    assert (
+        next(row for row in denied["managed"] if row["member"] == child_id)["status"] == "unknown"
+    )
+    denied_user.is_active = False
+    with _state_reads(hass) as reads:
+        inactive = presence_observations.project(
+            hass, entry, entry.runtime_data, "owner", denied_user, datetime.now(UTC)
+        )
+    assert not reads and inactive == {"self": None, "shared": []}
+    expected = deepcopy(engine.snapshot()["presence"])
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    engine = entry.runtime_data.engine
+    assert engine.snapshot()["presence"] == expected
+    replay = await _request(
+        hass, entry, owner_user, 207, "presence.guardian_access_set", request, "guardian-ha-enable"
+    )
+    assert replay["success"] and replay["result"] == enabled["result"]
+    # Revoking the consenting parent's member epoch invalidates the child share.
+    owner = engine.snapshot()["members"]["owner"]
+    edited = await _request(
+        hass,
+        entry,
+        owner_user,
+        208,
+        "members.save",
+        {
+            "id": "owner",
+            "revision": owner["revision"],
+            "role": "owner",
+            "name": owner["name"] + " guardian",
+        },
+    )
+    assert edited["success"], edited
+    with _state_reads(hass) as reads:
+        revoked = await _request(hass, entry, owner_user, 209)
+    assert revoked["success"] and not reads
+    assert (
+        next(row for row in revoked["result"]["presence"]["managed"] if row["member"] == child_id)[
+            "enabled"
+        ]
+        is False
+    )
+    stale = await _request(
+        hass, entry, owner_user, 210, "presence.guardian_access_set", request, "guardian-ha-enable"
+    )
+    assert not stale["success"] and stale["error"]["code"] == "conflict"
+    fresh = await _request(
+        hass,
+        entry,
+        owner_user,
+        211,
+        "presence.guardian_access_set",
+        {**request, "subscription_revision": 1},
+        "guardian-ha-renew",
+    )
+    assert fresh["success"] and fresh["result"]["revision"] == 2
+    assert _protected(engine) == protected
+    print(
+        "PASS: actual HA explicit guardian consent without child HA account, private projection, "
+        "denied reads, epoch revoke, Store reload/replay"
     )

@@ -116,7 +116,9 @@ def harness(monkeypatch, engine, options, values, allowed, *, registry_entities=
         config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
         states=States(values, calls),
     )
-    user = SimpleNamespace(id="synthetic-parent", permissions=Permissions(allowed, calls))
+    user = SimpleNamespace(
+        id="synthetic-parent", is_active=True, permissions=Permissions(allowed, calls)
+    )
     monkeypatch.setattr(presence_observations, "_ha_access", lambda _hass: (registry, "read"))
     return hass, entry, runtime, user, calls
 
@@ -200,7 +202,9 @@ def test_nonparent_reads_only_self_even_with_permission_for_every_source(engine,
     hass, entry, runtime, _parent, calls = harness(
         monkeypatch, configured_engine, options, values, set(values)
     )
-    child = SimpleNamespace(id="synthetic-child", permissions=Permissions(set(values), calls))
+    child = SimpleNamespace(
+        id="synthetic-child", is_active=True, permissions=Permissions(set(values), calls)
+    )
 
     result = presence_observations.project(hass, entry, runtime, "child", child, now)
 
@@ -256,7 +260,7 @@ def test_wrong_ha_user_or_entry_generation_performs_no_registry_or_state_read(
         {"person.parent": ReportedState("home", now)},
         {"person.parent"},
     )
-    wrong_user = SimpleNamespace(id="synthetic-child", permissions=user.permissions)
+    wrong_user = SimpleNamespace(id="synthetic-child", is_active=True, permissions=user.permissions)
     assert presence_observations.project(hass, entry, runtime, "parent", wrong_user, now) == {
         "self": None,
         "shared": [],
@@ -264,6 +268,20 @@ def test_wrong_ha_user_or_entry_generation_performs_no_registry_or_state_read(
     assert calls == []
 
     entry.runtime_data = SimpleNamespace(engine=configured_engine)
+    assert presence_observations.project(hass, entry, runtime, "parent", user, now) == {
+        "self": None,
+        "shared": [],
+    }
+    assert calls == []
+
+
+@pytest.mark.parametrize("active", (False, None, 1, "true"))
+def test_inactive_or_unverified_ha_user_reads_no_presence(engine, now, monkeypatch, active):
+    configured_engine, options = configured(engine, now)
+    hass, entry, runtime, user, calls = harness(
+        monkeypatch, configured_engine, options, {}, {"person.parent", "device_tracker.child"}
+    )
+    user.is_active = active
     assert presence_observations.project(hass, entry, runtime, "parent", user, now) == {
         "self": None,
         "shared": [],

@@ -26,6 +26,7 @@ def _current_actor(hass, entry, runtime, actor_id, user, state):
         or not actor_id
         or not isinstance(getattr(user, "id", None), str)
         or not user.id
+        or getattr(user, "is_active", None) is not True
     ):
         return None
     config_entries = getattr(hass, "config_entries", None)

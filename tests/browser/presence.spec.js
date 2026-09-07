@@ -89,7 +89,7 @@ test("UK child has only self consent and exact committed-response retry", async 
   expect(calls[1].payload).toEqual(frozen.payload);
 });
 
-test("EN parent DOM contains no raw source, zone, coordinate, or controls for others", async ({
+test("EN parent DOM contains no raw source, zone, coordinate, or adult controls", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1180, height: 820 });
@@ -111,6 +111,45 @@ test("EN parent DOM contains no raw source, zone, coordinate, or controls for ot
     path: "test-results/presence-parent-en.png",
     fullPage: true,
   });
+});
+
+for (const [language, save, retry] of [
+  ["en", "Save sharing choice", "Retry exact request"],
+  ["ru", "Сохранить выбор", "Повторить точный запрос"],
+  ["uk", "Зберегти вибір", "Повторити точний запит"],
+]) test(`${language} narrow guardian review, lost response and child-role revocation`, async ({page}) => {
+  await page.setViewportSize({width: 390, height: 844});
+  await page.goto(`/tests/fixtures/presence.html?lang=${language}&actor=parent`);
+  const card = page.locator("family-presence-card");
+  const child = card.locator('.presence-managed-row[data-presence-member="child-1"]');
+  await expect(child).toContainText("Sam");
+  await expect(card.locator('.presence-shared-row[data-presence-member="child-1"]')).toHaveCount(0);
+  await expect(card.locator('.presence-managed-row[data-presence-member="adult-1"]')).toHaveCount(0);
+  await child.getByRole("button").click();
+  await expect(review(card)).toContainText("Sam");
+  await page.screenshot({path:`test-results/presence-guardian-${language}.png`, fullPage:true});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.failMode = "after");
+  await confirm(card, save);
+  await expect(review(card).getByRole("button", {name:retry, exact:true})).toBeVisible();
+  await review(card).getByRole("button", {name:retry, exact:true}).click();
+  await expect(review(card)).toHaveCount(0);
+  const calls = await page.evaluate(() => window.calls);
+  expect(calls).toHaveLength(2);
+  expect(calls[1]).toEqual(calls[0]);
+  expect(calls[0].action).toBe("presence.guardian_access_set");
+  expect(calls[0].payload).toEqual({member:"child-1", member_revision:7, binding_revision:8, subscription_revision:3, enabled:false});
+  await child.getByRole("button").click();
+  await review(card).locator('input[name="confirmed"]').check();
+  await page.evaluate(async () => {
+    window.guardianOldSave = window.card.shadowRoot.querySelector(".presence-review button.primary");
+    window.fixture.members.find((row) => row.id === "child-1").role = "adult";
+    await window.card.refresh();
+    window.guardianOldSave.click();
+  });
+  await expect(review(card)).toHaveCount(0);
+  await expect(child).toHaveCount(0);
+  expect(await page.evaluate(() => window.calls.length)).toBe(2);
 });
 
 test("role epoch, module, entry, and source-pin changes clear private focused DOM", async ({

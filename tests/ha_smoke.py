@@ -440,10 +440,14 @@ async def main():
                 == active_routine["steps"][0]["nonce"]
             )
             assert any(r["status"] == "completed" for r in routines_after_reload.values())
-            # Dietary adds one adult; the import acceptance adds one synthetic child.
-            assert len(entry.runtime_data.engine.view("owner")["members"]) == 5
+            # Every synthetic cohort, including guardian-presence identities, survives.
+            assert {
+                member["id"] for member in entry.runtime_data.engine.view("owner")["members"]
+            } == set(members_before_reload)
             assert entry.runtime_data.engine.snapshot()["members"] == members_before_reload
             assert members_before_reload[school_import_child_id]["role"] == "child"
+            assert members_before_reload["synthetic-presence-managed-child"]["ha_user_id"] is None
+            assert members_before_reload["synthetic-presence-adult"]["role"] == "adult"
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
             from homeassistant.helpers import llm

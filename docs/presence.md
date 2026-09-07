@@ -2,7 +2,7 @@
 
 ## English
 
-This guide covers the first, display-only Presence slice. It reports limited
+This guide covers display-only Presence with explicit self or guardian consent. It reports limited
 evidence from one configured Home Assistant source. It is not precise location,
 continuous tracking, confirmed occupancy, or a safety signal.
 
@@ -16,9 +16,12 @@ the owner must enable **Presence** under **Household preferences**.
 
 The named family member must then open their own Presence card through their
 linked Home Assistant account, review their name and current source/member
-versions, and choose **Enable sharing**. Owners and parents cannot enable another
-person's sharing. A child without a linked Home Assistant account cannot consent
-in this slice; guardian-managed consent is not implemented. Add the card manually:
+versions, and choose **Enable sharing**. Adults must always consent for themselves.
+Alternatively, a current owner or parent can review the named child under
+**Children's sharing** and explicitly enable or stop that child's sharing. The
+child does not need an HA account for this parent-managed choice. A linked child
+can still stop their own sharing. No parent may consent for another adult.
+Add the card manually:
 
 ```yaml
 type: custom:family-presence-card
@@ -39,10 +42,15 @@ Named zones are reduced to `reported away`; their names are not shown. Unknown i
 never interpreted as home or away, and a prior good value is not reused. The
 owner can set the freshness limit from 30 to 3600 seconds; the default is 300.
 
-Disabling sharing stops subsequent reads and removes the row from parent views.
+Disabling sharing stops subsequent reads and removes the shared status. Parents
+retain a child-management row without an observation so they can review a new choice.
 Removing or replacing the source, changing the member record, unlinking the HA
 account, changing role, deactivating the member, or disabling the module also
-invalidates the old access. A newly current source requires a fresh self-consent.
+invalidates the old access. Guardian consent also pins the consenting parent's
+current member version, active role and HA link; changing that identity invalidates
+the child share. A new source requires fresh self or explicit guardian consent.
+Old commands never silently re-enable a revoked share. The requesting HA account
+must be active in addition to having source read permission.
 The source entity ID is retained in private integration Options and may exist in
 HA backups, but observed states, times, coordinates, zone names, attributes, and
 location history are not stored by this feature.
@@ -55,7 +63,7 @@ household source acceptance remains a separate deployment check.
 
 ## Русский
 
-Это руководство описывает первый, только информационный раздел присутствия. Он
+Это руководство описывает информационный раздел присутствия с личным или родительским согласием. Он
 показывает ограниченные данные из одного выбранного источника Home Assistant. Это
 не точное местоположение, не непрерывное отслеживание, не подтверждение, что кто-то
 дома, и не сигнал безопасности.
@@ -70,9 +78,11 @@ household source acceptance remains a separate deployment check.
 
 После этого указанный участник входит через собственную связанную учётную запись
 Home Assistant, открывает свою карточку, проверяет имя и текущие версии участника и
-источника и нажимает **Включить передачу**. Владелец или родитель не может дать
-согласие за другого человека. Ребёнок без связанной учётной записи Home Assistant
-пока не может дать такое согласие; управление согласием опекуном не реализовано.
+источника и нажимает **Включить передачу**. Взрослый всегда даёт согласие сам.
+Владелец или родитель также может выбрать ребёнка в разделе **Передача статуса детей**,
+проверить имя и явно включить либо остановить передачу. При таком родительском
+согласии ребёнку не нужна учётная запись HA. Если она есть, ребёнок может сам
+остановить передачу. Дать согласие за другого взрослого нельзя.
 Карточка добавляется вручную:
 
 ```yaml
@@ -94,10 +104,15 @@ entry_id: ID_ЗАПИСИ_FAMILY_ASSISTANT
 ни отсутствием, а прежнее успешное значение не используется. Владелец задаёт срок
 актуальности от 30 до 3600 секунд; стандартное значение — 300 секунд.
 
-Отключение передачи прекращает последующие чтения и убирает строку из представления
-родителей. Удаление или замена источника, изменение карточки участника, отвязка
+Отключение передачи прекращает чтение и убирает сообщённый статус. У родителей
+остаётся строка управления ребёнком без наблюдения, чтобы проверить новый выбор.
+Удаление или замена источника, изменение карточки участника, отвязка
 учётной записи HA, смена роли, деактивация или выключение модуля также отменяют
-старый доступ. Для нового актуального источника требуется новое личное согласие.
+старый доступ. Родительское согласие также связано с текущей версией, активной
+родительской ролью и привязкой HA давшего согласие родителя. Изменение его записи
+отменяет передачу статуса ребёнка. Для нового источника нужно новое личное или
+явное родительское согласие. Старый запрос не включит отменённую передачу заново.
+Запрашивающая учётная запись HA должна быть активной и иметь право чтения источника.
 Идентификатор сущности хранится в закрытых параметрах интеграции и может попасть в
 резервные копии HA, но наблюдаемые статусы, время, координаты, названия зон,
 атрибуты и история местоположения этой функцией не сохраняются.
@@ -111,7 +126,7 @@ entry_id: ID_ЗАПИСИ_FAMILY_ASSISTANT
 
 ## Українська
 
-Цей посібник описує перший, лише інформаційний розділ присутності. Він показує
+Цей посібник описує інформаційний розділ присутності з особистою або батьківською згодою. Він показує
 обмежені дані з одного вибраного джерела Home Assistant. Це не точне
 місцезнаходження, не безперервне відстеження, не підтвердження перебування вдома й
 не сигнал безпеки.
@@ -126,9 +141,11 @@ entry_id: ID_ЗАПИСИ_FAMILY_ASSISTANT
 
 Після цього вказаний учасник входить через власний пов'язаний обліковий запис Home
 Assistant, відкриває свою картку, перевіряє ім'я та поточні версії учасника й
-джерела та натискає **Увімкнути поширення**. Власник або батьки не можуть надати
-згоду за іншу людину. Дитина без пов'язаного облікового запису Home Assistant поки
-не може надати таку згоду; керування згодою опікуном не реалізоване. Картка
+джерела та натискає **Увімкнути поширення**. Дорослий завжди дає згоду сам.
+Власник або батьки також можуть вибрати дитину в розділі **Поширення статусу дітей**,
+перевірити ім'я та явно ввімкнути або зупинити поширення. Для такої батьківської
+згоди дитині не потрібен обліковий запис HA. Якщо він є, дитина може сама зупинити
+поширення. Надати згоду за іншого дорослого не можна. Картка
 додається вручну:
 
 ```yaml
@@ -150,10 +167,15 @@ entry_id: ID_ЗАПИСУ_FAMILY_ASSISTANT
 попереднє успішне значення не використовується. Власник задає строк актуальності
 від 30 до 3600 секунд; стандартне значення — 300 секунд.
 
-Вимкнення поширення припиняє наступні читання й прибирає рядок із подання батьків.
+Вимкнення поширення припиняє читання й прибирає повідомлений статус. Батьки
+зберігають рядок керування дитиною без спостереження для перевірки нового вибору.
 Видалення чи заміна джерела, зміна картки учасника, відв'язування облікового запису
 HA, зміна ролі, деактивація або вимкнення модуля також скасовують старий доступ.
-Для нового актуального джерела потрібна нова особиста згода. Ідентифікатор сутності
+Батьківська згода також пов'язана з поточною версією, активною батьківською роллю
+та прив'язкою HA того з батьків, хто дав згоду. Зміна його запису скасовує поширення
+статусу дитини. Для нового джерела потрібна нова особиста або явна батьківська згода.
+Старий запит не ввімкне скасоване поширення знову. Обліковий запис HA, що робить
+запит, має бути активним і мати право читання джерела. Ідентифікатор сутності
 зберігається в закритих параметрах інтеграції й може потрапити до резервних копій
 HA, але спостережувані статуси, час, координати, назви зон, атрибути та історія
 місцезнаходження цією функцією не зберігаються.

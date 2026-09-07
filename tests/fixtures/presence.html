@@ -180,7 +180,12 @@
             subscription &&
             subscription.status === "enabled" &&
             subscription.member_revision === current.revision &&
-            subscription.binding_revision === binding.revision,
+            subscription.binding_revision === binding.revision &&
+            (!subscription.guardian || (
+              current.role === "child" && member(subscription.guardian)?.active &&
+              ["owner", "parent"].includes(member(subscription.guardian)?.role) &&
+              member(subscription.guardian)?.revision === subscription.guardian_revision
+            )),
           );
         return {
           member: id,
@@ -213,6 +218,12 @@
         if (!fixture.settings.modules.includes("presence")) return data;
         data.presence = { self: active ? selfRow(actor.id) : null, shared: [] };
         if (active && ["owner", "parent"].includes(actor.role)) {
+          data.presence.managed = fixture.members
+            .filter((item) => item.active && item.role === "child")
+            .map((item) => ({...selfRow(item.id),
+              consent_kind: fixture.subscriptions[item.id]?.guardian ? "guardian" : fixture.subscriptions[item.id] ? "self" : "none",
+              guardian: fixture.subscriptions[item.id]?.guardian ?? null,
+            }));
           data.presence.shared = fixture.members
             .filter((item) => item.id !== actor.id && item.active)
             .filter((item) => selfRow(item.id).enabled)
@@ -237,11 +248,13 @@
       const execute = (message) => {
         window.calls.push(structuredClone(message));
         const payload = message.payload,
-          current = selfRow(fixture.actor),
-          subscription = fixture.subscriptions[fixture.actor];
+          guardian = message.action === "presence.guardian_access_set",
+          target = guardian ? payload.member : fixture.actor,
+          current = selfRow(target),
+          subscription = fixture.subscriptions[target];
         if (receipts.has(message.operation_id)) {
           const receipt = receipts.get(message.operation_id),
-            live = selfRow(fixture.actor);
+            live = selfRow(target);
           if (
             live.subscription_revision !== receipt.revision ||
             (live.enabled ? "enabled" : "disabled") !== receipt.status
@@ -250,7 +263,7 @@
           return structuredClone(receipt);
         }
         if (
-          message.action !== "presence.access_set" ||
+          !["presence.access_set", "presence.guardian_access_set"].includes(message.action) ||
           JSON.stringify(Object.keys(payload).sort()) !==
             JSON.stringify([
               "binding_revision",
@@ -263,7 +276,7 @@
           conflict();
         if (
           !fixture.settings.modules.includes("presence") ||
-          payload.member !== fixture.actor ||
+          (guardian ? !(member(target)?.role === "child" && ["owner", "parent"].includes(currentRole())) : payload.member !== fixture.actor) ||
           payload.member_revision !== current.member_revision ||
           payload.binding_revision !== current.binding_revision ||
           payload.subscription_revision !== current.subscription_revision ||
@@ -278,11 +291,12 @@
           throw error;
         }
         const revision = subscription ? subscription.revision + 1 : 1;
-        fixture.subscriptions[fixture.actor] = {
+        fixture.subscriptions[target] = {
           revision,
           member_revision: payload.member_revision,
           binding_revision: payload.binding_revision,
           status: payload.enabled ? "enabled" : "disabled",
+          ...(guardian ? {guardian: fixture.actor, guardian_revision: member(fixture.actor).revision} : {}),
         };
         const receipt = {
           member: payload.member,

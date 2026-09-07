@@ -1,4 +1,4 @@
-/* Self-consent UI for normalized, display-only presence evidence. */
+/* Explicit self/guardian consent for normalized, display-only presence evidence. */
 
 import { PRESENCE_COPY } from "./presence-copy.js";
 
@@ -29,8 +29,8 @@ const deepFreeze = (value) => {
 
 const STYLE = `
   .presence{display:grid;gap:12px}.presence-guide{margin:0}.presence-list{display:grid;gap:8px}
-  .presence-self,.presence-shared-row,.presence-review{display:grid;gap:8px;min-width:0}
-  .presence p,.presence dd{overflow-wrap:anywhere}.presence-self p,.presence-shared-row p,.presence-review p{margin:0}
+  .presence-self,.presence-shared-row,.presence-managed-row,.presence-review{display:grid;gap:8px;min-width:0}
+  .presence p,.presence dd{overflow-wrap:anywhere}.presence-self p,.presence-shared-row p,.presence-managed-row p,.presence-review p{margin:0}
   .presence-actions{display:flex;flex-wrap:wrap;gap:8px}.presence .presence-confirm{display:flex;flex-direction:row;justify-content:flex-start;gap:8px;align-items:flex-start}
   .presence-confirm input{flex:0 0 auto;margin-top:3px}.presence-review dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 10px;margin:0}
   .presence-review dt{font-weight:600}.presence-review dd{margin:0}.presence-observation{font-variant-numeric:tabular-nums}
@@ -102,11 +102,13 @@ function sharedRows(card) {
   const rows = presence(card)?.shared;
   if (!Array.isArray(rows)) return [];
   const seen = new Set();
+  const managed = new Set(managedRows(card).map((row) => row.member));
   return rows.filter((row) => {
     const current = member(card, row?.member);
     if (
       !validEvidence(row) ||
       row.member === card._data.actor ||
+      managed.has(row.member) ||
       seen.has(row.member) ||
       current?.active !== true ||
       current.revision !== row.member_revision
@@ -115,6 +117,36 @@ function sharedRows(card) {
     seen.add(row.member);
     return true;
   });
+}
+
+function managedRows(card) {
+  if (!["owner", "parent"].includes(card?._data?.role)) return [];
+  const rows = presence(card)?.managed;
+  if (!Array.isArray(rows)) return [];
+  const seen = new Set();
+  return rows.filter((row) => {
+    const current = member(card, row?.member);
+    if (
+      !validSelf(row) ||
+      current?.active !== true ||
+      current.role !== "child" ||
+      current.revision !== row.member_revision ||
+      seen.has(row.member) ||
+      !["self", "guardian", "none"].includes(row.consent_kind) ||
+      (row.consent_kind === "guardian"
+        ? !(typeof row.guardian === "string" && row.guardian && row.guardian !== row.member)
+        : row.guardian !== null)
+    )
+      return false;
+    seen.add(row.member);
+    return true;
+  });
+}
+
+function draftRow(card, draft) {
+  return draft?.mode === "guardian"
+    ? managedRows(card).find((row) => row.member === draft.source.member) || null
+    : selfRow(card);
 }
 
 function access(card) {
@@ -159,7 +191,9 @@ function sameSelf(left, right) {
     left.binding_revision === right.binding_revision &&
     left.subscription_revision === right.subscription_revision &&
     left.enabled === right.enabled &&
-    left.can_edit === right.can_edit,
+    left.can_edit === right.can_edit &&
+    (left.consent_kind ?? null) === (right.consent_kind ?? null) &&
+    (left.guardian ?? null) === (right.guardian ?? null),
   );
 }
 
@@ -171,6 +205,8 @@ function sourceSnapshot(row) {
     subscription_revision: row.subscription_revision,
     enabled: row.enabled,
     can_edit: row.can_edit,
+    consent_kind: row.consent_kind ?? null,
+    guardian: row.guardian ?? null,
   };
 }
 
@@ -182,7 +218,7 @@ function expectedRevision(source) {
 
 function pendingAllowed(card, draft) {
   if (!sameAccess(card, draft?.access) || !draft?.pending) return false;
-  const current = selfRow(card);
+  const current = draftRow(card, draft);
   if (
     !current ||
     current.member_revision !== draft.source.member_revision ||
@@ -192,14 +228,16 @@ function pendingAllowed(card, draft) {
   return (
     sameSelf(current, draft.source) ||
     (current.enabled === draft.desired &&
-      current.subscription_revision === expectedRevision(draft.source))
+      current.subscription_revision === expectedRevision(draft.source) &&
+      (draft.mode !== "guardian" ||
+        (current.consent_kind === "guardian" && current.guardian === draft.access.actor)))
   );
 }
 
 function draftAllowed(card, draft, exact = true) {
   if (!sameAccess(card, draft?.access) || !draft?.source) return false;
   if (draft.pending) return pendingAllowed(card, draft);
-  const current = selfRow(card);
+  const current = draftRow(card, draft);
   return Boolean(current && (!exact || sameSelf(current, draft.source)));
 }
 
@@ -214,6 +252,9 @@ function projection(data) {
     rows?.self?.member,
     ...(Array.isArray(rows?.shared)
       ? rows.shared.map((row) => row?.member)
+      : []),
+    ...(Array.isArray(rows?.managed)
+      ? rows.managed.flatMap((row) => [row?.member, row?.guardian])
       : []),
   ]);
   return {
@@ -234,6 +275,7 @@ function projection(data) {
       ? {
           self: rows.self ?? null,
           shared: Array.isArray(rows.shared) ? rows.shared : null,
+          managed: Array.isArray(rows.managed) ? rows.managed : null,
         }
       : null,
   };
@@ -361,7 +403,8 @@ export function renderPresence(card, body) {
     if (!guard(body, draft, !draft.pending)) return;
     if (!draft.pending) {
       draft.pending = deepFreeze({
-        action: "presence.access_set",
+        action: draft.mode === "guardian"
+          ? "presence.guardian_access_set" : "presence.access_set",
         payload: {
           member: draft.source.member,
           member_revision: draft.source.member_revision,
@@ -399,7 +442,11 @@ export function renderPresence(card, body) {
   const draft = card._presenceDraft;
   if (draft) {
     const review = node("form", null, "item presence-review");
-    review.append(node("h3", copy.review_title));
+    review.append(node(
+      "h3", draft.mode === "guardian" ? copy.guardian_review : copy.review_title,
+    ));
+    if (draft.mode === "guardian")
+      review.append(node("p", copy.guardian_help, "sub"));
     const details = node("dl");
     appendDefinition(details, copy.person, draft.memberName);
     appendDefinition(
@@ -502,6 +549,49 @@ export function renderPresence(card, body) {
   section.append(ownItem);
 
   if (["owner", "parent"].includes(card._data.role)) {
+    const managed = managedRows(card);
+    if (managed.length) {
+      section.append(
+        node("h3", copy.managed_children), node("p", copy.guardian_help, "sub"),
+      );
+      const list = node("div", null, "presence-list presence-managed");
+      for (const row of managed) {
+        const item = node("article", null, "item presence-managed-row");
+        item.dataset.presenceMember = row.member;
+        item.append(node("strong", memberName(card, row.member, copy)));
+        appendEvidence(card, item, row, copy);
+        item.append(node(
+          "p", `${copy.preference}: ${row.enabled ? copy.enabled : copy.disabled}`, "sub",
+        ));
+        item.append(node(
+          "p", `${copy.consent_source}: ${copy[`consent_${row.consent_kind}`]}`, "sub",
+        ));
+        if (
+          row.can_edit &&
+          (row.subscription_revision === null || row.subscription_revision < Number.MAX_SAFE_INTEGER)
+        ) {
+          const open = localButton(row.enabled ? copy.disable : copy.enable, () => {
+            const current = managedRows(card).find((value) => value.member === row.member);
+            if (!guard(open) || !sameSelf(current, row)) return;
+            card._presenceDraft = {
+              kind: "review",
+              mode: "guardian",
+              access: deepFreeze(clone(currentAccess)),
+              source: deepFreeze(sourceSnapshot(row)),
+              desired: !row.enabled,
+              memberName: memberName(card, row.member, copy),
+              pending: null,
+            };
+            card._actionError = null;
+            card.render();
+          });
+          item.append(open);
+        } else if (!row.can_edit)
+          item.append(node("p", copy.unavailable_action, "sub"));
+        list.append(item);
+      }
+      section.append(list);
+    }
     section.append(node("h3", copy.shared_presence));
     const shared = sharedRows(card);
     if (!shared.length)

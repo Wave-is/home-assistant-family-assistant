@@ -167,12 +167,16 @@ function stateFor(role = "parent") {
 
 async function setup(t, options = {}) {
   const state = stateFor(options.role);
+  if (options.managed) state.presence.managed = [{
+    ...ownRow("child-1"), consent_kind: "none", guardian: null,
+  }];
   const calls = [];
   const receipts = new Map();
   let failure = null;
   const execute = (message) => {
     calls.push(clone(message));
-    const row = state.presence.self;
+    const guardian = message.action === "presence.guardian_access_set";
+    const row = guardian ? state.presence.managed.find((item) => item.member === message.payload.member) : state.presence.self;
     if (receipts.has(message.operation_id)) {
       const receipt = receipts.get(message.operation_id);
       assert.equal(row.member, receipt.member);
@@ -180,7 +184,7 @@ async function setup(t, options = {}) {
       assert.equal(row.enabled ? "enabled" : "disabled", receipt.status);
       return clone(receipt);
     }
-    assert.equal(message.action, "presence.access_set");
+    assert.equal(message.action, guardian ? "presence.guardian_access_set" : "presence.access_set");
     assert.deepEqual(Object.keys(message.payload).sort(), [
       "binding_revision",
       "enabled",
@@ -189,7 +193,7 @@ async function setup(t, options = {}) {
       "subscription_revision",
     ]);
     assert.deepEqual(message.payload, {
-      member: state.actor,
+      member: guardian ? "child-1" : state.actor,
       member_revision: row.member_revision,
       binding_revision: row.binding_revision,
       subscription_revision: row.subscription_revision,
@@ -205,6 +209,11 @@ async function setup(t, options = {}) {
       row.subscription_revision === null ? 1 : row.subscription_revision + 1;
     row.subscription_revision = revision;
     row.enabled = message.payload.enabled;
+    if (guardian) {
+      assert.ok(["owner", "parent"].includes(state.role));
+      row.consent_kind = "guardian";
+      row.guardian = state.actor;
+    }
     row.status = row.enabled ? "reported_home" : "unknown";
     row.reason = row.enabled ? "fresh" : "not_shared";
     row.observed_at = row.enabled ? "2026-09-07T07:31:00+00:00" : null;
@@ -456,4 +465,95 @@ test("shared consent disappearance forces stale focused DOM to be replaced", asy
     fixture.card.shadowRoot.textContent,
     /Adult One|Child One/,
   );
+});
+
+test("parent child review is explicit, named, and uses a distinct guardian command", async (t) => {
+  for (const language of ["en", "ru", "uk"]) {
+    const {card, calls, state} = await setup(t, {role: "parent", managed: true, language});
+    const managed = card.shadowRoot.querySelector(".presence-managed-row");
+    assert.match(managed.textContent, /Child One/);
+    assert.equal(card.shadowRoot.querySelectorAll('.presence-shared-row[data-presence-member="child-1"]').length, 0);
+    managed.querySelector("button").click();
+    assert.equal(calls.length, 0);
+    assert.equal(card._presenceDraft.mode, "guardian");
+    const review = card.shadowRoot.querySelector(".presence-review");
+    assert.ok(review.textContent.includes(PRESENCE_COPY[language].guardian_help));
+    assert.match(review.textContent, /Child One/);
+    confirmReview(card);
+    button(card, PRESENCE_COPY[language].save).click();
+    await eventually(() => calls.length === 1 && card._presenceDraft === null);
+    assert.equal(calls[0].action, "presence.guardian_access_set");
+    assert.deepEqual(calls[0].payload, {
+      member: "child-1", member_revision: 7, binding_revision: 8,
+      subscription_revision: null, enabled: true,
+    });
+    assert.equal(state.presence.managed[0].guardian, "parent-1");
+    assert.equal(state.presence.self.enabled, false);
+  }
+});
+
+test("guardian request retries preserve exact operation before and after commit", async (t) => {
+  for (const phase of ["before", "after"]) {
+    const fixture = await setup(t, {role: "owner", managed: true});
+    if (phase === "before") fixture.failBefore(); else fixture.loseResponse();
+    fixture.card.shadowRoot.querySelector(".presence-managed-row button").click();
+    confirmReview(fixture.card);
+    button(fixture.card, PRESENCE_COPY.en.save).click();
+    await eventually(() => fixture.card._presenceDraft?.pending && !fixture.card._writing);
+    const frozen = clone(fixture.card._presenceDraft.pending);
+    button(fixture.card, PRESENCE_COPY.en.retry).click();
+    await eventually(() => fixture.calls.length === 2 && fixture.card._presenceDraft === null);
+    assert.equal(fixture.calls[1].operation_id, frozen.operation_id);
+    assert.deepEqual(fixture.calls[1].payload, frozen.payload);
+    assert.equal(fixture.state.presence.managed[0].subscription_revision, 1);
+  }
+});
+
+test("guardian review fails closed after child, parent, source, consent, or route drift", async (t) => {
+  const changes = [
+    (card) => {card._data.members.find((row) => row.id === "child-1").role = "adult";},
+    (card) => {card._data.members.find((row) => row.id === "child-1").active = false;},
+    (card) => {card._data.members.find((row) => row.id === "child-1").revision += 1;},
+    (card) => {card._data.members.find((row) => row.id === "parent-1").revision += 1;},
+    (card) => {card._data.members.find((row) => row.id === "parent-1").role = "adult";},
+    (card) => {card._data.presence.managed[0].binding_revision += 1;},
+    (card) => {card._data.presence.managed[0].subscription_revision = 1;},
+    (card) => {card._data.presence.managed = [];},
+    (card) => {card._data.settings.modules = [];},
+    (card) => {card._generation += 1;},
+    (card) => {card._entry = "other-entry";},
+  ];
+  for (const change of changes) {
+    const fixture = await setup(t, {role: "parent", managed: true});
+    fixture.card.shadowRoot.querySelector(".presence-managed-row button").click();
+    confirmReview(fixture.card);
+    const save = button(fixture.card, PRESENCE_COPY.en.save);
+    change(fixture.card);
+    save.click();
+    assert.equal(fixture.calls.length, 0);
+    assert.equal(fixture.card._presenceDraft, null);
+  }
+});
+
+test("malformed managed projections cannot create cross-adult controls", async (t) => {
+  for (const role of ["adult", "child", "guest"]) {
+    const fixture = await setup(t, {role, managed: true});
+    assert.equal(fixture.card.shadowRoot.querySelectorAll(".presence-managed-row").length, 0);
+  }
+  const fixture = await setup(t, {role: "parent", managed: true});
+  const original = clone(fixture.state.presence.managed[0]);
+  for (const change of [
+    {member: "adult-1", member_revision: 3}, {member_revision: 8},
+    {guardian: "parent-1"}, {consent_kind: "guardian", guardian: null},
+    {consent_kind: "guardian", guardian: "child-1"}, {consent_kind: "unexpected"},
+    {can_edit: true, binding_revision: null},
+  ]) {
+    fixture.state.presence.managed = [{...original, ...change}];
+    await fixture.card.refresh();
+    assert.equal(fixture.card.shadowRoot.querySelectorAll(".presence-managed-row").length, 0);
+  }
+  fixture.state.presence.managed = [original, clone(original)];
+  await fixture.card.refresh();
+  assert.equal(fixture.card.shadowRoot.querySelectorAll(".presence-managed-row").length, 1);
+  assert.equal(fixture.calls.length, 0);
 });

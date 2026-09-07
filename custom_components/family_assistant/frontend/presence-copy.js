@@ -2,6 +2,13 @@
 
 export const PRESENCE_COPY = {
   en: {
+    managed_children: "Children's sharing",
+    guardian_review: "Review sharing for a child",
+    guardian_help: "Owners and parents can explicitly enable or stop a child's reported home/away status. Adults consent only for themselves. Replacing the source, child identity or consenting parent invalidates guardian consent. This does not share coordinates or start devices.",
+    consent_source: "Sharing choice",
+    consent_self: "By the family member",
+    consent_guardian: "By a parent",
+    consent_none: "Not set",
     title: "Family presence",
     guide: "How reported presence works",
     help: "One source selected by the household owner reports home, away, or unknown. This is limited evidence, not precise location or confirmed occupancy.",
@@ -10,7 +17,7 @@ export const PRESENCE_COPY = {
     no_effects:
       "Presence does not start routines, change tasks or points, send notifications, or control devices.",
     source_help:
-      "A household owner can configure or remove your source in the integration Settings. A configured source remains unread until you enable sharing.",
+      "A household owner configures sources in integration Settings. Sources remain unread until the member enables sharing, or a parent explicitly enables it for a child.",
     your_presence: "Your reported presence",
     shared_presence: "Presence shared with parents",
     no_shared: "No other family members currently share presence with you.",
@@ -49,6 +56,13 @@ export const PRESENCE_COPY = {
     unavailable_member: "Current family member",
   },
   ru: {
+    managed_children: "Передача статуса детей",
+    guardian_review: "Проверка передачи статуса ребёнка",
+    guardian_help: "Владелец и родители могут явно включить или остановить передачу статуса ребёнка «дома/не дома». Взрослые дают согласие только за себя. Замена источника, учётной записи ребёнка или давшего согласие родителя отменяет родительское согласие. Координаты не передаются, устройства не запускаются.",
+    consent_source: "Кто разрешил передачу",
+    consent_self: "Сам участник",
+    consent_guardian: "Родитель",
+    consent_none: "Не настроено",
     title: "Присутствие семьи",
     guide: "Как работает статус присутствия",
     help: "Один источник, выбранный владельцем семьи, сообщает статус «дома», «не дома» или «неизвестно». Это ограниченные данные, а не точное местоположение или подтверждённое присутствие.",
@@ -57,7 +71,7 @@ export const PRESENCE_COPY = {
     no_effects:
       "Статус присутствия не запускает рутины, не меняет задачи или баллы, не отправляет уведомления и не управляет устройствами.",
     source_help:
-      "Владелец семьи может настроить или удалить ваш источник в настройках интеграции. Настроенный источник не читается, пока вы не включите передачу статуса.",
+      "Владелец настраивает источники в настройках интеграции. Источник не читается, пока участник сам не включит передачу статуса или родитель явно не включит её для ребёнка.",
     your_presence: "Ваш статус присутствия",
     shared_presence: "Статусы, которыми поделились с родителями",
     no_shared:
@@ -97,6 +111,13 @@ export const PRESENCE_COPY = {
     unavailable_member: "Текущий участник семьи",
   },
   uk: {
+    managed_children: "Поширення статусу дітей",
+    guardian_review: "Перевірка поширення статусу дитини",
+    guardian_help: "Власник і батьки можуть явно ввімкнути або зупинити поширення статусу дитини «удома/не вдома». Дорослі дають згоду лише за себе. Заміна джерела, облікового запису дитини чи того з батьків, хто дав згоду, скасовує батьківську згоду. Координати не поширюються, пристрої не запускаються.",
+    consent_source: "Хто дозволив поширення",
+    consent_self: "Сам учасник",
+    consent_guardian: "Хтось із батьків",
+    consent_none: "Не налаштовано",
     title: "Присутність родини",
     guide: "Як працює статус присутності",
     help: "Одне джерело, вибране власником родини, повідомляє статус «удома», «не вдома» або «невідомо». Це обмежені дані, а не точне місцезнаходження чи підтверджена присутність.",
@@ -105,7 +126,7 @@ export const PRESENCE_COPY = {
     no_effects:
       "Статус присутності не запускає рутини, не змінює завдання чи бали, не надсилає сповіщення та не керує пристроями.",
     source_help:
-      "Власник родини може налаштувати або видалити ваше джерело в налаштуваннях інтеграції. Налаштоване джерело не читається, доки ви не ввімкнете поширення статусу.",
+      "Власник налаштовує джерела в налаштуваннях інтеграції. Джерело не читається, доки учасник сам не ввімкне поширення статусу або хтось із батьків явно не ввімкне його для дитини.",
     your_presence: "Ваш статус присутності",
     shared_presence: "Статуси, якими поділилися з батьками",
     no_shared:
