@@ -256,6 +256,9 @@ async def main():
             from ha_school_work_smoke import verify_school_work
 
             school_work_ids = await verify_school_work(hass, entry, user, child_id)
+            from ha_media_smoke import verify_media, verify_media_reload
+
+            media_expected = await verify_media(hass, entry, user, child_id)
             school_expected = entry.runtime_data.engine.snapshot()["school"]
             school_tasks_expected = {
                 task_id: entry.runtime_data.engine.snapshot()["tasks"][task_id]
@@ -294,6 +297,7 @@ async def main():
             from ha_dietary_smoke import verify_dietary_reload
 
             verify_dietary_reload(entry, dietary_expected)
+            await verify_media_reload(entry, media_expected)
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
             assert len(shopping_after_reload) == 8
             pantry_after_reload = entry.runtime_data.engine.snapshot()["pantry"]

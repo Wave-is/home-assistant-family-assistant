@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +33,9 @@ class Runtime:
     network: Any = None
     recipes: Any = None
     recipes_revision: str = ""
+    media: Any = None
+    media_unsub: Any = None
+    media_task: Any = None
     options_lock: Any = field(default_factory=asyncio.Lock)
 
     @callback
@@ -73,6 +78,17 @@ async def async_setup_runtime(hass, entry) -> bool:
     runtime = Runtime(Engine(state, store.async_save))
     data["entries"][entry.entry_id] = runtime
     entry.runtime_data = runtime
+    from .media_storage import MediaStorage
+
+    runtime.media = MediaStorage(
+        runtime.engine,
+        Path(
+            hass.config.path(
+                "family_assistant_data", hashlib.sha256(entry.entry_id.encode()).hexdigest()
+            )
+        ),
+        dt_util.utcnow,
+    )
     if not data.get("api_registered"):
         from homeassistant.components.http import StaticPathConfig
 
@@ -86,6 +102,9 @@ async def async_setup_runtime(hass, entry) -> bool:
             ]
         )
         async_register_api(hass)
+        from .media_http import async_register_media
+
+        async_register_media(hass)
 
         async def execute(call):
             try:
@@ -128,6 +147,25 @@ async def async_setup_runtime(hass, entry) -> bool:
 
         runtime.scheduler = Scheduler(hass, entry, runtime)
         runtime.scheduler.start()
+        from homeassistant.helpers.event import async_track_time_interval
+
+        async def reconcile_media(_now):
+            if runtime.media_task and not runtime.media_task.done():
+                return
+
+            async def collect():
+                try:
+                    await runtime.media.collect()
+                    runtime.health.pop("media", None)
+                except (DomainError, OSError, TimeoutError):
+                    runtime.health["media"] = "media_unavailable"
+
+            runtime.media_task = hass.async_create_task(
+                collect(), "Family Assistant private media cleanup"
+            )
+
+        runtime.media_unsub = async_track_time_interval(hass, reconcile_media, timedelta(minutes=1))
+        await reconcile_media(dt_util.utcnow())
         async_configure_assistant(hass, entry)
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
@@ -137,6 +175,7 @@ async def async_setup_runtime(hass, entry) -> bool:
         async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
     except Exception:
+        await async_stop_media(runtime)
         if runtime.network:
             await runtime.network.stop()
         if runtime.telegram:
@@ -153,6 +192,7 @@ async def async_unload_runtime(hass, entry) -> bool:
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    await async_stop_media(runtime)
     if runtime.network:
         await runtime.network.stop()
     if runtime.telegram:
@@ -161,6 +201,16 @@ async def async_unload_runtime(hass, entry) -> bool:
         await runtime.scheduler.stop()
     runtime.listeners.clear()
     return True
+
+
+async def async_stop_media(runtime):
+    if runtime.media_unsub:
+        runtime.media_unsub()
+        runtime.media_unsub = None
+    if runtime.media:
+        await runtime.media.stop()
+    if runtime.media_task:
+        await runtime.media_task
 
 
 async def async_configure_telegram(hass, entry):

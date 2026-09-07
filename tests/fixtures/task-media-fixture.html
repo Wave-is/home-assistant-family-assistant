@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic private task media</title>
+  <style>
+    body { margin: 0; padding: 16px; background: #eef3f1; font-family: system-ui; }
+    main { max-width: 680px; margin: auto; }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+    const query = new URLSearchParams(location.search);
+    const language = query.get("lang") || "en";
+    const initialActor = query.get("actor") || "child";
+    const clone = (value) => structuredClone(value);
+    const exact = (value, keys) =>
+      value && !Array.isArray(value) &&
+      Object.keys(value).sort().join(",") === [...keys].sort().join(",");
+    const png = Uint8Array.from(
+      atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="),
+      (value) => value.charCodeAt(0),
+    );
+    const members = [
+      { id: "owner", name: "Alex", role: "owner", active: true, revision: 1, ha_user_id: "ha-owner" },
+      { id: "parent", name: "Morgan", role: "parent", active: true, revision: 1, ha_user_id: "ha-parent" },
+      { id: "child", name: "Sam", role: "child", active: true, revision: 3, ha_user_id: "ha-child" },
+      { id: "sibling", name: "Jamie", role: "child", active: true, revision: 2, ha_user_id: "ha-sibling" },
+    ];
+    const task = (id, assignee, assigneeRevision, title) => ({
+      id,
+      revision: 1,
+      title,
+      assignee,
+      assignee_revision: assigneeRevision,
+      creator: "owner",
+      due_at: "2026-09-08T15:00:00+00:00",
+      created_at: "2026-09-07T07:00:00+00:00",
+      status: "assigned",
+      report_type: "photo",
+      report: null,
+      deadline_policy: { reminder_minutes: 60, grace_minutes: 30, penalty: 0 },
+      checklist: [],
+      report_generation: 0,
+      report_media: [],
+      report_attachments: [],
+    });
+    const oldAttachment = {
+      id: "M00000000000000000000000000000001",
+      revision: 3,
+      purpose: "task_report",
+      mime_type: "image/png",
+      size_bytes: png.byteLength,
+      status: "attached",
+    };
+    const historyTask = task("T000002", "child", 3, "Private prior photo task");
+    historyTask.status = "needs_changes";
+    historyTask.report_generation = 2;
+    historyTask.previous_reports = [
+      {
+        assignee: "child",
+        assignee_revision: 3,
+        report_generation: 1,
+        report_attachments: [oldAttachment],
+      },
+    ];
+    window.fixture = {
+      revision: 1,
+      settings: {
+        name: "Synthetic family",
+        language,
+        modules: ["tasks"],
+        timezone: "Europe/Kyiv",
+      },
+      members,
+      tasks: [
+        task("T000001", "child", 3, "Private photo task"),
+        historyTask,
+        task("T000003", "sibling", 2, "SIBLING PRIVATE PHOTO TASK"),
+      ],
+      media: new Map([
+        [
+          oldAttachment.id,
+          {
+            id: oldAttachment.id,
+            revision: 3,
+            status: "attached",
+            mime_type: "image/png",
+            body: png,
+            task_id: historyTask.id,
+            assignee: "child",
+            assignee_revision: 3,
+            historical: true,
+          },
+        ],
+      ]),
+    };
+    window.calls = [];
+    window.httpCalls = [];
+    window.receipts = new Map();
+    window.losePut = false;
+    window.loseSubmit = false;
+    window.failNextView = false;
+    window.objectUrls = new Set();
+    window.revokedUrls = [];
+    let mediaSequence = 2;
+
+    const nativeCreate = URL.createObjectURL.bind(URL);
+    const nativeRevoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = (blob) => {
+      const value = nativeCreate(blob);
+      window.objectUrls.add(value);
+      return value;
+    };
+    URL.revokeObjectURL = (value) => {
+      window.objectUrls.delete(value);
+      window.revokedUrls.push(value);
+      nativeRevoke(value);
+    };
+
+    const actorFor = (userId) =>
+      window.fixture.members.find(
+        (member) => member.active && member.ha_user_id === userId,
+      ) || null;
+    const visibleAttachment = (value) => ({
+      id: value.id,
+      revision: value.revision,
+      purpose: "task_report",
+      mime_type: value.mime_type,
+      size_bytes: value.body.byteLength,
+      status: "attached",
+    });
+    const projection = (userId) => {
+      const actor = actorFor(userId);
+      if (!actor) throw { code: "forbidden" };
+      const privileged = ["owner", "parent"].includes(actor.role);
+      const data = {
+        revision: window.fixture.revision,
+        actor: actor.id,
+        role: actor.role,
+        settings: clone(window.fixture.settings),
+        members: clone(window.fixture.members).map(({ ha_user_id, ...member }) => member),
+        tasks: [],
+        task_series: [],
+      };
+      for (const stored of window.fixture.tasks) {
+        if (!privileged && stored.assignee !== actor.id) continue;
+        const row = clone(stored);
+        delete row.report_media;
+        if (!privileged) delete row.previous_reports;
+        data.tasks.push(row);
+      }
+      return data;
+    };
+    window.project = () => projection(window.card?._hass?.user?.id || `ha-${initialActor}`);
+
+    const requireLive = (userId) => {
+      const actor = actorFor(userId);
+      if (!actor || actor.role === "guest") throw { code: "forbidden" };
+      if (!window.fixture.settings.modules.includes("tasks")) throw { code: "module_disabled" };
+      return actor;
+    };
+    const targetTask = (id) => {
+      const found = window.fixture.tasks.find((value) => value.id === id);
+      if (!found) throw { code: "forbidden" };
+      return found;
+    };
+    const taskAuthority = (actor, item, expectedRevision, uploaderRevision = null) => {
+      if (!["owner", "parent"].includes(actor.role) && item.assignee !== actor.id)
+        throw { code: "forbidden" };
+      if (item.revision !== expectedRevision) throw { code: "conflict" };
+      const assignee = window.fixture.members.find((member) => member.id === item.assignee);
+      if (!assignee?.active || assignee.role === "guest" || assignee.revision !== item.assignee_revision)
+        throw { code: "conflict" };
+      if (uploaderRevision !== null && actor.revision !== uploaderRevision)
+        throw { code: "conflict" };
+    };
+    const replay = (message, actor) => {
+      const prior = window.receipts.get(message.operation_id);
+      if (!prior) return null;
+      if (
+        prior.actor !== actor.id || prior.action !== message.action ||
+        JSON.stringify(prior.payload) !== JSON.stringify(message.payload)
+      ) throw { code: "conflict" };
+      if (message.action === "media.reserve") {
+        const item = targetTask(message.payload.task_id);
+        taskAuthority(
+          actor,
+          item,
+          message.payload.task_revision,
+          message.payload.uploader_revision,
+        );
+      } else {
+        const item = targetTask(message.payload.id);
+        const assignee = window.fixture.members.find((member) => member.id === item.assignee);
+        if (
+          (!["owner", "parent"].includes(actor.role) && item.assignee !== actor.id) ||
+          !assignee?.active || assignee.revision !== item.assignee_revision
+        ) throw { code: "forbidden" };
+      }
+      return clone(prior.result);
+    };
+    const saveReceipt = (message, actor, result) => {
+      window.receipts.set(message.operation_id, {
+        actor: actor.id,
+        action: message.action,
+        payload: clone(message.payload),
+        result: clone(result),
+      });
+      return clone(result);
+    };
+
+    const execute = async (userId, message) => {
+      const actor = requireLive(userId);
+      window.calls.push(clone(message));
+      const repeated = replay(message, actor);
+      if (repeated) return repeated;
+      if (message.action === "media.reserve") {
+        if (!exact(message.payload, ["purpose", "task_id", "task_revision", "uploader_revision"]) ||
+            message.payload.purpose !== "task_report") throw { code: "invalid_field" };
+        const item = targetTask(message.payload.task_id);
+        taskAuthority(
+          actor,
+          item,
+          message.payload.task_revision,
+          message.payload.uploader_revision,
+        );
+        const id = `M${String(mediaSequence++).padStart(32, "0")}`;
+        window.fixture.media.set(id, {
+          id,
+          revision: 1,
+          status: "reserved",
+          mime_type: null,
+          body: null,
+          uploader: actor.id,
+          uploader_revision: actor.revision,
+          task_id: item.id,
+          task_revision: item.revision,
+          assignee: item.assignee,
+          assignee_revision: item.assignee_revision,
+        });
+        return saveReceipt(message, actor, { id, revision: 1, status: "reserved" });
+      }
+      if (message.action !== "tasks.submit" ||
+          !exact(message.payload, ["id", "revision", "media"]) ||
+          !exact(message.payload.media, ["id", "revision"]))
+        throw { code: "invalid_field" };
+      const item = targetTask(message.payload.id);
+      taskAuthority(actor, item, message.payload.revision);
+      const record = window.fixture.media.get(message.payload.media.id);
+      if (
+        !record || record.status !== "available" || record.revision !== message.payload.media.revision ||
+        record.uploader !== actor.id || record.uploader_revision !== actor.revision ||
+        record.task_id !== item.id || record.task_revision !== item.revision
+      ) throw { code: "conflict" };
+      record.status = "attached";
+      record.revision = 3;
+      item.report_generation += 1;
+      item.report_media = [record.id];
+      item.report_attachments = [visibleAttachment(record)];
+      item.status = "submitted";
+      item.revision += 1;
+      window.fixture.revision += 1;
+      const result = saveReceipt(message, actor, {
+        id: item.id,
+        revision: item.revision,
+        status: item.status,
+      });
+      if (window.loseSubmit) {
+        window.loseSubmit = false;
+        // A committed-but-lost transport response is not a Store refusal.
+        throw new Error("Synthetic lost response");
+      }
+      return result;
+    };
+
+    const responseHeaders = (record) => ({
+      "Content-Type": record.mime_type,
+      "Content-Length": String(record.body.byteLength),
+      "Cache-Control": "private, no-store",
+      "Pragma": "no-cache",
+      "X-Content-Type-Options": "nosniff",
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "Content-Disposition": 'attachment; filename="family-assistant-image.png"',
+    });
+    const fetchMedia = async (userId, url, options = {}) => {
+      const actor = requireLive(userId);
+      const match = /^\/api\/family_assistant\/media\/([^/]+)\/([^/]+)$/.exec(url);
+      if (!match || match[1] !== window.card._entry) throw { code: "forbidden" };
+      const record = window.fixture.media.get(match[2]);
+      if (!record) return new Response(JSON.stringify({ code: "forbidden" }), { status: 403 });
+      const revision = Number(options.headers?.["X-Family-Media-Revision"]);
+      const body = options.body instanceof Blob
+        ? new Uint8Array(await options.body.arrayBuffer())
+        : null;
+      window.httpCalls.push({
+        user_id: userId,
+        url,
+        method: options.method,
+        revision,
+        content_type: options.headers?.["Content-Type"] || null,
+        body: body ? [...body] : null,
+      });
+      if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+      if (options.method === "PUT") {
+        const item = targetTask(record.task_id);
+        taskAuthority(actor, item, record.task_revision, record.uploader_revision);
+        if (record.uploader !== actor.id || revision !== 1 || !body?.length)
+          return new Response(JSON.stringify({ code: "conflict" }), { status: 409 });
+        if (record.status === "reserved") {
+          record.body = body;
+          record.mime_type = options.headers["Content-Type"];
+          record.status = "available";
+          record.revision = 2;
+          window.fixture.revision += 1;
+        } else if (
+          record.status !== "available" || record.body.length !== body.length ||
+          record.body.some((value, index) => value !== body[index])
+        ) return new Response(JSON.stringify({ code: "conflict" }), { status: 409 });
+        if (window.losePut) {
+          window.losePut = false;
+          throw new TypeError("Synthetic response loss");
+        }
+        return new Response(
+          JSON.stringify({ id: record.id, revision: 2, status: "available" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (options.method !== "GET" || revision !== record.revision || record.status !== "attached")
+        return new Response(JSON.stringify({ code: "conflict" }), { status: 409 });
+      const item = targetTask(record.task_id);
+      const current = item.report_attachments.some((value) => value.id === record.id);
+      const previous = item.previous_reports?.some((report) =>
+        report.report_attachments?.some((value) => value.id === record.id));
+      if (
+        (!["owner", "parent"].includes(actor.role) &&
+          (!current || actor.id !== record.assignee || actor.revision !== record.assignee_revision)) ||
+        (!current && !(previous && ["owner", "parent"].includes(actor.role)))
+      ) return new Response(JSON.stringify({ code: "forbidden" }), { status: 403 });
+      return new Response(record.body.slice(), { status: 200, headers: responseHeaders(record) });
+    };
+
+    const makeHass = (actorId) => {
+      const member = window.fixture.members.find((value) => value.id === actorId);
+      const userId = member?.ha_user_id || `ha-${actorId}`;
+      return {
+        language,
+        user: { id: userId },
+        config: { time_zone: "Europe/Kyiv" },
+        callWS: async (message) => {
+          if (
+            message.type !== "family_assistant/households" &&
+            message.entry_id !== "synthetic"
+          ) throw { code: "forbidden" };
+          if (message.type === "family_assistant/view") {
+            if (window.failNextView) {
+              window.failNextView = false;
+              throw { code: "storage_error" };
+            }
+            return projection(userId);
+          }
+          if (message.type === "family_assistant/households")
+            return [{ entry_id: "synthetic", title: "Synthetic family" }];
+          if (message.type === "family_assistant/execute") return execute(userId, message);
+          throw { code: "unknown_action" };
+        },
+        fetchWithAuth: (url, options) => fetchMedia(userId, url, options),
+      };
+    };
+
+    const card = document.createElement("family-assistant-card");
+    card.setConfig({ view: "tasks", entry_id: "synthetic", language });
+    card.hass = makeHass(initialActor);
+    document.querySelector("main").append(card);
+    window.card = card;
+    window.syncCard = async () => card.refresh();
+    window.setActor = async (actorId) => {
+      card.hass = makeHass(actorId);
+      await card.refresh();
+    };
+    window.setEntry = async (entryId) => {
+      card.setConfig({ view: "tasks", entry_id: entryId, language });
+      card.hass = makeHass(initialActor);
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+  </script>
+</html>

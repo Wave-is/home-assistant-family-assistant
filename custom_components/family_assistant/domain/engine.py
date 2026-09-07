@@ -21,6 +21,7 @@ from . import (
     family_calendar,
     household,
     maintenance,
+    media,
     members,
     pantry,
     proposals,
@@ -56,6 +57,7 @@ HANDLERS = {
     "pantry": pantry.handle,
     "school": school.handle,
     "maintenance": maintenance.handle,
+    "media": media.handle,
 }
 BUCKETS = (
     "members",
@@ -77,6 +79,7 @@ BUCKETS = (
     "dietary_profiles",
     "school",
     "maintenance",
+    "media",
     "polls",
     "outbox",
     "processed",
@@ -159,6 +162,7 @@ class Engine:
         self._state.setdefault("routine_runs", {})
         self._state.setdefault("proposals", {})
         self._state.setdefault("assistant_jobs", {})
+        self._state.setdefault("media", {})
         self._persist = persist
         self._lock = asyncio.Lock()
 
@@ -217,7 +221,11 @@ class Engine:
                 alarms.public_run(record)
                 if bucket == "alarm_runs"
                 else (
-                    task_access.public_task(record, parent=parent) if bucket == "tasks" else record
+                    task_access.public_task(
+                        record, parent=parent, state=self._state, actor=actor, now=now
+                    )
+                    if bucket == "tasks"
+                    else record
                 )
                 for record in self._state[bucket].values()
                 if parent or record.get(owner_field) == actor_id
@@ -279,7 +287,9 @@ class Engine:
             data["school"].update(school_reminders.view(self._state, actor))
             data["school"]["homework"] = (
                 [
-                    task_access.public_task(task, parent=parent)
+                    task_access.public_task(
+                        task, parent=parent, state=self._state, actor=actor, now=now
+                    )
                     for task in self._state["tasks"].values()
                     if school_work.is_homework_task(task)
                     and task_access.may_view(self._state, actor, task)
@@ -402,7 +412,7 @@ class Engine:
             return
         module = action.split(".", 1)[0]
         if (
-            module not in {"members", "settings", "notifications"}
+            module not in {"members", "settings", "notifications", "media"}
             and module not in self._state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")
@@ -411,6 +421,13 @@ class Engine:
                 Context(self._state, self._actor(actor_id), now, "maintenance-replay"),
                 action.split(".", 1)[1],
                 payload,
+            )
+        elif module == "media":
+            media.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "media-replay"),
+                action.split(".", 1)[1],
+                payload,
+                result,
             )
         elif action == "school.preparation_reminder_access_set":
             school_reminders.authorize_replay(
@@ -528,7 +545,7 @@ class Engine:
         if module not in HANDLERS:
             raise DomainError("unknown_action")
         if (
-            module not in {"members", "settings", "notifications"}
+            module not in {"members", "settings", "notifications", "media"}
             and module not in ctx.state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")

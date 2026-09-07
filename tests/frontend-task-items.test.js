@@ -225,7 +225,7 @@ test("non-parent creator cannot edit or cancel unless they are also the current 
   assert.ok(ownButtons.includes("Cancel task"));
 });
 
-test("report submission: text report submits tasks.submit, photo report displays explicit unavailable", async () => {
+test("report submission: text uses tasks.submit, photo opens the private media workflow", async () => {
   const card = createMockCard({
     _data: {
       ...baseData,
@@ -266,7 +266,7 @@ test("report submission: text report submits tasks.submit, photo report displays
     }
   });
 
-  // Photo report verification: explicit unavailable notice
+  // Photo reports have a separate verified-media workflow, never a text field.
   const photoItem = {
     id: "T3",
     revision: 1,
@@ -276,16 +276,16 @@ test("report submission: text report submits tasks.submit, photo report displays
     status: "in_progress",
     report_type: "photo"
   };
+  photoItem.assignee_revision = 1;
+  card._entry = "synthetic-entry";
+  for (const value of card._data.members) value.revision = 1;
   card._taskItemAction = null;
   ul.replaceChildren();
   renderTaskItem(card, ul, photoItem);
 
-  const photoReportBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Send report");
-  photoReportBtn.click();
-  ul.replaceChildren();
-  renderTaskItem(card, ul, photoItem);
-
-  assert.match(ul.textContent, /Photo reports are not supported yet/);
+  assert.ok(ul.querySelector('input[type="file"][name="photo"]'));
+  assert.equal(ul.querySelector('input[name="photo"]').accept, "image/jpeg,image/png,image/webp");
+  assert.doesNotMatch(ul.textContent, /Photo reports are not supported yet/);
   assert.equal(ul.querySelector('input[name="report"]'), null);
 });
 

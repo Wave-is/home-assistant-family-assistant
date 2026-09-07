@@ -125,7 +125,11 @@
       "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
       "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
       "reward_expired": "This privilege request expired. Submit a new request.",
-      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
+      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users.",
+      "media_invalid": "The photo could not be verified. Use a static JPEG, PNG or WebP.",
+      "media_too_large": "The photo exceeds the file or image-size limit.",
+      "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
+      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
       "admin_required": "A Home Assistant administrator must create the household.",
@@ -397,7 +401,11 @@
       "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
       "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
       "reward_expired": "This privilege request expired. Submit a new request.",
-      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
+      "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users.",
+      "media_invalid": "The photo could not be verified. Use a static JPEG, PNG or WebP.",
+      "media_too_large": "The photo exceeds the file or image-size limit.",
+      "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
+      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
       "forbidden": "You do not have permission for this action.",
@@ -741,6 +749,18 @@
     },
     "confirmation_required": {
       "message": "Confirm that shared confirmed events may be visible to other Home Assistant users."
+    },
+    "media_invalid": {
+      "message": "The photo could not be verified. Use a static JPEG, PNG or WebP."
+    },
+    "media_too_large": {
+      "message": "The photo exceeds the file or image-size limit."
+    },
+    "media_unavailable": {
+      "message": "Could not confirm the photo operation. Retry the same reviewed action."
+    },
+    "quota_exceeded": {
+      "message": "The private photo quota is full. Unattached uploads expire automatically."
     }
   },
   "selector": {

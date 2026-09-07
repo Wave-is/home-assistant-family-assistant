@@ -94,7 +94,11 @@ export const ERRORS = {
     "network_timer_required": "A verified RouterOS 7.16+ expiry/startup timer is required. Temporary access was not safely enabled.",
     "insufficient_points": "Not enough available points. Existing requests reserve their cost.",
     "reward_expired": "This privilege request expired. Submit a new request.",
-    "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users."
+    "confirmation_required": "Confirm that shared confirmed events may be visible to other Home Assistant users.",
+    "media_invalid": "The photo could not be verified. Use a static JPEG, PNG or WebP.",
+    "media_too_large": "The photo exceeds the file or image-size limit.",
+    "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
+    "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
   },
   "ru": {
     "invalid_field": "Проверьте введённое значение.",
@@ -190,7 +194,11 @@ export const ERRORS = {
     "network_timer_required": "Нужен проверенный таймер окончания и запуска в RouterOS 7.16+. Временный доступ не удалось безопасно включить.",
     "insufficient_points": "Недостаточно доступных баллов: действующие заявки резервируют свою стоимость.",
     "reward_expired": "Срок заявки на привилегию истёк. Создайте новую заявку.",
-    "confirmation_required": "Подтвердите, что общие одобренные события могут быть видны другим пользователям Home Assistant."
+    "confirmation_required": "Подтвердите, что общие одобренные события могут быть видны другим пользователям Home Assistant.",
+    "media_invalid": "Не удалось проверить фото. Выберите обычное изображение JPEG, PNG или WebP.",
+    "media_too_large": "Фото превышает ограничение размера файла или изображения.",
+    "media_unavailable": "Не удалось подтвердить операцию с фото. Повторите то же проверенное действие.",
+    "quota_exceeded": "Квота фото заполнена. Неприкреплённые загрузки удаляются после истечения срока."
   },
   "uk": {
     "invalid_field": "Перевірте введене значення.",
@@ -286,6 +294,10 @@ export const ERRORS = {
     "network_timer_required": "Потрібен перевірений таймер завершення та запуску в RouterOS 7.16+. Тимчасовий доступ не вдалося безпечно увімкнути.",
     "insufficient_points": "Недостатньо доступних балів: чинні заявки резервують свою вартість.",
     "reward_expired": "Термін заявки на привілей минув. Створіть нову заявку.",
-    "confirmation_required": "Підтвердьте, що спільні схвалені події можуть бути видимі іншим користувачам Home Assistant."
+    "confirmation_required": "Підтвердьте, що спільні схвалені події можуть бути видимі іншим користувачам Home Assistant.",
+    "media_invalid": "Не вдалося перевірити фото. Оберіть звичайне зображення JPEG, PNG або WebP.",
+    "media_too_large": "Фото перевищує обмеження розміру файлу або зображення.",
+    "media_unavailable": "Не вдалося підтвердити операцію з фото. Повторіть ту саму перевірену дію.",
+    "quota_exceeded": "Квота фото заповнена. Неприкріплені завантаження видаляються після закінчення строку."
   }
 };

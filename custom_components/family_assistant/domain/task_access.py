@@ -1,6 +1,7 @@
 """Current identity and channel scope for explicitly private ordinary tasks."""
 
 from copy import deepcopy
+from datetime import UTC, datetime
 
 from ..const import PRIVILEGED
 from .validation import DomainError
@@ -41,8 +42,48 @@ def may_view(state, actor, task):
     )
 
 
-def public_task(task, *, parent):
+def archive_report(ctx, task, reason):
+    """Retain report identity stamps before replacing the current attachment slot."""
+    if task.get("report") is not None or task.get("report_media"):
+        previous = {
+            "assignee": task["assignee"],
+            "report": task.get("report"),
+            "review_note": task.get("review_note"),
+            reason: ctx.now.isoformat(),
+        }
+        if task.get("report_media"):
+            previous.update(
+                assignee_revision=task.get("assignee_revision"),
+                report_media=list(task["report_media"]),
+                report_generation=task.get("report_generation", 0),
+            )
+        task.setdefault("previous_reports", []).append(previous)
+    task.pop("report_media", None)
+    task["report"] = None
+    task.pop("review_note", None)
+
+
+def public_task(task, *, parent, state=None, actor=None, now=None):
     result = deepcopy(task)
+    if not parent:
+        result.pop("previous_reports", None)
+    # A global library or raw ID list would disclose stale/private attachments.
+    # Only current object authority can produce the bounded metadata for the UI.
+    for report in [result, *result.get("previous_reports", [])]:
+        references = report.pop("report_media", [])
+        report.pop("report_attachments", None)
+        if references and state is not None and actor is not None:
+            from .media import read_metadata
+
+            attachments = []
+            for reference in references:
+                try:
+                    attachments.append(
+                        read_metadata(state, actor, reference, now or datetime.now(UTC))
+                    )
+                except DomainError:
+                    continue
+            report["report_attachments"] = attachments
     if private_task(task):
         result["delivery_scope"] = "private"
         if isinstance(task.get("source"), dict) and task["source"].get("kind") == "school_homework":
@@ -54,6 +95,15 @@ def public_task(task, *, parent):
 
 
 def authorize_replay(state, actor, result):
+    current = state.get("tasks", {}).get(result.get("id"))
+    if isinstance(current, dict) and current.get("report_type") == "photo":
+        if not may_view(state, actor, current):
+            raise DomainError("forbidden")
+        if actor.get("role") not in PRIVILEGED and current.get("assignee_revision") != actor.get(
+            "revision"
+        ):
+            raise DomainError("forbidden")
+        return
     if not private_task(result):
         return
     task = state.get("tasks", {}).get(result.get("id"))

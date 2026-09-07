@@ -10,7 +10,7 @@ from .validation import revision as strict_revision
 FINAL = {"completed", "cancelled", "archived"}
 ACTION_FIELDS = {
     "revise": {"title", "due_at", "assignee", "reminder_minutes", "grace_minutes", "penalty"},
-    "submit": {"report"},
+    "submit": {"report", "media"},
     "check": {"checklist_index", "done"},
     "request_changes": {"note"},
     **{key: set() for key in ("accept", "start", "complete", "cancel", "archive")},
@@ -110,17 +110,12 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if "assignee" in payload:
             ctx.require_parent()
             new_assignee = assignee_member(ctx, payload["assignee"])["id"]
-            if new_assignee != item["assignee"]:
+            if (
+                new_assignee != item["assignee"]
+                or item.get("assignee_revision") != ctx.member(new_assignee)["revision"]
+            ):
                 task_events.close(ctx, item, assignment=True)
-                if item.get("report") is not None:
-                    item.setdefault("previous_reports", []).append(
-                        {
-                            "assignee": item["assignee"],
-                            "report": item["report"],
-                            "review_note": item.get("review_note"),
-                            "reassigned_at": ctx.now.isoformat(),
-                        }
-                    )
+                task_access.archive_report(ctx, item, "reassigned_at")
                 item["assignee"] = new_assignee
                 item["assignee_revision"] = ctx.member(new_assignee)["revision"]
                 item["status"] = "assigned"
@@ -137,13 +132,21 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if item["status"] == "submitted":
             raise DomainError("invalid_transition")
         if action == "submit":
-            report = payload.get("report")
-            if item["report_type"] != "none":
-                report = text(report, "report", 2000)
-            # Photo reports must be verified media references by the transport.
             if item["report_type"] == "photo":
-                raise DomainError("photo_required")
-            item["report"] = report
+                from . import media
+
+                if "report" in payload or "media" not in payload:
+                    raise DomainError("photo_required")
+                task_access.archive_report(ctx, item, "resubmitted_at")
+                media.attach_task_report(ctx, item, payload["media"])
+                item["report"] = None
+            else:
+                if "media" in payload:
+                    raise DomainError("invalid_field", "media")
+                report = payload.get("report")
+                if item["report_type"] != "none":
+                    report = text(report, "report", 2000)
+                item["report"] = report
             item["status"] = "submitted"
             ctx.notify("parents", "task_review", task_events.member_stamp(ctx, item))
         elif action == "check":
@@ -185,4 +188,6 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     ctx.touch(item)
     # Command receipts obey the same private projection as reads. The stored
     # record keeps its source for lifecycle guards, but a child response does not.
+    if item["report_type"] == "photo":
+        return {key: item[key] for key in ("id", "revision", "status")}
     return task_access.public_task(item, parent=ctx.privileged)

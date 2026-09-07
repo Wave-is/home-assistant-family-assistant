@@ -69,3 +69,16 @@ def test_scanner_detects_synthetic_secret_and_private_path_without_echo():
     assert "telegram_token" in violations(Path("example.txt"), token.encode())
     assert "private_file" in violations(Path(".local/test.txt"), b"synthetic")
     assert "private_file" in violations(Path("history.db"), b"synthetic")
+
+
+def test_scanner_rejects_private_media_even_when_content_is_empty_or_text():
+    for path in (
+        "family_assistant_data/entry/upload",
+        "custom_components/family_assistant/family_assistant_data/entry/file",
+        ".upload-synthetic",
+        "custom_components/family_assistant/" + "a" * 64,
+        "synthetic.webp",
+        "synthetic.heic",
+    ):
+        assert "private_file" in violations(Path(path), b"")
+    assert violations(Path("brand/icon.png"), b"synthetic") == []

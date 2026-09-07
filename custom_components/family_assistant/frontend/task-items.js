@@ -1,6 +1,7 @@
 /* Task item and archive rendering and copy for Family Assistant card. */
 
 import { wallTime, wallTimeCandidates } from "./local-time.js";
+import { renderTaskMedia } from "./task-media-view.js";
 
 export const TASK_ITEM_COPY = {
   en: {
@@ -45,7 +46,6 @@ export const TASK_ITEM_COPY = {
     archive_title: "Archived & Completed Tasks",
     archive_empty: "No archived tasks",
     unknown_member: "Unknown member",
-    photo_required_unavailable: "Photo reports are not supported yet; verified media transport is pending.",
     error_dst_gap: "This time does not exist due to daylight saving time clock change. Choose another time.",
     error_dst_ambiguous: "This time occurs twice due to daylight saving time. Please select which instant you mean.",
     error_note_required: "Review note is required.",
@@ -96,7 +96,6 @@ export const TASK_ITEM_COPY = {
     archive_title: "Архив и завершённые задачи",
     archive_empty: "В архиве пусто",
     unknown_member: "Неизвестный участник",
-    photo_required_unavailable: "Фотоотчёты пока недоступны: ожидается интеграция медиа.",
     error_dst_gap: "Такого времени нет из-за перевода часов. Выберите другое время.",
     error_dst_ambiguous: "Это время повторяется дважды из-за перевода часов. Выберите нужный момент.",
     error_note_required: "Введите замечания к задаче.",
@@ -147,7 +146,6 @@ export const TASK_ITEM_COPY = {
     archive_title: "Архів і завершені завдання",
     archive_empty: "В архіві порожньо",
     unknown_member: "Невідомий учасник",
-    photo_required_unavailable: "Фотозвіти поки недоступні: очікується інтеграція медіа.",
     error_dst_gap: "Такого часу немає через переведення годинника. Оберіть інший час.",
     error_dst_ambiguous: "Цей час настає двічі через переведення годинника. Будь ласка, оберіть потрібний момент.",
     error_note_required: "Введіть зауваження до завдання.",
@@ -336,6 +334,8 @@ export function renderTaskItem(card, list, item) {
   }
 
   // Review note display (e.g. when needs_changes)
+  const mediaSection = renderTaskMedia(card, item);
+  if (mediaSection) row.append(mediaSection);
   if (item.review_note) {
     const noteBox = el("div", null, "notice");
     noteBox.append(el("strong", `${copy.label_review_note}: `), el("span", item.review_note));
@@ -419,7 +419,7 @@ export function renderTaskItem(card, list, item) {
   }
 
   // 3. Submit report button: status !== 'submitted' and not final
-  if (canPerformAssigneeOps && !isSubmitted) {
+  if (canPerformAssigneeOps && !isSubmitted && item.report_type !== "photo") {
     const reportBtn = card.button(copy.action_submit_report, () => {
       if (!canInteract(card, startGeneration)) return;
       card._taskItemAction = {
@@ -598,16 +598,7 @@ export function renderTaskItem(card, list, item) {
       const form = el("form");
       const isInputFrozen = Boolean(actionState.frozenPayload);
 
-      if (actionState.reportType === "photo") {
-        const photoNotice = el("div", copy.photo_required_unavailable, "notice");
-        form.append(photoNotice);
-        const cancelBtn = card.button(copy.action_cancel_edit, () => {
-          card._taskItemAction = null;
-          card._actionError = null;
-          card.render();
-        });
-        form.append(cancelBtn);
-      } else {
+      if (actionState.reportType !== "photo") {
         const initialVal = actionState.draftReport || "";
         const reportInput = card.input(form, "report", copy.label_report, "text", initialVal, actionState.reportType !== "none");
         reportInput.disabled = isWriting || isInputFrozen;

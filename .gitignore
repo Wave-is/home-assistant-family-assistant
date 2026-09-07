@@ -15,4 +15,5 @@ dist/
 *.log
 test-results/
 playwright-report/
-
+family_assistant_data/
+.upload-*

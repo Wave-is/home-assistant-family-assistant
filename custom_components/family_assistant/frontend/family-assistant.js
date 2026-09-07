@@ -5,6 +5,7 @@ import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive} from "./shopping-items.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
+import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
 import {renderCourt} from "./court-view.js";
 import {renderRewards} from "./rewards-view.js";
 import {renderCalendar} from "./calendar-view.js";
@@ -214,6 +215,7 @@ function el(tag, text, className) {
 export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
+    disposeTaskMedia(this);
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
     if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance"].includes(this._view)) throw new Error("Unknown Family Assistant view");
@@ -230,7 +232,16 @@ export class FamilyCard extends HTMLElement {
     this.render();
     if (this._hass) this.refresh();
   }
-  set hass(hass) { this._hass = hass; if (!this._data && !this._loading) this.refresh(); }
+  set hass(hass) {
+    const userChanged = this._hass && this._hass.user?.id !== hass?.user?.id;
+    this._hass = hass;
+    if (userChanged && this._config) {
+      this._loading=false;this._writing=false;
+      this.setConfig(this._config);
+      return;
+    }
+    if (!this._data && !this._loading) this.refresh();
+  }
   get t() { return COPY[this._config?.language || this._hass?.language?.split("-")[0]] || COPY.en; }
   get parent() { return ["owner","parent"].includes(this._data?.role); }
   getCardSize() { return 5; }
@@ -238,7 +249,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -261,10 +272,11 @@ export class FamilyCard extends HTMLElement {
       const schoolWorkForce = reconcileSchoolWorkRefresh(this,previousData);
       const schoolReminderForce = reconcileSchoolRemindersRefresh(this,previousData);
       const maintenanceForce = reconcileMaintenanceRefresh(this,previousData);
+      const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
-    } catch(error) { if (generation === this._generation) { this._error=error.code || this.t.failure; this.render(); } }
-    finally { this._loading = false; }
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) this.render();
+    } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
+    finally { if (generation === this._generation) this._loading = false; }
   }
   button(text, action, primary=false) {
     const button=el("button",text,primary?"primary":""); button.type="button";
@@ -381,7 +393,7 @@ export class FamilyCard extends HTMLElement {
   render() {
     const root=this.shadowRoot;root.replaceChildren(el("style",STYLES));
     const card=el("ha-card");root.append(card);
-    const header=el("header");header.append(el("div",this._data?.settings.name || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));card.append(header);
+    const header=el("header");header.append(el("div",(!this._error && this._data?.settings.name) || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));card.append(header);
     const body=el("div",null,"body");card.append(body);
     if(this._actionError || this._error) {const language=this._config?.language || this._hass?.language?.split("-")[0],errors=ERRORS[language] || ERRORS.en,code=this._actionError || this._error;const routineText=this._view==="routines" && Object.values(ROUTINES_COPY[language] || ROUTINES_COPY.en).includes(code)?code:null;const notice=el("div",errors[code] || routineText || this.t.failure,"notice");notice.setAttribute("role","alert");body.append(notice);}
     if(!this._data) {
@@ -389,6 +401,7 @@ export class FamilyCard extends HTMLElement {
       for(const entry of this._entries || []) body.append(this.button(entry.title,()=>{this._entry=entry.entry_id;this.refresh();}));
       if(this._error)body.append(this.button(this.t.retry,()=>this.refresh()));return;
     }
+    if(this._error){body.append(this.button(this.t.retry,()=>this.refresh()));return;}
     this.renderProposals(body);
     if(this._view==="today") {this.renderToday(body);return;}
     if(this._view==="health") {this.renderHealth(body);return;}

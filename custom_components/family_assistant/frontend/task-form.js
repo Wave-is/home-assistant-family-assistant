@@ -38,7 +38,7 @@ export function renderTaskForm(card) {
   const checklistWrap=el("label",copy.checklist),checklist=el("textarea");
   checklist.name="checklist";checklist.rows=3;checklist.value=draft.checklist;checklist.maxLength=10049;checklistWrap.append(checklist);form.append(checklistWrap);
   const reportWrap=el("label",copy.reportType),report=el("select");report.name="report_type";
-  for(const value of ["text","none"]) {const option=el("option",copy[value]);option.value=value;report.append(option);}
+  for(const value of ["text","photo","none"]) {const option=el("option",value==="photo"?({en:"Photo",ru:"Фото",uk:"Фото"}[card._config?.language || card._hass?.language?.split("-")[0]] || "Photo"):copy[value]);option.value=value;report.append(option);}
   report.value=draft.report_type;reportWrap.append(report);form.append(reportWrap);
   const advanced=el("details");advanced.append(el("summary",card.t.advanced));card.deadlinePolicy(advanced);form.append(advanced);
   for(const key of ["reminder_minutes","grace_minutes","penalty"]) {

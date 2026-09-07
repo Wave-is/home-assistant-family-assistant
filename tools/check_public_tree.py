@@ -26,6 +26,7 @@ PRIVATE_NAMES = {
     ".env",
     "snapshot",
     ".codex-remote-attachments",
+    "family_assistant_data",
 }
 PRIVATE_SUFFIXES = {
     ".db",
@@ -39,6 +40,8 @@ PRIVATE_SUFFIXES = {
     ".log",
     ".jpg",
     ".jpeg",
+    ".webp",
+    ".heic",
     ".pfx",
 }
 RULES = {
@@ -58,6 +61,8 @@ def violations(relative: Path, content: bytes) -> list[str]:
     if (
         any(part in PRIVATE_NAMES for part in relative.parts)
         or relative.suffix.lower() in PRIVATE_SUFFIXES
+        or any(part.startswith(".upload-") for part in relative.parts)
+        or re.fullmatch(r"[0-9a-f]{64}", relative.name) is not None
     ):
         found.append("private_file")
     if relative.suffix.lower() == ".png":

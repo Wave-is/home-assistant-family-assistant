@@ -10,7 +10,7 @@ Nothing is production-ready solely because a mock test passes.
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, per-item history and archive; metadata/media/price/pantry extensions pending |
-| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text review/return/archive, strict recurring edits; legacy parity and media pending |
+| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
@@ -47,8 +47,37 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1561 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 281 frontend unit tests and 111 Chromium browser tests passed.
+- 1685 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, private media authority/real-file faults/decoder/HTTP/replay, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 303 frontend unit tests and 117 Chromium browser tests passed. After a fixture
+  correction distinguishing a lost committed response from an actual Store refusal,
+  all 6 media browser cases passed again with unchanged action assertions.
+- Private task photo reports now use an opaque versioned reservation, raw bounded
+  authenticated upload, isolated Pillow 12.3.0 JPEG/PNG/WebP validation, immutable
+  blob publication and a separate atomic task submission. Current actor, assignment
+  epoch, module, task/media revisions and exact retained reference are checked
+  before/after I/O. HA admin alone is not family authority. Parents can explicitly
+  load retained history; children cannot read an earlier assignment's report.
+  Text reports retain their existing contract. Media does not enter Telegram,
+  model/search input, notifications, diagnostics or public static paths.
+  The complete isolated actual HA suite tested authenticated upload/download for
+  all three image formats, decoded rather than hinted MIME, exact submission,
+  denial after revocation, real Linux decoder execution and Store/blob integrity
+  after reload. An initial helper call accidentally omitted `await`; it was fixed
+  and the entire HA suite rerun before claiming reload acceptance.
+  The RU/UK/EN card has local-only selected-file preview, explicit upload/submit,
+  exact lost-response retry, explicit-only private downloads and Blob URL cleanup.
+  Revoked/stale/error views hide private DOM and old asynchronous completions cannot
+  clear a newer user's draft. RU narrow upload and UK submit-retry screenshots were
+  visually checked. Original EXIF is retained and clearly disclosed, not stripped.
+  Public privacy checks reject the private data directory, temp names, opaque blob
+  basenames and non-brand image files. Two-phase pending expiry is implemented;
+  stale temp/orphan recovery, permanent tombstone capacity, backup barriers,
+  retained-report purge, maintenance documents and School imports remain gates.
+  AGY's read-only review exposed the subprocess cancellation cleanup gap, fixed
+  with spawn/reap regressions. A later review confirmed a crash-only hard-link/temp
+  residue issue for the upcoming recovery slice; normal cancellation cleanup and
+  exact-body Store-failure retry were independently checked, not assumed broken.
+  See [task guide](tasks.md) and [media design](media-design.md).
 - School preparation reminders default off and need both an owner-selected global
   household-local time/day policy and an exact actor-private subscription. Parents
   subscribe only their own recipient, children only their own timetable. Creation
@@ -76,7 +105,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
   lint plus the entire HA suite rerun successfully. AGY's read-only review
   identified the lifetime 10,000-marker cap as a retention/health release gate;
   claimed DST/replay/transaction bugs were ruled out against the actual Engine
-  and existing adversarial tests. Photo/media work remains a separate next slice.
+  and existing adversarial tests. The first photo-report slice is described above.
 - School homework is explicitly created by parents or the current child subject
   as an ordinary private task with a zero-penalty deadline policy. Parent edits
   use the School route, not generic task reassignment. Same-identity edits retain
@@ -476,7 +505,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   59e6eeb (run 34067804708), then school follow-up
   8d25ac0 (run 34069706131), and maintenance
   659e1ed (run 34071531113), and School homework/preparation
-  61229b3 (run 34073656489). The school feature's first actual-HA CI run exposed
+  61229b3 (run 34073656489), then private school reminders
+  bc130a1 (run 34075063864). The school feature's first actual-HA CI run exposed
   a fixture race with scheduled pantry reconciliation; the follow-up drains
   pending HA work before the explicit clock pass and verifies scheduler health.
   The separate native RouterOS CI also passed (run 34040076386). Its first run
@@ -514,6 +544,10 @@ service call does not prove physical sound or volume.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
+- Private media still needs bounded stale temp/orphan recovery, capacity health and
+  tombstone retention, coherent backup/restore and explicit retained-content purge.
+  A crash after exclusive publication but before temp unlink can leave two hard
+  links; current reads/expiry refuse that ambiguous state until recovery is added.
 - School reminder lifetime marker retention must avoid replay after clock rollback
   and expose capacity health; the present 10,000-marker bound is not release-ready.
 - Live model evaluation is pending; local Ollama was not reachable on its default

@@ -269,15 +269,7 @@ def _task(state: dict, task_id, revision_value) -> dict:
 def _reset_identity_epoch(ctx: Context, task: dict) -> None:
     """Retire child-authored lifecycle state before approving a new identity epoch."""
     task_events.close(ctx, task, assignment=True)
-    if task.get("report") is not None:
-        task.setdefault("previous_reports", []).append(
-            {
-                "assignee": task["assignee"],
-                "report": task["report"],
-                "review_note": task.get("review_note"),
-                "reassigned_at": ctx.now.isoformat(),
-            }
-        )
+    tasks.task_access.archive_report(ctx, task, "reassigned_at")
     task["status"] = "assigned"
     task["report"] = None
     task.pop("review_note", None)
