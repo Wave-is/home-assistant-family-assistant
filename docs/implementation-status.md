@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.5 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.6 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -32,8 +32,8 @@ Nothing is production-ready solely because a mock test passes.
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
-| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.5, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
+| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
+| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.6, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; new native encrypted-restore job added, CI pending; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores and no-report task proposals; explicit private-reminder/report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
@@ -54,7 +54,7 @@ CI jobs passed in `34153790263`, including frontend and actual HA. Tag and GitHu
 asset digest match the `c7f3d586...` runtime recorded below; 175 Chromium cases
 passed locally too. It is still an isolated-evaluation development release.
 
-The next alpha.6 slice joins private task/shopping/court/alarm conversion reviews
+The published alpha.6 slice joins private task/shopping/court/alarm conversion reviews
 and adds a strict exact-source archive codec. 63 shopping/court tests passed;
 the full suite at that point passed 2876 tests (five skips, 23 subtests). Archive,
 task and joined-review checks subsequently passed 97 tests. AGY delivered task
@@ -68,7 +68,28 @@ locale checks. Exact runtime ZIP: 207 files, SHA256
 The complete actual-HA suite passed, including the new private archive Store
 roundtrip/source-byte equality/plan reproducibility test. All five offline HACS
 install/failed-update rollback/upgrade phases passed this exact runtime against
-published alpha.3. CI/publication are next. No production data or transport changed.
+published alpha.3. All seven jobs in CI `34155811374` passed. The release tag
+resolves to `77ab7e5219d893adb418fadb8844750f69a2696b`, and GitHub's asset digest
+matches the exact ZIP above. No production data or transport changed.
+
+The next acceptance slice passed all four fresh-process native encrypted restore
+phases in an isolated HA 2026.8.2 container against the exact alpha.6 runtime
+(`6550342426...`). It prepares synthetic data, creates a protected backup through
+HA's real manager, refuses an incorrect key without changing state/restarting,
+then requests restore through that manager and checks the actual default Core
+restart exit status. A separate process invokes HA's native startup restore before
+the final fresh Core bootstrap reads the restored configuration. The fixture
+intentionally changes task/auth/Options data after backup and damages a synthetic
+blob after shutdown. Exact Store/runtime/blob checks, original access-token HTTP
+authentication, authorized private-media download, unauthenticated refusal,
+frontend delivery, disabled transports/siren and operation-receipt replay passed.
+The restart instruction is consumed once; backup state returns to idle. Fifteen
+pure runner tests also passed. The full local suite passed 2988 tests, five host
+skips and 23 subtests, plus Ruff/format (396 files), locales and privacy checks.
+The native four-phase gate passed again with startup-time service observation.
+CI coverage is added, not yet a passing CI claim.
+This is Core/Container configuration restoration, not HAOS/Supervisor add-ons,
+database history restoration, live installation restore or household cutover.
 
 Published alpha.4: real Qwen3.5-9B synthetic evaluation passed 12 cases
 after reproducing and fixing envelope, command selection, alarm-day and quote

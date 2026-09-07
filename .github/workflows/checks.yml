@@ -61,6 +61,21 @@ jobs:
           --entrypoint python ghcr.io/home-assistant/home-assistant:2026.8.2
           /work/tests/ha_smoke.py
 
+  encrypted-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Native encrypted Core restore and fresh authenticated bootstrap
+        run: >-
+          docker run --rm --network none --cap-drop ALL
+          --security-opt no-new-privileges --memory 1g
+          --mount type=bind,src=${{ github.workspace }},dst=/work,readonly
+          --entrypoint python ghcr.io/home-assistant/home-assistant:2026.8.2
+          /work/tools/run_restore_acceptance.py --source /work --timeout-seconds 300
+
   hassfest:
     runs-on: ubuntu-latest
     steps:
