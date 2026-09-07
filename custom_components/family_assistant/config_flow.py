@@ -21,6 +21,7 @@ CONFIGURABLE_MODULES = (
     "calendar",
     "routines",
     "pantry",
+    "school",
 )
 
 

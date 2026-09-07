@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic school dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+    const q = new URLSearchParams(location.search),
+      language = q.get("lang") || "en",
+      actor = q.get("actor") || "parent";
+    const name =
+      language === "ru"
+        ? "Осенний семестр"
+        : language === "uk"
+          ? "Осінній семестр"
+          : "Autumn term";
+    const subject =
+      language === "ru"
+        ? "Математика"
+        : language === "uk"
+          ? "Математика"
+          : "Mathematics";
+    window.fixture = {
+      revision: 1,
+      actor,
+      role: actor,
+      settings: {
+        name: "Example family",
+        modules: ["school", "routines"],
+        timezone: "Europe/Kyiv",
+      },
+      members: [
+        {
+          id: "parent",
+          name: "Alex",
+          role: "parent",
+          active: true,
+          revision: 1,
+        },
+        { id: "child", name: "Sam", role: "child", active: true, revision: 1 },
+        {
+          id: "sibling",
+          name: "Jamie",
+          role: "child",
+          active: true,
+          revision: 1,
+        },
+      ],
+      school: {
+        timetables: [
+          {
+            id: "ST000001",
+            member: "child",
+            member_revision: 1,
+            title: name,
+            valid_from: "2026-09-01",
+            valid_until: "2026-12-31",
+            exceptions: ["2026-09-14"],
+            lessons: [
+              {
+                weekday: 0,
+                start: "09:00",
+                end: "09:45",
+                subject,
+                room: "2",
+                materials: ["Notebook"],
+              },
+            ],
+            backpack_routine: { id: "R1", revision: 1 },
+            status: "active",
+            revision: 1,
+            created_by: "parent",
+            history: [
+              {
+                actor: "parent",
+                at: "2026-09-01T08:00:00Z",
+                action: "created",
+              },
+            ],
+          },
+        ],
+        upcoming: [],
+      },
+      routines: {
+        templates: [
+          {
+            id: "R1",
+            revision: 1,
+            title: "Backpack checklist",
+            description: "",
+            assignees: ["child", "sibling"],
+            creator: "parent",
+            enabled: true,
+            steps: [{ title: "Notebook", assignee: null }],
+          },
+        ],
+        runs: [],
+      },
+    };
+    window.calls = [];
+    const receipts = new Map();
+    const projection = () => {
+      const data = structuredClone(window.fixture),
+        parent = ["owner", "parent"].includes(data.role);
+      if (!data.settings.modules.includes("school")) {
+        delete data.school;
+        return data;
+      }
+      const valid = (t) => {
+        const m = data.members.find((m) => m.id === t.member);
+        return (
+          m?.active && m.role === "child" && m.revision === t.member_revision
+        );
+      };
+      const routine = (t) => {
+        const r = data.routines.templates.find(
+          (r) =>
+            r.id === t.backpack_routine?.id &&
+            r.revision === t.backpack_routine.revision &&
+            r.enabled &&
+            r.assignees.includes(t.member),
+        );
+        return data.settings.modules.includes("routines") && r
+          ? { id: r.id, revision: r.revision, title: r.title }
+          : null;
+      };
+      const visible = parent
+        ? data.school.timetables
+        : data.role === "child"
+          ? data.school.timetables.filter(
+              (t) =>
+                t.member === data.actor && t.status === "active" && valid(t),
+            )
+          : [];
+      data.school.upcoming = visible
+        .filter((t) => t.status === "active" && valid(t))
+        .flatMap((t) =>
+          t.lessons.map((l, i) => ({
+            id: `${t.id}:2026-09-07:${i}`,
+            timetable_id: t.id,
+            member: t.member,
+            date: "2026-09-07",
+            start: l.start,
+            end: l.end,
+            subject: l.subject,
+            room: l.room,
+            materials: l.materials,
+            backpack_routine: routine(t),
+          })),
+        );
+      data.school.timetables = visible.map((t) => {
+        if (parent) return { ...t, backpack_routine_current: routine(t) };
+        delete t.history;
+        delete t.created_by;
+        return { ...t, backpack_routine: routine(t) };
+      });
+      return data;
+    };
+    window.project = projection;
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type !== "family_assistant/execute")
+          throw { code: "unknown_action" };
+        window.calls.push(structuredClone(message));
+        if (receipts.has(message.operation_id))
+          return structuredClone(receipts.get(message.operation_id));
+        if (!["owner", "parent"].includes(window.fixture.role))
+          throw { code: "forbidden" };
+        const p = message.payload,
+          list = window.fixture.school.timetables,
+          current = list.find((t) => t.id === p.id);
+        if (current && current.revision !== p.revision)
+          throw { code: "conflict" };
+        let record;
+        if (message.action === "school.timetable_save") {
+          const member = window.fixture.members.find((m) => m.id === p.member);
+          if (member?.revision !== p.member_revision || member.role !== "child")
+            throw { code: "conflict" };
+          record = {
+            ...structuredClone(p),
+            id: current?.id || `ST${String(list.length + 1).padStart(6, "0")}`,
+            revision: (current?.revision || 0) + 1,
+            status: "active",
+            created_by: "parent",
+            history: [
+              ...(current?.history || []),
+              {
+                actor: "parent",
+                at: "2026-09-07T08:00:00Z",
+                action: current ? "updated" : "created",
+              },
+            ],
+          };
+          if (current) list.splice(list.indexOf(current), 1, record);
+          else list.push(record);
+        } else if (message.action === "school.timetable_archive" && current) {
+          record = current;
+          record.status = "archived";
+          record.revision++;
+          record.history.push({
+            actor: "parent",
+            at: "2026-09-07T08:00:00Z",
+            action: "archived",
+            reason: p.reason,
+          });
+        } else throw { code: "unknown_action" };
+        window.fixture.revision++;
+        const result = {
+          id: record.id,
+          revision: record.revision,
+          status: record.status,
+        };
+        receipts.set(message.operation_id, result);
+        if (window.loseResponse) {
+          window.loseResponse = false;
+          throw { code: "storage_error" };
+        }
+        return structuredClone(result);
+      },
+    };
+    const card = document.createElement("family-school-card");
+    card.setConfig({ entry_id: "synthetic", language });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+  </script>
+</html>

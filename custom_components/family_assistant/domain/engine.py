@@ -25,6 +25,7 @@ from . import (
     proposals,
     rewards,
     routines,
+    school,
     settings,
     shopping,
     shopping_series,
@@ -48,6 +49,7 @@ HANDLERS = {
     "calendar": family_calendar.handle,
     "routines": routines.handle,
     "pantry": pantry.handle,
+    "school": school.handle,
 }
 BUCKETS = (
     "members",
@@ -251,6 +253,11 @@ class Engine:
             data["routines"] = routines.view(self._state, actor)
         if actor["role"] != "guest" and "pantry" in self._state["settings"]["modules"]:
             data["pantry"] = pantry.view(self._state, actor, now)
+        if (
+            actor["role"] in {"owner", "parent", "child"}
+            and "school" in self._state["settings"]["modules"]
+        ):
+            data["school"] = school.view(self._state, actor, now)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),

@@ -25,7 +25,8 @@
           "mikrotik": "MikroTik (configure access separately)",
           "calendar": "Family calendar",
           "routines": "Family routines",
-          "pantry": "Pantry and household stock"
+          "pantry": "Pantry and household stock",
+          "school": "School timetable"
         }
       }
     },
@@ -199,7 +200,8 @@
           "mikrotik": "MikroTik network",
           "calendar": "Family calendar",
           "routines": "Family routines",
-          "pantry": "Pantry and household stock"
+          "pantry": "Pantry and household stock",
+          "school": "School timetable"
         }
       },
       "alarm_device": {
