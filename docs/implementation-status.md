@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | In progress | No public release yet |
+| Clean public source and HACS structure | Test prerelease published | alpha.2 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,8 +33,8 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS metadata, Hassfest and two-process application upgrade passed on main; deterministic runtime ZIP and offline actual-HACS install/failure rollback/upgrade passed locally; new installer CI job, live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only preflight unit-tested | Bounded counts-only validation and local-only conversion contract; actual conversion, shadow acceptance and controlled cutover still pending |
+| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.2, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only preflight and source/mapping review unit-tested | Strict Store-byte decoding, counts-only validation, immutable source/current-member mapping fingerprints; coherence capture, conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
 
@@ -48,6 +48,29 @@ credentials, ports or devices mounted. The actual Home Assistant siren platform
 is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
+
+Published test prerelease `0.1.0-alpha.2` at commit
+`49c9891c48625d3f62d7baa5c1677a06f1e17e82`. All seven jobs in CI run
+`34147012232` passed, including the offline HACS installer gate. GitHub's
+asset SHA256 matches the joined runtime below; the tag resolves to the tested
+commit. This is an isolated-evaluation prerelease, not household migration.
+
+The next development slice adds strict legacy Store-wrapper decoding with
+duplicate-key/UTF-8/JSON limits and immutable source/mapping reviews. Every source
+byte and current target member field is pinned. An explicit archive-only actor
+can preserve old history without becoming a recipient or gaining a role. Source
+coherence is not implied by a hash and no import endpoint is present. 114 focused
+review/preflight tests passed. Media diagnostics now also recognize exhausted
+byte/pending-upload capacity, not only record ceilings; all 21 retention tests
+passed. AGY's narrow read-only review identified the byte-health mismatch; root
+verified it and implemented the correction after the implementation task timed out.
+
+The joined alpha.3 development export passed 2620 Python tests (five host skips,
+23 subtests), Ruff/format, privacy/locales, the full actual-HA suite and all five
+offline HACS install/rollback/upgrade phases. Runtime-only ZIP: 200 files, SHA256
+`f46ac492f5ae2a5528991a54eb27883ac7d8a63458cf9d6131cfb48d5935800a`.
+Alpha.3 CI and publication are pending at this checkpoint. A narrow AGY review
+of the new source-review helper timed out; it is not a passing review claim.
 
 Reviewed shopping metadata editing now preserves quantities, partial purchases,
 status, creator and recurrence/merge provenance. Category, store, household-visible
@@ -78,13 +101,13 @@ mapping, coherent-source and isolated shadow-instance prerequisites.
 
 The offline HACS 2.0.5 installer gate passed for this exact joined runtime,
 including registration/install, exact installed bytes, failed-update restoration,
-successful upgrade and durable data across fresh HA processes. The new CI job
-is not yet a passed CI claim. HACS OAuth/update-entity bootstrap is outside this
+successful upgrade and durable data across fresh HA processes. The installer CI
+job subsequently passed for alpha.2. HACS OAuth/update-entity bootstrap is outside this
 gate; the specific synthetic boundaries are documented in `hacs-lab.md`.
 
 Joined runtime-only ZIP: 199 files; SHA256
 `ce2ab345f2cfcacf12b58e68254c1e4011a5f10d7e24d732ac2722d196fc6c94`.
-This is a verified development checkpoint, not a public release or household
+This runtime is now published as the alpha.2 test prerelease, not a household
 migration. The original vision's remaining module/retention/provider/network
 and migration gates remain open.
 
@@ -812,8 +835,9 @@ service call does not prove physical sound or volume.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
-- Private media still needs capacity/tombstone retention, full encrypted
-  backup/archive restore and explicit retained-content purge. Backup release
+- Private media has bounded capacity/tombstone retention and explicit retained
+  photo purge, including real-HA tests. Full HA encrypted-backup restoration is
+  still separate from verified archive creation and Store/media rehydration. Backup release
   failure keeps writes and reload gated until a successful unwind; its visible
   generation-bound Repair/retry now passes actual admin/non-admin HTTP tests.
   An active backup cannot be force-cleared; full encrypted archive restoration

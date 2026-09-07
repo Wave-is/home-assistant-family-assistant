@@ -3,7 +3,9 @@
 A local-first family workspace for Home Assistant. Shopping, tasks, wake-up
 checks, rewards, routines and family networking, using your own Telegram bot.
 
-**Development in progress. No production release yet.** The accepted product
+**Development in progress; no stable production release yet.** A
+[test prerelease](https://github.com/Wave-is/home-assistant-family-assistant/releases)
+is available for an isolated HA instance. The accepted product
 scope is in [the vision](docs/vision.md). The current implementation and test
 evidence are tracked in [implementation status](docs/implementation-status.md).
 Do not replace an existing installation with this development branch.

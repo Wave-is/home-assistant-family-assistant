@@ -646,11 +646,17 @@ def health_stats(state: dict, now) -> dict:
             if type(size) is not int or not 1 <= size <= MAX_FILE_BYTES:
                 raise DomainError("invalid_field", "size_bytes")
             counts["verified_bytes"] += size
-    if counts["nondeleted"] >= MAX_RECORDS or counts["tombstones"] >= MAX_TOMBSTONES:
+    if (
+        counts["nondeleted"] >= MAX_RECORDS
+        or counts["tombstones"] >= MAX_TOMBSTONES
+        or counts["pending"] >= MAX_PENDING_HOUSEHOLD
+        or counts["verified_bytes"] + MAX_FILE_BYTES > MAX_VERIFIED_BYTES
+    ):
         capacity = "blocked"
     elif (
         counts["nondeleted"] >= MAX_RECORDS * 9 // 10
         or counts["tombstones"] >= MAX_TOMBSTONES * 9 // 10
+        or counts["pending"] >= MAX_PENDING_HOUSEHOLD * 9 // 10
         or counts["verified_bytes"] >= MAX_VERIFIED_BYTES * 9 // 10
     ):
         capacity = "near_limit"

@@ -2,7 +2,7 @@
 
 [Русский](setup.ru.md) · [Українська](setup.uk.md)
 
-Development guide. There is **no production release yet**. Use an isolated Home
+Development guide. **Test prereleases are available, not a stable production release.** Use an isolated Home
 Assistant instance for evaluation; do not replace a working family system.
 See [implemented and pending features](implementation-status.md).
 

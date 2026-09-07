@@ -1,6 +1,6 @@
 # Legacy migration contract
 
-Status: design and read-only preflight; not an import or live cutover feature.
+Status: design, read-only preflight and immutable source/mapping review; not an import or live cutover feature.
 The old private integrations remain running until a separately verified switch.
 Only synthetic examples belong in this repository.
 
@@ -59,3 +59,26 @@ turn a cancelled penalty back into an active penalty.
 The shared domain name means legacy and public `family_assistant` code cannot
 be loaded side by side in one HA process. Shadow acceptance therefore runs in
 an isolated HA instance, not by overwriting the working component directory.
+
+## Implemented local review boundary
+
+`migration.review.read_store_pair` accepts already obtained private bytes, not
+paths, URLs or credentials. It requires the exact schema-1 Store keys
+`family_assistant.tasks` and `family_court.ledger`; unsupported wrapper fields or
+versions, duplicate JSON keys, invalid UTF-8, non-finite/unsafe numbers, excessive
+depth and size fail with fixed codes. It never reads a live Store itself.
+
+`source.review(mapping, members, mapping_revision=...)` requires a successful
+preflight and an explicit old-to-existing-member mapping with current revisions.
+Distinct old members cannot silently collapse into one target. An old history-only
+system actor can be marked `archive_only: true`, but a task owner, recipient,
+reviewer, court subject or alarm member cannot. Mapping never creates an HA user,
+role, Telegram binding, command receipt or device permission.
+
+The immutable review pins both raw exports, mapping and all current target-member
+fields. `matches(...)` fails if any has changed, even a transport binding without
+a revision bump. Its summary contains only counts, fingerprints and fixed status;
+`repr` is content-free. Explicitly private payload methods return fresh copies for
+the future local converter. These objects must not be sent to an LLM, diagnostic
+export or ordinary family view. A matching fingerprint proves unchanged inputs,
+not coherent capture: `coherence_verified` and `import_available` remain false.

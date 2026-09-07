@@ -54,6 +54,13 @@ verified/reserved byte budget, and `ok|near_limit|blocked`. It exposes no media
 IDs, blob keys, hashes, paths, names, reasons, or report content. Storage damage
 and scan health remain adapter-owned signals.
 
+`blocked` means a new upload cannot be reserved for the household: a record or
+tombstone ceiling, 20 pending uploads, or insufficient room for another 10 MiB
+reservation within the 250 MiB byte budget. Deleting blobs keep occupying budget
+until cleanup finishes. An individual member's five-pending limit does not mark
+the entire household blocked; other eligible members can still upload. No quota
+is increased and no retained content is removed to clear this indication.
+
 The Tasks card exposes a separate owner-only retained-photo removal review, for
 current and historical reports. A reason and explicit irreversible-removal checkbox
 are required; submitting a normal task report never triggers purge. The reviewed

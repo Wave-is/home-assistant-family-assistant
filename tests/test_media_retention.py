@@ -497,3 +497,107 @@ def test_tombstone_ceiling_keeps_newly_unlinked_record_recoverable(engine, now):
 
     assert state == before
     assert state["media"][deleting_id]["status"] == "deleting"
+
+
+def capacity_task(state):
+    state["tasks"]["T000099"] = {
+        "id": "T000099",
+        "revision": 1,
+        "status": "assigned",
+        "title": "Synthetic capacity",
+        "assignee": "child",
+        "assignee_revision": 1,
+        "creator": "parent",
+        "report_type": "photo",
+        "report": None,
+        "checklist": [],
+    }
+    return {
+        "purpose": "task_report",
+        "task_id": "T000099",
+        "task_revision": 1,
+        "uploader_revision": 1,
+    }
+
+
+@pytest.mark.parametrize("status", ["attached", "deleting"])
+@pytest.mark.parametrize("extra", [0, 1, media.MAX_FILE_BYTES])
+def test_byte_health_matches_room_for_next_reservation(engine, now, status, extra):
+    state = engine.snapshot()
+    payload = capacity_task(state)
+    # Exactly 240 MiB leaves room for one maximum reservation; one more byte does not.
+    state["media"] = {
+        f"M{index:032x}": {"status": status, "size_bytes": media.MAX_FILE_BYTES}
+        for index in range(24)
+    }
+    if extra:
+        state["media"]["M" + "f" * 32] = {"status": status, "size_bytes": extra}
+    before = deepcopy(state)
+    stats = media.health_stats(state, now)
+    assert stats["verified_bytes"] == 24 * media.MAX_FILE_BYTES + extra
+    assert stats["capacity"] == ("blocked" if extra else "near_limit")
+    ctx = Context(state, state["members"]["child"], now, "byte-capacity")
+    if extra:
+        with pytest.raises(DomainError, match="quota_exceeded"):
+            media.handle(ctx, "reserve", payload)
+        assert state == before
+    else:
+        assert media.handle(ctx, "reserve", payload)["status"] == "reserved"
+
+
+def test_deleting_unknown_size_still_occupies_one_full_reservation(engine, now):
+    state = engine.snapshot()
+    payload = capacity_task(state)
+    state["media"] = {
+        f"M{index:032x}": {"status": "deleting", "size_bytes": None} for index in range(25)
+    }
+    assert media.health_stats(state, now)["verified_bytes"] == media.MAX_VERIFIED_BYTES
+    assert media.health_stats(state, now)["capacity"] == "blocked"
+    with pytest.raises(DomainError, match="quota_exceeded"):
+        media.handle(
+            Context(state, state["members"]["child"], now, "deleting-cap"), "reserve", payload
+        )
+
+
+@pytest.mark.parametrize("pending", [17, 18, 19, 20])
+def test_household_pending_health_matches_reservations(engine, now, pending):
+    state = engine.snapshot()
+    payload = capacity_task(state)
+    state["media"] = {
+        f"M{index:032x}": {
+            "status": "available",
+            "size_bytes": 100,
+            "uploader": f"synthetic-{index}",
+        }
+        for index in range(pending)
+    }
+    expected = "blocked" if pending == 20 else "near_limit" if pending >= 18 else "ok"
+    assert media.health_stats(state, now)["capacity"] == expected
+    ctx = Context(state, state["members"]["child"], now, "pending-cap")
+    if pending == 20:
+        before = deepcopy(state)
+        with pytest.raises(DomainError, match="quota_exceeded"):
+            media.handle(ctx, "reserve", payload)
+        assert state == before
+    else:
+        assert media.handle(ctx, "reserve", payload)["status"] == "reserved"
+
+
+def test_per_member_pending_limit_does_not_claim_household_is_blocked(engine, now):
+    state = engine.snapshot()
+    payload = capacity_task(state)
+    state["media"] = {
+        f"M{index:032x}": {"status": "available", "size_bytes": 100, "uploader": "child"}
+        for index in range(media.MAX_PENDING_MEMBER)
+    }
+    assert media.health_stats(state, now)["capacity"] == "ok"
+    with pytest.raises(DomainError, match="quota_exceeded"):
+        media.handle(
+            Context(state, state["members"]["child"], now, "member-cap"), "reserve", payload
+        )
+    assert (
+        media.handle(
+            Context(state, state["members"]["parent"], now, "other-member"), "reserve", payload
+        )["status"]
+        == "reserved"
+    )
