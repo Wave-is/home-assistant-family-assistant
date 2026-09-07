@@ -1,6 +1,7 @@
 /* Role-scoped school timetable and upcoming lesson UI. */
 
 import { SCHOOL_COPY } from "./school-copy.js";
+import { renderSchoolImport } from "./school-import-view.js";
 
 const PARENTS = new Set(["owner", "parent"]);
 const VISIBLE_ROLES = new Set(["owner", "parent", "child"]);
@@ -831,6 +832,10 @@ export function renderSchool(card, body) {
       );
     fields.append(routineLabel);
     form.append(fields);
+    renderSchoolImport(card, draft, form, () =>
+      card._schoolDraft === draft && sameAccess(card, draft.access) &&
+      draftAllowed(card, draft) && !card._writing,
+    );
     const lessons = node("div", null, "school-lessons");
     lessons.append(node("h4", copy.lessons));
     draft.values.lessons.forEach((lesson, index) => {

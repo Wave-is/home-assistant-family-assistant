@@ -335,6 +335,84 @@ function submit(target) {
   );
 }
 
+const { calendarDraft } = await import("../custom_components/family_assistant/frontend/school-import-view.js");
+const { SCHOOL_IMPORT_COPY } = await import("../custom_components/family_assistant/frontend/school-import-copy.js");
+const importedWeek = () => ({ saved: false, timezone: "Europe/Kyiv", valid_from: "2026-09-07", valid_until: "2026-09-13", count: 1,
+  lessons: [{ weekday: 0, start: "09:00", end: "09:45", subject: "<b>Imported lesson</b>", room: "12", materials: [] }] });
+
+test("calendar proposal validates exact period and all three copy catalogs", () => {
+  for (const copy of Object.values(SCHOOL_IMPORT_COPY)) assert.deepEqual(Object.keys(copy).sort(), Object.keys(SCHOOL_IMPORT_COPY.en).sort());
+  const result = calendarDraft(importedWeek(), "2026-09-07", "Europe/Kyiv");
+  assert.equal(result.lessons[0].weekday, "0");
+  assert.equal(result.valid_until, "2026-09-13");
+  for (const patch of [{ saved: true }, { timezone: "UTC" }, { count: 2 }, { valid_until: "2026-12-31" }, { lessons: [] }]) {
+    assert.throws(() => calendarDraft({ ...importedWeek(), ...patch }, "2026-09-07", "Europe/Kyiv"));
+  }
+  const bad = importedWeek(); bad.lessons[0].end = "08:00";
+  assert.throws(() => calendarDraft(bad, "2026-09-07", "Europe/Kyiv"));
+});
+
+test("calendar read fills only unsaved draft and requires existing exact save review", async (t) => {
+  const { card, calls } = await setup(t);
+  const original = card._hass.callWS;
+  const reads = [];
+  card._hass.callWS = async (message) => {
+    if (message.type === "family_assistant/school_calendar_preview") { reads.push(clone(message)); return importedWeek(); }
+    return original(message);
+  };
+  button(card.shadowRoot, SCHOOL_COPY.en.new_timetable).click();
+  let editor = form(card, "edit");
+  setField(editor, "title", "Reviewed calendar week");
+  setField(editor, "calendar_entity", "calendar.school");
+  setField(editor, "calendar_week", "2026-09-07");
+  button(editor, SCHOOL_IMPORT_COPY.en.load).click();
+  await eventually(() => card._schoolDraft?.calendarStatus === "loaded");
+  assert.equal(reads.length, 1); assert.equal(calls.length, 0);
+  assert.equal(reads[0].entity_id, "calendar.school");
+  editor = form(card, "edit");
+  assert.equal(editor.elements.valid_until.value, "2026-09-13");
+  assert.equal(editor.querySelector('[name="subject"]').value, "<b>Imported lesson</b>");
+  assert.equal(editor.querySelector("b"), null);
+  submit(editor);
+  const review = form(card, "review");
+  assert.match(review.textContent, /Imported lesson/);
+  assert.equal(calls.length, 0);
+  const checked = review.querySelector('[name="reviewed"]');
+  checked.checked = true; checked.dispatchEvent(new Event("change", { bubbles: true }));
+  submit(review);
+  await eventually(() => calls.length === 1 && card._schoolDraft === null);
+  assert.equal(calls[0].action, "school.timetable_save");
+  assert.equal(calls[0].payload.valid_until, "2026-09-13");
+  assert.equal(calls[0].payload.member, "child-2");
+});
+
+test("delayed calendar result cannot overwrite an edited draft or a revoked parent", async (t) => {
+  for (const revoke of [false, true]) {
+    const { card, state, calls } = await setup(t);
+    const original = card._hass.callWS;
+    let resolve;
+    card._hass.callWS = (message) => message.type === "family_assistant/school_calendar_preview" ? new Promise((done) => { resolve = done; }) : original(message);
+    button(card.shadowRoot, SCHOOL_COPY.en.new_timetable).click();
+    const editor = form(card, "edit");
+    setField(editor, "calendar_entity", "calendar.school");
+    setField(editor, "calendar_week", "2026-09-07");
+    button(editor, SCHOOL_IMPORT_COPY.en.load).click();
+    assert.ok(resolve);
+    if (revoke) {
+      state.role = "adult"; state.members.find((m) => m.id === state.actor).role = "adult";
+      await card.refresh();
+    } else setField(editor, "title", "Changed while reading");
+    resolve(importedWeek());
+    await tick(); await tick();
+    assert.equal(calls.length, 0);
+    if (revoke) assert.equal(card._schoolDraft, null);
+    else {
+      assert.equal(card._schoolDraft.values.title, "Changed while reading");
+      assert.notEqual(card._schoolDraft.calendarStatus, "loaded");
+    }
+  }
+});
+
 function fillLesson(row, values) {
   for (const [name, value] of Object.entries(values))
     setField(row, name, value);

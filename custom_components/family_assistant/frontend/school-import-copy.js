@@ -1,0 +1,32 @@
+export const SCHOOL_IMPORT_COPY = {
+  en: {
+    title: "Import a calendar week",
+    help: "Read a school calendar already connected to Home Assistant. This replaces dates and lessons only in this unsaved draft. It covers one Monday–Sunday week, not an inferred repeating school year. Check every lesson and materials before the final save. All-day, overlapping or unsupported events are refused; nothing is silently skipped.",
+    calendar: "Calendar entity ID",
+    week: "Monday of the selected week",
+    load: "Load into draft",
+    loading: "Reading calendar…",
+    loaded: "Week loaded into the draft, not saved. Review the child, dates, lessons, materials and routine link.",
+    failure: "Could not use that week. Check calendar access, the Monday date and timed lessons without overlaps. Nothing was saved.",
+  },
+  ru: {
+    title: "Импорт недели из календаря",
+    help: "Прочитать школьный календарь, уже подключённый к Home Assistant. Даты и уроки заменятся только в несохранённом черновике. Импорт охватывает одну неделю с понедельника по воскресенье, а не весь учебный год. Проверьте каждый урок и материалы перед сохранением. События на весь день, пересечения и неподдерживаемые события отклоняются; ничего не пропускается молча.",
+    calendar: "ID сущности календаря",
+    week: "Понедельник выбранной недели",
+    load: "Загрузить в черновик",
+    loading: "Читаю календарь…",
+    loaded: "Неделя загружена в черновик, но не сохранена. Проверьте ребёнка, даты, уроки, материалы и связанную рутину.",
+    failure: "Не удалось использовать эту неделю. Проверьте доступ к календарю, дату понедельника и уроки со временем без пересечений. Ничего не сохранено.",
+  },
+  uk: {
+    title: "Імпорт тижня з календаря",
+    help: "Прочитати шкільний календар, уже підключений до Home Assistant. Дати й уроки заміняться лише в незбереженій чернетці. Імпорт охоплює один тиждень із понеділка до неділі, а не весь навчальний рік. Перевірте кожен урок і матеріали перед збереженням. Події на весь день, перетини та непідтримувані події відхиляються; нічого не пропускається мовчки.",
+    calendar: "ID сутності календаря",
+    week: "Понеділок вибраного тижня",
+    load: "Завантажити в чернетку",
+    loading: "Читаю календар…",
+    loaded: "Тиждень завантажено в чернетку, але не збережено. Перевірте дитину, дати, уроки, матеріали та пов’язану рутину.",
+    failure: "Не вдалося використати цей тиждень. Перевірте доступ до календаря, дату понеділка й уроки з часом без перетинів. Нічого не збережено.",
+  },
+};

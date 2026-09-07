@@ -271,6 +271,9 @@ async def main():
             from ha_school_smoke import verify_school
 
             school_id = await verify_school(hass, entry, user, child_id)
+            from ha_school_import_smoke import verify_school_import
+
+            school_import_child_id = await verify_school_import(hass, entry, user, child_id)
             from ha_maintenance_smoke import verify_maintenance
 
             maintenance_ids = await verify_maintenance(hass, entry, user, child_id)
@@ -330,6 +333,7 @@ async def main():
 
             await verify_legacy_archive(hass)
             # Reload reads the same Store; HACS code updates do not replace it.
+            members_before_reload = entry.runtime_data.engine.snapshot()["members"]
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
             active_routine = next(
                 r for r in routines_before_reload.values() if r["status"] == "active"
@@ -417,8 +421,10 @@ async def main():
                 == active_routine["steps"][0]["nonce"]
             )
             assert any(r["status"] == "completed" for r in routines_after_reload.values())
-            # The private dietary scenario adds one separately authenticated adult.
-            assert len(entry.runtime_data.engine.view("owner")["members"]) == 4
+            # Dietary adds one adult; the import acceptance adds one synthetic child.
+            assert len(entry.runtime_data.engine.view("owner")["members"]) == 5
+            assert entry.runtime_data.engine.snapshot()["members"] == members_before_reload
+            assert members_before_reload[school_import_child_id]["role"] == "child"
             assert await hass.config_entries.async_unload(entry.entry_id)
             assert not hass.data["family_assistant"]["entries"]
             from homeassistant.helpers import llm

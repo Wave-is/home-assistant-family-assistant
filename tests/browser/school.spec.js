@@ -1,4 +1,75 @@
 import { test, expect } from "@playwright/test";
+import { SCHOOL_IMPORT_COPY } from "../../custom_components/family_assistant/frontend/school-import-copy.js";
+import { SCHOOL_COPY } from "../../custom_components/family_assistant/frontend/school-copy.js";
+
+for (const language of ["en", "ru", "uk"]) {
+  test(`Calendar import stays unsaved until exact review (${language})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/tests/fixtures/school.html?lang=${language}`);
+    await page.evaluate(() => {
+      const original = window.card._hass.callWS;
+      window.calendarReads = [];
+      window.card._hass.callWS = async (message) => {
+        if (message.type !== "family_assistant/school_calendar_preview") return original(message);
+        window.calendarReads.push(message);
+        return { saved: false, timezone: "Europe/Kyiv", valid_from: "2026-09-07", valid_until: "2026-09-13", count: 1,
+          lessons: [{ weekday: 0, start: "09:00", end: "09:45", subject: "<script>Fictional calendar lesson</script>", room: "12", materials: [] }] };
+      };
+    });
+    const card = page.locator("family-school-card");
+    await card.getByRole("button", { name: SCHOOL_COPY[language].new_timetable, exact: true }).click();
+    let form = card.locator('[data-school-form="edit"]');
+    await form.locator('[name="title"]').fill("Reviewed single calendar week");
+    await form.locator('[name="calendar_entity"]').fill("calendar.school");
+    await form.locator('[name="calendar_week"]').fill("2026-09-07");
+    await form.getByRole("button", { name: SCHOOL_IMPORT_COPY[language].load, exact: true }).click();
+    await expect(form).toContainText(SCHOOL_IMPORT_COPY[language].loaded);
+    await expect(form.locator('[name="valid_until"]')).toHaveValue("2026-09-13");
+    await expect(form.locator('[name="subject"]')).toHaveValue("<script>Fictional calendar lesson</script>");
+    expect(await page.evaluate(() => window.calls.length)).toBe(0);
+    expect(await page.evaluate(() => window.calendarReads.length)).toBe(1);
+    await form.locator('button[type="submit"]').click();
+    form = card.locator('[data-school-form="review"]');
+    await expect(form).toContainText("Fictional calendar lesson");
+    await expect(form.locator("script")).toHaveCount(0);
+    expect(await page.evaluate(() => window.calls.length)).toBe(0);
+    if (language === "uk") await page.screenshot({ path: "test-results/school-calendar-import-uk.png", fullPage: true });
+    await form.locator('[name="reviewed"]').check();
+    await form.locator('button[type="submit"]').click();
+    await expect(form).toHaveCount(0);
+    const calls = await page.evaluate(() => window.calls);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].action).toBe("school.timetable_save");
+    expect(calls[0].payload.valid_until).toBe("2026-09-13");
+    expect(calls[0].payload.member).toBe("sibling");
+  });
+}
+
+test("Calendar read cannot apply after parent loses authority", async ({ page }) => {
+  await page.goto("/tests/fixtures/school.html");
+  await page.evaluate(() => {
+    const original = window.card._hass.callWS;
+    window.card._hass.callWS = (message) => message.type === "family_assistant/school_calendar_preview" ?
+      new Promise((resolve) => { window.finishCalendarRead = resolve; }) : original(message);
+  });
+  const card = page.locator("family-school-card");
+  await card.getByRole("button", { name: "New timetable", exact: true }).click();
+  const form = card.locator('[data-school-form="edit"]');
+  await form.locator('[name="calendar_entity"]').fill("calendar.school");
+  await form.locator('[name="calendar_week"]').fill("2026-09-07");
+  await form.getByRole("button", { name: "Load into draft", exact: true }).click();
+  await page.evaluate(async () => {
+    window.fixture.role = "adult";
+    window.fixture.members[0].role = "adult";
+    window.fixture.members[0].revision++;
+    await window.card.refresh();
+    window.finishCalendarRead({ saved: false, timezone: "Europe/Kyiv", valid_from: "2026-09-07", valid_until: "2026-09-13", count: 1,
+      lessons: [{ weekday: 0, start: "09:00", end: "09:45", subject: "Private delayed lesson", room: "", materials: [] }] });
+  });
+  await expect(card.locator(".school-section")).toHaveCount(0);
+  await expect(card).not.toContainText("Private delayed lesson");
+  expect(await page.evaluate(() => window.calls.length)).toBe(0);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-09-07T07:00:00Z"));

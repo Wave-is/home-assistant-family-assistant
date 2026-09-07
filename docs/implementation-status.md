@@ -23,7 +23,7 @@ Nothing is production-ready solely because a mock test passes.
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
-| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; reviewed imports and household acceptance pending |
+| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; explicit one-week HA calendar draft import tested; photograph import and household acceptance pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
 | Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self-consent, source lineage, fresh/unknown projection; guardian consent, presence-aware notifications and household acceptance pending |
@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.6, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; new native encrypted-restore job added, CI pending; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.6 runtime ZIP and tag verified; all eight jobs passed for subsequent native-restore checkpoint, including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.7 candidate pending; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores and no-report task proposals; explicit private-reminder/report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
@@ -87,9 +87,30 @@ The restart instruction is consumed once; backup state returns to idle. Fifteen
 pure runner tests also passed. The full local suite passed 2988 tests, five host
 skips and 23 subtests, plus Ruff/format (396 files), locales and privacy checks.
 The native four-phase gate passed again with startup-time service observation.
-CI coverage is added, not yet a passing CI claim.
+All eight CI jobs passed in `34157304040` at
+`d0757556a0533345d8814654d0fb6c9cfd120bf5`, including native encrypted restore.
 This is Core/Container configuration restoration, not HAOS/Supervisor add-ons,
 database history restoration, live installation restore or household cutover.
+
+The alpha.7 candidate adds explicit, non-mutating school-calendar week import.
+42 pure conversion tests and 12 school card tests passed, as did ten targeted
+Chromium scenarios including EN/RU/UK reviewed import and in-flight role revocation.
+The mobile UK review screenshot was inspected. The full actual-HA suite passed
+with real CalendarEntity, authenticated parent/child/outsider requests, independent
+read-permission guard and in-flight HA-user revocation. Concurrent-read and
+explicitly confirmed Store/replay acceptance also passed; the full run then found
+an outdated fixture assertion expecting four members after this test added a
+fifth. The assertion now verifies five and exact full member state across reload.
+The full local suite passed 3030 Python tests, five host skips and 23 subtests,
+Ruff/format, privacy/locales, 438 Node cases (including six pretest cases) and
+179 Chromium scenarios. Exact final runtime candidate: 211 files, 2791985 runtime
+bytes, 750124 ZIP bytes, SHA256
+`06dbdd47bb43fa3e838b1394e72f39a0d3cdd15ce5712077d2417f8c6e5ab639`.
+The complete exact-artifact HA suite, native encrypted-restore gate and all five
+offline HACS install/failed-update rollback/upgrade phases passed against the
+published alpha.3 baseline. CI/publication are next. AGY's bounded
+implementation and follow-up review timed out without files/results; this slice
+was implemented/reviewed by root, not attributed to a completed AGY review.
 
 Published alpha.4: real Qwen3.5-9B synthetic evaluation passed 12 cases
 after reproducing and fixing envelope, command selection, alarm-day and quote

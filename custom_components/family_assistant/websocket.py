@@ -15,6 +15,7 @@ def async_register_api(hass):
     from .assistant.chat_api import chat
     from .digest_api import preview as digest_preview
     from .recipes.api import recipes
+    from .school_import_api import preview as school_calendar_preview
 
     for handler in (
         households,
@@ -25,6 +26,7 @@ def async_register_api(hass):
         network_refresh,
         recipes,
         digest_preview,
+        school_calendar_preview,
     ):
         websocket_api.async_register_command(hass, handler)
 

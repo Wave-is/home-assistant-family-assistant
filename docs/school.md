@@ -57,7 +57,7 @@ after its timetable is archived or School is disabled.
 Existing private task and routine notifications apply; school timetables and
 homework content are not published to a family group or automatically sent to
 LLM/search. This stage does **not** create homework automatically, publish a HA
-calendar, import photographs/calendars or control devices. Preparation reminders
+calendar, import photographs or control devices. Preparation reminders
 require the separate explicit controls described below.
 
 For preparation reminders, the owner enables the global switch in integration
@@ -128,7 +128,7 @@ homework, control a device or award/deduct points.
 Работают существующие личные уведомления задач и распорядков. Расписание и содержимое
 домашней работы не публикуются в семейную группу и не отправляются автоматически
 в ИИ или поиск. Автосоздание домашней работы, публикация календаря HA и
-проверяемый импорт фото/календаря ещё предстоят.
+проверяемый импорт фотографий ещё предстоят. Импорт недели календаря описан ниже.
 Этот модуль не управляет устройствами.
 
 Для напоминаний о сборах владелец включает общий переключатель в **Настройках**
@@ -194,7 +194,48 @@ homework, control a device or award/deduct points.
 Діють наявні приватні сповіщення завдань і розпорядків. Розклад і вміст домашньої
 роботи не публікуються в сімейну групу та не передаються автоматично до ШІ чи пошуку.
 Автостворення домашньої роботи, календар HA та
-підтверджуваний імпорт фото/календаря залишаються наступними етапами.
+підтверджуваний імпорт фотографій залишаються наступними етапами. Імпорт тижня календаря описано нижче.
+
+## Reviewed calendar week / Импорт недели / Імпорт тижня
+
+**English.** Connect a school calendar to Home Assistant first, using its own
+calendar integration. In the School timetable editor, choose or enter that
+calendar entity ID and the Monday of the week to import, then **Load into draft**.
+Only parents/owners with current HA read permission can request it. It reads one
+week within a year of today; it never modifies the calendar or copies private
+descriptions into the assistant. Dates, lessons and exception dates in this
+unsaved draft are replaced. Review the child, title, materials and routine link,
+then use the normal exact-review/save step. Import does not infer recurrence for
+the term: validity initially ends on that Sunday. Extending it is an explicit
+manual decision. All-day, overlapping, outside-week, ambiguous DST-fold and
+non-minute events are refused as a whole, without silently losing rows. Fix the
+source or enter those lessons manually. There is no background synchronization.
+
+**Русский.** Сначала подключите школьный календарь к Home Assistant его обычной
+интеграцией. В редакторе расписания выберите или укажите ID сущности календаря и
+понедельник нужной недели, затем нажмите **Загрузить в черновик**. Нужны роль
+родителя/владельца и действующее право чтения календаря в HA. Читается одна неделя
+в пределах года от сегодняшней даты. Календарь не изменяется; подробные описания
+его событий не передаются помощнику. Только в несохранённом черновике заменятся
+даты, уроки и даты-исключения. Проверьте ребёнка, название, материалы и рутину,
+затем пройдите обычный просмотр и сохранение. Период заканчивается в воскресенье;
+продление на семестр требует отдельного ручного решения. События на весь день,
+пересечения, выход за неделю, неоднозначное время перевода часов и секунды
+отклоняются целиком — строки не теряются молча. Исправьте источник или введите
+такие уроки вручную. Фоновой синхронизации нет.
+
+**Українська.** Спочатку підключіть шкільний календар до Home Assistant його
+звичайною інтеграцією. У редакторі розкладу оберіть або вкажіть ID сутності
+календаря й понеділок потрібного тижня, потім **Завантажити в чернетку**. Потрібні
+роль батьків/власника та чинне право читання календаря в HA. Читається один
+тиждень у межах року від сьогодні. Календар не змінюється; докладні описи подій
+не передаються помічнику. Лише в незбереженій чернетці заміняться дати, уроки й
+дати-виключення. Перевірте дитину, назву, матеріали та рутину, а потім виконайте
+звичайний перегляд і збереження. Період завершується в неділю; продовження на
+семестр потребує окремого ручного рішення. Події на весь день, перетини, вихід
+за тиждень, неоднозначний час переведення годинника та секунди відхиляються
+цілком — рядки не губляться мовчки. Виправте джерело або введіть такі уроки
+вручну. Фонової синхронізації немає.
 Модуль не керує пристроями.
 
 Для нагадувань власник вмикає загальний перемикач у **Налаштуваннях** інтеграції,
