@@ -4,7 +4,7 @@ import json
 from copy import deepcopy
 
 
-def synthetic_source():
+def synthetic_source(*, lifecycle=False):
     from custom_components.family_assistant.migration.review import ASSISTANT_KEY, COURT_KEY
 
     stamp = "2026-09-07T08:00:00+00:00"
@@ -127,6 +127,8 @@ def synthetic_source():
             }
         )
     ledger.update(next_task_sequence=5, next_event_sequence=8)
+    if lifecycle:
+        extend_lifecycle(ledger, stamp)
     court = {
         "schema_version": 1,
         "week_id": "source-period",
@@ -168,6 +170,75 @@ def synthetic_source():
     return wrapped(assistant, ASSISTANT_KEY), wrapped(court, COURT_KEY), mapping, members
 
 
+def extend_lifecycle(ledger, stamp):
+    """Native Store acceptance also covers notes and a rejected reassignment."""
+    personal = ledger["tasks"]["T000003"]
+    ledger["history"][2].update(
+        type="created",
+        from_state=None,
+        to_state="accepted",
+        details={
+            "assignee": "old-parent",
+            "reviewer": None,
+            "requires_report": False,
+            "report_type": None,
+        },
+    )
+    for identifier, kind, actor, destination, details in [
+        ("T000003", "completed", "old-parent", "completed", {"note": "Private completion note"}),
+        ("T000003", "archived", "old-parent", "archived", {"note": "Private archive note"}),
+        (
+            "T000004",
+            "changes_requested",
+            "old-parent",
+            "needs_changes",
+            {"note": "Review before reassignment"},
+        ),
+        (
+            "T000004",
+            "revised",
+            "old-parent",
+            "assigned",
+            {"previous": {"assignee": "old-child"}, "current": {"assignee": "old-parent"}},
+        ),
+        (
+            "T000004",
+            "submitted",
+            "old-parent",
+            "submitted",
+            {"report": "Report after reassignment"},
+        ),
+    ]:
+        row = ledger["tasks"][identifier]
+        sequence = ledger["next_event_sequence"]
+        at = f"2026-09-07T08:{sequence:02}:00+00:00"
+        ledger["history"].append(
+            {
+                "sequence": sequence,
+                "task_id": identifier,
+                "type": kind,
+                "actor": actor,
+                "at": at,
+                "from_state": row["state"],
+                "to_state": destination,
+                "details": details,
+            }
+        )
+        if kind == "archived":
+            row.update(archived_from_state=row["state"], archived_at=at)
+        if kind == "completed":
+            row["completed_at"] = at
+        if kind == "revised":
+            row.update(assignee="old-parent", submitted_at=None, accepted_at=None, started_at=None)
+        elif kind == "submitted":
+            row.update(submitted_at=at, accepted_at=at, last_note=details["report"])
+        else:
+            row["last_note"] = details["note"]
+        row["state"] = destination
+        ledger["next_event_sequence"] += 1
+    personal["accepted_at"] = stamp
+
+
 def proposals(review, members):
     from custom_components.family_assistant.migration.alarm_plan import build_alarm_plan
     from custom_components.family_assistant.migration.court_plan import build_court_plan
@@ -195,7 +266,7 @@ async def verify_legacy_archive(hass):
     )
     from custom_components.family_assistant.migration.review import read_store_pair
 
-    assistant, court, mapping, members = synthetic_source()
+    assistant, court, mapping, members = synthetic_source(lifecycle=True)
     review = read_store_pair(assistant, court).review(mapping, members, mapping_revision=1)
     expected = proposals(review, members)
     content = encode_private_review(review, members=members)
@@ -211,8 +282,18 @@ async def verify_legacy_archive(hass):
     assert len(expected[3]["proposals"]) == 3
     assert expected[3]["blocked"] == []
     assert expected[3]["proposals"][1]["record"]["delivery_scope"] == "personal"
+    personal = expected[3]["proposals"][1]["record"]
+    assert personal["completion_note"] == "Private completion note"
+    assert personal["archive_note"] == "Private archive note"
+    assert personal["report"] is None
     text_report = expected[3]["proposals"][2]["record"]
-    assert text_report["report"] == "Fictional corrected report"
+    assert (
+        text_report["assignee"] == "owner" and text_report["report"] == "Report after reassignment"
+    )
+    assert len(text_report["previous_reports"]) == 2
+    assert text_report["previous_reports"][1]["report"] == "Fictional corrected report"
+    assert text_report["previous_reports"][1]["assignee"] == "child"
+    assert text_report["previous_reports"][1]["reassigned_at"] == "2026-09-07T08:11:00+00:00"
     assert text_report["previous_reports"][0]["report"] == "Fictional first report"
     assert text_report["previous_reports"][0]["review_note"] == "Fictional review feedback"
     assert "review_note" not in text_report

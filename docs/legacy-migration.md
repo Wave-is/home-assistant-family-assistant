@@ -115,8 +115,9 @@ revision is retained, and the modern task engine permits only that person to vie
 complete or archive. No parent review, reassignment, group incident or penalty is
 introduced. The complete raw reminder and history remain in the private archive.
 See [personal reminders](personal-reminders.md) for privacy and transport limits.
-Reminders with unsupported notes/report state still block, as do report-required
-ordinary tasks; this is not a partial-import permission or a coherence claim.
+Reminders with unsupported notes/report state still block; later text-history
+support below describes convertible ordinary report tasks. This is not a
+partial-import permission or a coherence claim.
 
 ## Joined conversion review and private archive
 
@@ -163,12 +164,24 @@ the proposal explicitly states the modern `household_parents` review policy.
 The source history, submission timestamps, prior reports, feedback and separate
 completion/cancellation/archive notes remain distinct. An old empty report is
 preserved as empty, not fabricated or automatically completed. Unknown events,
-inconsistent timestamps/notes and reassignment history are explicit blockers.
+inconsistent timestamps/notes and unverified assignment chains are explicit blockers.
+Explicit reassignment archives the former assignee's report and review with
+identity/submission/reassignment stamps. The new assignee receives no old report;
+assigning back does not restore one. Old reports remain parent-only.
+No-report tasks and personal reminders reconstruct separate terminal notes from
+explicit history without inventing a submission, review authority or approval.
 Nonparent designated reviewers require a separate authority review. The complete
 old/new reviewer-set comparison still belongs to capture/cutover acceptance;
 the proposal does not grant a role or constitute authorization to import.
 A Telegram photo reference is not a verified
 local attachment. All original notes and history remain in the private archive.
+`getFile` requires a file identifier; an old event/message reference alone is not
+one. Telegram's pending update queue is not a history archive and retains updates
+for at most 24 hours. Forwarding a message is a new external send, not read-only
+retrieval, so it is not used as an automatic migration probe.
+See [Telegram Bot API: updates](https://core.telegram.org/bots/api#getting-updates),
+[files](https://core.telegram.org/bots/api#getfile) and
+[forwarding](https://core.telegram.org/bots/api#forwardmessage).
 **Zero reminder and penalty settings alone are not a shadow isolation mechanism:**
 an open overdue task can still produce an incident when its module is activated.
 The complete shadow runtime must keep all modules/transports/effects off, then

@@ -1,4 +1,4 @@
-"""Reconstruct explicit text report events; never interpret an overloaded note."""
+"""Reconstruct explicit task history; never guess the meaning of an old note."""
 
 from copy import deepcopy
 from datetime import datetime
@@ -69,21 +69,33 @@ TERMINAL = {
 
 
 def project_text_history(row, events, mapping, members):
+    """Reconstruct report rounds only from explicit submission/review events."""
+    return _project_history(row, events, mapping, members, reports=True)
+
+
+def project_unreported_history(row, events, mapping, members):
+    """Separate completion/cancellation/archive notes without inventing a report."""
+    return _project_history(row, events, mapping, members, reports=False)["fields"]
+
+
+def _project_history(row, events, mapping, members, *, reports):
     """Only validated, current-mapped parent review; no implicit role creation.
 
-    Reassignment remains an explicit blocker: the old ledger retained last_note
-    after replacing an assignee, and source identity history needs separate review.
-    Raw history is retained by the caller even for blocked records.
+    Explicit assignment changes archive the prior person's report; the legacy
+    last_note is retained solely for source reconciliation, never reassigned to
+    the new person. Raw history remains archived even for blocked records.
     """
     if (
-        row.get("kind") != "task"
-        or row.get("requires_report") is not True
-        or row.get("report_type") != "text"
+        row.get("kind") not in ({"task"} if reports else {"task", "reminder"})
+        or row.get("requires_report") is not reports
+        or row.get("report_type") != ("text" if reports else None)
+        or (not reports and row.get("reviewer") is not None)
     ):
         _fail()
-    reviewer = _binding(row.get("reviewer"), mapping, members, parent=True)
-    assignee = _binding(row.get("assignee"), mapping, members)
-    fields = {"report_type": "text", "report": None}
+    reviewer = _binding(row.get("reviewer"), mapping, members, parent=True) if reports else None
+    _binding(row.get("assignee"), mapping, members)
+    assignee_key, assignee = None, None
+    fields = {"report_type": "text" if reports else "none", "report": None}
     current, previous, last_note, state = None, [], None, None
     last_at, sequence = _stamp(row.get("created_at")), 0
     if type(events) is not list or not events:
@@ -111,13 +123,15 @@ def project_text_history(row, events, mapping, members):
                 or at != _stamp(row["created_at"])
             ):
                 _fail()
-            if event.get("actor") != row.get("creator") or details.get("assignee") != row.get(
-                "assignee"
-            ):
-                _fail("task_report_reassignment_review_required")
+            if event.get("actor") != row.get("creator"):
+                _fail()
+            assignee_key = details.get("assignee")
+            assignee = _binding(assignee_key, mapping, members)
+            if destination != ("accepted" if assignee_key == row.get("creator") else "assigned"):
+                _fail()
             if (
-                details.get("requires_report") is not True
-                or details.get("report_type") != "text"
+                details.get("requires_report") is not reports
+                or details.get("report_type") != ("text" if reports else None)
                 or details.get("reviewer") != row.get("reviewer")
             ):
                 _fail()
@@ -125,9 +139,10 @@ def project_text_history(row, events, mapping, members):
             _fail()
         elif kind == "submitted":
             if (
-                state not in OPEN
+                not reports
+                or state not in OPEN
                 or destination != "submitted"
-                or event.get("actor") != row.get("assignee")
+                or event.get("actor") != assignee_key
             ):
                 _fail()
             _binding(event.get("actor"), mapping, members)
@@ -148,7 +163,12 @@ def project_text_history(row, events, mapping, members):
             }
             last_note = report or None
         elif kind == "changes_requested":
-            if state != "submitted" or destination != "needs_changes" or current is None:
+            if (
+                not reports
+                or state != "submitted"
+                or destination != "needs_changes"
+                or current is None
+            ):
                 _fail()
             _binding(event.get("actor"), mapping, members, parent=True)
             last_note = _body(details.get("note"))
@@ -160,27 +180,70 @@ def project_text_history(row, events, mapping, members):
                 or (kind != "archived" and state not in OPEN | {"submitted"})
             ):
                 _fail()
-            if kind == "completed":
+            if kind == "completed" and reports:
                 _binding(event.get("actor"), mapping, members, parent=True)
                 if state != "submitted" and details.get("direct_parent_confirmation") is not True:
                     _fail()
+            elif kind == "completed":
+                if event.get("actor") not in {row.get("creator"), assignee_key} or state not in {
+                    "accepted",
+                    "in_progress",
+                    "overdue",
+                }:
+                    _fail("task_report_identity_review_required")
+                _binding(event.get("actor"), mapping, members)
+            elif not reports:
+                actor = event.get("actor")
+                _binding(
+                    actor, mapping, members, parent=actor not in {row.get("creator"), assignee_key}
+                )
             note = _body(details.get("note"), empty=True)
             if note:
                 last_note = note
                 fields[TERMINAL[kind]] = note
         elif kind == "revised":
+            _binding(
+                event.get("actor"),
+                mapping,
+                members,
+                parent=reports or event.get("actor") != row.get("creator"),
+            )
             before, after = details.get("previous"), details.get("current")
             if (
                 not isinstance(before, dict)
                 or not isinstance(after, dict)
-                or before.get("assignee") != row.get("assignee")
-                or after.get("assignee") != row.get("assignee")
+                or before.get("assignee") != assignee_key
             ):
                 _fail("task_report_reassignment_review_required")
             if state not in OPEN or destination not in OPEN:
                 _fail()
+            next_key = after.get("assignee")
+            next_assignee = _binding(next_key, mapping, members)
+            if next_key != assignee_key:
+                if destination not in {"assigned", "overdue"}:
+                    _fail()
+                if current is not None:
+                    previous.append(
+                        {
+                            **current,
+                            "review_note": current.get("review_note"),
+                            "reassigned_at": event["at"],
+                        }
+                    )
+                current = None
+                assignee_key, assignee = next_key, next_assignee
+            elif state != "overdue" and destination not in {state, "overdue"}:
+                _fail()
         elif kind in PASSIVE:
+            if kind in {"accepted", "started"} and event.get("actor") != assignee_key:
+                _fail("task_report_identity_review_required")
             if destination not in PASSIVE[kind]:
+                _fail()
+            if (
+                (kind == "accepted" and state not in {"assigned", "overdue"})
+                or (kind == "started" and state not in {"accepted", "needs_changes", "overdue"})
+                or (kind == "overdue" and state == "overdue")
+            ):
                 _fail()
             if (
                 kind in {"accepted", "started", "overdue", "missed_and_rolled_over"}
@@ -194,7 +257,17 @@ def project_text_history(row, events, mapping, members):
                 _fail()
         else:
             _fail()
+        if row.get("kind") == "reminder" and (
+            assignee_key != row.get("creator")
+            or (
+                kind not in {"overdue", "missed_and_rolled_over"}
+                and event.get("actor") != assignee_key
+            )
+        ):
+            _fail("task_report_identity_review_required")
         state = destination
+    if assignee_key != row.get("assignee"):
+        _fail("task_report_reassignment_review_required")
     if state != row.get("state") or last_note != row.get("last_note"):
         _fail()
     submitted = current.get("submitted_at") if current else None

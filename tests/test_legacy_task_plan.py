@@ -366,7 +366,6 @@ def test_task_with_reviewer_blocked_with_task_report_review_required():
         {"requires_report": False, "report_type": "photo"},
         {"requires_report": False, "report_type": "text"},
         {"requires_report": False, "submitted_at": STAMP},
-        {"requires_report": False, "last_note": "some note"},
     ],
 )
 def test_invalid_report_combinations_blocked(changes):
@@ -378,6 +377,17 @@ def test_invalid_report_combinations_blocked(changes):
     assert plan.summary()["issues"] == [{"code": "task_report_settings_unsupported", "count": 1}]
     assert plan.private_data()["blocked"] == [
         {"source_task": "T000001", "code": "task_report_settings_unsupported"}
+    ]
+
+
+def test_no_report_note_without_explicit_history_still_blocks():
+    args = fixture()
+    args[0]["tasks"]["T000001"]["last_note"] = "some note"
+    _, plan = plan_for(*args)
+    assert plan.summary()["record_proposals_count"] == 0
+    assert plan.summary()["issues"] == [{"code": "task_report_history_review_required", "count": 1}]
+    assert plan.private_data()["blocked"] == [
+        {"source_task": "T000001", "code": "task_report_history_review_required"}
     ]
 
 

@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.8 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.9 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,10 +33,34 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.8 runtime ZIP/tag verified, all eight Checks jobs passed at 8f7e854 (34163195733), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.9 candidate pending; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.9 runtime ZIP/tag verified, all eight Checks jobs passed at 46df777 (34164907978), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.10 candidate pending; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
+## Task lifecycle candidate, 2026-09-08
+
+Alpha.10 adds verified text-report reassignment chains and separate terminal
+notes for no-report tasks and self-only reminders. Former reports remain
+parent-only; assignment back never restores an earlier confirmation. Invalid
+assignment actors, source state transitions and stale member epochs fail closed.
+Twenty-five synthetic cases through the actual private legacy ledger API passed;
+no household source was read. Full local3175 Python tests, five skips and23
+subtests passed, as did414-file Ruff/format, locales/privacy,440 main Node tests
+and185 Chromium scenarios. AGY's assigned test attempt and focused review timed
+out without files/results; root implemented and verified this slice.
+
+Exact candidate:214 runtime files,2821105 runtime bytes,758043 ZIP bytes,
+SHA256 `f0d531f9fc251f69a7fd93b85c18d57ce7b8c17259e2d48ca1ffcf08870c77d7`.
+The complete isolated HA 2026.8.2 suite passed, including exact Store archive
+roundtrip and reproducible proposals for reassignment and private terminal notes.
+Exact commit CI remains pending. No apply/import capability, active transport or
+production migration is introduced.
+
 ## Text report checkpoint, 2026-09-08
+
+Published alpha.9 at `46df777950d2ed58a3df31ec3151b686bfd1d0b0`: all eight
+Checks jobs passed in `34164907978`. Exact final tag and asset digest matched the
+candidate recorded below. The earlier pending wording records the pre-CI stage;
+the final CI did verify the exact-offset and archived-close additions too.
 
 The alpha.9 slice fixes text resubmission history and stale review notes, retaining
 submission times and identity stamps. Parent-only RU/UK/EN history paging is
@@ -961,7 +985,7 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   persisting intent. The calendar checkpoint passed the actual HA CI job too.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
-- Test prereleases through alpha.4 are published; no migration or HACS default submission yet.
+- Test prereleases through alpha.9 are published; no migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;
@@ -992,12 +1016,13 @@ service call does not prove physical sound or volume.
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
 - Private media has bounded capacity/tombstone retention and explicit retained
-  photo purge, including real-HA tests. Full HA encrypted-backup restoration is
-  still separate from verified archive creation and Store/media rehydration. Backup release
+  photo purge, including real-HA tests. Native encrypted Core restoration is now
+  verified separately from archive creation and Store/media rehydration. Backup release
   failure keeps writes and reload gated until a successful unwind; its visible
   generation-bound Repair/retry now passes actual admin/non-admin HTTP tests.
-  An active backup cannot be force-cleared; full encrypted archive restoration
-  remains a separate release gate.
+  An active backup cannot be force-cleared. Native encrypted Core/Container
+  archive restoration has since passed the isolated CI gate documented above;
+  HAOS/Supervisor, history-database and live household restoration are not claimed.
 - Opt-in real Qwen evaluation now runs against checked-in fictional fixtures only.
   It exposed schema, alarm-day and quote-planning defects; see model-evaluation.md.
   Wider language/model acceptance remains pending. Local Ollama was not started

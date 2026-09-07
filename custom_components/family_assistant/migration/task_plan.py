@@ -10,7 +10,7 @@ from datetime import datetime
 
 from .preflight import _text
 from .review import LegacyReview
-from .task_reports import ReportHistoryError, project_text_history
+from .task_reports import ReportHistoryError, project_text_history, project_unreported_history
 
 SUPPORTED_STATES = frozenset(
     {"assigned", "accepted", "in_progress", "completed", "cancelled", "archived"}
@@ -72,13 +72,18 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
     if not requires_report and row.get("reviewer") is not None:
         raise TaskPlanError("task_report_review_required")
 
-    # No-report notes/submissions still need an explicit semantic conversion.
+    # No-report notes must be reconstructed from explicit terminal events, never
+    # relabelled as a submitted report from the overloaded last_note projection.
+    lifecycle_notes = {}
     if not requires_report and report_type is not None:
         raise TaskPlanError("task_report_settings_unsupported")
     if not requires_report and row.get("submitted_at") is not None:
         raise TaskPlanError("task_report_settings_unsupported")
     if not requires_report and row.get("last_note") is not None:
-        raise TaskPlanError("task_report_settings_unsupported")
+        try:
+            lifecycle_notes = project_unreported_history(row, history, mapping, members)
+        except ReportHistoryError as error:
+            raise TaskPlanError(str(error)) from None
 
     lifecycle = {}
     for key in ("accepted_at", "started_at", "completed_at", "cancelled_at", "archived_at"):
@@ -174,6 +179,7 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
             "checklist": [],
             **({"delivery_scope": "personal"} if kind == "reminder" else {}),
             **projected_lifecycle,
+            **lifecycle_notes,
             **(report_projection["fields"] if report_projection else {}),
         },
     }
