@@ -67,6 +67,13 @@ AGY's no-tool bounded design review completed and emphasized household scoping a
 atomic consent checks. Both are existing per-entry Engine/synchronous projection
 boundaries, not newly discovered defects or a substitute for actual code tests.
 
+The full rerun on those unchanged runtime bytes passed, including final exact
+member-set/Store/reload/unload assertions. Initial CI68138ca passed the actual HA,
+encrypted restore, upgrade, HACS installer and Python tests but caught the stale
+alpha.11 packaging command. Updated the explicit CI candidate to alpha.12 and
+added a local manifest/workflow agreement regression (observed failing before
+the fix). The pinned alpha.3 upgrade baseline is unchanged. Final CI is pending.
+
 ## Future photo / overdue progress checkpoint, 2026-09-08
 
 Published alpha.11 at `5be34933aa865dde12dc03e4e5eaec4bd9e95765` after all

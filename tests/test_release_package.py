@@ -5,14 +5,24 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import zipfile
+from pathlib import Path
 
 import pytest
 
 from tools import build_release
 from tools.build_release import DOMAIN_PATH, build
+
+
+def test_ci_release_candidate_matches_current_manifest():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / DOMAIN_PATH / "manifest.json").read_text(encoding="utf-8"))
+    workflow = (root / ".github/workflows/checks.yml").read_text(encoding="utf-8")
+    versions = re.findall(r"run: python tools/build_release\.py --version ([^\s]+)", workflow)
+    assert versions == [manifest["version"]]
 
 
 @pytest.fixture
