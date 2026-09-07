@@ -12,6 +12,22 @@ from custom_components.family_assistant.domain.validation import DomainError
 DIGEST = "a" * 64
 
 
+def test_new_identifiers_do_not_alias_another_records_private_blob(monkeypatch):
+    existing = {"M" + "b" * 32: {"blob_key": "c" * 64}}
+    values = iter(["d" * 32, "c" * 64, "e" * 32, "f" * 64])
+    monkeypatch.setattr(media.secrets, "token_hex", lambda _length: next(values))
+    assert media._new_identifiers(existing) == ("M" + "e" * 32, "f" * 64)
+
+
+def test_exhausted_blob_collisions_fail_without_modifying_existing(monkeypatch):
+    existing = {"M" + "b" * 32: {"blob_key": "c" * 64}}
+    before = deepcopy(existing)
+    monkeypatch.setattr(media.secrets, "token_hex", lambda length: "c" * (length * 2))
+    with pytest.raises(DomainError, match="quota_exceeded"):
+        media._new_identifiers(existing)
+    assert existing == before
+
+
 def ctx(state, actor_id, now, operation="media-test"):
     return Context(state, state["members"][actor_id], now, operation)
 

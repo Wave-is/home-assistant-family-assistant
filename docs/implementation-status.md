@@ -24,13 +24,13 @@ Nothing is production-ready solely because a mock test passes.
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks, reviewed backpack routine starts and opt-in private preparation reminders; reviewed imports and reminder retention health pending |
-| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse, manual repair history and card; media/documents and production acceptance pending |
+| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
-| Diagnostics / Repairs / backup / migration | Planned | No live legacy data modified |
+| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery and coherent Store/blob copy via actual HA backup callbacks; full encrypted archive/restore and migration pending; no live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
@@ -47,10 +47,11 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1685 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, private media authority/real-file faults/decoder/HTTP/replay, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 303 frontend unit tests and 117 Chromium browser tests passed. After a fixture
-  correction distinguishing a lost committed response from an actual Store refusal,
-  all 6 media browser cases passed again with unchanged action assertions.
+- 1721 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/homework/preparation/private reminders/replay/privacy, maintenance/private task receipts/delivery, private media authority/real-file recovery/decoder/HTTP/replay/backup, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts). In-progress polls files are not part of this checkpoint or count.
+- 304 frontend unit tests and 118 Chromium browser tests passed. The latest full
+  Chromium run used two workers after a four-worker Windows run failed to fetch
+  two module scripts with `ERR_NO_BUFFER_SPACE`; traces showed blank fixtures,
+  not failing domain assertions. No product assertions were weakened.
 - Private task photo reports now use an opaque versioned reservation, raw bounded
   authenticated upload, isolated Pillow 12.3.0 JPEG/PNG/WebP validation, immutable
   blob publication and a separate atomic task submission. Current actor, assignment
@@ -71,13 +72,36 @@ is exercised with a synthetic entity, not by replacing its service registry.
   visually checked. Original EXIF is retained and clearly disclosed, not stripped.
   Public privacy checks reject the private data directory, temp names, opaque blob
   basenames and non-brand image files. Two-phase pending expiry is implemented;
-  stale temp/orphan recovery, permanent tombstone capacity, backup barriers,
-  retained-report purge, maintenance documents and School imports remain gates.
+  permanent tombstone capacity, retained-report purge, complete archive restore,
+  maintenance documents and School imports remain gates.
   AGY's read-only review exposed the subprocess cancellation cleanup gap, fixed
   with spawn/reap regressions. A later review confirmed a crash-only hard-link/temp
   residue issue for the upcoming recovery slice; normal cancellation cleanup and
   exact-body Store-failure retry were independently checked, not assumed broken.
   See [task guide](tasks.md) and [media design](media-design.md).
+- Bounded recovery now scans stale temporary files and opaque unreferenced blobs,
+  re-stats exact file identity before deletion, and handles the two-name hard-link
+  publication crash without deleting retained content. Malformed inventory blocks
+  orphan guesses but does not stop independent valid expiry. Missing/corrupt
+  retained bytes raise code-only health and leave report/history intact. Unit
+  tests cover scan continuation, timestamps, hard links, malformed revisions,
+  interrupted Store/cleanup and backup pause. Fresh `os.stat` is required on
+  Windows because `DirEntry.stat` zeros inode/device/link-count fields there.
+- Real HA discovers the backup platform and invokes its pre/post hooks. Media
+  I/O drains before Engine freezing; partial acquisition and cancellation unwind
+  in reverse order. Authenticated writes and new media requests are blocked while
+  views stay readable. Actual HA proved coherent synthetic Store/blob copies,
+  fresh Store/Engine reload with matching bytes, Options gating and exact replay.
+  The first unload guard returned false; HA marked it `FAILED_UNLOAD`. It now
+  waits outside the lifecycle lock for that backup generation to release, then
+  completes normal reload. The entire isolated HA suite passed after this fix.
+  Expected alarm-output shutdown receipts after thaw are distinct from the frozen
+  copy; the latter is checked exactly. Actual encrypted archive creation and a
+  full HAOS/container restore are not yet claimed.
+- Recurring maintenance can require a private photo task report. Full replacement
+  review preserves the choice on an omitted-field/title edit; domain, actual HA,
+  Node and RU narrow browser review/exact retry passed. This does not enable
+  initial fault photos or manual log/document attachments.
 - School preparation reminders default off and need both an owner-selected global
   household-local time/day policy and an exact actor-private subscription. Parents
   subscribe only their own recipient, children only their own timetable. Creation
@@ -506,7 +530,8 @@ is exercised with a synthetic entity, not by replacing its service registry.
   8d25ac0 (run 34069706131), and maintenance
   659e1ed (run 34071531113), and School homework/preparation
   61229b3 (run 34073656489), then private school reminders
-  bc130a1 (run 34075063864). The school feature's first actual-HA CI run exposed
+  bc130a1 (run 34075063864), then verified private task photos
+  732787b (run 34078178972). The school feature's first actual-HA CI run exposed
   a fixture race with scheduled pantry reconciliation; the follow-up drains
   pending HA work before the explicit clock pass and verifies scheduler health.
   The separate native RouterOS CI also passed (run 34040076386). Its first run
@@ -544,10 +569,10 @@ service call does not prove physical sound or volume.
 - No real bot has been contacted during development tests. Poller restart/Telegram
   conflict scenarios need further integration tests before the live cutover.
 - Archive/retention strategy, comprehensive module health and migration are pending.
-- Private media still needs bounded stale temp/orphan recovery, capacity health and
-  tombstone retention, coherent backup/restore and explicit retained-content purge.
-  A crash after exclusive publication but before temp unlink can leave two hard
-  links; current reads/expiry refuse that ambiguous state until recovery is added.
+- Private media still needs capacity/tombstone retention, full encrypted
+  backup/archive restore and explicit retained-content purge. Backup release
+  failure keeps writes and reload gated until a successful unwind; a visible
+  bounded Repair/retry workflow remains necessary before release.
 - School reminder lifetime marker retention must avoid replay after clock rollback
   and expose capacity health; the present 10,000-marker bound is not release-ready.
 - Live model evaluation is pending; local Ollama was not reachable on its default

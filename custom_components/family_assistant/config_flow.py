@@ -120,6 +120,27 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FamilyOptionsFlow(config_entries.OptionsFlow):
+    @callback
+    def async_create_entry(
+        self,
+        *,
+        title=None,
+        data,
+        description=None,
+        description_placeholders=None,
+    ):
+        """Finish only while the integration's persistent state is writable."""
+        if self.hass.data.get(DOMAIN, {}).get("backup") and dict(data) != dict(
+            self.config_entry.options
+        ):
+            return self.async_abort(reason="backup_in_progress")
+        return super().async_create_entry(
+            title=title,
+            data=data,
+            description=description,
+            description_placeholders=description_placeholders,
+        )
+
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(
             step_id="init",
@@ -144,6 +165,8 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         actor = runtime.engine.actor_for_ha(self.context.get("user_id"))
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
+        if self.hass.data[DOMAIN].get("backup"):
+            raise DomainError("backup_in_progress")
         return runtime, actor
 
     async def async_step_recipes(self, user_input=None):

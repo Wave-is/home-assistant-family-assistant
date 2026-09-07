@@ -1,7 +1,7 @@
 # Shared private media design
 
-Status: image-only task-report backend and card implemented and under acceptance testing.
-Full recovery/backup acceptance, maintenance documents and
+Status: image-only task-report backend/card and bounded file recovery implemented.
+Full backup/restore acceptance, retained-content policy, maintenance documents and
 School image import are not yet release-ready. The sections below distinguish
 the implemented first slice from the remaining shared-media design.
 
@@ -183,7 +183,12 @@ task/member stamps; no media ID, name, digest, path, or bytes enter `Context.not
 
 ### Maintenance
 
-This is a later lane, not part of the first task-report slice. Replace the
+Recurring maintenance services can now require a photo report: the generated
+private task uses exactly the Tasks upload/review contract. Editing an unrelated
+service field preserves its existing report type. This does not attach a photo
+to the initial fault or to a manual service log.
+
+Those are later lanes, not part of the task-report slice. Replace the
 deliberate empty-list validator only after maintenance media is available.
 `maintenance.fault_report` may attach `maintenance_fault` uploads owned by the
 current reporter epoch, while preserving all current asset/reportability and
@@ -285,10 +290,34 @@ never names, MIME-linked target data, hashes, paths, IDs, URLs or content
 
 Current code implements reserved (one hour) and available (24 hours) expiry,
 two-phase deletion with content-free tombstones, exclusive immutable blob
-publication, exact-body retry after Store failure, and drained unload. It does
-not yet implement orphan/temp sweeps, retained-report purge, capacity health,
-backup barriers or complete entry deletion. Requirements below remain gates
-unless covered explicitly by the implementation evidence.
+publication, exact-body retry after Store failure, and drained unload. A bounded
+scanner also recovers stale temporary files and unreferenced blobs. It handles
+the crash between exclusive hard-link publication and temporary-name removal
+only after proving that both names reference the same regular file in this
+entry's private directory. Unknown names, symlinks and unusual hard links are
+retained and flagged, never guessed at. A malformed ownership inventory prevents
+orphan deletion while independent valid expiry can still proceed.
+
+Each pass inspects at most 256 directory entries, attempts at most 100 expiry
+transitions and verifies at most 16 available/attached blobs. The scan cursor
+continues across passes. Temporary names have a one-hour grace; unreferenced
+opaque blobs have a 24-hour grace. Upload publication and collection cannot run
+concurrently. Fresh identity is rechecked immediately before a scoped unlink.
+Missing/corrupt retained bytes produce a code-only health error without deleting
+the report or its history. Skipped/busy collection does not clear an existing
+health error. No explicit retained-report purge, tombstone capacity reclamation
+or complete entry deletion exists yet.
+
+The Home Assistant [backup platform](https://developers.home-assistant.io/docs/core/platform/backup/)
+drains active media I/O, then freezes each loaded Engine before backup. Entry
+setup/unload and Options commits are gated while the coordinator exists.
+Views remain readable; new commands and media requests return bounded errors.
+Post-backup unwinds only its own leases, including partial acquisition failures
+and cancellation. These hooks do not create an archive or schedule a backup.
+Include Home Assistant configuration in the backup: both its Store and
+`family_assistant_data` must travel together, not the HACS code alone. Actual
+encrypted archive creation and a complete HAOS/container restore remain distinct
+release gates, even when synthetic copy/reload checks pass.
 
 - `reserved` and staged-but-unpublished blobs expire quickly (recommended one
   hour); unattached `available` uploads expire after 24 hours. Expiry is based
@@ -299,8 +328,8 @@ unless covered explicitly by the implementation evidence.
   retained. A later user-visible retention policy must define when archived
   reports, faults, logs and imports are purged; do not silently infer it now.
 - Reconciliation starts after state load and runs periodically. It removes old
-  `.tmp` files, completes `deleting`, marks metadata whose blob is missing as
-  unavailable without crashing projections, and quarantines/deletes random
+  owned `.upload-…` files, completes `deleting`, flags missing/corrupt bytes
+  without rewriting retained metadata, and deletes valid opaque orphan
   files not referenced by this entry after a grace period. It never guesses a
   link from a filename and never crosses household directories.
 - Store failure after exclusive blob publication leaves a recoverable reservation
@@ -357,7 +386,7 @@ per operation so size/hash verification and authority checks finish before any
 response body is returned. The actual HA container tests use Pillow 12.3.0 from
 its normal interpreter environment; the isolated helper fails closed when that
 dependency or POSIX process limits are unavailable. Nonstandard Core dependency
-paths require separate acceptance. Full orphan/capacity/backup/delete semantics
+paths require separate acceptance. Full capacity/backup/delete semantics
 remain release gates. A bounded PDF parser/structure policy is an
 additional gate before maintenance documents; the School import object's actual
 domain contract and explicit provider-consent UX are additional gates before

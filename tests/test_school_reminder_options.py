@@ -30,8 +30,21 @@ class _FlowBase:
     def async_abort(self, *, reason):
         return {"type": "abort", "reason": reason}
 
-    def async_create_entry(self, *, title, data):
-        return {"type": "create_entry", "title": title, "data": data}
+    def async_create_entry(
+        self,
+        *,
+        title=None,
+        data,
+        description=None,
+        description_placeholders=None,
+    ):
+        return {
+            "type": "create_entry",
+            "title": title,
+            "data": data,
+            "description": description,
+            "description_placeholders": description_placeholders,
+        }
 
 
 class _Select:
@@ -102,6 +115,7 @@ def _flow(module, settings):
     flow._authorized_runtime = lambda: (runtime, "owner")
     flow.config_entry = SimpleNamespace(options={})
     flow.hass = SimpleNamespace(
+        data={module.DOMAIN: {}},
         config=SimpleNamespace(time_zone="UTC"),
         config_entries=SimpleNamespace(async_update_entry=lambda *_args, **_kwargs: None),
     )
@@ -120,6 +134,21 @@ def _settings(module, **changes):
         "pantry_expiry_days": 3,
         **changes,
     }
+
+
+def test_backup_allows_domain_receipt_but_blocks_options_commit(config_flow):
+    flow = config_flow.FamilyOptionsFlow()
+    flow.hass = SimpleNamespace(data={config_flow.DOMAIN: {"backup": object()}})
+    flow.config_entry = SimpleNamespace(options={"existing": True})
+
+    # An Engine action may have committed before backup acquired its Engine
+    # lease. Finishing that flow writes no options and must acknowledge success.
+    acknowledged = flow.async_create_entry(title="", data={"existing": True})
+    blocked = flow.async_create_entry(title="", data={"existing": False})
+
+    assert acknowledged["type"] == "create_entry"
+    assert acknowledged["data"] == {"existing": True}
+    assert blocked == {"type": "abort", "reason": "backup_in_progress"}
 
 
 @pytest.mark.asyncio

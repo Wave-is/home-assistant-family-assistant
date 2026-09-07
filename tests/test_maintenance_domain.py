@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from custom_components.family_assistant.domain import maintenance, task_series, tasks
+from custom_components.family_assistant.domain import maintenance, media, task_series, tasks
 from custom_components.family_assistant.domain.context import Context
 from custom_components.family_assistant.domain.validation import DomainError
 
@@ -424,6 +424,52 @@ def test_service_save_pins_reviewed_source_and_generic_series_route_is_closed(en
     )
 
 
+def test_service_report_type_defaults_to_text_and_omitted_edit_preserves_photo(engine, now):
+    state = enabled_state(engine)
+    asset = save_asset(state, now)
+    text_service = maintenance.handle(
+        context(state, "parent", now, "service-text"),
+        "service_save",
+        service_payload(asset),
+    )
+    assert state["task_series"][text_service["id"]]["report_type"] == "text"
+
+    photo_service = maintenance.handle(
+        context(state, "parent", now, "service-photo"),
+        "service_save",
+        service_payload(asset, title="Photograph pressure gauge", report_type="photo"),
+    )
+    photo_series = state["task_series"][photo_service["id"]]
+    assert photo_series["report_type"] == "photo"
+    assert maintenance.series_current(state, photo_series) is True
+    projected = {
+        item["id"]: item for item in maintenance.view(state, state["members"]["parent"])["services"]
+    }
+    assert projected[photo_service["id"]]["report_type"] == "photo"
+
+    edited = maintenance.handle(
+        context(state, "parent", now, "service-photo-edit"),
+        "service_save",
+        {
+            **service_payload(asset, title="Photograph boiler and gauge"),
+            "id": photo_service["id"],
+            "revision": photo_service["revision"],
+        },
+    )
+    assert edited["revision"] == photo_service["revision"] + 1
+    assert state["task_series"][photo_service["id"]]["report_type"] == "photo"
+
+    for value in (None, "none", "video", True, 1, [], {}):
+        rejected_without_mutation(
+            state,
+            lambda value=value: maintenance.handle(
+                context(state, "parent", now, f"bad-report-{value}"),
+                "service_save",
+                service_payload(asset, title=f"Bad report {value}", report_type=value),
+            ),
+        )
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -433,7 +479,7 @@ def test_service_save_pins_reviewed_source_and_generic_series_route_is_closed(en
         lambda state, asset, series: state["members"]["adult"].update(revision=2),
         lambda state, asset, series: asset.update(revision=2),
         lambda state, asset, series: asset.update(status="retired"),
-        lambda state, asset, series: series.update(report_type="photo"),
+        lambda state, asset, series: series.update(report_type="video"),
         lambda state, asset, series: series["deadline_policy"].update(penalty=-1),
         lambda state, asset, series: series["source"].update(extra="untrusted"),
     ],
@@ -804,6 +850,73 @@ def test_service_materialization_is_private_and_preserves_frozen_source(engine):
     next_day = datetime(2026, 9, 7, 9, 1, tzinfo=UTC)
     task_series.tick(context(state, "owner", next_day, "tick-next"))
     assert state["tasks"] == generated_before
+
+
+def test_photo_service_materializes_private_task_and_uses_real_media_submission(engine):
+    state = enabled_state(engine)
+    created_at = datetime(2026, 9, 6, 8, 0, tzinfo=UTC)
+    asset = save_asset(state, now=created_at)
+    service = maintenance.handle(
+        context(state, "parent", created_at, "photo-service"),
+        "service_save",
+        service_payload(
+            asset,
+            title="Photograph boiler gauge",
+            report_type="photo",
+            rule={
+                "frequency": "daily",
+                "start_date": "2026-09-06",
+                "time": "09:00",
+                "timezone": "UTC",
+                "catchup_hours": 24,
+            },
+            due_time="18:00",
+        ),
+    )
+    tick_at = datetime(2026, 9, 6, 9, 1, tzinfo=UTC)
+    task_series.tick(context(state, "owner", tick_at, "photo-tick"))
+    generated = next(iter(state["tasks"].values()))
+    assert generated["report_type"] == "photo"
+    assert generated["delivery_scope"] == "private"
+    assert generated["source"] == {
+        "kind": "maintenance_service",
+        "asset_id": asset["id"],
+        "asset_revision": asset["revision"],
+        "series_id": service["id"],
+        "series_revision": service["revision"],
+    }
+
+    reserved = media.handle(
+        context(state, "adult", tick_at, "photo-reserve"),
+        "reserve",
+        {
+            "purpose": "task_report",
+            "task_id": generated["id"],
+            "task_revision": generated["revision"],
+            "uploader_revision": state["members"]["adult"]["revision"],
+        },
+    )
+    available = media.finalize(
+        Context(state, {"id": "system", "role": "system"}, tick_at, "photo-finalize"),
+        "adult",
+        reserved["id"],
+        reserved["revision"],
+        "image/png",
+        128,
+        "a" * 64,
+    )
+    submitted = tasks.handle(
+        context(state, "adult", tick_at, "photo-submit"),
+        "submit",
+        {
+            "id": generated["id"],
+            "revision": generated["revision"],
+            "media": {"id": available["id"], "revision": available["revision"]},
+        },
+    )
+    assert submitted == {"id": generated["id"], "revision": 2, "status": "submitted"}
+    assert state["tasks"][generated["id"]]["report_media"] == [available["id"]]
+    assert state["media"][available["id"]]["status"] == "attached"
 
 
 def test_ordinary_task_lifecycle_remains_independent_after_asset_retirement(engine, now):

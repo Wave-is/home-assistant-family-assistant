@@ -245,6 +245,18 @@ class MediaStorage:
         self._active = 0
         self._stopped = False
         self._collecting = False
+        self._backup_token = None
+        self._scan_problem = False
+        self._scan_started = False
+        self._integrity_cursor = 0
+        self._damaged = set()
+        from .media_recovery import DirectoryInventory
+
+        self._inventory = DirectoryInventory(self.root)
+
+    def _new_io(self):
+        if self._stopped or self._backup_token is not None or self._collecting:
+            raise DomainError("media_unavailable")
 
     def _record(self, user_id, media_id, revision, *, upload=False):
         if self._stopped:
@@ -274,6 +286,7 @@ class MediaStorage:
     ) -> dict:
         """Stream, verify, publish and persist one exact authorized upload."""
         await _guard(guard)
+        self._new_io()
         _, original = self._record(user_id, media_id, revision, upload=True)
         if self._active >= MAX_IO or media_id in self._busy:
             raise DomainError("media_unavailable")
@@ -348,6 +361,7 @@ class MediaStorage:
     ) -> tuple[dict, bytes]:
         """Verify exact bytes before the HTTP adapter commits private headers."""
         await _guard(guard)
+        self._new_io()
         _, original = self._record(user_id, media_id, revision)
         if self._active >= MAX_IO:
             raise DomainError("media_unavailable")
@@ -374,19 +388,150 @@ class MediaStorage:
         self._stopped = True
         while self._active:
             await asyncio.sleep(0.05)
+        await _io(self._inventory.close)
 
-    async def collect(self) -> None:
-        """Resume two-phase expiry without touching attached report history."""
-        if self._stopped or self._collecting or self._active >= MAX_IO:
+    async def async_pause_backup(self):
+        """Drain existing media work before Engine writes are frozen by backup."""
+        if self._stopped or self._backup_token is not None:
+            raise DomainError("media_unavailable")
+        token = object()
+        self._backup_token = token
+        try:
+            while self._active:
+                await asyncio.sleep(0.05)
+            if self._stopped:
+                raise DomainError("media_unavailable")
+            return token
+        except BaseException:
+            if self._backup_token is token:
+                self._backup_token = None
+            raise
+
+    async def async_resume_backup(self, token):
+        """Only its owner can remove the reversible new-I/O gate."""
+        if token is not None and self._backup_token is token:
+            self._backup_token = None
+
+    @staticmethod
+    def _protected(state):
+        """Protect valid opaque keys even inside malformed metadata records."""
+        records = state.get("media", {})
+        if not isinstance(records, dict):
+            return set(), True
+        keys = set()
+        malformed = False
+        for media_id, record in records.items():
+            if not isinstance(record, dict):
+                malformed = True
+                continue
+            key = record.get("blob_key")
+            if (
+                record.get("id") != media_id
+                or record.get("status") not in media.STATUSES
+                or type(record.get("revision")) is not int
+                or not 1 <= record["revision"] <= 2**53 - 1
+            ):
+                malformed = True
+            if isinstance(key, str) and BLOB_KEY.fullmatch(key):
+                keys.add(key)
+            elif record.get("status") != "deleted":
+                malformed = True
+        return keys, malformed
+
+    async def _recover_files(self):
+        from .media_recovery import TEMP_NAME, remove_abandoned
+
+        if not self._scan_started:
+            self._scan_problem = False
+        candidates, complete = await _io(self._inventory.scan)
+        self._scan_started = not complete
+        # Temp names are considered first so a completed hard-link publication
+        # can recover before metadata expiry checks the destination's link count.
+        candidates.sort(key=lambda value: not bool(TEMP_NAME.fullmatch(value.name)))
+        # No upload/publication can run concurrently with collection. Existing
+        # files cannot become newly attached without an already-protected
+        # available record; a reservation alone creates no file. Capture once
+        # rather than copying the entire household state for every directory row.
+        protected, malformed = self._protected(self.engine.snapshot())
+        self._scan_problem |= malformed
+        for candidate in candidates:
+            if self._stopped:
+                break
+            if malformed and BLOB_KEY.fullmatch(candidate.name):
+                continue  # An incomplete ownership inventory never deletes blobs.
+            if candidate.name in protected:
+                continue
+            try:
+                await _io(
+                    lambda candidate=candidate, protected=protected: remove_abandoned(
+                        self.root,
+                        candidate,
+                        self.clock().timestamp(),
+                        protected,
+                        linked=self._inventory.linked_blob(candidate),
+                    )
+                )
+            except (DomainError, OSError):
+                self._scan_problem = True
+
+    async def _check_integrity(self):
+        """Bounded hash checks surface missing data without rewriting history."""
+        records = self.engine.snapshot().get("media", {})
+        if not isinstance(records, dict):
+            self._scan_problem = True
             return
+        ids = sorted(
+            key
+            for key, record in records.items()
+            if isinstance(key, str)
+            and isinstance(record, dict)
+            and record.get("status") in {"available", "attached"}
+        )
+        self._damaged.intersection_update(ids)
+        if not ids:
+            self._integrity_cursor = 0
+            return
+        start = self._integrity_cursor % len(ids)
+        selected = (ids[start:] + ids[:start])[:16]
+        for media_id in selected:
+            if self._stopped:
+                break
+            record = records[media_id]
+            try:
+                content = await _io(_read, self.root, record.get("blob_key"))
+                if len(content) != record.get("size_bytes") or hashlib.sha256(
+                    content
+                ).hexdigest() != record.get("sha256"):
+                    raise DomainError("media_unavailable")
+            except (DomainError, OSError):
+                self._damaged.add(media_id)
+            else:
+                self._damaged.discard(media_id)
+        self._integrity_cursor = (start + len(selected)) % len(ids)
+
+    async def collect(self) -> bool:
+        """Resume two-phase expiry without touching attached report history."""
+        if self._stopped or self._collecting or self._active or self._backup_token is not None:
+            return False
         self._collecting = True
         self._active += 1
         try:
+            await self._recover_files()
             state = self.engine.snapshot()
+            if not isinstance(state.get("media", {}), dict):
+                raise DomainError("media_unavailable")
             count = 0
             for media_id, record in state.get("media", {}).items():
                 if self._stopped or count >= 100:
                     break
+                if (
+                    not isinstance(record, dict)
+                    or record.get("id") != media_id
+                    or type(record.get("revision")) is not int
+                    or not 1 <= record["revision"] <= 2**53 - 1
+                ):
+                    self._scan_problem = True
+                    continue
                 if media_id in self._busy or record.get("status") not in {
                     *media.PENDING,
                     "deleting",
@@ -395,9 +540,15 @@ class MediaStorage:
                 if record["status"] in media.PENDING:
                     from .domain.validation import timestamp
 
-                    if timestamp(record.get("expires_at"), "expires_at") > self.clock():
+                    try:
+                        expires_at = timestamp(record.get("expires_at"), "expires_at")
+                    except DomainError:
+                        self._scan_problem = True
+                        continue
+                    if expires_at > self.clock():
                         continue
                 self._busy.add(media_id)
+                count += 1  # Bound attempted transitions, including malformed rows.
                 try:
                     if record["status"] == "deleting":
                         receipt = record
@@ -418,9 +569,16 @@ class MediaStorage:
                         return media.finish_delete(ctx, media_id, revision)
 
                     await self.engine.system_update("media_deleted", self.clock(), finish)
-                    count += 1
+                except DomainError as error:
+                    if error.code == "backup_in_progress":
+                        raise
+                    self._scan_problem = True
                 finally:
                     self._busy.discard(media_id)
+            await self._check_integrity()
+            if self._scan_problem or self._damaged:
+                raise DomainError("media_unavailable")
+            return True
         except OSError:
             raise DomainError("media_unavailable") from None
         finally:

@@ -11,7 +11,7 @@ from typing import Any
 
 from homeassistant.const import Platform
 from homeassistant.core import SupportsResponse, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -57,6 +57,16 @@ def get_runtime(hass, entry_id: str) -> Runtime:
 
 
 async def async_setup_runtime(hass, entry) -> bool:
+    """Serialize entry lifecycle with the integration's backup platform."""
+    data = hass.data.setdefault(DOMAIN, {"entries": {}})
+    lock = data.setdefault("setup_lock", asyncio.Lock())
+    async with lock:
+        if data.get("backup"):
+            raise ConfigEntryNotReady("backup_in_progress")
+        return await _async_setup_runtime(hass, entry)
+
+
+async def _async_setup_runtime(hass, entry) -> bool:
     from .websocket import async_register_api
 
     data = hass.data.setdefault(DOMAIN, {"entries": {}})
@@ -155,8 +165,8 @@ async def async_setup_runtime(hass, entry) -> bool:
 
             async def collect():
                 try:
-                    await runtime.media.collect()
-                    runtime.health.pop("media", None)
+                    if await runtime.media.collect():
+                        runtime.health.pop("media", None)
                 except (DomainError, OSError, TimeoutError):
                     runtime.health["media"] = "media_unavailable"
 
@@ -189,6 +199,20 @@ async def async_setup_runtime(hass, entry) -> bool:
 
 
 async def async_unload_runtime(hass, entry) -> bool:
+    data = hass.data.get(DOMAIN, {})
+    lock = data.setdefault("setup_lock", asyncio.Lock())
+    while True:
+        async with lock:
+            coordinator = data.get("backup")
+            if coordinator is None:
+                return await _async_unload_runtime(hass, entry)
+        # Returning False poisons the HA entry as FAILED_UNLOAD. Wait outside
+        # the setup lock: pre-backup may still be draining an earlier setup.
+        # Only a completed unwind releases this coordinator generation.
+        await coordinator.released.wait()
+
+
+async def _async_unload_runtime(hass, entry) -> bool:
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)

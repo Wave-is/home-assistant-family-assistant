@@ -295,12 +295,54 @@ async def verify_maintenance(hass, entry, owner, child_id):
     assert managed["source"]["kind"] == "maintenance"
     assert managed["source"]["asset_id"] == asset_id
     assert managed["source"]["member_revisions"] == {child_id: child_revision}
+    assert managed["report_type"] == "text"
     await command(
         parent,
         "tasks.series_enable",
         {"id": service["id"], "revision": service["revision"], "enabled": False},
         error="forbidden",
     )
+
+    # A separate completion lane proves that Maintenance stores and projects
+    # photo-report schedules, while task generation remains the ordinary
+    # private Tasks lifecycle. An edit that omits the optional field must keep
+    # the existing photo choice.
+    photo_title = "Synthetic photo inspection"
+    photo_payload = {
+        **deepcopy(service_payload),
+        "title": photo_title,
+        "report_type": "photo",
+    }
+    photo_service = await command(
+        parent,
+        "maintenance.service_save",
+        photo_payload,
+        operation="maintenance-ha-photo-service-create",
+    )
+    photo_edit = {
+        key: deepcopy(value) for key, value in photo_payload.items() if key != "report_type"
+    }
+    photo_edit.update(
+        {
+            "id": photo_service["id"],
+            "revision": photo_service["revision"],
+            "title": "Synthetic retained photo inspection",
+        }
+    )
+    photo_service = await command(
+        parent,
+        "maintenance.service_save",
+        photo_edit,
+        operation="maintenance-ha-photo-service-edit",
+    )
+    photo_managed = engine.snapshot()["task_series"][photo_service["id"]]
+    assert photo_managed["report_type"] == "photo"
+    parent_services = (await _request(hass, entry, parent, sequence + 1, "view"))["result"][
+        "maintenance"
+    ]["services"]
+    projected_photo = next(item for item in parent_services if item["id"] == photo_service["id"])
+    assert projected_photo["report_type"] == "photo"
+    assert projected_photo["title"] == photo_edit["title"]
 
     service_tasks_before = {
         task["id"]
@@ -323,6 +365,22 @@ async def verify_maintenance(hass, entry, owner, child_id):
     assert service_task["source"]["asset_id"] == asset_id
     assert service_task["source"]["series_id"] == service["id"]
     assert service_task["source"]["series_revision"] == service["revision"]
+    photo_generated = [
+        task
+        for task in engine.snapshot()["tasks"].values()
+        if task.get("series_id") == photo_service["id"]
+    ]
+    assert len(photo_generated) == 1
+    photo_task = photo_generated[0]
+    assert photo_task["report_type"] == "photo"
+    assert photo_task["delivery_scope"] == "private"
+    assert photo_task["source"] == {
+        "kind": "maintenance_service",
+        "asset_id": asset_id,
+        "asset_revision": reportable["revision"],
+        "series_id": photo_service["id"],
+        "series_revision": photo_service["revision"],
+    }
     await engine.tick(release + timedelta(seconds=10))
     assert (
         len(
@@ -395,6 +453,7 @@ async def verify_maintenance(hass, entry, owner, child_id):
         warranty_reference,
         fault_task["title"],
         service_task["title"],
+        photo_task["title"],
     ):
         assert canary not in str(family)
     for canary in (private_note, warranty_reference):
@@ -582,8 +641,8 @@ async def verify_maintenance(hass, entry, owner, child_id):
     assert set(engine.snapshot()["members"]) == member_ids
     assert engine.snapshot()["members"][child_id]["role"] == "child"
     print(
-        "PASS: actual HA maintenance versions, privacy, task reuse, recurrence, "
-        "replay and pre-transport revocation"
+        "PASS: actual HA maintenance versions, privacy, text/photo task reuse, "
+        "recurrence, replay and pre-transport revocation"
     )
     return {
         "asset_id": asset_id,

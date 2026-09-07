@@ -32,6 +32,7 @@
       }
     },
     "error": {
+      "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "invalid_field": "Check the entered value.",
       "forbidden": "You do not have permission for this action.",
       "unknown_member": "Family member not found.",
@@ -132,6 +133,7 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "admin_required": "A Home Assistant administrator must create the household.",
       "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
       "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
@@ -308,6 +310,7 @@
       }
     },
     "error": {
+      "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "invalid_field": "Check the entered value.",
       "forbidden": "You do not have permission for this action.",
       "unknown_member": "Family member not found.",
@@ -408,6 +411,7 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "forbidden": "You do not have permission for this action.",
       "not_ready": "The household is not loaded.",
       "telegram_not_ready": "Connect and enable your Telegram bot first.",
@@ -468,6 +472,7 @@
     }
   },
   "exceptions": {
+    "backup_in_progress": {"message": "A Home Assistant backup is being prepared. Try the same action after it finishes."},
     "invalid_field": {
       "message": "Check the entered value."
     },

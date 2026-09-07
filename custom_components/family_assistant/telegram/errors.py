@@ -2,6 +2,8 @@
 
 ERRORS = {
     "en": {
+        "backup_in_progress": "A Home Assistant backup is being prepared. Try the "
+        "same action after it finishes.",
         "invalid_field": "Check the entered value.",
         "forbidden": "You do not have permission for this action.",
         "unknown_member": "Family member not found.",
@@ -142,6 +144,8 @@ ERRORS = {
         "expire automatically.",
     },
     "ru": {
+        "backup_in_progress": "Создаётся резервная копия Home Assistant. Повторите "
+        "то же действие после её завершения.",
         "invalid_field": "Проверьте введённое значение.",
         "forbidden": "У вас нет права на это действие.",
         "unknown_member": "Участник семьи не найден.",
@@ -288,6 +292,8 @@ ERRORS = {
         "после истечения срока.",
     },
     "uk": {
+        "backup_in_progress": "Створюється резервна копія Home Assistant. Повторіть "
+        "ту саму дію після її завершення.",
         "invalid_field": "Перевірте введене значення.",
         "forbidden": "Ви не маєте права на цю дію.",
         "unknown_member": "Учасника родини не знайдено.",

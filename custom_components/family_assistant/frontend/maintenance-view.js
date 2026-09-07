@@ -419,8 +419,11 @@ function serviceValues(card, service = null) {
   // A maintenance service always has a recurrence; top-level `enabled` controls
   // whether it currently creates tasks.
   rule.enabled = true;
+  const reportType = service?.report_type;
   return {
     title: service?.title || "",
+    report_type: reportType === "photo" ? "photo" :
+      reportType === undefined || reportType === "text" ? "text" : "",
     assignees: selected,
     unavailableAssignees: unavailable,
     assigneeReplacementConfirmed: unavailable.length === 0,
@@ -447,11 +450,14 @@ function servicePayload(card, draft) {
   });
   const rule = recurrencePayload(draft.values.rule);
   if (!rule || !CLOCK.test(draft.values.due_time)) throw new Error("invalid");
+  const reportType = draft.values.report_type;
+  if (!["text", "photo"].includes(reportType)) throw new Error("invalid");
   return {
     ...(draft.source ? { id: draft.source.id, revision: draft.source.revision } : {}),
     asset_id: draft.assetId,
     asset_revision: draft.assetSource.revision,
     title: rawText(draft.values.title, 500),
+    report_type: reportType,
     assignees,
     rotation: draft.values.rotation === true,
     rule,
@@ -470,6 +476,22 @@ function input(parent, labelText, name, value, type = "text") {
   control.type = type;
   if (type === "checkbox") control.checked = Boolean(value);
   else control.value = value ?? "";
+  label.append(control);
+  parent.append(label);
+  return control;
+}
+
+function select(parent, labelText, name, value, choices) {
+  const label = node("label", labelText);
+  const control = document.createElement("select");
+  control.name = name;
+  for (const [optionValue, optionLabel] of choices) {
+    const option = document.createElement("option");
+    option.value = optionValue;
+    option.textContent = optionLabel;
+    control.append(option);
+  }
+  control.value = value;
   label.append(control);
   parent.append(label);
   return control;
@@ -1051,14 +1073,17 @@ export function renderMaintenance(card, body) {
     if (draft.source?.current === false) form.append(node("p", copy.current_warning, "notice"));
     const fields = node("div", null, "maintenance-fields");
     const title = input(fields, copy.service_title, "title", draft.values.title);
+    const reportType = select(fields, copy.report_type, "report_type", draft.values.report_type, [
+      ["text", copy.report_text], ["photo", copy.report_photo],
+    ]);
     const due = input(fields, copy.due_time, "due_time", draft.values.due_time, "time");
     const reminder = input(fields, copy.reminder_minutes, "reminder_minutes", draft.values.reminder_minutes, "number");
     const grace = input(fields, copy.grace_minutes, "grace_minutes", draft.values.grace_minutes, "number");
     const checklist = textarea(fields, copy.checklist, "checklist", draft.values.checklist, copy.checklist_hint); checklist.parentElement.classList.add("wide");
     const rotation = input(fields, copy.rotation_hint, "rotation", draft.values.rotation, "checkbox");
     const enabled = input(fields, copy.enabled, "enabled", draft.values.enabled, "checkbox");
-    form.append(fields);
-    for (const [key, control] of [["title", title], ["due_time", due], ["reminder_minutes", reminder], ["grace_minutes", grace], ["checklist", checklist], ["rotation", rotation], ["enabled", enabled]]) {
+    form.append(fields, node("p", copy.report_photo_hint, "sub"));
+    for (const [key, control] of [["title", title], ["report_type", reportType], ["due_time", due], ["reminder_minutes", reminder], ["grace_minutes", grace], ["checklist", checklist], ["rotation", rotation], ["enabled", enabled]]) {
       const update = () => { if (guard(control, draft)) draft.values[key] = control.type === "checkbox" ? control.checked : control.value; };
       control.addEventListener("input", update); control.addEventListener("change", update);
     }
@@ -1124,6 +1149,7 @@ export function renderMaintenance(card, body) {
     } else if (draft.intent === "service") {
       review.append(
         node("p", draft.payload.title),
+        node("p", `${copy.report_type}: ${draft.payload.report_type === "photo" ? copy.report_photo : copy.report_text}`),
         node("p", `${copy.assignees}: ${draft.payload.assignees.map((item) => memberName(card, item.id, copy)).join(", ")}`),
         node("p", `${copy.rotation}: ${draft.payload.rotation ? copy.enabled : copy.disabled}`),
         node("p", `${copy.due_time}: ${draft.payload.due_time}`),

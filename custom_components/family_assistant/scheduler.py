@@ -85,7 +85,10 @@ class Scheduler:
             await self.devices.reconcile(now)
             await self.devices.close_incidents(now)
             self.runtime.health.pop("scheduler", None)
-        except (OSError, DomainError, TimeoutError):
+        except DomainError as error:
+            if error.code != "backup_in_progress":
+                self.runtime.health["scheduler"] = "scheduler_failed"
+        except (OSError, TimeoutError):
             # No raw provider data or exceptions in logs or exported diagnostics.
             self.runtime.health["scheduler"] = "scheduler_failed"
         finally:

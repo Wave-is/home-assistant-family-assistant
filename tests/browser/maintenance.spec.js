@@ -178,6 +178,56 @@ test("A stale service can be explicitly reviewed against the current equipment w
   expect(call.payload.checklist).toEqual(["Record observation"]);
 });
 
+test("RU photo service review retries the exact lost request and later edits retain photo reports", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tests/fixtures/maintenance.html?lang=ru");
+  const card = page.locator("family-maintenance-card");
+  await card
+    .getByRole("button", { name: "Изменить регламент", exact: true })
+    .click();
+  const edit = card.locator('[data-maintenance-form="service_edit"]');
+  await edit.locator('[name="report_type"]').selectOption("photo");
+  await edit.locator('button[type="submit"]').click();
+  const review = reviewForm(card);
+  await expect(review).toContainText("Отчёт о выполнении: Фотоотчёт");
+  await expect(review).toContainText("Inspect filter");
+  await page.screenshot({
+    path: "test-results/maintenance-photo-review-ru.png",
+    fullPage: true,
+  });
+
+  await page.evaluate(() => (window.loseResponse = true));
+  await confirm(card);
+  await expect(review).toBeVisible();
+  await review.locator('button[type="submit"]').click();
+  await expect(review).toHaveCount(0);
+  let calls = await page.evaluate(() => window.calls);
+  expect(calls).toHaveLength(2);
+  expect(calls[1]).toEqual(calls[0]);
+  expect(calls[0].payload.report_type).toBe("photo");
+  expect(calls[0].operation_id).toBe(calls[1].operation_id);
+
+  await card
+    .getByRole("button", { name: "Изменить регламент", exact: true })
+    .click();
+  await expect(edit.locator('[name="report_type"]')).toHaveValue("photo");
+  await edit.locator('[name="title"]').fill("Осмотр фильтра с фото");
+  await edit.locator('button[type="submit"]').click();
+  await expect(review).toContainText("Осмотр фильтра с фото");
+  await expect(review).toContainText("Фотоотчёт");
+  await confirm(card);
+  calls = await page.evaluate(() => window.calls);
+  expect(calls).toHaveLength(3);
+  expect(calls[2].payload.report_type).toBe("photo");
+  expect(
+    await page.evaluate(
+      () => window.fixture.maintenance.services[0].report_type,
+    ),
+  ).toBe("photo");
+});
+
 test("New service starts with an editable recurrence and creates a reviewed schedule", async ({
   page,
 }) => {

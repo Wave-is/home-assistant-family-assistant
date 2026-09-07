@@ -47,6 +47,7 @@ SERVICE_FIELDS = frozenset(
         "asset_id",
         "asset_revision",
         "title",
+        "report_type",
         "assignees",
         "rotation",
         "rule",
@@ -57,7 +58,7 @@ SERVICE_FIELDS = frozenset(
         "grace_minutes",
     }
 )
-SERVICE_REQUIRED = SERVICE_FIELDS - {"id", "revision"}
+SERVICE_REQUIRED = SERVICE_FIELDS - {"id", "revision", "report_type"}
 SOURCE_FIELDS = frozenset(
     {
         "kind",
@@ -541,6 +542,11 @@ def _service_save(ctx: Context, payload: dict) -> dict:
     if existing is not None and existing["source"].get("asset_id") != asset["id"]:
         raise DomainError("invalid_field", "asset_id")
     ids, revisions = _assignees(ctx.state, payload["assignees"])
+    report_type = payload.get(
+        "report_type", existing.get("report_type", "text") if existing is not None else "text"
+    )
+    if not isinstance(report_type, str) or report_type not in {"text", "photo"}:
+        raise DomainError("invalid_field", "report_type")
     series_payload = {
         **({"id": payload["id"], "revision": payload["revision"]} if is_edit else {}),
         "title": payload["title"],
@@ -548,7 +554,7 @@ def _service_save(ctx: Context, payload: dict) -> dict:
         "rotation": payload["rotation"],
         "rule": deepcopy(payload["rule"]),
         "due_time": payload["due_time"],
-        "report_type": "text",
+        "report_type": report_type,
         "checklist": deepcopy(payload["checklist"]),
         "enabled": payload["enabled"],
         "reminder_minutes": payload["reminder_minutes"],
@@ -626,7 +632,7 @@ def series_current(state: dict, series: dict) -> bool:
             or len(set(assignees)) != len(assignees)
             or not isinstance(revisions, dict)
             or set(revisions) != set(assignees)
-            or series.get("report_type") != "text"
+            or series.get("report_type") not in {"text", "photo"}
             or not isinstance(policy, dict)
             or type(policy.get("penalty")) is not int
             or policy.get("penalty") != 0
@@ -780,6 +786,7 @@ def _public_service(series: dict, current: bool) -> dict:
         "asset_id": source.get("asset_id"),
         "asset_revision": source.get("asset_revision"),
         "title": deepcopy(series.get("title")),
+        "report_type": series.get("report_type"),
         "assignees": deepcopy(series.get("assignees")),
         "rotation": series.get("rotation"),
         "rule": deepcopy(series.get("rule")),

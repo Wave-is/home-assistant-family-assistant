@@ -3,7 +3,8 @@
 Development module. Enable **Home maintenance** in integration options and use
 `custom:family-maintenance-card`. Fault reports and recurring services also need
 **Tasks**. The card editor chooses the household/language; the signed-in account
-determines permissions. Photos/documents are not supported yet.
+determines permissions. Recurring service tasks support private photo reports;
+initial fault photos and manual log/document attachments are not supported yet.
 
 ## English
 
@@ -23,6 +24,9 @@ warranty and equipment notes are never copied into the task title.
 
 Parents can schedule service as an ordinary recurring task: choose assignees,
 rotation or individual duties, recurrence, creation time, due time and checklist.
+Choose a text or photo completion report. Photo tasks use the private upload and
+separate submission in the [Tasks card](tasks.md); changing the service title
+does not reset that choice. No photo is sent to Telegram or a model.
 The existing Tasks scheduler handles reminders and reviews. Maintenance service
 penalties start at zero. Service edits belong in Maintenance, not the generic
 task-series editor. Changing the equipment, approving parent or an assignee's
@@ -63,6 +67,9 @@ family-group message.
 
 Для регламентной работы родитель выбирает исполнителей, ротацию, повторение,
 время создания, срок и чек-лист. Используются существующие задачи и напоминания;
+можно потребовать текстовый или фотоотчёт. Фото загружается и отдельно сдаётся
+в карточке задач, приватно и без отправки в Telegram или ИИ. Правка названия
+регламента сохраняет выбранный тип отчёта;
 штраф изначально равен нулю. Расписание редактируется в обслуживании, а не в
 общем редакторе повторяющихся задач. Изменение оборудования, родителя,
 подтвердившего настройку, или карточки исполнителя приостанавливает новые
@@ -80,7 +87,8 @@ family-group message.
 прав не обходится повтором. Приватные задачи не попадают в групповой список и
 автоматический контекст ИИ; уведомления идут исполнителю или родителям лично.
 Если личный чат не подключён, система не подменяет его семейной группой.
-Фото и документы пока не поддерживаются. Данные хранятся локально вне каталога
+Фото самой поломки и вложения к ручному журналу пока не поддерживаются.
+Данные хранятся локально вне каталога
 обновляемого HACS-кода; администратор HA и резервные копии имеют к ним доступ.
 
 ## Українська
@@ -117,7 +125,10 @@ family-group message.
 Відкликання прав не обходиться повторенням. Приватні завдання не потрапляють
 до групового списку чи автоматичного контексту ШІ; повідомлення надсилаються
 виконавцю або батькам особисто. Відсутність особистого чату не перенаправляє їх
-до сімейної групи. Фото й документи поки не підтримуються. Локальні дані поза
+до сімейної групи. Для регламенту можна обрати текстовий або фотозвіт:
+фото приватно завантажується й окремо здається в картці завдань, без Telegram
+чи ШІ. Зміна назви зберігає тип звіту. Фото самої поломки та вкладення до
+ручного журналу поки не підтримуються. Локальні дані поза
 каталогом HACS доступні адміністратору HA та входять до резервних копій.
 
 ## API boundaries
@@ -130,7 +141,9 @@ family-group message.
   `summary` (200), `details` (2000), `attachment_ids: []`.
 - `service_save`: current asset and optional existing series identity/revision,
   `title`, `assignees: [{id,revision}]`, `rotation`, `rule`, `due_time`,
-  `checklist`, `enabled`, `reminder_minutes`, `grace_minutes`. Existing recurrence
+  `checklist`, `enabled`, `reminder_minutes`, `grace_minutes`, optional
+  `report_type` (`text` or `photo`; new defaults to text, omitted edit preserves).
+  Existing recurrence
   rules and their DST/catch-up safeguards apply; no separate scheduler.
 - `service_enable`: current `id/revision`, `asset_revision`, boolean `enabled`.
 - `service_log`: current asset, `performed_on` (not a future household-local date),

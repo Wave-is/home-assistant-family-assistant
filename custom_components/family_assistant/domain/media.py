@@ -184,10 +184,17 @@ def _ensure_advance(record: dict) -> None:
 
 
 def _new_identifiers(media: dict) -> tuple[str, str]:
+    used_keys = {
+        record.get("blob_key")
+        for record in media.values()
+        if isinstance(record, dict) and isinstance(record.get("blob_key"), str)
+    }
     for _ in range(10):
         media_id = f"M{secrets.token_hex(16)}"
         if media_id not in media:
-            return media_id, secrets.token_hex(32)
+            blob_key = secrets.token_hex(32)
+            if blob_key not in used_keys:
+                return media_id, blob_key
     raise DomainError("quota_exceeded")
 
 

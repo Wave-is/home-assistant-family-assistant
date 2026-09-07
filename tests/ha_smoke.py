@@ -259,6 +259,9 @@ async def main():
             from ha_media_smoke import verify_media, verify_media_reload
 
             media_expected = await verify_media(hass, entry, user, child_id)
+            from ha_backup_smoke import verify_backup
+
+            await verify_backup(hass, entry, user, media_expected)
             school_expected = entry.runtime_data.engine.snapshot()["school"]
             school_tasks_expected = {
                 task_id: entry.runtime_data.engine.snapshot()["tasks"][task_id]

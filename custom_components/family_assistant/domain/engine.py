@@ -94,6 +94,8 @@ BUCKETS = (
     "assistant_jobs",
 )
 
+_NO_BACKUP = object()
+
 
 def new_state(
     owner_user_id: str,
@@ -165,6 +167,36 @@ class Engine:
         self._state.setdefault("media", {})
         self._persist = persist
         self._lock = asyncio.Lock()
+        # This process-local lease is deliberately absent from persisted state.
+        # A restarted Engine is writable and cannot accept a token from its predecessor.
+        self._backup_owner = _NO_BACKUP
+        self._ended_backup_owner = _NO_BACKUP
+
+    def _require_writable(self) -> None:
+        if self._backup_owner is not _NO_BACKUP:
+            raise DomainError("backup_in_progress")
+
+    async def async_begin_backup(self) -> object:
+        """Drain current persistence, then freeze new mutations under one opaque lease."""
+        if self._backup_owner is not _NO_BACKUP:
+            raise DomainError("conflict")
+        async with self._lock:
+            if self._backup_owner is not _NO_BACKUP:
+                raise DomainError("conflict")
+            token = object()
+            self._backup_owner = token
+            return token
+
+    async def async_end_backup(self, token: object) -> None:
+        """Release only the matching lease; repeating its release is harmless."""
+        async with self._lock:
+            if self._backup_owner is token:
+                self._backup_owner = _NO_BACKUP
+                self._ended_backup_owner = token
+                return
+            if self._backup_owner is _NO_BACKUP and self._ended_backup_owner is token:
+                return
+            raise DomainError("conflict")
 
     def snapshot(self) -> dict:
         """Trusted persistence/migration access, never return directly to a channel."""
@@ -335,6 +367,7 @@ class Engine:
     async def execute(
         self, actor_id: str, action: str, payload: dict, operation_id: str, now: datetime
     ) -> dict:
+        self._require_writable()
         text(operation_id, "operation_id", 180)
         timestamp(now, "now")
         if not isinstance(payload, dict):
@@ -350,6 +383,7 @@ class Engine:
             raise DomainError("command_too_large")
         fingerprint = hashlib.sha256(encoded.encode()).hexdigest()
         async with self._lock:
+            self._require_writable()
             actor = self._actor(actor_id)
             prior = self._state["processed"].get(operation_id)
             if prior:
@@ -485,8 +519,10 @@ class Engine:
         Persist the complete transition and outbox before any device operation.
         A tick with no transitions produces no write or ever-growing journal.
         """
+        self._require_writable()
         timestamp(now, "now")
         async with self._lock:
+            self._require_writable()
             working = deepcopy(self._state)
             ctx = Context(
                 working, {"id": "system", "role": "system"}, now, f"clock:{now.isoformat()}"
@@ -524,8 +560,10 @@ class Engine:
         The callback is synchronous and cannot perform network I/O inside the lock.
         This is used for durable effect intents and notification delivery receipts.
         """
+        self._require_writable()
         timestamp(now, "now")
         async with self._lock:
+            self._require_writable()
             working = deepcopy(self._state)
             ctx = Context(
                 working, {"id": "system", "role": "system"}, now, f"{kind}:{now.isoformat()}"
