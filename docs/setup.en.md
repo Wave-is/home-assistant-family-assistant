@@ -130,13 +130,43 @@ that agent, not automatic delegation of Telegram messages to it.
 
 ## Dashboard cards
 
-Until automatic resource registration is implemented, enable Advanced Mode in
-your HA profile. Open dashboard Resources and add the JavaScript module:
-`/family_assistant/frontend/family-assistant.js`. Refresh the browser, then add
-a Family Assistant card through the card picker. Its visual editor lists only
-households linked to your HA account; no configuration ID needs to be copied.
+With the normal Lovelace storage resource mode, Family Assistant registers one
+local JavaScript module for the whole HA installation. Multiple household
+entries share it. Its content fingerprint versions the complete relative module
+graph, so a release cannot combine new card code with helper modules retained by
+the browser's long cache. No external download is involved. After installing the
+integration or applying a HACS update, restart Home Assistant so the new
+fingerprint and static paths are registered, then refresh the browser and add a
+card from the picker. The visual editor lists only households linked to your HA
+account; no entry ID needs to be copied.
 
-Available views: Today, Shopping, Tasks, Alarms, Rules & rewards, Conversation, System health.
+The 17 available card types are:
+
+- `custom:family-assistant-card` — Today;
+- `custom:family-shopping-card` — Shopping;
+- `custom:family-tasks-card` — Tasks;
+- `custom:family-court-card` — Rules & rewards;
+- `custom:family-alarms-card` — Alarms;
+- `custom:family-health-card` — System health;
+- `custom:family-conversation-card` — Conversation;
+- `custom:family-network-card` — Home network;
+- `custom:family-calendar-card` — Calendar;
+- `custom:family-routines-card` — Routines;
+- `custom:family-pantry-card` — Pantry;
+- `custom:family-meals-card` — Meals;
+- `custom:family-school-card` — School;
+- `custom:family-maintenance-card` — Maintenance;
+- `custom:family-polls-card` — Polls;
+- `custom:family-presence-card` — Presence;
+- `custom:family-digests-card` — Digests.
+
+Family Assistant updates only the storage resource bearing its exact ownership
+marker. An existing manual URL is never adopted or overwritten. If HA reports a
+frontend resource Repair, follow [the resource guide](frontend-resources.md):
+remove a duplicate manually before reloading, or keep the documented manual
+entry when Lovelace uses YAML resource mode. Family Assistant never edits YAML
+or `.storage` directly.
+
 The card uses the HA interface language; each member can separately choose
 their bot language. UI controls are not a substitute for server authorization.
 

@@ -102,6 +102,9 @@ async def main():
             entry = result["result"]
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED, entry.state
+            from ha_frontend_resources_smoke import verify_frontend_resources
+
+            await verify_frontend_resources(hass, entry)
             engine = entry.runtime_data.engine
             record = await engine.execute(
                 "owner", "shopping.add", {"name": "Milk"}, "smoke-add", datetime.now(UTC)

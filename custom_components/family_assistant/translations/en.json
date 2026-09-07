@@ -848,6 +848,10 @@
     "digest_retention_attention": {
       "title": "Digest retention needs review",
       "description": "The retained digest marker or event limit was reached, so new digests are paused. Review digest delivery health and resolve pending, uncertain or failed notifications. This Repair contains counts only and does not identify recipients or messages."
+    },
+    "frontend_resource_attention": {
+      "title": "Dashboard card resource needs review",
+      "description": "Automatic Family Assistant card resource setup could not finish safely. Lovelace may use YAML resources, a manual Family Assistant resource may already exist, multiple integration-owned records may exist, or Lovelace may not be ready. Follow the Family Assistant frontend resource setup guide. This Repair contains no external resource URL or family data."
     }
   }
 }

@@ -70,6 +70,19 @@ async def _async_setup_runtime(hass, entry) -> bool:
     from .websocket import async_register_api
 
     data = hass.data.setdefault(DOMAIN, {"entries": {}})
+    if "frontend_resource" not in data:
+        from homeassistant.components.http import StaticPathConfig
+
+        from .frontend_resources import async_prepare_frontend_resource
+
+        resource = await async_prepare_frontend_resource(hass)
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(path.url_path, path.filesystem_path, path.cache_headers)
+                for path in resource.static_paths
+            ]
+        )
+        data["frontend_resource"] = resource
     store = Store(hass, SCHEMA_VERSION, f"{DOMAIN}.{entry.entry_id}")
     state = await store.async_load()
     if state is None:
@@ -100,17 +113,6 @@ async def _async_setup_runtime(hass, entry) -> bool:
         dt_util.utcnow,
     )
     if not data.get("api_registered"):
-        from homeassistant.components.http import StaticPathConfig
-
-        await hass.http.async_register_static_paths(
-            [
-                StaticPathConfig(
-                    "/family_assistant/frontend",
-                    str(Path(__file__).parent / "frontend"),
-                    cache_headers=False,
-                ),
-            ]
-        )
         async_register_api(hass)
         from .media_http import async_register_media
 
@@ -152,6 +154,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         )
         data["api_registered"] = True
     try:
+        await async_configure_frontend(hass, runtime)
         await async_configure_presence(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         from .scheduler import Scheduler
@@ -197,6 +200,35 @@ async def _async_setup_runtime(hass, entry) -> bool:
         data["entries"].pop(entry.entry_id, None)
         raise
     return True
+
+
+async def async_configure_frontend(hass, runtime):
+    """Keep card discovery independent of household/provider availability."""
+    from homeassistant.helpers import issue_registry as ir
+
+    from .frontend_resources import async_ensure_frontend_resource
+
+    try:
+        result = await async_ensure_frontend_resource(hass, hass.data[DOMAIN]["frontend_resource"])
+        attention = result.status not in {"created", "updated", "current", "yaml_current"}
+    except Exception:  # noqa: BLE001 - no user URLs or filesystem exceptions in diagnostics
+        attention = True
+    for selected in hass.data[DOMAIN].get("entries", {}).values():
+        if attention:
+            selected.health["frontend"] = "frontend_resource_attention"
+        else:
+            selected.health.pop("frontend", None)
+    if attention:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            "frontend_resource",
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="frontend_resource_attention",
+        )
+    else:
+        ir.async_delete_issue(hass, DOMAIN, "frontend_resource")
 
 
 async def async_unload_runtime(hass, entry) -> bool:

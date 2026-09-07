@@ -26,6 +26,17 @@ do not close the gaps below.
 
 ## Confirmed implementation gaps
 
+Checkpoint update: automatic resource bootstrap is now implemented and verified
+against the actual HA 2026.8.2 ResourceStorageCollection and HTTP handlers.
+Eight concurrent reconciliations create one owned record; update/reload preserves
+manual and unrelated resources. YAML resources stay manual. The complete local
+JavaScript module graph receives a content-addressed path, including relative
+imports. All three setup guides list the seventeen exact card aliases.
+The original P0 finding below is retained as audit history, **closed in code**;
+packaged HACS installation/upgrade and browser-cache acceptance remain a separate
+release gate. The checkpoint passed 2080 Python tests (three host-dependent
+skips), the complete actual-HA suite, Ruff, locale parity and privacy scanning.
+
 | Priority | Gap | Evidence and release effect |
 | --- | --- | --- |
 | **P0** | **The card resource is not registered automatically.** | Runtime registers only the static URL (`runtime.py:102-114`). The setup guides still require Advanced Mode and manual creation of `/family_assistant/frontend/family-assistant.js` as a dashboard Resource (`setup.en.md:131-137`, with the same steps in RU/UK). Until that is done, the card picker cannot discover any Family Assistant card. This contradicts the vision's ordinary no-YAML setup and the matrix's explicit “automatic card resource registration” next step. |

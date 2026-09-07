@@ -16,7 +16,7 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Seventeen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; richer editors and automatic resource registration pending |
+| Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; supported ownership-safe Lovelace registration and full module-graph versioning; richer overview/editors and packaged HACS upgrade acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
@@ -637,7 +637,7 @@ service call does not prove physical sound or volume.
 
 1. Extend language/context coverage and the LLM/search cascade; keep calendar
    calculations and authorization deterministic.
-2. Complete module controls, localization and automatic card resource registration.
+2. Complete module controls and localization; verify automatic card resources with a packaged HACS install/upgrade.
 3. Complete recurrence, reports, rewards and module parity, then LLM/search and
    extended family modules. Keep all unmet rows visible.
 4. Extend native fault/IPv6/FastTrack topology coverage, richer Kid Control
