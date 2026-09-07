@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.9 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.10 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,10 +33,40 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.9 runtime ZIP/tag verified, all eight Checks jobs passed at 46df777 (34164907978), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.10 candidate pending; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.10 runtime ZIP/tag verified, all eight Checks jobs passed at daea228 (34166470255), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.11 candidate pending; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Task lifecycle candidate, 2026-09-08
+## Future photo / overdue progress candidate, 2026-09-08
+
+Alpha.11 adds strict proposals for photo-required tasks without any past photo
+submission and reconciles overdue activity only from full identity-aware history,
+original metadata and matching timestamps. It does not fabricate images, guess
+progress or remove an actual source inconsistency. Forty-four fictional cases
+generated through the actual private legacy ledger API passed without household
+data or production writes. Thirty-one new public cases cover photo requirements,
+current-role submission/completion denial, late activity and unresolved history;
+the extended native Store fixture covers both new paths. Initial full3205 Python,
+440 main Node and185 Chromium cases passed, as did the complete isolated HA suite.
+AGY's focused read-only review raised a possible needs-changes inconsistency.
+Root reproduced an explicit malformed transition into needs-changes without any
+submitted report, then added a failing regression test and the missing history
+invariant. Final exact-artifact verification is pending; the earlier artifact is
+superseded and must not be published.
+
+Final local3206 Python tests, five skips and23 subtests passed with418-file
+Ruff/format and privacy/locale checks. The final runtime archive has215 files,
+2826377 runtime bytes and759635 ZIP bytes, SHA256
+`24186326c066d8f7ce3456d7d9cd6f8ac98a9c9595e9c49d20243f770cde604c`.
+The full final actual-HA run passed on these exact runtime bytes, including
+native Store/reload and all existing integration gates. Exact commit CI remains
+pending. Frontend source is unchanged from the successful440 main Node /185
+Chromium run.
+
+## Task lifecycle checkpoint, 2026-09-08
+
+Alpha.10 was published at `daea228fa09cdc0210bced99dfd04beaa6910b61` after all
+eight Checks jobs in `34166470255` passed. Tag and asset digest match the frozen
+candidate below. No production update occurred.
 
 Alpha.10 adds verified text-report reassignment chains and separate terminal
 notes for no-report tasks and self-only reminders. Former reports remain
@@ -52,8 +82,8 @@ Exact candidate:214 runtime files,2821105 runtime bytes,758043 ZIP bytes,
 SHA256 `f0d531f9fc251f69a7fd93b85c18d57ce7b8c17259e2d48ca1ffcf08870c77d7`.
 The complete isolated HA 2026.8.2 suite passed, including exact Store archive
 roundtrip and reproducible proposals for reassignment and private terminal notes.
-Exact commit CI remains pending. No apply/import capability, active transport or
-production migration is introduced.
+Exact commit CI subsequently passed as recorded above. No apply/import capability,
+active transport or production migration is introduced.
 
 ## Text report checkpoint, 2026-09-08
 

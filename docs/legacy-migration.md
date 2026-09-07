@@ -155,9 +155,11 @@ not converted to a current authenticated actor; no role or approval is inferred.
 This requires explicit historical attribution handling at the future apply step.
 
 Task proposals currently cover ordinary no-report records with supported states,
-preserved dates and zero reminder/penalty settings. Overdue progress is not guessed
-or rewound if later acceptance/start evidence disagrees with the saved pre-overdue
-state. Convertible no-report personal reminders retain their self-only scope;
+preserved dates and zero reminder/penalty settings. When pre-overdue metadata lags
+behind a later acceptance/start, a complete source history must reconcile the
+current assignment, metadata and exact activity times before proposing its real
+progress. Incomplete evidence or a source revision that actually rewound progress
+still blocks; a timestamp alone is not proof. Convertible no-report personal reminders retain their self-only scope;
 text-report tasks can now produce proposals from complete explicit event history.
 Their reviewer and review actors must map to current owner/parent identities;
 the proposal explicitly states the modern `household_parents` review policy.
@@ -173,8 +175,13 @@ explicit history without inventing a submission, review authority or approval.
 Nonparent designated reviewers require a separate authority review. The complete
 old/new reviewer-set comparison still belongs to capture/cutover acceptance;
 the proposal does not grant a role or constitute authorization to import.
-A Telegram photo reference is not a verified
-local attachment. All original notes and history remain in the private archive.
+A photo-required task with no historical submission can preserve its future
+photo requirement and explicit lifecycle outcome without creating any attachment.
+An old direct parent completion must have an explicit authorized source event;
+it does not claim a photo exists. Any historical photo submission still requires
+evidence resolution, even after rejection, reassignment or completion. A Telegram
+photo reference is not a verified local attachment. All original notes and history
+remain in the private archive.
 `getFile` requires a file identifier; an old event/message reference alone is not
 one. Telegram's pending update queue is not a history archive and retains updates
 for at most 24 hours. Forwarding a message is a new external send, not read-only

@@ -10,7 +10,13 @@ from datetime import datetime
 
 from .preflight import _text
 from .review import LegacyReview
-from .task_reports import ReportHistoryError, project_text_history, project_unreported_history
+from .task_progress import project_overdue_progress
+from .task_reports import (
+    ReportHistoryError,
+    project_text_history,
+    project_unreported_history,
+    project_unsubmitted_photo_history,
+)
 
 SUPPORTED_STATES = frozenset(
     {"assigned", "accepted", "in_progress", "completed", "cancelled", "archived"}
@@ -58,13 +64,16 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
     report_type = row.get("report_type")
     report_projection = None
     if requires_report:
-        if report_type == "text":
+        if type(report_type) is str and report_type in {"text", "photo"}:
             try:
-                report_projection = project_text_history(row, history, mapping, members)
+                projector = (
+                    project_text_history
+                    if report_type == "text"
+                    else project_unsubmitted_photo_history
+                )
+                report_projection = projector(row, history, mapping, members)
             except ReportHistoryError as error:
                 raise TaskPlanError(str(error)) from None
-        elif report_type == "photo":
-            raise TaskPlanError("task_report_review_required")
         else:
             raise TaskPlanError("task_report_settings_unsupported")
 
@@ -106,15 +115,26 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
             raise TaskPlanError("task_overdue_state_unsupported")
         overdue_from = metadata.get("overdue_from_state")
         overdue_states = OVERDUE_FROM_STATES | ({"needs_changes"} if requires_report else set())
-        if type(overdue_from) is not str or overdue_from not in overdue_states:
+        if (overdue_from is None and "overdue_from_state" in metadata) or (
+            overdue_from is not None
+            and (type(overdue_from) is not str or overdue_from not in overdue_states)
+        ):
             raise TaskPlanError("task_overdue_state_unsupported")
         # Legacy acceptance/start while already overdue did not update the saved
         # pre-overdue state. Do not silently rewind subsequently recorded progress.
-        if (overdue_from == "assigned" and "accepted_at" in lifecycle) or (
-            overdue_from in {"assigned", "accepted"} and "started_at" in lifecycle
+        if (
+            overdue_from is None
+            or (overdue_from == "assigned" and "accepted_at" in lifecycle)
+            or (overdue_from in {"assigned", "accepted"} and "started_at" in lifecycle)
         ):
-            raise TaskPlanError("task_overdue_progress_review_required")
-        status = overdue_from
+            try:
+                status = project_overdue_progress(row, history, mapping, members)
+            except ReportHistoryError as error:
+                raise TaskPlanError(
+                    "task_overdue_state_unsupported" if overdue_from is None else str(error)
+                ) from None
+        else:
+            status = overdue_from
     elif state in supported:
         status = state
     else:

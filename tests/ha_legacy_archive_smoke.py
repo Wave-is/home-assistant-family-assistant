@@ -172,6 +172,21 @@ def synthetic_source(*, lifecycle=False):
 
 def extend_lifecycle(ledger, stamp):
     """Native Store acceptance also covers notes and a rejected reassignment."""
+    future_photo = ledger["tasks"]["T000002"]
+    future_photo.update(
+        state="assigned", requires_report=True, report_type="photo", reviewer="old-parent"
+    )
+    ledger["history"][1].update(
+        type="created",
+        from_state=None,
+        to_state="assigned",
+        details={
+            "assignee": "old-child",
+            "reviewer": "old-parent",
+            "requires_report": True,
+            "report_type": "photo",
+        },
+    )
     personal = ledger["tasks"]["T000003"]
     ledger["history"][2].update(
         type="created",
@@ -208,6 +223,8 @@ def extend_lifecycle(ledger, stamp):
             "submitted",
             {"report": "Report after reassignment"},
         ),
+        ("T000002", "accepted", "old-child", "overdue", {"late": True}),
+        ("T000002", "started", "old-child", "overdue", {"late": True}),
     ]:
         row = ledger["tasks"][identifier]
         sequence = ledger["next_event_sequence"]
@@ -232,6 +249,8 @@ def extend_lifecycle(ledger, stamp):
             row.update(assignee="old-parent", submitted_at=None, accepted_at=None, started_at=None)
         elif kind == "submitted":
             row.update(submitted_at=at, accepted_at=at, last_note=details["report"])
+        elif kind in {"accepted", "started"}:
+            row[f"{kind}_at"] = at
         else:
             row["last_note"] = details["note"]
         row["state"] = destination
@@ -281,6 +300,11 @@ async def verify_legacy_archive(hass):
     assert expected[0]["proposals"][0]["payload"]["enabled"] is False
     assert len(expected[3]["proposals"]) == 3
     assert expected[3]["blocked"] == []
+    future_photo = expected[3]["proposals"][0]["record"]
+    assert future_photo["report_type"] == "photo" and future_photo["report"] is None
+    assert future_photo["status"] == "in_progress" and "report_media" not in future_photo
+    assert future_photo["accepted_at"] == "2026-09-07T08:13:00+00:00"
+    assert future_photo["started_at"] == "2026-09-07T08:14:00+00:00"
     assert expected[3]["proposals"][1]["record"]["delivery_scope"] == "personal"
     personal = expected[3]["proposals"][1]["record"]
     assert personal["completion_note"] == "Private completion note"

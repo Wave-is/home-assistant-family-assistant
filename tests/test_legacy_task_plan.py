@@ -337,11 +337,7 @@ def test_report_required_task_blocked_with_task_report_review_required(report_ty
     _, plan = plan_for(*args)
     assert plan.summary()["record_proposals_count"] == 0
     assert plan.summary()["blocked_items_count"] == 1
-    code = (
-        "task_report_identity_review_required"
-        if report_type == "text"
-        else "task_report_review_required"
-    )
+    code = "task_report_identity_review_required"
     assert plan.summary()["issues"] == [{"code": code, "count": 1}]
     assert plan.private_data()["blocked"] == [{"source_task": "T000001", "code": code}]
 

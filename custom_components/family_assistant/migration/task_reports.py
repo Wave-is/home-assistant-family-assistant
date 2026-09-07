@@ -78,24 +78,30 @@ def project_unreported_history(row, events, mapping, members):
     return _project_history(row, events, mapping, members, reports=False)["fields"]
 
 
-def _project_history(row, events, mapping, members, *, reports):
+def project_unsubmitted_photo_history(row, events, mapping, members):
+    """Retain a future photo requirement, never synthesize historical evidence."""
+    return _project_history(row, events, mapping, members, reports=True, photo=True)
+
+
+def _project_history(row, events, mapping, members, *, reports, photo=False):
     """Only validated, current-mapped parent review; no implicit role creation.
 
     Explicit assignment changes archive the prior person's report; the legacy
     last_note is retained solely for source reconciliation, never reassigned to
     the new person. Raw history remains archived even for blocked records.
     """
+    report_type = ("photo" if photo else "text") if reports else None
     if (
         row.get("kind") not in ({"task"} if reports else {"task", "reminder"})
         or row.get("requires_report") is not reports
-        or row.get("report_type") != ("text" if reports else None)
+        or row.get("report_type") != report_type
         or (not reports and row.get("reviewer") is not None)
     ):
         _fail()
     reviewer = _binding(row.get("reviewer"), mapping, members, parent=True) if reports else None
     _binding(row.get("assignee"), mapping, members)
     assignee_key, assignee = None, None
-    fields = {"report_type": "text" if reports else "none", "report": None}
+    fields = {"report_type": report_type or "none", "report": None}
     current, previous, last_note, state = None, [], None, None
     last_at, sequence = _stamp(row.get("created_at")), 0
     if type(events) is not list or not events:
@@ -131,13 +137,17 @@ def _project_history(row, events, mapping, members, *, reports):
                 _fail()
             if (
                 details.get("requires_report") is not reports
-                or details.get("report_type") != ("text" if reports else None)
+                or details.get("report_type") != report_type
                 or details.get("reviewer") != row.get("reviewer")
             ):
                 _fail()
         elif state is None:
             _fail()
         elif kind == "submitted":
+            if photo:
+                # Old text references/captions are neither binary evidence nor
+                # authority to fetch/send Telegram messages during migration.
+                _fail("task_photo_evidence_review_required")
             if (
                 not reports
                 or state not in OPEN
@@ -256,6 +266,8 @@ def _project_history(row, events, mapping, members, *, reports):
             ):
                 _fail()
         else:
+            _fail()
+        if destination == "needs_changes" and (current is None or not current.get("review_note")):
             _fail()
         if row.get("kind") == "reminder" and (
             assignee_key != row.get("creator")
