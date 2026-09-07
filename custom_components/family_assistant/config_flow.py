@@ -13,6 +13,7 @@ from homeassistant.util import dt as dt_util
 from .const import DEFAULT_MODULES, DOMAIN, LANGUAGES, ROLES
 from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
+from .onboarding_handoff import async_post_create_handoff, is_guided_handoff
 from .onboarding_options import GuidedOnboardingMixin
 
 CONFIGURABLE_MODULES = (
@@ -61,6 +62,10 @@ def select(options, translation_key=None):
 
 class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
+
+    async def async_on_create_entry(self, result):
+        """Offer the exact new household's guide after Core finishes setup."""
+        return await async_post_create_handoff(self.hass, result, self.context)
 
     @staticmethod
     @callback
@@ -146,6 +151,8 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         )
 
     async def async_step_init(self, user_input=None):
+        if is_guided_handoff(user_input):
+            return await self.async_step_guided_onboarding()
         return self.async_show_menu(
             step_id="init",
             menu_options=[

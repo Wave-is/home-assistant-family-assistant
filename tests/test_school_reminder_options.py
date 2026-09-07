@@ -63,6 +63,13 @@ def config_flow(monkeypatch):
     config_entries = ModuleType("homeassistant.config_entries")
     config_entries.ConfigFlow = _FlowBase
     config_entries.OptionsFlow = _FlowBase
+    config_entries.SOURCE_USER = "user"
+    config_entries.ConfigEntry = type("ConfigEntry", (), {})
+    config_entries.ConfigEntryState = SimpleNamespace(LOADED="loaded")
+    config_entries.ConfigFlowResult = dict
+    config_entries.FlowType = SimpleNamespace(OPTIONS_FLOW="options_flow")
+    data_entry_flow = ModuleType("homeassistant.data_entry_flow")
+    data_entry_flow.FlowResultType = SimpleNamespace(MENU="menu")
     core = ModuleType("homeassistant.core")
     core.callback = lambda value: value
     helpers = ModuleType("homeassistant.helpers")
@@ -78,6 +85,7 @@ def config_flow(monkeypatch):
     for name, module in {
         "homeassistant": homeassistant,
         "homeassistant.config_entries": config_entries,
+        "homeassistant.data_entry_flow": data_entry_flow,
         "homeassistant.core": core,
         "homeassistant.helpers": helpers,
         "homeassistant.helpers.selector": selector,

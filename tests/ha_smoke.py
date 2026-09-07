@@ -107,6 +107,9 @@ async def main():
             entry = result["result"]
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED, entry.state
+            from ha_onboarding_handoff_smoke import verify_onboarding_handoff
+
+            await verify_onboarding_handoff(hass, result, user)
             from ha_onboarding_smoke import verify_onboarding
 
             await verify_onboarding(hass, entry, user)
