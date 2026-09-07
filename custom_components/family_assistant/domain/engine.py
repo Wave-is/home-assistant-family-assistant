@@ -482,6 +482,7 @@ class Engine:
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}
                 for event in self._state["outbox"].values()
                 if event["state"] in {"uncertain", "failed", "awaiting_channel"}
+                if task_access.event_visible(self._state, actor, event)
             ][-100:]
             data["audit"] = [
                 {
@@ -493,6 +494,7 @@ class Engine:
                     },
                 }
                 for event in self._state["audit"][-100:]
+                if task_access.audit_visible(self._state, actor, event["result"])
             ]
         return deepcopy(data)
 
@@ -671,6 +673,8 @@ class Engine:
             )
         elif module == "tasks":
             task_access.authorize_replay(self._state, self._actor(actor_id), result)
+        elif module == "notifications":
+            delivery.authorize_replay(self._state, self._actor(actor_id), payload)
         elif module == "routines":
             routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
         elif action.startswith("pantry.dietary_"):

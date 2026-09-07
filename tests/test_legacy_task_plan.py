@@ -280,20 +280,52 @@ def test_unsupported_statuses_blocked_never_silently_reopened(status):
     ]
 
 
-def test_reminders_blocked_with_task_personal_scope_unsupported():
+def test_reminders_preserve_personal_scope():
     args = fixture()
     row = args[0]["tasks"]["T000001"]
     row["kind"] = "reminder"
     row["assignee"] = "old-parent"  # preflight requires creator == assignee for reminders
     _, plan = plan_for(*args)
-    assert plan.summary()["record_proposals_count"] == 0
-    assert plan.summary()["blocked_items_count"] == 1
-    assert plan.summary()["issues"] == [{"code": "task_personal_scope_unsupported", "count": 1}]
-    assert plan.private_data()["blocked"] == [
-        {"source_task": "T000001", "code": "task_personal_scope_unsupported"}
-    ]
-    # Reminder is still preserved in private archive
+    assert plan.summary()["record_proposals_count"] == 1
+    assert plan.summary()["blocked_items_count"] == 0
+    assert plan.summary()["issues"] == []
+    record = plan.private_data()["proposals"][0]["record"]
+    assert record["delivery_scope"] == "personal"
+    assert record["creator"] == record["assignee"] == "owner"
+    # Raw reminder is still preserved in private archive.
     assert "T000001" in plan.private_data()["archive"]["tasks"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("source_owner,actor", [("old-parent", "owner"), ("old-child", "child")])
+async def test_proposed_personal_reminder_keeps_real_target_privacy_and_lifecycle(
+    source_owner, actor
+):
+    args = fixture()
+    row = args[0]["tasks"]["T000001"]
+    row.update(kind="reminder", creator=source_owner, assignee=source_owner)
+    _, plan = plan_for(*args)
+    record = plan.private_data()["proposals"][0]["record"]
+    assert record["creator"] == record["assignee"] == actor
+    args[3]["tasks"]["T000001"] = {"id": "T000001", "revision": 1, **record}
+    saved = []
+
+    async def persist(value):
+        saved.append(deepcopy(value))
+
+    engine = Engine(args[3], persist)
+    for current in ["owner", "child"]:
+        assert len(engine.view(current)["tasks"]) == (1 if current == actor else 0)
+    task = await engine.execute(
+        actor,
+        "tasks.complete",
+        {"id": "T000001", "revision": 1},
+        "finish",
+        datetime.fromisoformat(STAMP),
+    )
+    assert task["status"] == "completed" and task["delivery_scope"] == "personal"
+    restored = Engine(saved[-1], persist)
+    assert restored.view(actor)["tasks"] == engine.view(actor)["tasks"]
 
 
 @pytest.mark.parametrize("report_type", ["photo", "text"])
@@ -393,8 +425,8 @@ def test_lossless_archive_preserves_every_task_reminder_and_history():
     args[0]["next_event_sequence"] = 3
     _, plan = plan_for(*args)
     assert plan.summary()["source_items_count"] == 2
-    assert plan.summary()["record_proposals_count"] == 1
-    assert plan.summary()["blocked_items_count"] == 1
+    assert plan.summary()["record_proposals_count"] == 2
+    assert plan.summary()["blocked_items_count"] == 0
     assert plan.summary()["archived_history_count"] == 2
     assert plan.private_data()["archive"]["tasks"]["T000001"] == args[0]["tasks"]["T000001"]
     assert plan.private_data()["archive"]["tasks"]["T000002"] == reminder_row

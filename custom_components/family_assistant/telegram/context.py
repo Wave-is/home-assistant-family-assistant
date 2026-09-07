@@ -9,6 +9,27 @@ untrusted user input rather than an automatic export of a prior private view.
 MAX_QUOTED_TEXT = 2000
 
 
+class PersonalReply(str):
+    """Internal route result whose body must not become automatic model context."""
+
+
+def _personal_event(state, event):
+    from ..domain.task_access import personal_task
+
+    data = event.get("data", {})
+    if not isinstance(data, dict):
+        return True
+    if data.get("private_context") is True or event.get("key") == "task_personal_due":
+        return True
+    references = data.get("refs", [])
+    if not isinstance(references, list):
+        return True
+    refs = [data.get("id"), *references]
+    return any(
+        isinstance(ref, str) and personal_task(state.get("tasks", {}).get(ref)) for ref in refs
+    )
+
+
 def _own_bot_quote(message, bot):
     quoted = message.get("reply_to_message", {})
     bot_id = bot.get("id") if isinstance(bot, dict) else None
@@ -72,6 +93,8 @@ def reply_quote(state, message, bot):
         return value[:MAX_QUOTED_TEXT]
     event = _reply_event(state, message, bot)
     if event is None or event.get("key") in {"telegram_poll_reply", "family_digest"}:
+        return ""
+    if _personal_event(state, event):
         return ""
     return value[:MAX_QUOTED_TEXT]
 

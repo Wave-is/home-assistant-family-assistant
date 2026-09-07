@@ -44,9 +44,7 @@ class TaskPlan:
 
 def _record(row: dict, mapping: dict) -> dict:
     kind = row.get("kind")
-    if kind == "reminder":
-        raise TaskPlanError("task_personal_scope_unsupported")
-    if kind != "task":
+    if kind not in {"task", "reminder"}:
         raise TaskPlanError("task_kind_unsupported")
 
     if not _text(row.get("title"), 500):
@@ -120,6 +118,8 @@ def _record(row: dict, mapping: dict) -> dict:
     assignee = mapping[assignee_key]
     if assignee.get("archive_only"):
         raise TaskPlanError("invalid_member_reference")
+    if kind == "reminder" and creator != assignee:
+        raise TaskPlanError("invalid_member_reference")
 
     projected_lifecycle = {
         key: value
@@ -154,6 +154,7 @@ def _record(row: dict, mapping: dict) -> dict:
                 "penalty": 0,
             },
             "checklist": [],
+            **({"delivery_scope": "personal"} if kind == "reminder" else {}),
             **projected_lifecycle,
         },
     }

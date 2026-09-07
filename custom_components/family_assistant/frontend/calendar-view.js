@@ -656,6 +656,7 @@ export function renderCalendar(card, body) {
     const linked = new Set(d.task_ids || []);
     const taskBoxes = [];
     for (const task of tasks) {
+      if (task.delivery_scope === "personal") continue;
       if (task.archived && !linked.has(task.id)) continue;
       const label = el("label", `${task.id} · ${task.title}`, "check");
       const cb = el("input");

@@ -7,11 +7,15 @@ from ..const import PRIVILEGED
 from .validation import DomainError
 
 
+def personal_task(task):
+    return isinstance(task, dict) and task.get("delivery_scope") == "personal"
+
+
 def private_task(task):
     if not isinstance(task, dict):
         return False
     source = task.get("source")
-    return task.get("delivery_scope") == "private" or (
+    return task.get("delivery_scope") in {"private", "personal"} or (
         isinstance(source, dict)
         and source.get("kind") in {"maintenance_fault", "maintenance_service", "school_homework"}
     )
@@ -37,6 +41,10 @@ def may_view(state, actor, task):
     current = state.get("members", {}).get(actor.get("id"), {})
     if not current.get("active") or current.get("role") == "guest":
         return False
+    if personal_task(task):
+        return task.get("creator") == task.get("assignee") == current.get(
+            "id"
+        ) and current_assignee(state, task)
     return current.get("role") in PRIVILEGED or (
         task.get("assignee") == current.get("id") and current_assignee(state, task)
     )
@@ -93,7 +101,7 @@ def public_task(task, *, parent, state=None, actor=None, now=None):
                     continue
             report["report_attachments"] = attachments
     if private_task(task):
-        result["delivery_scope"] = "private"
+        result["delivery_scope"] = "personal" if personal_task(task) else "private"
         if isinstance(task.get("source"), dict) and task["source"].get("kind") == "school_homework":
             result["managed_by"] = "school"
         if not parent:
@@ -104,6 +112,16 @@ def public_task(task, *, parent, state=None, actor=None, now=None):
 
 def authorize_replay(state, actor, result):
     current = state.get("tasks", {}).get(result.get("id"))
+    if personal_task(result) or personal_task(current):
+        if (
+            not personal_task(current)
+            or not may_view(state, actor, current)
+            or result.get("creator") != actor.get("id")
+            or result.get("assignee") != actor.get("id")
+            or result.get("assignee_revision") != actor.get("revision")
+        ):
+            raise DomainError("forbidden")
+        return
     if isinstance(current, dict) and current.get("report_type") == "photo":
         if not may_view(state, actor, current):
             raise DomainError("forbidden")
@@ -122,3 +140,40 @@ def authorize_replay(state, actor, result):
         or result.get("assignee_revision") != actor.get("revision")
     ):
         raise DomainError("forbidden")
+
+
+def audit_visible(state, actor, result):
+    """Hide a whole mixed batch if any personal receipt is outside current scope."""
+    if not isinstance(result, dict):
+        return False
+    if isinstance(result.get("items"), list):
+        return all(audit_visible(state, actor, item) for item in result["items"])
+    event = state.get("outbox", {}).get(result.get("id"))
+    if isinstance(event, dict) and not event_visible(state, actor, event):
+        return False
+    task = state.get("tasks", {}).get(result.get("id"))
+    if not personal_task(result) and not personal_task(task):
+        return True
+    try:
+        authorize_replay(state, actor, result)
+    except DomainError:
+        return False
+    return True
+
+
+def event_visible(state, actor, event):
+    data = event.get("data", {})
+    task = state.get("tasks", {}).get(data.get("id"))
+    if data.get("private_context") is True and not personal_task(task):
+        current = state.get("members", {}).get(actor.get("id"), {})
+        return (
+            event.get("key") == "telegram_reply"
+            and current.get("active") is True
+            and data.get("actor") == event.get("recipient") == current.get("id")
+            and data.get("actor_revision") == current.get("revision")
+        )
+    return not personal_task(task) or (
+        may_view(state, actor, task)
+        and event.get("recipient") == actor.get("id")
+        and data.get("member_revision") == actor.get("revision")
+    )

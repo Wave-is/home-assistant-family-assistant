@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from ..const import PRIVILEGED
-from .task_access import current_assignee
+from .task_access import current_assignee, personal_task
 
 TASK_EVENTS = frozenset(
     {
         "task_assigned",
         "task_reminder",
+        "task_personal_due",
         "task_review",
         "task_overdue",
         "task_incident_closed",
@@ -145,6 +146,15 @@ def current_task_event(state: dict, event: dict) -> bool:
         task = tasks.get(task_id)
         if not _mapping(task):
             return False
+        if personal_task(task) and (
+            task.get("creator") != task.get("assignee")
+            or recipient != task.get("assignee")
+            or not current_assignee(state, task)
+            or not _active_member(state, recipient, data)
+            or "member_revision" not in data
+            or event["key"] not in {"task_assigned", "task_reminder", "task_personal_due"}
+        ):
+            return False
         if event["key"] == "task_incident_closed":
             return _closure_current(state, event, task, data)
 
@@ -166,9 +176,10 @@ def current_task_event(state: dict, event: dict) -> bool:
         key = event["key"]
         if key == "task_assigned":
             return recipient == assignee and task.get("status") in OPEN
-        if key == "task_reminder":
+        if key in {"task_reminder", "task_personal_due"}:
             return (
                 recipient == assignee
+                and (key != "task_personal_due" or personal_task(task))
                 and isinstance(data.get("due_at"), str)
                 and data["due_at"] == task.get("due_at")
                 and task.get("status") in OPEN

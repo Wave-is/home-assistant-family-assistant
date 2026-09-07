@@ -332,6 +332,10 @@ async def main():
             from ha_legacy_archive_smoke import verify_legacy_archive
 
             await verify_legacy_archive(hass)
+            from ha_personal_task_smoke import verify_personal_tasks
+
+            personal_id = await verify_personal_tasks(hass, entry, user, child_id)
+            personal_before_reload = entry.runtime_data.engine.snapshot()["tasks"][personal_id]
             # Reload reads the same Store; HACS code updates do not replace it.
             members_before_reload = entry.runtime_data.engine.snapshot()["members"]
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
@@ -341,6 +345,13 @@ async def main():
             assert await hass.config_entries.async_reload(entry.entry_id)
             await hass.async_block_till_done()
             assert entry.state == config_entries.ConfigEntryState.LOADED
+            assert (
+                entry.runtime_data.engine.snapshot()["tasks"][personal_id] == personal_before_reload
+            )
+            assert not any(
+                task["id"] == personal_id
+                for task in entry.runtime_data.engine.view("owner")["tasks"]
+            )
             await verify_model_plan_reload(hass, entry, user, model_plan_expected)
             assert entry.runtime_data.engine.snapshot()["school"] == school_expected
             assert school_expected["timetables"][school_id]["status"] == "active"

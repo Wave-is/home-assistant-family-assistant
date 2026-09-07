@@ -18,7 +18,7 @@ from ..assistant.service import Assistant
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
-from .context import reply_quote, reply_refs, result_refs
+from .context import PersonalReply, reply_quote, reply_refs, result_refs
 from .enrollment import Enrollment
 from .errors import ERRORS
 from .messages import render, targets
@@ -563,6 +563,7 @@ class TelegramManager:
                             "telegram_reply",
                             {
                                 "text": response,
+                                "private_context": isinstance(response, PersonalReply),
                                 "actor": actor,
                                 "actor_revision": actor_revision,
                                 "bot_id": bot_id,

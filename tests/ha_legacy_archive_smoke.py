@@ -141,10 +141,9 @@ async def verify_legacy_archive(hass):
     assert restored.summary() == review.summary()
     assert proposals(restored, members) == expected
     assert expected[0]["proposals"][0]["payload"]["enabled"] is False
-    assert len(expected[3]["proposals"]) == 1
-    assert expected[3]["blocked"] == [
-        {"source_task": "T000003", "code": "task_personal_scope_unsupported"}
-    ]
+    assert len(expected[3]["proposals"]) == 2
+    assert expected[3]["blocked"] == []
+    assert expected[3]["proposals"][1]["record"]["delivery_scope"] == "personal"
     changed = deepcopy(members)
     changed["child"]["telegram_id"] = 778899
     try:

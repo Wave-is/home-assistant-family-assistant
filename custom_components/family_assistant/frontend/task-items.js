@@ -2,6 +2,7 @@
 
 import { wallTime, wallTimeCandidates } from "./local-time.js";
 import { renderTaskMedia } from "./task-media-view.js";
+import { personalTaskCopy } from "./personal-task-copy.js";
 
 export const TASK_ITEM_COPY = {
   en: {
@@ -235,6 +236,8 @@ export function renderTaskItem(card, list, item) {
   const actorId = card._data?.actor;
   const isAssignee = item.assignee === actorId;
   const isCreator = item.creator === actorId;
+  const isPersonal = item.delivery_scope === "personal";
+  const personalOwner = isPersonal && isCreator && isAssignee;
   const isWriting = Boolean(card._writing);
   const isFinal = FINAL_STATUSES.has(item.status);
   const isSubmitted = item.status === "submitted";
@@ -258,6 +261,7 @@ export function renderTaskItem(card, list, item) {
   const statusBadge = el("span", copy[statusKey] || copy.status_unknown, "badge");
   titleRow.append(titleStrong, statusBadge);
   row.append(titleRow);
+  if (isPersonal) row.append(el("p", personalTaskCopy(card).badge, "sub"));
 
   // Friendly metadata: Assignee, Creator, Deadline
   const metaParts = [];
@@ -366,7 +370,7 @@ export function renderTaskItem(card, list, item) {
     }
     // Verify rights haven't been revoked
     if (card._data?.role === "guest") return true;
-    if (["complete", "request_changes", "confirm_archive"].includes(actionState.type) && !card.parent) {
+    if (["complete", "request_changes", "confirm_archive"].includes(actionState.type) && !card.parent && !personalOwner) {
       return true;
     }
     if (["edit", "confirm_cancel"].includes(actionState.type) && !card.parent && (item.creator !== card._data?.actor || item.assignee !== card._data?.actor)) {
@@ -419,7 +423,7 @@ export function renderTaskItem(card, list, item) {
   }
 
   // 3. Submit report button: status !== 'submitted' and not final
-  if (canPerformAssigneeOps && !isSubmitted && item.report_type !== "photo") {
+  if (canPerformAssigneeOps && !isSubmitted && item.report_type !== "photo" && !isPersonal) {
     const reportBtn = card.button(copy.action_submit_report, () => {
       if (!canInteract(card, startGeneration)) return;
       card._taskItemAction = {
@@ -441,7 +445,7 @@ export function renderTaskItem(card, list, item) {
   }
 
   // 4. Parent controls: Complete & Request Changes (note)
-  if (isParent && !isFinal) {
+  if ((isParent || personalOwner) && !isFinal) {
     // Complete
     const completeBtn = card.button(copy.action_complete, () => {
       if (!canInteract(card, startGeneration)) return;
@@ -461,7 +465,7 @@ export function renderTaskItem(card, list, item) {
     actionsEl.append(completeBtn);
 
     // Request changes: allowed when status is 'submitted'
-    if (isSubmitted) {
+    if (isSubmitted && !isPersonal) {
       const reqChangesBtn = card.button(copy.action_request_changes, () => {
         if (!canInteract(card, startGeneration)) return;
         card._taskItemAction = {
@@ -550,7 +554,7 @@ export function renderTaskItem(card, list, item) {
   }
 
   // 7. Archive: Parents only, explicit review
-  if (isParent && item.status !== "archived") {
+  if ((isParent || personalOwner) && item.status !== "archived") {
     const archiveBtn = card.button(copy.action_archive, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
@@ -732,7 +736,7 @@ export function renderTaskItem(card, list, item) {
 
       // Assignee Select: only if Parent
       let assigneeSelect = null;
-      if (isParent) {
+      if (isParent && !isPersonal) {
         const wrap = el("label", copy.label_assignee);
         assigneeSelect = el("select");
         assigneeSelect.name = "assignee";
@@ -863,14 +867,14 @@ export function renderTaskItem(card, list, item) {
       graceInput.min = "0";
       graceInput.max = "1440";
       graceInput.step = "1";
-      graceInput.disabled = isWriting || isInputFrozen;
+      graceInput.disabled = isWriting || isInputFrozen || isPersonal;
       graceInput.addEventListener("input", (e) => {
         if (!canInteract(card, startGeneration) || isInputFrozen) return;
         actionState.draftGrace = Number(e.target.value);
       });
 
       let penaltyInput = null;
-      if (isParent) {
+      if (isParent && !isPersonal) {
         penaltyInput = card.input(policyDetails, "penalty", copy.label_penalty, "number", String(actionState.draftPenalty), true);
         penaltyInput.min = "-10";
         penaltyInput.max = "0";

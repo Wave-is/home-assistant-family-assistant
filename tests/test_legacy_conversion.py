@@ -20,12 +20,12 @@ def fixture():
     return read_store_pair(assistant, court).review(mapping, members, mapping_revision=1), members
 
 
-def test_all_buckets_joined_with_blocked_personal_record_and_single_archive():
+def test_all_buckets_joined_with_personal_record_and_single_archive():
     review, members = fixture()
     result = build_conversion_review(review, "Europe/Paris", members=members)
     summary, private = result.summary(), result.private_data()
     assert set(summary["modules"]) == {"alarms", "tasks", "shopping", "court"}
-    assert summary["blocked_records_count"] == 1
+    assert summary["blocked_records_count"] == 0
     assert (
         summary["source_counts"]["tasks"]
         == summary["source_counts"]["reminders"]
@@ -33,9 +33,8 @@ def test_all_buckets_joined_with_blocked_personal_record_and_single_archive():
         == 1
     )
     assert summary["coherence_verified"] is summary["import_available"] is False
-    assert private["plans"]["tasks"]["blocked"] == [
-        {"source_task": "T000003", "code": "task_personal_scope_unsupported"}
-    ]
+    assert private["plans"]["tasks"]["blocked"] == []
+    assert private["plans"]["tasks"]["proposals"][1]["record"]["delivery_scope"] == "personal"
     assert all("archive" not in plan for plan in private["plans"].values())
     assert private["plans"]["alarms"]["proposals"][0]["payload"]["enabled"] is False
     restored = decode_private_review(result.private_archive_bytes(), members=members)

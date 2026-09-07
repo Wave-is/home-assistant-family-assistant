@@ -31,6 +31,7 @@ def member_stamp(ctx, item):
     return {
         "id": item["id"],
         "member": item["assignee"],
+        **({"private_context": True} if task_access.personal_task(item) else {}),
         "member_revision": (
             item.get("assignee_revision")
             if task_access.private_task(item)
@@ -40,7 +41,7 @@ def member_stamp(ctx, item):
 
 
 def close(ctx, item, *, assignment=False):
-    stale_keys = {"task_reminder"}
+    stale_keys = {"task_reminder", "task_personal_due"}
     if assignment or item["status"] in {"submitted", "completed", "cancelled", "archived"}:
         stale_keys.add("task_assigned")
     if item["status"] in {"completed", "cancelled", "archived"} or assignment:
@@ -110,6 +111,17 @@ def tick(ctx: Context):
                 "task_reminder",
                 {**member_stamp(ctx, item), "due_at": item["due_at"]},
             )
+        if task_access.personal_task(item):
+            if ctx.now >= deadline and not events.get("personal_due"):
+                events["personal_due"] = ctx.now.isoformat()
+                ctx.notify(
+                    item["assignee"],
+                    "task_personal_due",
+                    {**member_stamp(ctx, item), "due_at": item["due_at"]},
+                )
+            if events:
+                item.setdefault("deadline_events", {})[item["due_at"]] = events
+            continue  # Personal reminders never create court rows or family incidents.
         if ctx.now >= deadline + timedelta(minutes=config["grace_minutes"]) and not events.get(
             "escalated"
         ):

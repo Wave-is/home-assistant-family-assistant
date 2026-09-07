@@ -31,6 +31,7 @@ MESSAGES = {
         "task_assigned": "📋 New task: {id} · {title}",
         "task_review": "📸 Review requested: {id} · {title}",
         "task_reminder": "📋 Task due soon: {id} · {title} · {due_at}",
+        "task_personal_due": "🔒 Personal reminder: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: task overdue: {id} · {title}. Parent review is needed.",
         "task_incident_closed": (
             "✅ The overdue incident for {member}'s task {id} is closed. "
@@ -80,6 +81,7 @@ MESSAGES = {
         "task_assigned": "📋 Новая задача: {id} · {title}",
         "task_review": "📸 Отчёт ждёт проверки: {id} · {title}",
         "task_reminder": "📋 Скоро срок задачи: {id} · {title} · {due_at}",
+        "task_personal_due": "🔒 Личное напоминание: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: просрочена задача {id} · {title}. Нужна проверка родителя.",
         "task_incident_closed": (
             "✅ Ситуация с просрочкой задачи {id} у {member} закрыта. "
@@ -129,6 +131,7 @@ MESSAGES = {
         "task_assigned": "📋 Нове завдання: {id} · {title}",
         "task_review": "📸 Звіт чекає перевірки: {id} · {title}",
         "task_reminder": "📋 Скоро термін завдання: {id} · {title} · {due_at}",
+        "task_personal_due": "🔒 Особисте нагадування: {id} · {title} · {due_at}",
         "task_overdue": (
             "⚠️ {member}: прострочено завдання {id} · {title}. Потрібна перевірка батьків."
         ),
@@ -316,6 +319,13 @@ def targets(event, state):
 
 
 def render(event, target, state, *, now=None):
+    from ..domain.task_access import personal_task
+    from ..domain.task_delivery import TASK_EVENTS
+
+    task = state.get("tasks", {}).get(event.get("data", {}).get("id"))
+    if personal_task(task) or event["key"] == "task_personal_due":
+        if event["key"] not in TASK_EVENTS or target not in targets(event, state):
+            raise DeliveryError("delivery_revoked")
     if event["key"] == "family_digest":
         from datetime import UTC, datetime
 

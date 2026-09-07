@@ -94,6 +94,8 @@ def _task_scope(state: dict, actor: dict, task_id, task_revision) -> tuple[dict,
         raise DomainError("not_found")
     if not isinstance(task, dict) or task.get("id") != task_id:
         raise DomainError("invalid_field", "task")
+    if task_access.personal_task(task):
+        raise DomainError("forbidden")  # Personal reminders never accept report uploads.
     if actor.get("role") not in PRIVILEGED and task.get("assignee") != actor.get("id"):
         raise DomainError("forbidden")
     if _version(task.get("revision"), "task_revision") != expected_revision:

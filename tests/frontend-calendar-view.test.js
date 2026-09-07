@@ -97,6 +97,16 @@ test("Recurring edit keeps normalized rule and task links with fresh participant
   assert.equal(card.commands.length,2,"Cannot link task reassigned outside event participants");
 });
 
+test("personal reminder is not offered as a calendar task link", () => {
+  const event={id:"E000099",revision:1,title:"Event",all_day:true,start:"2026-09-07",end:"2026-09-08",timezone:"UTC",rule:null,participants:["p1"],task_ids:[],creator:"p1",status:"confirmed",visibility:"family"};
+  const card=createMockCard({calendar:{events:[event],occurrences:[],config:{revision:0}}});
+  card._data.tasks=[{id:"T000099",title:"Private canary",assignee:"p1",delivery_scope:"personal"}];
+  card._calendarDraft={...structuredClone(event),type:"edit",start_date:event.start,end_date:event.end};
+  const body=document.createElement("div");renderCalendar(card,body);
+  assert.equal(body.querySelectorAll('input[name="task_ids"]').length,0);
+  assert.ok(!body.textContent.includes("Private canary"));
+});
+
 test("Calendar recurrence follows edited clock, rejects fold seconds and never converts one-off silently",()=>{
   const card=createMockCard({timezone:"Europe/Helsinki"});
   const body=document.createElement("div");document.body.append(body);

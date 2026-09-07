@@ -1,4 +1,5 @@
 import {wallTimeCandidates} from "./local-time.js";
+import {personalTaskCopy} from "./personal-task-copy.js";
 
 export const TASK_FORM_COPY = {
   en: {checklist:"Steps — one per line (optional)", reportType:"Report required", text:"Text", none:"No report text", zone:"Deadline uses household time zone", fold:"This time occurs twice. Choose an occurrence", choose:"Choose…", first:"First occurrence", second:"Second occurrence", invalid:"This local time does not exist or is invalid. Choose another time.", retry:"Retry the same task", frozen:"The outcome is unconfirmed. Retry sends the same task, without creating a second copy."},
@@ -10,10 +11,16 @@ const el=(tag,text)=>{const node=document.createElement(tag);if(text!=null)node.
 export function renderTaskForm(card) {
   const copy=TASK_FORM_COPY[card._config?.language || card._hass?.language?.split("-")[0]] || TASK_FORM_COPY.en;
   const generation=card._generation,actor=card._data.actor;
+  const actorRevision=card._data.members.find(m=>m.id===actor)?.revision;
+  const personalCopy=personalTaskCopy(card);
   const zone=card._data.settings.timezone || card._hass?.config?.time_zone || "UTC";
   const draft=card._taskCreateDraft ||= {title:"",assignee:"",due_at:"",fold:"",checklist:"",report_type:"text"};
   const form=el("form");form.dataset.taskCreate="true";
   const title=card.input(form,"title",card.t.title,"text",draft.title);title.maxLength=500;
+  const personalWrap=el("label",personalCopy.label),personal=el("input");
+  personal.type="checkbox";personal.name="personal";personal.checked=draft.personal===true;
+  personalWrap.prepend(personal);form.append(personalWrap);
+  const personalHint=el("p",personalCopy.hint);personalHint.className="sub";personalHint.hidden=!personal.checked;form.append(personalHint);
   const assignee=card.memberSelect(form);
   if(draft.assignee && [...assignee.options].some(o=>o.value===draft.assignee)) assignee.value=draft.assignee;
   else if(draft.assignee) {const missing=el("option",card.t.selectMember);missing.value="";assignee.prepend(missing);assignee.value="";}
@@ -44,20 +51,32 @@ export function renderTaskForm(card) {
   for(const key of ["reminder_minutes","grace_minutes","penalty"]) {
     const input=form.elements.namedItem(key);if(input && key in draft)input.value=draft[key];
   }
-  const canInteract=()=>!card._writing && card._generation===generation && card._data?.actor===actor && card._data.role!=="guest" && card._data.settings.modules?.includes("tasks") && zone===(card._data.settings.timezone || card._hass?.config?.time_zone || "UTC");
+  const canInteract=()=>!card._writing && card._generation===generation && card._data?.actor===actor && card._data.members.find(m=>m.id===actor)?.revision===actorRevision && card._data.role!=="guest" && card._data.settings.modules?.includes("tasks") && zone===(card._data.settings.timezone || card._hass?.config?.time_zone || "UTC");
+  const syncPersonal=()=>{
+    personalHint.hidden=!personal.checked;
+    if(personal.checked){
+      assignee.value=actor;report.value="none";
+      draft.assignee=actor;draft.report_type="none";
+      for(const key of ["grace_minutes","penalty"]){const input=form.elements.namedItem(key);if(input)input.value="0";draft[key]="0";}
+    }
+    for(const field of [assignee,report,...["grace_minutes","penalty"].map(key=>form.elements.namedItem(key)).filter(Boolean)])field.disabled=!!card._writing || !!draft.payload || personal.checked;
+  };
   form.addEventListener("input",event=>{
     if(!canInteract() || draft.payload)return;
     if(event.target===checklist)checklist.setCustomValidity("");
-    if(event.target.name)draft[event.target.name==="due_fold"?"fold":event.target.name]=event.target.value;
+    if(event.target.name)draft[event.target.name==="due_fold"?"fold":event.target.name]=event.target===personal?personal.checked:event.target.value;
+    if(event.target===personal)syncPersonal();
     if(event.target===due){draft.fold="";fold.value="";updateDue();}
   });
   form.addEventListener("change",event=>{
     if(!canInteract() || draft.payload)return;
-    if(event.target.name)draft[event.target.name==="due_fold"?"fold":event.target.name]=event.target.value;
+    if(event.target.name)draft[event.target.name==="due_fold"?"fold":event.target.name]=event.target===personal?personal.checked:event.target.value;
+    if(event.target===personal)syncPersonal();
   });
   if(draft.payload){const frozen=el("p",copy.frozen);frozen.className="notice";form.append(frozen);}
   const submit=el("button",draft.payload?copy.retry:card.t.save);submit.type="submit";submit.className="primary";form.append(submit);
   for(const field of form.querySelectorAll("input,select,textarea"))field.disabled=!!card._writing || !!draft.payload;
+  syncPersonal();
   submit.disabled=!!card._writing;
   form.addEventListener("submit",async event=>{
     event.preventDefault();if(!canInteract())return;
@@ -71,6 +90,7 @@ export function renderTaskForm(card) {
       if(steps.length>50 || steps.some(s=>s.length>200)){checklist.setCustomValidity(card.t.failure);checklist.reportValidity();return;}
       checklist.setCustomValidity("");
       draft.payload={title:title.value.trim(),assignee:selected.id,report_type:report.value,checklist:steps};
+      if(personal.checked){if(selected.id!==actor)return;draft.payload.personal=true;}
       if(due.value)draft.payload.due_at=candidates.length===1?candidates[0]:candidates[Number(fold.value)];
       for(const key of ["reminder_minutes","grace_minutes","penalty"]) {
         const input=form.elements.namedItem(key);if(input)draft.payload[key]=Number(input.value);

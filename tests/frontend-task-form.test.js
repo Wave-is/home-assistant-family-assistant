@@ -4,6 +4,7 @@ import {JSDOM} from "jsdom";
 const dom=new JSDOM("<!doctype html><body></body>",{url:"http://localhost"});
 for(const key of ["window","document","HTMLElement","customElements","CustomEvent","FormData"])globalThis[key]=dom.window[key];
 const {TASK_FORM_COPY}=await import("../custom_components/family_assistant/frontend/task-form.js");
+const {PERSONAL_TASK_COPY}=await import("../custom_components/family_assistant/frontend/personal-task-copy.js");
 await import("../custom_components/family_assistant/frontend/family-assistant.js");
 const tick=()=>new Promise(r=>setTimeout(r,0));
 function make(){
@@ -63,4 +64,26 @@ test("invalid checklist can be corrected; empty deadline is omitted",async()=>{
   const card=make();input(card,"title","Task");input(card,"checklist",Array(51).fill("Step").join("\n"));await submit(card);assert.equal(card.calls.length,0);
   input(card,"checklist","Valid");input(card,"report_type","none");await submit(card);
   assert.equal(card.calls.length,1);assert.equal("due_at" in card.calls[0].payload,false);assert.equal(card.calls[0].payload.report_type,"none");
+});
+
+test("personal reminder form pins self, no report or penalties, and preserves frozen retry",async()=>{
+  for(const language of ["ru","uk"])assert.deepEqual(Object.keys(PERSONAL_TASK_COPY[language]),Object.keys(PERSONAL_TASK_COPY.en));
+  const card=make();input(card,"title","My appointment");input(card,"assignee","child");
+  input(card,"report_type","photo");
+  const toggle=formOf(card).elements.personal;toggle.checked=true;toggle.dispatchEvent(new dom.window.Event("change",{bubbles:true}));
+  assert.equal(formOf(card).elements.assignee.value,"parent");
+  for(const key of ["assignee","report_type","grace_minutes","penalty"])assert.equal(formOf(card).elements[key].disabled,true);
+  card.command=async(action,payload)=>{card.calls.push({action,payload:structuredClone(payload)});card._actionError="unconfirmed";};
+  await submit(card);
+  assert.equal(card.calls[0].payload.personal,true);assert.equal(card.calls[0].payload.report_type,"none");
+  assert.equal(card.calls[0].payload.grace_minutes,0);assert.equal(card.calls[0].payload.penalty,0);
+  assert.equal(formOf(card).elements.personal.checked,true);
+  assert.equal(formOf(card).elements.personal.disabled,true);
+  await submit(card);assert.deepEqual(card.calls[0],card.calls[1]);
+});
+
+test("personal reminder stale form cannot submit after identity revision changes",async()=>{
+  const card=make();card._data.members[0].revision=3;card.render();input(card,"title","Private draft");
+  const toggle=formOf(card).elements.personal;toggle.checked=true;toggle.dispatchEvent(new dom.window.Event("input",{bubbles:true}));
+  card._data.members[0].revision=4;await submit(card);assert.equal(card.calls.length,0);
 });

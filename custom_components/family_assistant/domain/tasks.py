@@ -50,18 +50,33 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 "reminder_minutes",
                 "grace_minutes",
                 "penalty",
+                "personal",
             },
             {"title", "assignee"},
         )
         assignee = assignee_member(ctx, payload["assignee"])
+        personal = payload.get("personal", False)
+        if type(personal) is not bool:
+            raise DomainError("invalid_field", "personal")
+        if personal and assignee["id"] != ctx.actor_id:
+            raise DomainError("forbidden")
         if not ctx.privileged and assignee["id"] != ctx.actor_id:
             raise DomainError("forbidden")
         due = payload.get("due_at")
         if due is not None:
             due = timestamp(due, "due_at").isoformat()
-        report_type = payload.get("report_type", "text")
+        report_type = payload.get("report_type", "none" if personal else "text")
         if report_type not in {"text", "photo", "none"}:
             raise DomainError("invalid_field", "report_type")
+        if personal and report_type != "none":
+            raise DomainError("invalid_field", "report_type")
+        deadline_policy = task_events.policy(
+            ctx,
+            payload,
+            {"reminder_minutes": 0, "grace_minutes": 0, "penalty": 0} if personal else None,
+        )
+        if personal and (deadline_policy["penalty"] or deadline_policy["grace_minutes"]):
+            raise DomainError("invalid_field", "personal_policy")
         checklist = payload.get("checklist", [])
         if not isinstance(checklist, list) or len(checklist) > 50:
             raise DomainError("invalid_field", "checklist")
@@ -76,9 +91,11 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "status": "assigned",
             "report_type": report_type,
             "report": None,
-            "deadline_policy": task_events.policy(ctx, payload),
+            "deadline_policy": deadline_policy,
             "checklist": [{"text": text(t, "checklist", 200), "done": False} for t in checklist],
         }
+        if personal:
+            item["delivery_scope"] = "personal"
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
         ctx.notify(assignee["id"], "task_assigned", task_events.member_stamp(ctx, item))
         return item
@@ -107,11 +124,15 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
     if task_access.private_task(item) and not task_access.may_view(ctx.state, ctx.actor, item):
         raise DomainError("forbidden")
+    personal = task_access.personal_task(item)
+    if personal and action in {"submit", "request_changes"}:
+        raise DomainError("invalid_transition")
     own = item["assignee"] == ctx.actor_id
     if not ctx.privileged and not own:
         raise DomainError("forbidden")
     if action == "archive":
-        ctx.require_parent()
+        if not personal:
+            ctx.require_parent()
         if item["status"] == "archived":
             raise DomainError("invalid_transition")
         item["previous_status"] = item["status"]
@@ -134,6 +155,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 task_events.close(ctx, item)
                 item["due_at"] = new_due.isoformat() if new_due else None
         if "assignee" in payload:
+            if personal:
+                raise DomainError("invalid_field", "assignee")
             ctx.require_parent()
             new_assignee = assignee_member(ctx, payload["assignee"])["id"]
             if (
@@ -152,6 +175,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 # An explicitly reviewed assignment refreshes a changed identity binding.
                 item["assignee_revision"] = ctx.member(new_assignee)["revision"]
         item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
+        if personal and (
+            item["deadline_policy"]["penalty"] or item["deadline_policy"]["grace_minutes"]
+        ):
+            raise DomainError("invalid_field", "personal_policy")
     elif action in {"accept", "start", "submit", "check"}:
         if not own and not ctx.privileged:
             raise DomainError("forbidden")
@@ -193,7 +220,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("invalid_transition")
             item["status"] = "accepted" if action == "accept" else "in_progress"
     elif action in {"complete", "request_changes"}:
-        ctx.require_parent()
+        if not personal:
+            ctx.require_parent()
         if action == "request_changes":
             if item["status"] != "submitted":
                 raise DomainError("invalid_transition")

@@ -6,11 +6,11 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.6 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.7 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
-| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; legacy parity and complete media lifecycle pending |
+| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders, identity revocation and private reply persistence HA-tested; legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
@@ -33,8 +33,32 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.6 runtime ZIP and tag verified; all eight jobs passed for subsequent native-restore checkpoint, including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.7 candidate pending; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores and no-report task proposals; explicit private-reminder/report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.7 runtime ZIP/tag verified, all eight Checks jobs passed at e64dbc3 (34159231878), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.8 candidate pending; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report task and personal reminder proposals; explicit report/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+
+## Personal reminder checkpoint, 2026-09-08
+
+Alpha.8 adds explicit self-only reminders, not ordinary parent-visible private
+tasks. Current identity is enforced on view/mutation/replay, mixed audit batches,
+delivery review and Telegram. Other parents/owners, global pending counts,
+calendar links and automatic quote/model context cannot expose personal records.
+The due event is persisted once, has no court consequence and never falls back
+from a missing private enrollment to a parent or group. Legacy reminder proposals
+preserve this scope; they do not constitute a whole-home importer.
+
+The complete actual-HA suite passed personal create/complete/archive, current
+HA-user deactivation, exact Store reload/replay and a real Telegram-manager private
+list reply carrying its persisted no-quote marker. Native encrypted restore and
+all five offline HACS phases also passed that reviewed runtime. A final calendar
+link refusal was then added and covered by two domain tests and a card test;
+the exact final artifact and full eight-job CI remain release gates. Candidate:
+212 runtime files, 2803183 runtime bytes, 752959 ZIP bytes, SHA256
+`6e4adc7d329731d66965d04282a0d03611ea274010bafafbb580e419dc2d9089`.
+EN/RU/UK personal-reminder browser scenarios passed, including self completion;
+the narrow mobile Ukrainian form was visually inspected. AGY provided a bounded
+read-only privacy review. Its separate implementation attempt timed out without
+a test file; root implemented and independently tested the guards. Production
+integration, Telegram transports, household records and devices are unchanged.
 
 ## Baseline, 2026-09-06
 

@@ -9,6 +9,7 @@ from .calendar_occurrences import expand
 from .context import Context
 from .household import timezone
 from .recurrence import validate as validate_rule
+from .task_access import personal_task
 from .validation import DomainError, enum, fields, text, timestamp
 
 EVENT_FIELDS = {
@@ -103,7 +104,7 @@ def _normalized(ctx, value):
     tasks = []
     for identifier in _list(value["task_ids"], "task_ids", 30):
         task = ctx.record("tasks", identifier)
-        if task["assignee"] not in participants:
+        if personal_task(task) or task["assignee"] not in participants:
             raise DomainError("invalid_field", "task_ids")
         tasks.append(task["id"])
     if len(set(tasks)) != len(tasks):

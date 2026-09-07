@@ -1,6 +1,7 @@
 """Parent review for failed or uncertain notifications; no automatic blind retry."""
 
 from .context import Context
+from .task_access import event_visible
 from .validation import DomainError, fields, text
 
 
@@ -12,6 +13,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     event = ctx.state["outbox"].get(event_id)
     if event is None:
         raise DomainError("not_found")
+    if not event_visible(ctx.state, ctx.actor, event):
+        raise DomainError("forbidden")
     if event["state"] not in {"uncertain", "failed"}:
         raise DomainError("invalid_transition")
     if action == "retry":
@@ -37,3 +40,13 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     # Do not return delivery destinations or message contents to a card.
     return {"id": event_id, "state": event["state"], "reason": reason}
+
+
+def authorize_replay(state, actor, payload):
+    event = state.get("outbox", {}).get(payload.get("id"))
+    if (
+        actor.get("role") not in {"owner", "parent"}
+        or event is None
+        or not event_visible(state, actor, event)
+    ):
+        raise DomainError("forbidden")

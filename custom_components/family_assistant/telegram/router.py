@@ -7,6 +7,7 @@ from datetime import datetime
 
 from ..domain.validation import DomainError
 from . import calendar, commands, rewards, routines
+from .context import PersonalReply
 from .intents import find_member, parse
 from .presentation import court_stats, summary
 
@@ -145,7 +146,7 @@ async def route(
     private=False,
 ) -> str:
     view = engine.view(actor, now=now)
-    from ..domain.task_access import private_task
+    from ..domain.task_access import personal_task, private_task
 
     if not private:
         view["tasks"] = [task for task in view["tasks"] if not private_task(task)]
@@ -153,6 +154,14 @@ async def route(
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        def scoped(value):
+            records = result.get("items", [result])
+            return (
+                PersonalReply(value)
+                if private and any(personal_task(item) for item in records)
+                else value
+            )
+
         if not private and private_task(result):
             return t["private_saved"].format(id=result["id"])
         if (
@@ -179,12 +188,14 @@ async def route(
 
             if result.get("status") == "rejected":
                 return ASSISTANT_COPY[language]["rejected"]
-            return ASSISTANT_COPY[language]["confirmed"].format(
-                result="\n".join(
-                    t["private_saved"].format(id=item["id"])
-                    if not private and private_task(item)
-                    else summary(item, view, language)
-                    for item in result["items"]
+            return scoped(
+                ASSISTANT_COPY[language]["confirmed"].format(
+                    result="\n".join(
+                        t["private_saved"].format(id=item["id"])
+                        if not private and private_task(item)
+                        else summary(item, view, language)
+                        for item in result["items"]
+                    )
                 )
             )
         title = (
@@ -192,7 +203,7 @@ async def route(
             if "cost" in result
             else summary(result, view, language)
         )
-        return t["saved"].format(id=result["id"], title=title)
+        return scoped(t["saved"].format(id=result["id"], title=title))
 
     prior = commands.previous(engine, actor, content, refs, operation_id)
     if prior:
@@ -293,7 +304,10 @@ async def route(
                 continue
             label = summary(item, view, language)
             lines.append(f"{item['id']} · {label}")
-        return "\n".join(lines)[:3800] or t["empty"]
+        response = "\n".join(lines)[:3800] or t["empty"]
+        if private and bucket == "tasks" and any(personal_task(item) for item in view[bucket]):
+            return PersonalReply(response)
+        return response
     if command in {"/rewards", "/wallet"}:
         return rewards.read(view, language, only_wallet=command == "/wallet")
     if command == "/calendar":

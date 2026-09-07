@@ -4,6 +4,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
+from .domain.task_access import personal_task
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -32,6 +33,7 @@ class FamilyStatusSensor(SensorEntity):
         return sum(
             task["status"] not in {"completed", "archived", "cancelled"}
             for task in state["tasks"].values()
+            if not personal_task(task)
         )
 
     async def async_added_to_hass(self):

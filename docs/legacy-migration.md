@@ -109,6 +109,15 @@ capture, import other task/shopping/court records, expose an import endpoint, or
 permit partial household cutover. Private reminders and unknown shopping quantities
 must not be silently converted into shared tasks or an invented quantity of one.
 
+The alpha.8 candidate adds explicit `delivery_scope: personal` for convertible
+no-report reminders: mapped creator and assignee must be identical, current identity
+revision is retained, and the modern task engine permits only that person to view,
+complete or archive. No parent review, reassignment, group incident or penalty is
+introduced. The complete raw reminder and history remain in the private archive.
+See [personal reminders](personal-reminders.md) for privacy and transport limits.
+Reminders with unsupported notes/report state still block, as do report-required
+ordinary tasks; this is not a partial-import permission or a coherence claim.
+
 ## Joined conversion review and private archive
 
 `migration.conversion.build_conversion_review(review, timezone, members=...)`
@@ -147,8 +156,9 @@ This requires explicit historical attribution handling at the future apply step.
 Task proposals currently cover ordinary no-report records with supported states,
 preserved dates and zero reminder/penalty settings. Overdue progress is not guessed
 or rewound if later acceptance/start evidence disagrees with the saved pre-overdue
-state. Personal reminders and report-required tasks remain blocked pending proper
-privacy/reviewer/media conversion. A Telegram photo reference is not a verified
+state. Convertible no-report personal reminders retain their self-only scope;
+report-required tasks remain blocked pending proper reviewer/media conversion.
+A Telegram photo reference is not a verified
 local attachment. All original notes and history remain in the private archive.
 **Zero reminder and penalty settings alone are not a shadow isolation mechanism:**
 an open overdue task can still produce an incident when its module is activated.

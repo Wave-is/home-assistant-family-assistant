@@ -193,7 +193,7 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
      if(window.commitThenLose&&!window.lostOnce){window.lostOnce=true;throw {code:"storage_error"};}
      return structuredClone(item);
    }
-   if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,checklist:message.payload.checklist.map(text=>({text,done:false}))});
+   if(message.action==="tasks.create")data.tasks.push({id:"T000002",...message.payload,creator:data.actor,status:"assigned",revision:1,...(message.payload.personal?{delivery_scope:"personal"}:{}),deadline_policy:{reminder_minutes:message.payload.reminder_minutes,grace_minutes:message.payload.grace_minutes,penalty:message.payload.penalty},checklist:message.payload.checklist.map(text=>({text,done:false}))});
    if(message.action.startsWith("tasks.") && message.action!=="tasks.create" && !message.action.includes("series_")){
      const item=data.tasks.find(t=>t.id===message.payload.id),p=message.payload;
      if(p.revision!==item.revision)throw {code:"revision_conflict"};

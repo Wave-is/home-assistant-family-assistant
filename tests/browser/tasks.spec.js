@@ -1,5 +1,30 @@
 import {test,expect} from "@playwright/test";
 
+for(const [lang,label,add,save,done,report] of [
+  ["en","Personal reminder — only for me","Add","Save","Confirm done","Send report"],
+  ["ru","Личное напоминание — только для меня","Добавить","Сохранить","Подтвердить выполнение","Сдать отчёт"],
+  ["uk","Особисте нагадування — лише для мене","Додати","Зберегти","Підтвердити виконання","Здати звіт"],
+])test(`personal reminder ${lang}: own-only draft, no report, self completion`,async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${lang}&taskedit=1&role=child`);
+  await page.getByRole("button",{name:add,exact:true}).click();
+  const form=page.locator("form[data-task-create]");
+  await form.locator('input[name="title"]').fill("My private appointment");
+  await form.getByLabel(label,{exact:true}).check();
+  await expect(form.locator('select[name="assignee"]')).toBeDisabled();
+  await expect(form.locator('select[name="report_type"]')).toHaveValue("none");
+  await form.locator('input[name="due_at"]').fill("2026-10-20T10:00");
+  await page.screenshot({path:`test-results/personal-task-${lang}.png`,fullPage:true});
+  await form.getByRole("button",{name:save,exact:true}).click();
+  const call=await page.evaluate(()=>window.calls[0]);
+  expect(call.payload).toMatchObject({personal:true,assignee:"child",report_type:"none",grace_minutes:0});
+  const item=page.locator("li.item").filter({hasText:"My private appointment"});
+  await expect(item.getByRole("button",{name:report,exact:true})).toHaveCount(0);
+  await item.getByRole("button",{name:done,exact:true}).click();
+  expect(await page.evaluate(()=>window.calls.at(-1).action)).toBe("tasks.complete");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
 test("Russian task editor preserves failed payload, clears deadline and retains progress",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&taskedit=1");
