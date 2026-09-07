@@ -43,7 +43,19 @@ async def view(hass, connection, msg):
     try:
         runtime = get_runtime(hass, msg["entry_id"])
         actor_id = runtime.engine.actor_for_ha(connection.user.id)
-        data = runtime.engine.view(actor_id, now=dt_util.utcnow())
+        now = dt_util.utcnow()
+        data = runtime.engine.view(actor_id, now=now)
+        if data["role"] != "guest" and "presence" in data["settings"]["modules"]:
+            from .presence_observations import project
+
+            data["presence"] = project(
+                hass,
+                hass.config_entries.async_get_entry(msg["entry_id"]),
+                runtime,
+                actor_id,
+                connection.user,
+                now,
+            )
         if data["role"] in {"owner", "parent"}:
             data["health"] = dict(runtime.health)
             from .recipes.api import source_view

@@ -1,5 +1,6 @@
 """Private Telegram rendering and callback contracts for family polls."""
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -157,7 +158,10 @@ async def test_vote_review_and_new_update_retry_reuse_exact_engine_operation(eng
         e, "child", f"ps:v:{poll_id}:O1", "tg:1:10:action", now, private=True
     )
     assert set(review_descriptor) == {"kind", "mode", "review_id"}
-    assert "O1" not in repr(review_descriptor)
+    assert review_descriptor["kind"] == "polls" and review_descriptor["mode"] == "review"
+    # An opaque random token may coincidentally contain the short string O1.
+    # Validate the envelope and token grammar, not substrings of random bytes.
+    assert re.fullmatch(r"PR[A-Za-z0-9_-]{16}", review_descriptor["review_id"])
     review = telegram_polls.render_reply(e.snapshot(), "child", review_descriptor, now, "uk")
     assert "Choice canary alpha" in review["text"]
     confirm = next(value for value in callbacks(review) if value.startswith("pr:y:"))

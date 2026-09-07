@@ -268,6 +268,9 @@ async def main():
             from ha_polls_smoke import verify_polls
 
             await verify_polls(hass, entry, user, child_id)
+            from ha_presence_smoke import verify_presence
+
+            await verify_presence(hass, entry, user)
             from ha_backup_smoke import verify_backup
 
             await verify_backup(hass, entry, user, media_expected)
@@ -470,7 +473,9 @@ async def run_websocket(hass, entry, owner, child_id):
                 )
             hass.auth.async_remove_refresh_token(refresh)
     print("PASS: actual HA WebSocket auth, household names, projections and command denial")
-    release = datetime.now(UTC) + timedelta(minutes=1)
+    # Rule times have minute precision. Keeping wall-clock seconds here could
+    # put the +5-second check outside the one-minute no-catchup window.
+    release = datetime.now(UTC).replace(second=0, microsecond=0) + timedelta(minutes=2)
     duty = await engine.execute(
         "owner",
         "tasks.series_save",
@@ -506,7 +511,11 @@ async def run_websocket(hass, entry, owner, child_id):
         "smoke-shopping-series",
         datetime.now(UTC),
     )
-    await entry.runtime_data.scheduler.run(release + timedelta(seconds=5))
+    # A manual future tick must not be dropped by a concurrent normal HA tick.
+    async with asyncio.timeout(15):
+        while entry.runtime_data.scheduler._busy:
+            await asyncio.sleep(0.01)
+        await entry.runtime_data.scheduler.run(release + timedelta(seconds=5))
     assert (
         len([t for t in engine.snapshot()["tasks"].values() if t.get("series_id") == duty["id"]])
         == 1

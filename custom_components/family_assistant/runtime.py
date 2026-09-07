@@ -152,6 +152,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         )
         data["api_registered"] = True
     try:
+        await async_configure_presence(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         from .scheduler import Scheduler
 
@@ -263,11 +264,31 @@ async def async_configure_telegram(hass, entry):
 
 async def async_options_updated(hass, entry):
     async with entry.runtime_data.options_lock:
+        await async_configure_presence(hass, entry)
         async_configure_assistant(hass, entry)
         async_configure_recipes(hass, entry)
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         entry.runtime_data.updated()
+
+
+async def async_configure_presence(hass, entry):
+    """Reconcile source pins, never observations; stale Options fail closed."""
+    from .domain import presence
+
+    runtime = entry.runtime_data
+    try:
+        await runtime.engine.system_update(
+            "presence_sources",
+            dt_util.utcnow(),
+            lambda ctx: presence.sync_bindings(ctx, dict(entry.options)),
+        )
+    except DomainError as error:
+        runtime.health["presence"] = error.code
+    except OSError:
+        runtime.health["presence"] = "storage_error"
+    else:
+        runtime.health.pop("presence", None)
 
 
 def async_configure_recipes(hass, entry):

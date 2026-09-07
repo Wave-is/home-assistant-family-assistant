@@ -16,7 +16,7 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Fifteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls; richer editors and other module cards pending |
+| Today and module cards | Sixteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence; richer editors and other module cards pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
@@ -26,7 +26,8 @@ Nothing is production-ready solely because a mock test passes.
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks, reviewed backpack routine starts and opt-in private preparation reminders; reviewed imports and reminder retention health pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
-| Digests, presence | Planned | Consent, permissions and fallbacks; presence source/consent slice is in progress, not part of the checkpoint |
+| Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self-consent, source lineage, fresh/unknown projection; guardian consent, presence-aware notifications and household acceptance pending |
+| Digests | Planned | Private morning/evening/weekly design reviewed; implementation in progress, outside this checkpoint |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
@@ -48,13 +49,36 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1827 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
+- 1901 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
   23 subtests. This checkpoint includes polls, retained-photo purge and background
-  backup/response-authority regressions alongside the earlier domain/adapters.
-  In-progress presence files are excluded from this checkpoint and count.
-- 317 frontend unit tests and 124 Chromium browser tests passed. The full Chromium
+  backup/response-authority regressions and presence alongside earlier domains.
+  In-progress digests code is excluded from this checkpoint and count.
+- 324 frontend unit tests and 128 Chromium browser tests passed. The full Chromium
   run used two workers. Narrow RU poll review and photo-purge review were visually
   inspected; EN/RU/UK copy is included. The full isolated actual HA suite also passed.
+- Presence source Options require a current owner with HA entity read permission,
+  a named review and an exact current target-member epoch. A source binding is not
+  consent: each HA-linked non-guest enables only their own sharing. Per-member
+  source lineage revokes earlier consent on replacement/removal/re-add; an
+  Engine-first source-pin commit and Options mismatch fail closed. An unrelated
+  unchanged stale source stays inert without preventing another source's removal.
+  Observations exist only in the authenticated WebSocket projection, not Engine
+  views/storage, Telegram, models, diagnostics, history or device effects. Current
+  HA permissions are checked before any source read; unavailable/stale evidence
+  is unknown, named zones reduce to reported-away and attributes are never read.
+  The EN/RU/UK card has named self-consent, exact retry and stale/private DOM cleanup.
+  Root visually checked the narrow RU review. Actual HA verified Options, real
+  registry/states, self-consent/replay, permission denial with zero reads, source
+  replacement, module/member revocation and Store reload. Its read-observation
+  fixture was corrected for HA StateMachine's read-only instance attributes.
+  AGY's independent review found a stale target-member form race; transaction and
+  form-boundary regressions now cover it. Configuration while the module is off is
+  permitted preparation, never consent or observation. See [presence guide](presence.md).
+- Full-suite testing also found two pre-existing fixture instabilities: random
+  opaque poll tokens can coincidentally contain the short option string `O1`, so
+  privacy assertions now validate exact descriptor fields/token grammar; recurring
+  rule times have minute precision, so the actual-HA future tick is aligned to its
+  minute and waits for any normal tick. No runtime timing/window was relaxed.
 - Poll definitions and each member's private ballot have independent revisions.
   Fresh member/source authority, exact retries, revotes, close/archive/purge and
   aggregate privacy are enforced by the domain. The localized card and private

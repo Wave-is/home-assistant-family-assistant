@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant presence fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 650px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search),
+        language = params.get("lang") || "en",
+        requestedActor = params.get("actor") || "parent";
+      const actorIds = {
+        owner: "owner-1",
+        parent: "parent-1",
+        adult: "adult-1",
+        child: "child-1",
+        guest: "guest-1",
+      };
+      const observed = "2026-09-07T07:30:00+00:00";
+      const fixture = (window.fixture = {
+        revision: 1,
+        actor: actorIds[requestedActor] || "parent-1",
+        settings: {
+          name: "Example family",
+          timezone: "Europe/Kyiv",
+          modules: ["presence"],
+        },
+        members: [
+          {
+            id: "owner-1",
+            name: "Alex",
+            role: "owner",
+            active: true,
+            revision: 2,
+          },
+          {
+            id: "parent-1",
+            name: "Morgan",
+            role: "parent",
+            active: true,
+            revision: 4,
+          },
+          {
+            id: "adult-1",
+            name: "Taylor",
+            role: "adult",
+            active: true,
+            revision: 3,
+          },
+          {
+            id: "child-1",
+            name: "Sam",
+            role: "child",
+            active: true,
+            revision: 7,
+          },
+          {
+            id: "guest-1",
+            name: "Guest",
+            role: "guest",
+            active: true,
+            revision: 5,
+          },
+        ],
+        sources: {
+          "owner-1": {
+            revision: 3,
+            member_revision: 2,
+            entity_id: "person.private_owner",
+          },
+          "parent-1": {
+            revision: 4,
+            member_revision: 4,
+            entity_id: "device_tracker.private_parent",
+          },
+          "adult-1": {
+            revision: 5,
+            member_revision: 3,
+            entity_id: "person.private_adult",
+          },
+          "child-1": {
+            revision: 8,
+            member_revision: 7,
+            entity_id: "device_tracker.private_child",
+          },
+        },
+        bindings: {
+          "owner-1": { revision: 3, member_revision: 2 },
+          "parent-1": { revision: 4, member_revision: 4 },
+          "adult-1": { revision: 5, member_revision: 3 },
+          "child-1": { revision: 8, member_revision: 7 },
+        },
+        subscriptions: {
+          "owner-1": {
+            revision: 1,
+            member_revision: 2,
+            binding_revision: 3,
+            status: "enabled",
+          },
+          "adult-1": {
+            revision: 2,
+            member_revision: 3,
+            binding_revision: 5,
+            status: "enabled",
+          },
+          "child-1": {
+            revision: 3,
+            member_revision: 7,
+            binding_revision: 8,
+            status: "enabled",
+          },
+        },
+        observations: {
+          "owner-1": {
+            state: "home",
+            observed_at: observed,
+            latitude: "COORDINATE-CANARY",
+          },
+          "parent-1": { state: "home", observed_at: observed },
+          "adult-1": { state: "SecretZoneCanary", observed_at: observed },
+          "child-1": {
+            state: "unavailable",
+            observed_at: observed,
+            source: "DEVICE-CANARY",
+          },
+        },
+      });
+
+      const member = (id) => fixture.members.find((item) => item.id === id);
+      const currentRole = () => member(fixture.actor)?.role;
+      const currentBinding = (id) => {
+        const source = fixture.sources[id],
+          binding = fixture.bindings[id],
+          current = member(id);
+        return source &&
+          binding &&
+          current?.active &&
+          source.revision === binding.revision &&
+          source.member_revision === binding.member_revision &&
+          current.revision === binding.member_revision
+          ? binding
+          : null;
+      };
+      const evidence = (id) => {
+        const value = fixture.observations[id];
+        if (!value || ["unknown", "unavailable"].includes(value.state))
+          return {
+            status: "unknown",
+            reason: "unavailable",
+            observed_at: null,
+          };
+        return {
+          status: value.state === "home" ? "reported_home" : "reported_away",
+          reason: "fresh",
+          observed_at: value.observed_at,
+        };
+      };
+      const selfRow = (id) => {
+        const current = member(id),
+          binding = currentBinding(id),
+          subscription = fixture.subscriptions[id],
+          enabled = Boolean(
+            binding &&
+            subscription &&
+            subscription.status === "enabled" &&
+            subscription.member_revision === current.revision &&
+            subscription.binding_revision === binding.revision,
+          );
+        return {
+          member: id,
+          member_revision: current.revision,
+          binding_revision: binding?.revision ?? null,
+          subscription_revision: Number.isSafeInteger(subscription?.revision)
+            ? subscription.revision
+            : null,
+          enabled,
+          can_edit: Boolean(binding),
+          ...(enabled
+            ? evidence(id)
+            : {
+                status: "unknown",
+                reason: binding ? "not_shared" : "unconfigured",
+                observed_at: null,
+              }),
+        };
+      };
+      const projection = () => {
+        const data = {
+          revision: fixture.revision,
+          actor: fixture.actor,
+          role: currentRole(),
+          settings: structuredClone(fixture.settings),
+          members: structuredClone(fixture.members),
+        };
+        const actor = member(fixture.actor),
+          active = actor?.active && actor.role !== "guest";
+        if (!fixture.settings.modules.includes("presence")) return data;
+        data.presence = { self: active ? selfRow(actor.id) : null, shared: [] };
+        if (active && ["owner", "parent"].includes(actor.role)) {
+          data.presence.shared = fixture.members
+            .filter((item) => item.id !== actor.id && item.active)
+            .filter((item) => selfRow(item.id).enabled)
+            .map((item) => ({
+              member: item.id,
+              member_revision: item.revision,
+              ...evidence(item.id),
+            }));
+        }
+        return data;
+      };
+
+      window.project = projection;
+      window.calls = [];
+      window.failMode = null;
+      const receipts = new Map();
+      const conflict = () => {
+        const error = new Error("conflict");
+        error.code = "conflict";
+        throw error;
+      };
+      const execute = (message) => {
+        window.calls.push(structuredClone(message));
+        const payload = message.payload,
+          current = selfRow(fixture.actor),
+          subscription = fixture.subscriptions[fixture.actor];
+        if (receipts.has(message.operation_id)) {
+          const receipt = receipts.get(message.operation_id),
+            live = selfRow(fixture.actor);
+          if (
+            live.subscription_revision !== receipt.revision ||
+            (live.enabled ? "enabled" : "disabled") !== receipt.status
+          )
+            conflict();
+          return structuredClone(receipt);
+        }
+        if (
+          message.action !== "presence.access_set" ||
+          JSON.stringify(Object.keys(payload).sort()) !==
+            JSON.stringify([
+              "binding_revision",
+              "enabled",
+              "member",
+              "member_revision",
+              "subscription_revision",
+            ])
+        )
+          conflict();
+        if (
+          !fixture.settings.modules.includes("presence") ||
+          payload.member !== fixture.actor ||
+          payload.member_revision !== current.member_revision ||
+          payload.binding_revision !== current.binding_revision ||
+          payload.subscription_revision !== current.subscription_revision ||
+          typeof payload.enabled !== "boolean" ||
+          (payload.subscription_revision === null && !payload.enabled)
+        )
+          conflict();
+        if (window.failMode === "before") {
+          window.failMode = null;
+          const error = new Error("transport before commit");
+          error.code = "transport_error";
+          throw error;
+        }
+        const revision = subscription ? subscription.revision + 1 : 1;
+        fixture.subscriptions[fixture.actor] = {
+          revision,
+          member_revision: payload.member_revision,
+          binding_revision: payload.binding_revision,
+          status: payload.enabled ? "enabled" : "disabled",
+        };
+        const receipt = {
+          member: payload.member,
+          revision,
+          status: payload.enabled ? "enabled" : "disabled",
+        };
+        receipts.set(message.operation_id, receipt);
+        if (window.failMode === "after") {
+          window.failMode = null;
+          const error = new Error("response lost");
+          error.code = "response_lost";
+          throw error;
+        }
+        return structuredClone(receipt);
+      };
+
+      const card = (window.card = document.createElement(
+        "family-presence-card",
+      ));
+      card.setConfig({
+        type: "custom:family-presence-card",
+        entry_id: "synthetic-presence",
+        language,
+      });
+      card.hass = {
+        language,
+        callWS: async (message) => {
+          if (message.type === "family_assistant/view") return projection();
+          if (message.type === "family_assistant/execute")
+            return execute(message);
+          throw { code: "unknown_action" };
+        },
+      };
+      document.querySelector("main").append(card);
+    </script>
+  </body>
+</html>

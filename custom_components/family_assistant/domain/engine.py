@@ -26,6 +26,7 @@ from . import (
     pantry,
     poll_reviews,
     polls,
+    presence,
     proposals,
     rewards,
     routines,
@@ -61,6 +62,7 @@ HANDLERS = {
     "maintenance": maintenance.handle,
     "media": media.handle,
     "polls": polls.handle,
+    "presence": presence.handle,
 }
 BUCKETS = (
     "members",
@@ -86,6 +88,7 @@ BUCKETS = (
     "polls",
     "poll_ballots",
     "poll_reviews",
+    "presence",
     "outbox",
     "processed",
     "sequences",
@@ -173,6 +176,7 @@ class Engine:
         self._state.setdefault("polls", {})
         self._state.setdefault("poll_ballots", {})
         self._state.setdefault("poll_reviews", {})
+        self._state.setdefault("presence", {"bindings": {}, "subscriptions": {}})
         self._persist = persist
         self._lock = asyncio.Lock()
         # This process-local lease is deliberately absent from persisted state.
@@ -488,6 +492,13 @@ class Engine:
                 Context(self._state, self._actor(actor_id), now, "maintenance-replay"),
                 action.split(".", 1)[1],
                 payload,
+            )
+        elif module == "presence":
+            presence.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "presence-replay"),
+                action.split(".", 1)[1],
+                payload,
+                result,
             )
         elif module == "polls":
             polls.authorize_replay(

@@ -28,7 +28,8 @@
           "pantry": "Pantry and household stock",
           "school": "School timetable",
           "maintenance": "Home maintenance",
-          "polls": "Family polls"
+          "polls": "Family polls",
+          "presence": "Family presence"
         }
       }
     },
@@ -167,6 +168,7 @@
           "conversation": "Language model and fallback",
           "search": "Internet search (SearXNG)",
           "recipes": "Recipe source (Mealie)",
+          "presence_sources": "Presence sources",
           "mikrotik": "MikroTik network"
         }
       },
@@ -214,7 +216,8 @@
           "pantry": "Pantry and household stock",
           "school": "School timetable",
           "maintenance": "Home maintenance",
-          "polls": "Family polls"
+          "polls": "Family polls",
+          "presence": "Family presence"
         }
       },
       "alarm_device": {
@@ -280,6 +283,23 @@
           "api_key": "API key (optional)",
           "clear_key": "Clear saved key",
           "allow_http": "Allow unencrypted HTTP on a trusted network"
+        }
+      },
+      "presence_sources": {
+        "title": "Presence sources",
+        "description": "Display-only, optional. Select a registered person or device_tracker you may read. Each HA-linked member consents on their own card. Changing the source revokes old consent. No history or coordinates are stored.",
+        "data": {
+          "member": "Family member",
+          "enabled": "Use this source",
+          "entity_id": "Person or device tracker",
+          "presence_max_age_seconds": "Maximum report age (seconds, 30–3600)"
+        }
+      },
+      "presence_source_review": {
+        "title": "Review presence source",
+        "description": "Member: {member}. Action: {action} (enable = assign, remove = remove source). Entity: {entity}. Source revision: {binding_revision}; member revision: {member_revision}. Maximum age: {max_age_seconds} seconds. This changes only the source binding, not consent.",
+        "data": {
+          "confirmed": "I confirm this exact change"
         }
       },
       "recipes": {

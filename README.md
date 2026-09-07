@@ -30,7 +30,8 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [School / Школа / Школа](docs/school.md) ·
 [Maintenance / Обслуживание / Обслуговування](docs/maintenance.md) ·
 [Menu shopping / Покупки по меню / Покупки за меню](docs/meal-shopping.md) ·
-[Polls / Голосования / Голосування](docs/polls.md).
+[Polls / Голосования / Голосування](docs/polls.md) ·
+[Presence / Присутствие / Присутність](docs/presence.md).
 
 ## Development
 

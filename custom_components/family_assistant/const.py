@@ -15,6 +15,7 @@ MODULES = (
     "school",
     "maintenance",
     "polls",
+    "presence",
     "mikrotik",
 )
 DEFAULT_MODULES = ("shopping", "tasks", "alarms", "court")

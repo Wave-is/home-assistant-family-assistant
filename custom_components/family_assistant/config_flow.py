@@ -24,6 +24,7 @@ CONFIGURABLE_MODULES = (
     "school",
     "maintenance",
     "polls",
+    "presence",
 )
 
 
@@ -155,6 +156,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 "conversation",
                 "search",
                 "recipes",
+                "presence_sources",
                 "mikrotik",
             ],
         )
@@ -174,6 +176,16 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
         from .recipes.options import options_step
 
         return await options_step(self, user_input)
+
+    async def async_step_presence_sources(self, user_input=None):
+        from .presence_options import source_step
+
+        return await source_step(self, user_input)
+
+    async def async_step_presence_source_review(self, user_input=None):
+        from .presence_options import review_step
+
+        return await review_step(self, user_input)
 
     async def async_step_mikrotik(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
