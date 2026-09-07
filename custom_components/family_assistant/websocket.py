@@ -11,10 +11,20 @@ from .domain.validation import DomainError, text
 
 
 def async_register_api(hass):
+    from .assistant.article_api import article
     from .digest_api import preview as digest_preview
     from .recipes.api import recipes
 
-    for handler in (households, view, execute, chat, network_refresh, recipes, digest_preview):
+    for handler in (
+        households,
+        view,
+        execute,
+        chat,
+        article,
+        network_refresh,
+        recipes,
+        digest_preview,
+    ):
         websocket_api.async_register_command(hass, handler)
 
 
@@ -46,6 +56,12 @@ async def view(hass, connection, msg):
         actor_id = runtime.engine.actor_for_ha(connection.user.id)
         now = dt_util.utcnow()
         data = runtime.engine.view(actor_id, now=now)
+        if data["role"] != "guest" and "conversation" in data["settings"]["modules"]:
+            from .assistant.article_api import source_view as article_source_view
+
+            data["article_source"] = article_source_view(
+                hass.config_entries.async_get_entry(msg["entry_id"]), runtime, actor_id
+            )
         if data["role"] != "guest" and "presence" in data["settings"]["modules"]:
             from .presence_observations import project
 

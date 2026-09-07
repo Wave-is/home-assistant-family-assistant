@@ -34,6 +34,10 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Presence / Присутствие / Присутність](docs/presence.md) ·
 [Digests / Дайджесты / Дайджести](docs/digests.md).
 
+Optional explicit [article reading](docs/articles.md) uses your configured model
+without sending family context. It is off by default and has a separate child
+access opt-in.
+
 ## Development
 
 Python 3.14.2+ is the Home Assistant test target. Pure domain tests also run on

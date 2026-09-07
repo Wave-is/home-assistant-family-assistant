@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from homeassistant.const import Platform
 from homeassistant.core import SupportsResponse, callback
@@ -30,6 +31,8 @@ class Runtime:
     scheduler: Any = None
     telegram: Any = None
     assistant: Any = None
+    articles: Any = None
+    article_revision: str = ""
     network: Any = None
     recipes: Any = None
     recipes_revision: str = ""
@@ -189,6 +192,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
     except Exception:
+        await async_stop_articles(runtime)
         await async_stop_media(runtime)
         if runtime.network:
             await runtime.network.stop()
@@ -249,6 +253,7 @@ async def _async_unload_runtime(hass, entry) -> bool:
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    await async_stop_articles(runtime)
     await async_stop_media(runtime)
     if runtime.network:
         await runtime.network.stop()
@@ -297,6 +302,7 @@ async def async_configure_telegram(hass, entry):
 async def async_options_updated(hass, entry):
     async with entry.runtime_data.options_lock:
         await async_configure_presence(hass, entry)
+        await async_stop_articles(entry.runtime_data)
         async_configure_assistant(hass, entry)
         async_configure_recipes(hass, entry)
         await async_configure_network(hass, entry)
@@ -342,14 +348,28 @@ def async_configure_recipes(hass, entry):
             runtime.health["recipes"] = err.code
 
 
+async def async_stop_articles(runtime):
+    """Discard transient public-page answers and settle only owned requests."""
+    if runtime.articles is not None:
+        previous = runtime.articles
+        runtime.articles = None
+        runtime.article_revision = uuid4().hex
+        await previous.async_stop()
+
+
 def async_configure_assistant(hass, entry):
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+    from .assistant.article_service import ArticleService
     from .assistant.provider import Cascade, Ollama
     from .assistant.search import Search
     from .assistant.service import Assistant
 
     runtime = entry.runtime_data
+    if runtime.articles is not None:
+        runtime.articles.close()
+    runtime.articles = None
+    runtime.article_revision = uuid4().hex
     runtime.assistant = None
     config = entry.options.get("conversation", {})
     if config.get("enabled") and config.get("primary"):
@@ -359,6 +379,18 @@ def async_configure_assistant(hass, entry):
         ]
         search = Search(session, config["search"]) if config.get("search") else None
         runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
+        article_policy = entry.options.get("articles", {})
+        if (
+            isinstance(article_policy, dict)
+            and set(article_policy) == {"enabled", "allow_children", "revision"}
+            and article_policy["enabled"] is True
+            and type(article_policy["allow_children"]) is bool
+            and isinstance(article_policy["revision"], str)
+            and len(article_policy["revision"]) == 32
+            and all(character in "0123456789abcdef" for character in article_policy["revision"])
+            and "conversation" in runtime.engine.snapshot()["settings"]["modules"]
+        ):
+            runtime.articles = ArticleService(runtime.assistant.cascade)
     else:
         runtime.health.pop("conversation", None)
 

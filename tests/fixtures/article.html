@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant article fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search);
+      const language = params.get("lang") || "en";
+      const initialRole = params.get("role") || "parent";
+      const inject = params.get("inject") === "on";
+      const actorIds = {
+        owner: "owner-1",
+        parent: "parent-1",
+        adult: "adult-1",
+        child: "child-1",
+        guest: "guest-1",
+      };
+      const revisions = { owner: 2, parent: 3, adult: 4, child: 5, guest: 6 };
+      const members = Object.entries(actorIds).map(([role, id]) => ({
+        id,
+        name: role[0].toUpperCase() + role.slice(1),
+        role,
+        active: true,
+        revision: revisions[role],
+      }));
+      const fixture = (window.fixture = {
+        actor: actorIds[initialRole],
+        role: initialRole,
+        modules: ["conversation"],
+        policyEnabled: true,
+        configured: true,
+        allowChildren: params.get("children") !== "off",
+        sourceRevision: "a".repeat(32),
+        members,
+      });
+      const currentMember = () =>
+        fixture.members.find((member) => member.id === fixture.actor);
+      const source = () => {
+        const member = currentMember();
+        const permitted =
+          member?.active &&
+          ["owner", "parent", "adult", "child"].includes(fixture.role) &&
+          (fixture.role !== "child" || fixture.allowChildren);
+        const ready =
+          fixture.policyEnabled &&
+          fixture.configured &&
+          fixture.modules.includes("conversation") &&
+          permitted;
+        return {
+          enabled: fixture.policyEnabled,
+          configured: fixture.configured,
+          allowed: ready,
+          revision: ready ? fixture.sourceRevision : null,
+        };
+      };
+      const projection = () => ({
+        revision: 1,
+        actor: fixture.actor,
+        role: fixture.role,
+        settings: {
+          name: "Synthetic family",
+          modules: structuredClone(fixture.modules),
+        },
+        members: structuredClone(fixture.members),
+        article_source: source(),
+        proposals: [],
+        learned_phrases: [],
+      });
+
+      window.articleCalls = [];
+      window.failure = null;
+      window.delayed = null;
+      const receipts = new Map();
+      const code = (value) => Object.assign(new Error(value), { code: value });
+      const response = (request) => ({
+        answer: inject
+          ? "<img src=x onerror=alert(1)> Public evidence summarized."
+          : "Public evidence summarized.",
+        sources: [
+          {
+            title: inject
+              ? "<b>Verified article title</b>"
+              : "Verified article title",
+            url: "https://example.org/final",
+            requested_url: request.url,
+            retrieved_at: "2026-09-07T12:00:00+00:00",
+          },
+        ],
+      });
+      const article = async (request) => {
+        window.articleCalls.push(structuredClone(request));
+        const exact = [
+          "entry_id",
+          "operation_id",
+          "source_revision",
+          "type",
+          "url",
+        ];
+        if (
+          JSON.stringify(Object.keys(request).sort()) !== JSON.stringify(exact) ||
+          request.type !== "family_assistant/article" ||
+          request.entry_id !== "synthetic-article" ||
+          request.source_revision !== fixture.sourceRevision ||
+          source().revision !== request.source_revision ||
+          typeof request.operation_id !== "string" ||
+          !request.operation_id
+        )
+          throw code("conflict");
+        if (receipts.has(request.operation_id))
+          return structuredClone(receipts.get(request.operation_id));
+        if (window.failure === "before") {
+          window.failure = null;
+          throw code("article_unavailable");
+        }
+        if (window.delayed) await window.delayed.promise;
+        if (source().revision !== request.source_revision) throw code("conflict");
+        const result = response(request);
+        receipts.set(request.operation_id, structuredClone(result));
+        if (window.failure === "after") {
+          window.failure = null;
+          throw code("article_unavailable");
+        }
+        return structuredClone(result);
+      };
+
+      const card = (window.card = document.createElement("family-conversation-card"));
+      card.setConfig({
+        type: "custom:family-conversation-card",
+        entry_id: "synthetic-article",
+        language,
+      });
+      card.hass = {
+        language,
+        user: { id: "ha-user" },
+        callWS: async (message) => {
+          if (message.type === "family_assistant/view") return projection();
+          if (message.type === "family_assistant/article") return article(message);
+          if (message.type === "family_assistant/chat")
+            return { reply: "Synthetic chat remains usable." };
+          throw code("unknown_action");
+        },
+      };
+      document.querySelector("main").append(card);
+      window.project = projection;
+      window.delayArticle = () => {
+        let release;
+        const promise = new Promise((resolve) => (release = resolve));
+        window.delayed = { promise, release };
+      };
+    </script>
+  </body>
+</html>

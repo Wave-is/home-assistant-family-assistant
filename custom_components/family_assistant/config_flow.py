@@ -165,6 +165,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "telegram_member",
                 "conversation",
                 "search",
+                "articles",
                 "recipes",
                 "presence_sources",
                 "digests",
@@ -187,6 +188,16 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         from .recipes.options import options_step
 
         return await options_step(self, user_input)
+
+    async def async_step_articles(self, user_input=None):
+        from .assistant.article_options import options_step
+
+        return await options_step(self, user_input)
+
+    async def async_step_article_policy_review(self, user_input=None):
+        from .assistant.article_options import review_step
+
+        return await review_step(self, user_input)
 
     async def async_step_presence_sources(self, user_input=None):
         from .presence_options import source_step

@@ -169,6 +169,7 @@
           "telegram_member": "Link a member's private chat",
           "conversation": "Language model and fallback",
           "search": "Internet search (SearXNG)",
+          "articles": "Public article reading",
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
@@ -339,6 +340,21 @@
         "description": "Time zone: {timezone}. Morning: {morning} at {morning_time}. Evening: {evening} at {evening_time}. Weekly: {weekly} on day {weekly_weekday} at {weekly_time} (Monday = 0, Sunday = 6). This changes only the household policy; it does not subscribe family members.",
         "data": {
           "confirmed": "I confirm this exact digest schedule"
+        }
+      },
+      "articles": {
+        "title": "Public article reading",
+        "description": "The Home Assistant server fetches only an explicitly requested public HTTPS page. The site sees the server IP. Extracted page text is sent to the configured primary or fallback model without family context. No login, PDF, or page JavaScript is supported. Child access is a separate opt-in.",
+        "data": {
+          "enabled": "Enable public article reading",
+          "allow_children": "Allow children to request articles"
+        }
+      },
+      "article_policy_review": {
+        "title": "Review article policy",
+        "description": "Article reading: {enabled}. Child access: {children}. Confirm this exact policy.",
+        "data": {
+          "confirmed": "Confirm this policy"
         }
       },
       "recipes": {
@@ -843,6 +859,14 @@
     }
   },
   "selector": {
+    "article_policy_state": {
+      "options": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "allowed": "Allowed",
+        "not_allowed": "Not allowed"
+      }
+    },
     "onboarding_status": {
       "options": {
         "ready": "Ready",

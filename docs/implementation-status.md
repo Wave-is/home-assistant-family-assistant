@@ -14,7 +14,7 @@ Nothing is production-ready solely because a mock test passes.
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
-| LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
+| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; ordinary-chat lifecycle hardening, real-model eval and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; supported ownership-safe Lovelace registration and full module-graph versioning; richer overview/editors and packaged HACS upgrade acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; deterministic runtime ZIP, source containment, exact manifest and declared import checks; packaged upgrade/migration gates still pending |
+| Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest passed on main; deterministic runtime ZIP, containment, exact manifest/import checks; local two-process synthetic application upgrade passed; new upgrade CI, HACS-installed acceptance and legacy migration remain pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
 ## Baseline, 2026-09-06
@@ -49,6 +49,29 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
+Explicit article reading is now connected to owner-reviewed Options and the
+Conversation card. It remains off by default, with a separate child policy,
+reviewed public HTTPS URL, transient answer and verified source link. Full
+entry/runtime/member/provider generations revoke in-flight work and unload
+settles owned workers. Root verified 410 Node and 161 Chromium scenarios and
+visually checked RU review and UK result. The exact runtime passed the full
+actual-HA suite, including Options, authenticated WebSockets, policy changes,
+unchanged family data, generation revocation and unload. The isolated test uses
+a real owned HTTP session because HA's multicast resolver cannot initialize in
+a network-disabled container; retrieval/model responses remain synthetic. A
+contract test also checks the synthetic model reply against the real schema.
+
+Whole-export checks passed 2347 Python tests, five host-specific skips and 23
+subtests, plus Ruff/format/locales/privacy. The separate two-process actual-HA
+upgrade gate passed from reviewed, unshipped alpha.1 source to candidate alpha.2:
+the same synthetic configuration, Options, tasks, points, disabled alarm and
+replay receipts survived. Candidate runtime ZIP SHA256:
+`9779a5ce97213e1bbc872d487f3a1a9291fafca4449064452a0e25cbd793d9eb`.
+This is not HACS-installed acceptance, a production upgrade, full HA restore or
+legacy migration. No release has been published. Review identified ordinary-chat
+request lifecycle, stale-authority and lost-response retry defects; those are
+being fixed before the first prerelease, not claimed as completed by this gate.
+
 The full recurring-task editor now reviews people, recurrence, deadline policy,
 report type and checklist in EN/RU/UK. Exact retries preserve the reviewed operation;
 harmless refresh preserves typed fields and stale authority detaches controls. Server
@@ -56,8 +79,8 @@ lineage pins actor/creator/assignees and suspends stale series without silently
 assigning work to a replacement identity. Root verified 400 Node, 156 Chromium and
 the complete actual-HA suite; the narrow RU full review was visually inspected.
 
-Public-article transport and answer-only synthesis are implemented but are not yet
-connected to a user-facing endpoint or enabled by default. Real synthetic TLS tests
+At the preceding checkpoint, public-article transport and answer-only synthesis
+were foundations without a user-facing endpoint. Real synthetic TLS tests
 exercise pinned host/address/port/family/protocol, redirect and response limits.
 Model input has no family view or source URL; authority rechecks precede fallback
 and health changes, completed responses are transient, and concurrency is bounded

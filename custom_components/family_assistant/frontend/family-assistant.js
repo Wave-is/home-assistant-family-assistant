@@ -28,6 +28,7 @@ import {renderHealth,reconcileHealthRefresh} from "./health-view.js";
 import {captureFocusRefresh,renderWithFocusRefresh} from "./focus-refresh.js";
 import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditorRefresh} from "./alarm-editor.js";
 import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js";
+import {renderArticle,reconcileArticleRefresh,disposeArticle} from "./article-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -237,7 +238,7 @@ export class FamilyCard extends HTMLElement {
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;this._pollsDraft=null;this._presenceDraft=null;this._digestsDraft=null;
-    this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";
+    this._chatSession=crypto.randomUUID();this._chatReply=null;this._chatPending=null;this._chatDraft="";this._articleDraft=null;
     this.render();
     if (this._hass) this.refresh();
   }
@@ -258,7 +259,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -288,9 +289,10 @@ export class FamilyCard extends HTMLElement {
       const healthForce = reconcileHealthRefresh(this,previousData);
       const alarmEditorForce = reconcileAlarmEditorRefresh(this,previousData);
       const taskSeriesForce = reconcileTaskSeriesRefresh(this,previousData);
+      const articleForce = reconcileArticleRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -498,6 +500,7 @@ export class FamilyCard extends HTMLElement {
     }
   }
   renderConversation(body) {
+    renderArticle(this,body);
     if(this._chatReply){const reply=el("div",this._chatReply,"item");reply.style.whiteSpace="pre-wrap";reply.setAttribute("aria-live","polite");body.append(reply);}
     const form=el("form");const input=this.input(form,"message",this.t.message,"text",this._chatDraft || "");input.maxLength=4096;input.autocomplete="off";
     const send=el("button",this.t.send,"primary");send.type="submit";send.disabled=!!this._writing;form.append(send);body.append(form);

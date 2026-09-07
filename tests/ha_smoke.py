@@ -240,6 +240,10 @@ async def main():
 
             await verify_background_backup_loops(hass, entry, user)
             await run_websocket(hass, entry, user, child_id)
+            from ha_article_smoke import verify_articles
+
+            await verify_articles(hass, entry, user, child_id)
+            engine = entry.runtime_data.engine
             from ha_member_revision_smoke import verify_member_revision_options
 
             await verify_member_revision_options(hass, entry, user, child_id)
