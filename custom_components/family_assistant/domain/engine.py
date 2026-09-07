@@ -20,6 +20,7 @@ from . import (
     dietary_profiles,
     family_calendar,
     household,
+    maintenance,
     members,
     pantry,
     proposals,
@@ -29,6 +30,7 @@ from . import (
     settings,
     shopping,
     shopping_series,
+    task_access,
     task_events,
     task_series,
     tasks,
@@ -50,6 +52,7 @@ HANDLERS = {
     "routines": routines.handle,
     "pantry": pantry.handle,
     "school": school.handle,
+    "maintenance": maintenance.handle,
 }
 BUCKETS = (
     "members",
@@ -205,9 +208,16 @@ class Engine:
             ("alarm_runs", "member"),
         ):
             data[bucket] = [
-                alarms.public_run(record) if bucket == "alarm_runs" else record
+                alarms.public_run(record)
+                if bucket == "alarm_runs"
+                else (
+                    task_access.public_task(record, parent=parent) if bucket == "tasks" else record
+                )
                 for record in self._state[bucket].values()
                 if parent or record.get(owner_field) == actor_id
+                if bucket != "tasks"
+                or not task_access.private_task(record)
+                or task_access.may_view(self._state, actor, record)
             ]
         if actor["role"] == "guest":
             data["shopping"] = []
@@ -235,6 +245,7 @@ class Engine:
             }
             for record in self._state["task_series"].values()
             if parent or actor_id in record["assignees"]
+            if not maintenance.is_managed_series(record)
         ]
         data["proposals"] = [
             {k: record[k] for k in ("id", "status", "preview", "expires_at")}
@@ -258,6 +269,8 @@ class Engine:
             and "school" in self._state["settings"]["modules"]
         ):
             data["school"] = school.view(self._state, actor, now)
+        if actor["role"] != "guest" and "maintenance" in self._state["settings"]["modules"]:
+            data["maintenance"] = maintenance.view(self._state, actor)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -375,7 +388,15 @@ class Engine:
             and module not in self._state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")
-        if module == "routines":
+        if module == "maintenance":
+            maintenance.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "maintenance-replay"),
+                action.split(".", 1)[1],
+                payload,
+            )
+        elif module == "tasks":
+            task_access.authorize_replay(self._state, self._actor(actor_id), result)
+        elif module == "routines":
             routines.check_replay(self._state, actor_id, action.split(".", 1)[1], result)
         elif action.startswith("pantry.dietary_"):
             dietary_profiles.authorize_replay(

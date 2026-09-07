@@ -26,7 +26,8 @@
           "calendar": "Family calendar",
           "routines": "Family routines",
           "pantry": "Pantry and household stock",
-          "school": "School timetable"
+          "school": "School timetable",
+          "maintenance": "Home maintenance"
         }
       }
     },
@@ -201,7 +202,8 @@
           "calendar": "Family calendar",
           "routines": "Family routines",
           "pantry": "Pantry and household stock",
-          "school": "School timetable"
+          "school": "School timetable",
+          "maintenance": "Home maintenance"
         }
       },
       "alarm_device": {

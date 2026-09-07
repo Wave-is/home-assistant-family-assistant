@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from .domain.engine import Engine
 from .domain.pantry_expiry import current_event as current_pantry_expiry_event
+from .domain.task_delivery import TASK_EVENTS, current_task_event
 from .domain.validation import timestamp
 
 URGENT = {
@@ -108,9 +109,10 @@ class Notifications:
             delivery = event.get("deliveries", {}).get(delivery_id)
             if delivery is None or delivery["state"] != "sending":
                 return None
-            if event["key"] == "pantry_expiry" and not current_pantry_expiry_event(
-                ctx.state, event, now
-            ):
+            if (
+                event["key"] == "pantry_expiry"
+                and not current_pantry_expiry_event(ctx.state, event, now)
+            ) or (event["key"] in TASK_EVENTS and not current_task_event(ctx.state, event)):
                 delivery["state"] = "superseded"
                 self._aggregate(event)
                 return None
@@ -137,10 +139,11 @@ class Notifications:
         for event in ctx.state["outbox"].values():
             if event["state"] in {"sent", "superseded", "failed", "uncertain", "resolved"}:
                 continue
-            if (
+            if event["state"] != "sending" and (
                 event["key"] == "pantry_expiry"
-                and event["state"] != "sending"
                 and not current_pantry_expiry_event(ctx.state, event, ctx.now)
+                or event["key"] in TASK_EVENTS
+                and not current_task_event(ctx.state, event)
             ):
                 if not event.get("deliveries"):
                     event["state"] = "superseded"

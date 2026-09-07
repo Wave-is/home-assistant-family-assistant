@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from . import penalties
+from . import penalties, task_access
 from .context import Context
 from .incidents import close_incident, open_incident
 from .validation import DomainError, timestamp
@@ -26,6 +26,19 @@ def policy(ctx, payload, previous=None):
     return result
 
 
+def member_stamp(ctx, item):
+    member = ctx.state["members"].get(item["assignee"], {})
+    return {
+        "id": item["id"],
+        "member": item["assignee"],
+        "member_revision": (
+            item.get("assignee_revision")
+            if task_access.private_task(item)
+            else member.get("revision")
+        ),
+    }
+
+
 def close(ctx, item, *, assignment=False):
     stale_keys = {"task_reminder"}
     if assignment or item["status"] in {"submitted", "completed", "cancelled", "archived"}:
@@ -39,11 +52,25 @@ def close(ctx, item, *, assignment=False):
             and event["state"] in {"pending", "awaiting_channel"}
         ):
             event["state"] = "superseded"
+    closure_data = member_stamp(ctx, item)
+    incident = ctx.state["incidents"].get(f"task:{item['id']}")
+    if incident and incident.get("state") == "open":
+        original = ctx.state["outbox"].get(incident.get("event_id"), {})
+        original_data = original.get("data", {})
+        # Preserve the original incident's subject even if closure follows an
+        # identity change or a later incident reuses the task's incident slot.
+        for key in ("member", "member_revision"):
+            if key in original_data:
+                closure_data[key] = original_data[key]
+        closure_data.update(
+            original_event_id=incident["event_id"],
+            incident_generation=incident["generation"],
+        )
     close_incident(
         ctx,
         f"task:{item['id']}",
         "task_incident_closed",
-        {"id": item["id"], "member": item["assignee"]},
+        closure_data,
     )
 
 
@@ -53,7 +80,7 @@ def tick(ctx: Context):
             close(ctx, item)
         return
     for item in ctx.state["tasks"].values():
-        if not ctx.state["members"].get(item["assignee"], {}).get("active"):
+        if not task_access.current_assignee(ctx.state, item):
             close(ctx, item)
             continue
         if item["status"] in {"submitted", "completed", "cancelled", "archived"} or not item.get(
@@ -79,7 +106,9 @@ def tick(ctx: Context):
                 ctx.state, ctx.actor, ctx.now, f"task-reminder:{item['id']}:{item['due_at']}"
             )
             notification_ctx.notify(
-                item["assignee"], "task_reminder", {"id": item["id"], "due_at": item["due_at"]}
+                item["assignee"],
+                "task_reminder",
+                {**member_stamp(ctx, item), "due_at": item["due_at"]},
             )
         if ctx.now >= deadline + timedelta(minutes=config["grace_minutes"]) and not events.get(
             "escalated"
@@ -89,7 +118,8 @@ def tick(ctx: Context):
                 ctx,
                 f"task:{item['id']}",
                 "task_overdue",
-                {"id": item["id"], "member": item["assignee"]},
+                {**member_stamp(ctx, item), "due_at": item["due_at"]},
+                recipient="parents" if task_access.private_task(item) else "family",
             )
             events["penalty_applied"] = penalties.award(
                 ctx,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import task_events
+from . import task_access, task_events
 from .context import Context
 from .validation import DomainError, fields, text, timestamp
 from .validation import revision as strict_revision
@@ -62,6 +62,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "id": ctx.identifier("T"),
             "title": text(payload["title"], "title"),
             "assignee": assignee["id"],
+            "assignee_revision": assignee["revision"],
             "creator": ctx.actor_id,
             "due_at": due,
             "created_at": ctx.now.isoformat(),
@@ -72,12 +73,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "checklist": [{"text": text(t, "checklist", 200), "done": False} for t in checklist],
         }
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
-        ctx.notify(assignee["id"], "task_assigned", {"id": item["id"]})
+        ctx.notify(assignee["id"], "task_assigned", task_events.member_stamp(ctx, item))
         return item
     if action not in ACTION_FIELDS:
         raise DomainError("unknown_action")
     fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id", "revision"})
     item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
+    if task_access.private_task(item) and not task_access.may_view(ctx.state, ctx.actor, item):
+        raise DomainError("forbidden")
     own = item["assignee"] == ctx.actor_id
     if not ctx.privileged and not own:
         raise DomainError("forbidden")
@@ -119,10 +122,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                         }
                     )
                 item["assignee"] = new_assignee
+                item["assignee_revision"] = ctx.member(new_assignee)["revision"]
                 item["status"] = "assigned"
                 item["report"] = None
                 item.pop("review_note", None)
-                ctx.notify(new_assignee, "task_assigned", {"id": item["id"]})
+                ctx.notify(new_assignee, "task_assigned", task_events.member_stamp(ctx, item))
+            else:
+                # An explicitly reviewed assignment refreshes a changed identity binding.
+                item["assignee_revision"] = ctx.member(new_assignee)["revision"]
         item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
     elif action in {"accept", "start", "submit", "check"}:
         if not own and not ctx.privileged:
@@ -138,7 +145,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("photo_required")
             item["report"] = report
             item["status"] = "submitted"
-            ctx.notify("parents", "task_review", {"id": item["id"]})
+            ctx.notify("parents", "task_review", task_events.member_stamp(ctx, item))
         elif action == "check":
             index = payload.get("checklist_index")
             if type(index) is not int or not 0 <= index < len(item["checklist"]):
@@ -175,4 +182,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     if item["status"] in {"submitted", "completed", "cancelled", "archived"}:
         task_events.close(ctx, item)
-    return ctx.touch(item)
+    ctx.touch(item)
+    # Command receipts obey the same private projection as reads. The stored
+    # record keeps its source for lifecycle guards, but a child response does not.
+    return task_access.public_task(item, parent=ctx.privileged)

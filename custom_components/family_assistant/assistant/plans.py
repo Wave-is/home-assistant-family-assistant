@@ -4,6 +4,7 @@ import json
 from copy import deepcopy
 
 from ..domain.deadlines import parse_due
+from ..domain.task_access import private_task
 from ..domain.validation import DomainError, fields, text
 
 WRITES = {
@@ -128,7 +129,9 @@ def projection(view):
     }
     for bucket, allowed in keys.items():
         if bucket in view["settings"]["modules"]:
-            records = view[bucket]
+            records = [
+                record for record in view[bucket] if bucket != "tasks" or not private_task(record)
+            ]
             result[bucket] = [
                 {k: record[k] for k in allowed if k in record} for record in records[-30:]
             ]
@@ -177,7 +180,7 @@ def materialize(value, view, content, now):
         if payload.get("id"):
             bucket = action.split(".")[0]
             record = next((r for r in view[bucket] if r["id"] == payload["id"]), None)
-            if record is None:
+            if record is None or bucket == "tasks" and private_task(record):
                 raise DomainError("not_found")
             payload["revision"] = record["revision"]
     return commands

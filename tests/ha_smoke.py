@@ -239,6 +239,18 @@ async def main():
 
             school_id = await verify_school(hass, entry, user, child_id)
             school_expected = entry.runtime_data.engine.snapshot()["school"]
+            from ha_maintenance_smoke import verify_maintenance
+
+            maintenance_ids = await verify_maintenance(hass, entry, user, child_id)
+            maintenance_expected = entry.runtime_data.engine.snapshot()["maintenance"]
+            maintenance_task_series = entry.runtime_data.engine.snapshot()["task_series"]
+            maintenance_tasks = {
+                task_id: entry.runtime_data.engine.snapshot()["tasks"][task_id]
+                for task_id in (
+                    maintenance_ids["fault_task_id"],
+                    maintenance_ids["service_task_id"],
+                )
+            }
             dietary_expected = entry.runtime_data.engine.snapshot()["dietary_profiles"]
             # Reload reads the same Store; HACS code updates do not replace it.
             routines_before_reload = entry.runtime_data.engine.snapshot()["routine_runs"]
@@ -250,6 +262,14 @@ async def main():
             assert entry.state == config_entries.ConfigEntryState.LOADED
             assert entry.runtime_data.engine.snapshot()["school"] == school_expected
             assert school_expected["timetables"][school_id]["status"] == "active"
+            assert entry.runtime_data.engine.snapshot()["maintenance"] == maintenance_expected
+            assert entry.runtime_data.engine.snapshot()["task_series"] == maintenance_task_series
+            for task_id, task in maintenance_tasks.items():
+                assert entry.runtime_data.engine.snapshot()["tasks"][task_id] == task
+                assert (
+                    task["delivery_scope"] == "private"
+                    and task["source"]["asset_id"] == maintenance_ids["asset_id"]
+                )
             assert entry.runtime_data.engine.snapshot()["dietary_profiles"] == dietary_expected
             from ha_dietary_smoke import verify_dietary_reload
 
@@ -775,7 +795,7 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
         {
             "name": settings["name"],
             "language": settings["language"],
-            "modules": [*settings["modules"], "pantry", "school", "maintenance"],
+            "modules": [*settings["modules"], "pantry", "school", "maintenance", "polls"],
         },
     )
     options = await hass.config_entries.options.async_init(
@@ -785,8 +805,8 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
         options["flow_id"], {"next_step_id": "general"}
     )
     schema_fields = {key.schema for key in options["data_schema"].schema}
-    assert {"routines", "pantry", "school"} <= schema_fields
-    assert "maintenance" not in schema_fields
+    assert {"routines", "pantry", "school", "maintenance"} <= schema_fields
+    assert "polls" not in schema_fields
     options = await hass.config_entries.options.async_configure(
         options["flow_id"],
         {
@@ -796,7 +816,7 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
     )
     assert options["type"] == "create_entry", options
     await hass.async_block_till_done()
-    assert {"routines", "pantry", "school", "maintenance"} <= set(
+    assert {"routines", "pantry", "school", "maintenance", "polls"} <= set(
         entry.runtime_data.engine.snapshot()["settings"]["modules"]
     )
     payload = {

@@ -139,7 +139,11 @@ MESSAGES = {
 
 
 def targets(event, state):
+    from ..domain.task_delivery import TASK_EVENTS, current_task_event
+
     recipient, key = event["recipient"], event["key"]
+    if key in TASK_EVENTS and not current_task_event(state, event):
+        return []
     language = state["settings"]["language"]
     group = state["telegram"].get("group_id")
     if key == "telegram_reply":

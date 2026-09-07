@@ -30,6 +30,9 @@ COPY = {
         ),
         "empty": "No records yet.",
         "saved": "✅ Saved: {id} · {title}",
+        "private_saved": (
+            "✅ Saved: {id}. Private task details are in your private chat or dashboard."
+        ),
         "unknown": (
             "I haven't understood the action yet. Nothing was changed. Use "
             "/help for supported commands."
@@ -59,6 +62,9 @@ COPY = {
         ),
         "empty": "Пока нет записей.",
         "saved": "✅ Сохранено: {id} · {title}",
+        "private_saved": (
+            "✅ Сохранено: {id}. Подробности личной задачи — в личном чате или на дашборде."
+        ),
         "unknown": (
             "Пока не понял действие. Ничего не изменено. В /help есть поддерживаемые команды."
         ),
@@ -87,6 +93,9 @@ COPY = {
         ),
         "empty": "Поки немає записів.",
         "saved": "✅ Збережено: {id} · {title}",
+        "private_saved": (
+            "✅ Збережено: {id}. Подробиці приватного завдання — в особистому чаті або на дашборді."
+        ),
         "unknown": ("Поки не зрозумів дію. Нічого не змінено. У /help є підтримувані команди."),
         "error": "Не вдалося виконати дію: {error}. Нічого не змінено.",
         "accepted": "✅ Правильно! {stage}",
@@ -136,10 +145,16 @@ async def route(
     private=False,
 ) -> str:
     view = engine.view(actor, now=now)
+    from ..domain.task_access import private_task
+
+    if not private:
+        view["tasks"] = [task for task in view["tasks"] if not private_task(task)]
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if not private and private_task(result):
+            return t["private_saved"].format(id=result["id"])
         if (
             "template_id" in result
             or "assignees" in result
@@ -165,7 +180,12 @@ async def route(
             if result.get("status") == "rejected":
                 return ASSISTANT_COPY[language]["rejected"]
             return ASSISTANT_COPY[language]["confirmed"].format(
-                result="\n".join(summary(item, view, language) for item in result["items"])
+                result="\n".join(
+                    t["private_saved"].format(id=item["id"])
+                    if not private and private_task(item)
+                    else summary(item, view, language)
+                    for item in result["items"]
+                )
             )
         title = (
             rewards.summary(result, language)

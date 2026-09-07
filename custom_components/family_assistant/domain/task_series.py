@@ -8,8 +8,16 @@ from .context import Context
 from .validation import DomainError, fields, text, timestamp
 
 
-def handle(ctx, action, payload):
+def handle(ctx, action, payload, *, _maintenance=False):
     ctx.require_parent()
+    from .maintenance import is_managed_series
+
+    target_id = payload.get("id")
+    existing_target = (
+        ctx.state["task_series"].get(target_id) if isinstance(target_id, str) else None
+    )
+    if is_managed_series(existing_target) and not _maintenance:
+        raise DomainError("forbidden")
     if action == "series_enable":
         fields(payload, {"id", "enabled", "revision"}, {"id", "enabled", "revision"})
         if type(payload["revision"]) is not int or payload["revision"] < 1:
@@ -94,11 +102,15 @@ def handle(ctx, action, payload):
 
 
 def tick(ctx):
+    from .maintenance import is_managed_series, series_current
     from .tasks import handle as task_command
 
     if "tasks" not in ctx.state["settings"]["modules"]:
         return
     for series in ctx.state["task_series"].values():
+        managed = is_managed_series(series)
+        if managed and not series_current(ctx.state, series):
+            continue
         creator = ctx.state["members"].get(series["creator"], {})
         if (
             not series["enabled"]
@@ -149,6 +161,17 @@ def tick(ctx):
                     },
                 )
                 task.update(series_id=series["id"], occurrence_id=occurrence_id)
+                if managed:
+                    task.update(
+                        delivery_scope="private",
+                        source={
+                            "kind": "maintenance_service",
+                            "asset_id": series["source"]["asset_id"],
+                            "asset_revision": series["source"]["asset_revision"],
+                            "series_id": series["id"],
+                            "series_revision": series["revision"],
+                        },
+                    )
                 ids.append(task["id"])
             series["occurrences"][occurrence_id] = {"state": "created", "tasks": ids}
             series["cursor"] += 1

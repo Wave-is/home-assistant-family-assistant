@@ -16,7 +16,7 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Thirteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school; richer editors and other module cards pending |
+| Today and module cards | Fourteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance; richer editors and other module cards pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
@@ -24,7 +24,7 @@ Nothing is production-ready solely because a mock test passes.
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed weekly timetables, current-child-only 14-day agenda/materials, exceptions and explicit pinned backpack routine; homework handoff, preparation reminders and reviewed imports pending |
-| Maintenance | Planned | Assets, faults, service scheduling/history and cards; public implementation in progress |
+| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse, manual repair history and card; media/documents and production acceptance pending |
 | Polls, digests, presence | Planned | Consent, permissions and fallbacks |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
@@ -47,8 +47,28 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1286 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/replay/privacy, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
-- 250 frontend unit tests and 80 Chromium browser tests passed.
+- 1378 Python tests passed (domain, adapters, outbox, Telegram, model/search isolation, language/context, recurring tasks/purchases, task editing, shopping merge/history, court periods/review, reward wallets/requests, calendar/privacy/reminders, routine conditions/handoffs/replay authority/private commands and incidents, pantry stock/proposals/strict revisions/expiry reminders/dietary consent, weekly meal plans/reviewed shopping transfers/Mealie source, school timetables/replay/privacy, maintenance/private task receipts/delivery, network inventory/lease/Kid Control effects and status, lab fixtures, public contracts).
+- 259 frontend unit tests and 87 Chromium browser tests passed.
+- Maintenance records parent-reviewed equipment, warranty, notes and consumables;
+  explicitly reportable/current responsible scope controls fault creation. Faults
+  create one ordinary private task. Service schedules reuse task recurrence,
+  checklist, review and reminders, with zero initial penalty and current source/
+  member/approver versions. Retiring equipment stops future generation, not already
+  materialized work; manual historical service logs remain possible. No stock,
+  orders, device actuation or safety certification is implied. Generic series edits
+  cannot bypass maintenance approval. Current-role private projections, first/replay/
+  batch receipts, reassignment history and model previews are regression-tested.
+  Outbox dispatch rechecks task authority after its durable claim; exact incident
+  pairs preserve an announced overdue closure even after a newer incident starts.
+  Actual HA Options, authenticated WebSocket, scheduler/replay, transport revocation
+  and Store reload passed without contacting household devices or Telegram.
+  The RU/UK/EN card covers full named reviews, strict pinned links, frozen retries,
+  stale service re-review, retired equipment logs and focused-DOM revocation.
+  RU mobile edit/review and UK child report were visually inspected; redundant
+  headings/help were collapsed and review paragraph spacing tightened. AGY review
+  helped align the browser fixture's projections and required payload fields with
+  the real backend. Photos and documents still require the shared media work.
+  See [maintenance guide](maintenance.md).
 - School stores parent-reviewed full-replacement weekly timetables with strict
   member/record versions, dates, non-overlapping lessons, materials and exceptions.
   Children receive only their own current identity-bound timetable and 14-day
@@ -391,7 +411,10 @@ is exercised with a synthetic entity, not by replacing its service registry.
   657540d (run 34063962083), then expiry reminders
   ad3fd17 (run 34064991218) and dietary profiles
   cd9cae8 (run 34066055297) and Mealie recipes
-  59e6eeb (run 34067804708).
+  59e6eeb (run 34067804708), then school follow-up
+  8d25ac0 (run 34069706131). The school feature's first actual-HA CI run exposed
+  a fixture race with scheduled pantry reconciliation; the follow-up drains
+  pending HA work before the explicit clock pass and verifies scheduler health.
   The separate native RouterOS CI also passed (run 34040076386). Its first run
   had timed out downloading the official image; bounded download retries fixed
   that infrastructure issue. Every device effect rechecks authority after

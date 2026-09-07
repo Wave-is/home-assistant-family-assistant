@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Synthetic maintenance dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #eef3f1;
+      font-family: system-ui;
+    }
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+  </style>
+  <main></main>
+  <script type="module">
+    import "../../custom_components/family_assistant/frontend/family-assistant.js";
+    const q = new URLSearchParams(location.search),
+      language = q.get("lang") || "en",
+      actor = q.get("actor") || "parent";
+    const fixture = (window.fixture = {
+      revision: 1,
+      actor,
+      role: actor,
+      settings: {
+        name: "Example family",
+        modules: ["maintenance", "tasks", "pantry"],
+        timezone: "UTC",
+      },
+      members: [
+        {
+          id: "parent",
+          name: "Alex",
+          role: "parent",
+          active: true,
+          revision: 1,
+        },
+        { id: "child", name: "Sam", role: "child", active: true, revision: 1 },
+        {
+          id: "sibling",
+          name: "Jamie",
+          role: "child",
+          active: true,
+          revision: 1,
+        },
+      ],
+      tasks: [],
+      pantry: {
+        items: [
+          {
+            id: "PI1",
+            revision: 1,
+            status: "active",
+            name: "Filter",
+            unit: "pcs",
+            quantity: 3,
+          },
+        ],
+      },
+      maintenance: {
+        assets: [
+          {
+            id: "MX000001",
+            revision: 1,
+            status: "active",
+            name:
+              language === "ru"
+                ? "Очиститель воздуха"
+                : language === "uk"
+                  ? "Очищувач повітря"
+                  : "Air cleaner",
+            category: "Appliance",
+            location: "Utility room",
+            responsible_member: "child",
+            responsible_member_revision: 1,
+            approved_by: "parent",
+            approved_by_revision: 1,
+            reportable: true,
+            warranty: {
+              expires_on: "2028-01-01",
+              vendor: "Private supplier",
+              reference: "LOCAL-PRIVATE-REF",
+            },
+            consumables: [
+              {
+                label: "Filter",
+                unit: "pcs",
+                quantity: 1,
+                pantry: { id: "PI1", revision: 1 },
+              },
+            ],
+            note: "PARENT-PRIVATE-NOTE",
+            history: [
+              {
+                actor: "parent",
+                at: "2026-09-07T08:00:00Z",
+                action: "created",
+              },
+            ],
+            current: true,
+            can_report: true,
+          },
+        ],
+        faults: [],
+        service_logs: [],
+        services: [
+          {
+            id: "TS000001",
+            revision: 1,
+            asset_id: "MX000001",
+            asset_revision: 1,
+            title: "Inspect filter",
+            assignees: ["child"],
+            rotation: false,
+            rule: {
+              frequency: "weekly",
+              interval: 1,
+              start_date: "2026-09-07",
+              time: "09:00",
+              timezone: "UTC",
+              weekdays: [0],
+              month_day: 7,
+              exceptions: [],
+              until: null,
+              catchup_hours: 24,
+            },
+            due_time: "10:00",
+            checklist: ["Record observation"],
+            enabled: true,
+            deadline_policy: {
+              reminder_minutes: 15,
+              grace_minutes: 0,
+              penalty: 0,
+            },
+            current: true,
+            effective_at: "2026-09-07T08:00:00Z",
+          },
+        ],
+      },
+    });
+    const member = (id) => fixture.members.find((m) => m.id === id);
+    const current = (asset) =>
+      asset.status === "active" &&
+      member(asset.approved_by)?.active &&
+      ["parent", "owner"].includes(member(asset.approved_by)?.role) &&
+      member(asset.approved_by)?.revision === asset.approved_by_revision &&
+      member(asset.responsible_member)?.active &&
+      member(asset.responsible_member)?.revision ===
+        asset.responsible_member_revision;
+    const projection = () => {
+      const data = structuredClone(fixture),
+        parent = ["parent", "owner"].includes(data.role),
+        me = member(data.actor);
+      if (!data.settings.modules.includes("maintenance")) {
+        delete data.maintenance;
+        return data;
+      }
+      data.maintenance.assets = data.maintenance.assets.flatMap((a) => {
+        a.current = current(a);
+        a.can_report =
+          a.current &&
+          (parent ||
+            a.reportable ||
+            (a.responsible_member === data.actor &&
+              a.responsible_member_revision === me?.revision));
+        if (parent) return [a];
+        if (
+          !me?.active ||
+          data.role === "guest" ||
+          a.status !== "active" ||
+          !(
+            a.reportable ||
+            (a.responsible_member === data.actor &&
+              a.responsible_member_revision === me.revision)
+          )
+        )
+          return [];
+        return [
+          {
+            id: a.id,
+            revision: a.revision,
+            name: a.name,
+            category: a.category,
+            location: a.location,
+            can_report: a.can_report,
+          },
+        ];
+      });
+      if (!parent) {
+        data.maintenance.services = [];
+        data.maintenance.service_logs = [];
+        data.maintenance.faults = data.maintenance.faults
+          .filter((f) => {
+            const task = data.tasks.find((t) => t.id === f.task_id);
+            return (
+              (f.reporter === data.actor &&
+                f.reporter_member_revision === me?.revision) ||
+              (task?.assignee === data.actor &&
+                task.assignee_revision === me?.revision)
+            );
+          })
+          .map((f) => {
+            delete f.asset_revision;
+            delete f.reporter_member_revision;
+            return f;
+          });
+        data.tasks = data.tasks
+          .filter(
+            (t) =>
+              t.assignee === data.actor && t.assignee_revision === me?.revision,
+          )
+          .map((t) => {
+            delete t.source;
+            return t;
+          });
+      }
+      for (const fault of data.maintenance.faults) {
+        const task = fixture.tasks.find((t) => t.id === fault.task_id);
+        fault.task_status = task?.status || "unavailable";
+        fault.task_revision = task?.revision ?? null;
+        fault.assignee = task?.assignee ?? null;
+      }
+      return data;
+    };
+    window.project = projection;
+    window.calls = [];
+    const receipts = new Map();
+    const hass = {
+      language,
+      callWS: async (message) => {
+        if (message.type === "family_assistant/view") return projection();
+        if (message.type !== "family_assistant/execute")
+          throw { code: "unknown_action" };
+        window.calls.push(structuredClone(message));
+        const p = message.payload,
+          action = message.action.split(".")[1],
+          me = member(fixture.actor),
+          m = fixture.maintenance;
+        const required = {
+          asset_save: [
+            "name",
+            "category",
+            "location",
+            "responsible_member",
+            "responsible_member_revision",
+            "warranty",
+            "consumables",
+            "note",
+          ],
+          asset_retire: ["id", "revision", "reason"],
+          fault_report: [
+            "asset_id",
+            "asset_revision",
+            "reporter_member_revision",
+            "summary",
+            "details",
+            "attachment_ids",
+          ],
+          service_save: [
+            "asset_id",
+            "asset_revision",
+            "title",
+            "assignees",
+            "rotation",
+            "rule",
+            "due_time",
+            "checklist",
+            "enabled",
+            "reminder_minutes",
+            "grace_minutes",
+          ],
+          service_enable: ["id", "revision", "asset_revision", "enabled"],
+          service_log: [
+            "asset_id",
+            "asset_revision",
+            "performed_on",
+            "summary",
+            "task",
+            "consumables_used",
+            "attachment_ids",
+          ],
+        }[action];
+        const optional =
+          action === "asset_save"
+            ? ["id", "revision", "reportable"]
+            : action === "service_save"
+              ? ["id", "revision"]
+              : [];
+        if (
+          !required ||
+          required.some((k) => !(k in p)) ||
+          Object.keys(p).some(
+            (k) => !required.includes(k) && !optional.includes(k),
+          )
+        )
+          throw { code: "invalid_field" };
+        if (
+          "attachment_ids" in p &&
+          (!Array.isArray(p.attachment_ids) || p.attachment_ids.length)
+        )
+          throw { code: "invalid_field" };
+        if (action === "fault_report" && typeof p.details !== "string")
+          throw { code: "invalid_field" };
+        if (
+          action === "service_save" &&
+          (!Array.isArray(p.assignees) ||
+            p.assignees.some(
+              (x) =>
+                !x ||
+                typeof x.id !== "string" ||
+                !Number.isSafeInteger(x.revision),
+            ))
+        )
+          throw { code: "invalid_field" };
+        if (!fixture.settings.modules.includes("maintenance"))
+          throw { code: "module_disabled" };
+        if (
+          !me?.active ||
+          me.role === "guest" ||
+          (action !== "fault_report" && !["owner", "parent"].includes(me.role))
+        )
+          throw { code: "forbidden" };
+        if (
+          action === "fault_report" &&
+          p.reporter_member_revision !== me.revision
+        )
+          throw { code: "conflict" };
+        if (
+          ["fault_report", "service_save", "service_enable"].includes(action) &&
+          !fixture.settings.modules.includes("tasks")
+        )
+          throw { code: "module_disabled" };
+        if (receipts.has(message.operation_id))
+          return structuredClone(receipts.get(message.operation_id));
+        const a = m.assets.find((a) => a.id === (p.asset_id || p.id));
+        if (a && a.revision !== (p.asset_revision ?? p.revision))
+          throw { code: "conflict" };
+        let result;
+        if (action === "asset_save") {
+          if (
+            member(p.responsible_member)?.revision !==
+            p.responsible_member_revision
+          )
+            throw { code: "conflict" };
+          for (const c of p.consumables) {
+            if (
+              c.pantry &&
+              !fixture.pantry.items.some(
+                (i) =>
+                  i.id === c.pantry.id &&
+                  i.revision === c.pantry.revision &&
+                  i.unit === c.unit,
+              )
+            )
+              throw { code: "conflict" };
+          }
+          const row = {
+            ...structuredClone(p),
+            id: a?.id || `MX${String(m.assets.length + 1).padStart(6, "0")}`,
+            revision: (a?.revision || 0) + 1,
+            status: "active",
+            approved_by: fixture.actor,
+            approved_by_revision: me.revision,
+            history: [
+              ...(a?.history || []),
+              {
+                actor: fixture.actor,
+                at: "2026-09-07T08:00:00Z",
+                action: a ? "updated" : "created",
+              },
+            ],
+          };
+          if (a) m.assets.splice(m.assets.indexOf(a), 1, row);
+          else m.assets.push(row);
+          result = { id: row.id, revision: row.revision, status: row.status };
+        } else if (action === "asset_retire" && a) {
+          a.status = "retired";
+          a.revision++;
+          a.history.push({ action: "retired", reason: p.reason });
+          result = { id: a.id, revision: a.revision, status: a.status };
+        } else if (action === "fault_report" && a) {
+          if (!current(a)) throw { code: "conflict" };
+          if (
+            !["owner", "parent"].includes(me.role) &&
+            !a.reportable &&
+            a.responsible_member !== me.id
+          )
+            throw { code: "forbidden" };
+          const id = `MF${String(m.faults.length + 1).padStart(6, "0")}`,
+            tid = `T${String(fixture.tasks.length + 1).padStart(6, "0")}`;
+          m.faults.push({
+            ...structuredClone(p),
+            id,
+            revision: 1,
+            status: "reported",
+            reporter: me.id,
+            task_id: tid,
+            task_status: "assigned",
+            assignee: a.responsible_member,
+          });
+          fixture.tasks.push({
+            id: tid,
+            revision: 1,
+            title: p.summary,
+            status: "assigned",
+            assignee: a.responsible_member,
+            assignee_revision: a.responsible_member_revision,
+            delivery_scope: "private",
+            source: { kind: "maintenance_fault", asset_id: a.id },
+          });
+          result = { id, revision: 1, status: "reported", task_id: tid };
+        } else if (action === "service_save" && a) {
+          const old = m.services.find((s) => s.id === p.id);
+          if (
+            (old && old.revision !== p.revision) ||
+            p.assignees.some((x) => member(x.id)?.revision !== x.revision)
+          )
+            throw { code: "conflict" };
+          const row = {
+            ...structuredClone(p),
+            id:
+              old?.id || `TS${String(m.services.length + 1).padStart(6, "0")}`,
+            revision: (old?.revision || 0) + 1,
+            assignees: p.assignees.map((x) => x.id),
+            deadline_policy: {
+              reminder_minutes: p.reminder_minutes,
+              grace_minutes: p.grace_minutes,
+              penalty: 0,
+            },
+            current: true,
+          };
+          delete row.reminder_minutes;
+          delete row.grace_minutes;
+          if (old) m.services.splice(m.services.indexOf(old), 1, row);
+          else m.services.push(row);
+          result = { id: row.id, revision: row.revision, enabled: row.enabled };
+        } else if (action === "service_enable") {
+          const row = m.services.find((s) => s.id === p.id);
+          if (
+            !row ||
+            row.revision !== p.revision ||
+            row.asset_revision !== p.asset_revision
+          )
+            throw { code: "conflict" };
+          row.enabled = p.enabled;
+          row.revision++;
+          result = { id: row.id, revision: row.revision, enabled: row.enabled };
+        } else if (action === "service_log" && a) {
+          const id = `MH${String(m.service_logs.length + 1).padStart(6, "0")}`;
+          const log = {
+            ...structuredClone(p),
+            id,
+            revision: 1,
+            status: "recorded",
+            task_id: p.task?.id || null,
+            task_revision: p.task?.revision || null,
+            actor: me.id,
+          };
+          delete log.task;
+          m.service_logs.push(log);
+          result = { id, revision: 1, status: "recorded" };
+        } else throw { code: "unknown_action" };
+        fixture.revision++;
+        receipts.set(message.operation_id, result);
+        if (window.loseResponse) {
+          window.loseResponse = false;
+          throw { code: "storage_error" };
+        }
+        return structuredClone(result);
+      },
+    };
+    const card = document.createElement("family-maintenance-card");
+    card.setConfig({ entry_id: "synthetic", language });
+    card.hass = hass;
+    document.querySelector("main").append(card);
+    window.card = card;
+  </script>
+</html>

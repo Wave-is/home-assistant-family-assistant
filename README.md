@@ -28,6 +28,7 @@ Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Dietary profiles / Пищевые предпочтения / Харчові вподобання](docs/dietary-profiles.md) ·
 [Mealie recipes / Рецепты Mealie / Рецепти Mealie](docs/recipes.md) ·
 [School / Школа / Школа](docs/school.md) ·
+[Maintenance / Обслуживание / Обслуговування](docs/maintenance.md) ·
 [Menu shopping / Покупки по меню / Покупки за меню](docs/meal-shopping.md).
 
 ## Development
