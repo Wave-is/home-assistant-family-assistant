@@ -841,6 +841,10 @@
       "title": "A notification needs review",
       "description": "Some notifications failed or have an uncertain delivery result. Telegram may already have accepted a message before the connection timed out. Family Assistant will not blindly resend it. Review delivery details in the health panel."
     },
+    "school_retention_attention": {
+      "title": "School reminder history needs review",
+      "description": "School reminder storage reached its limit, contains inconsistent retained records, or the clock moved into retired history. New reminders for retired dates remain blocked. Review counts-only diagnostics and notification delivery; resolve uncertain results explicitly. Do not clear stored history to force a resend."
+    },
     "digest_retention_attention": {
       "title": "Digest retention needs review",
       "description": "The retained digest marker or event limit was reached, so new digests are paused. Review digest delivery health and resolve pending, uncertain or failed notifications. This Repair contains counts only and does not identify recipients or messages."

@@ -357,6 +357,7 @@ def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
     state = runtime.engine.snapshot()
     from .domain.digests import health_stats as digest_health_stats
     from .domain.media import health_stats
+    from .domain.school_retention import health_stats as school_health_stats
 
     try:
         media_capacity = health_stats(state, dt_util.utcnow())
@@ -369,6 +370,7 @@ def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
         "health": dict(runtime.health),
         "media_capacity": media_capacity,
         "digest_capacity": digest_health_stats(state),
+        "school_reminder_capacity": school_health_stats(state, dt_util.utcnow()),
         "counts": {
             key: len(state[key])
             for key in ("members", "shopping", "tasks", "court", "alarms", "alarm_runs", "outbox")

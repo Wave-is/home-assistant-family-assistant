@@ -421,6 +421,9 @@ def _subscription_current(state: dict, record: dict, member_id: str, member_revi
 
 def tick(ctx: Context) -> None:
     """Create bounded private intents only in the five-minute local window."""
+    from . import school_retention
+
+    school_retention.prune(ctx)
     try:
         policy = _policy(ctx.state)
         if not policy["enabled"] or not _modules(ctx.state, routines=True):
@@ -441,6 +444,8 @@ def tick(ctx: Context) -> None:
     try:
         target_date = local_now.date() + timedelta(days=policy["days_before"])
     except OverflowError:
+        return
+    if not school_retention.creation_allowed(ctx.state, target_date):
         return
     fingerprint = _fingerprint(policy)
     for timetable_id in sorted(timetables):
@@ -480,6 +485,8 @@ def tick(ctx: Context) -> None:
                 ctx.now,
                 f"school-reminder:{subscription['recipient']}:{stamp['timetable_id']}:{day}",
             )
+            if not school_retention.creation_allowed(ctx.state, target_date):
+                return
             event_id = notifier.notify(subscription["recipient"], KEY, data)
             markers = _mutable_bucket(ctx, "preparation_reminder_markers")
             markers[marker_key] = {

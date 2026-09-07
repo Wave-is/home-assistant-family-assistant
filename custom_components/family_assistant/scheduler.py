@@ -85,8 +85,10 @@ class Scheduler:
             await self.devices.reconcile(now)
             await self.devices.close_incidents(now)
             from .digest_health import synchronize
+            from .school_reminder_health import synchronize as synchronize_school
 
             synchronize(self.hass, self.entry, self.runtime)
+            synchronize_school(self.hass, self.entry, self.runtime, now)
             self.runtime.health.pop("scheduler", None)
         except DomainError as error:
             if error.code != "backup_in_progress":

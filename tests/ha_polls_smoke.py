@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import re
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 from aiohttp import ClientSession
+
+
+def _assert_review_descriptor(descriptor):
+    assert set(descriptor) == {"kind", "mode", "review_id"}
+    assert descriptor["kind"] == "polls" and descriptor["mode"] == "review"
+    assert re.fullmatch(r"PR[A-Za-z0-9_-]{16}", descriptor["review_id"])
+    assert not ({"poll_id", "option_id", "ballot_revision"} & descriptor.keys())
 
 
 @asynccontextmanager
@@ -293,8 +301,7 @@ async def verify_polls(hass, entry, owner, child_id):
 
     _, review_event = await receive(option_callback, callback=True)
     descriptor = review_event["data"]["descriptor"]
-    assert set(descriptor) == {"kind", "mode", "review_id"}
-    assert "O2" not in repr(descriptor)
+    _assert_review_descriptor(descriptor)
     review_target = targets(review_event, engine.snapshot())[0]
     review_message = render(review_event, review_target, engine.snapshot(), now=datetime.now(UTC))
     assert question in review_message["text"] and choices[1] in review_message["text"]

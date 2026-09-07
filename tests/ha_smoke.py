@@ -274,6 +274,9 @@ async def main():
             from ha_digests_smoke import verify_digests
 
             await verify_digests(hass, entry, user, child_id)
+            from ha_school_retention_smoke import verify_school_retention
+
+            await verify_school_retention(hass, entry)
             from ha_backup_smoke import verify_backup
 
             await verify_backup(hass, entry, user, media_expected)

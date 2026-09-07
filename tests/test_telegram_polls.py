@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import pytest
 
+from custom_components.family_assistant.domain import poll_reviews
 from custom_components.family_assistant.domain.engine import Engine
 from custom_components.family_assistant.domain.validation import DomainError
 from custom_components.family_assistant.telegram import polls as telegram_polls
@@ -56,6 +57,13 @@ def callback_buttons(rendered):
         for row in rendered.get("reply_markup", {}).get("inline_keyboard", [])
         for button in row
     }
+
+
+def assert_review_descriptor(descriptor):
+    assert set(descriptor) == {"kind", "mode", "review_id"}
+    assert descriptor["kind"] == "polls" and descriptor["mode"] == "review"
+    assert re.fullmatch(r"PR[A-Za-z0-9_-]{16}", descriptor["review_id"])
+    assert not ({"poll_id", "option_id", "ballot_revision"} & descriptor.keys())
 
 
 @pytest.mark.asyncio
@@ -157,11 +165,7 @@ async def test_vote_review_and_new_update_retry_reuse_exact_engine_operation(eng
     review_descriptor = await telegram_polls.route(
         e, "child", f"ps:v:{poll_id}:O1", "tg:1:10:action", now, private=True
     )
-    assert set(review_descriptor) == {"kind", "mode", "review_id"}
-    assert review_descriptor["kind"] == "polls" and review_descriptor["mode"] == "review"
-    # An opaque random token may coincidentally contain the short string O1.
-    # Validate the envelope and token grammar, not substrings of random bytes.
-    assert re.fullmatch(r"PR[A-Za-z0-9_-]{16}", review_descriptor["review_id"])
+    assert_review_descriptor(review_descriptor)
     review = telegram_polls.render_reply(e.snapshot(), "child", review_descriptor, now, "uk")
     assert "Choice canary alpha" in review["text"]
     confirm = next(value for value in callbacks(review) if value.startswith("pr:y:"))
@@ -226,8 +230,21 @@ async def test_descriptor_outbox_and_journals_never_store_poll_plaintext(engine,
     assert "Choice canary alpha" not in encoded
     assert "Choice canary beta" not in encoded
     assert state["telegram"].get("plans", {}) == {}
-    assert "option_id" not in repr(descriptor)
-    assert "O2" not in repr(descriptor)
+    assert_review_descriptor(descriptor)
+
+
+@pytest.mark.asyncio
+async def test_review_descriptor_token_may_coincidentally_contain_option_id(
+    engine, now, monkeypatch
+):
+    e = await poll_engine(engine)
+    poll_id = (await create_poll(e, now))["id"]
+    monkeypatch.setattr(poll_reviews.secrets, "token_urlsafe", lambda _size: "O2abcdefghijklmn")
+    descriptor = await telegram_polls.route(
+        e, "child", f"ps:v:{poll_id}:O2", "tg:1:token-action", now, private=True
+    )
+    assert descriptor["review_id"] == "PRO2abcdefghijklmn"
+    assert_review_descriptor(descriptor)
 
 
 @pytest.mark.asyncio

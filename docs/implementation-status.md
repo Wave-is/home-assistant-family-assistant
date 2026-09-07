@@ -23,7 +23,7 @@ Nothing is production-ready solely because a mock test passes.
 | Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
-| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework using ordinary tasks, reviewed backpack routine starts and opt-in private preparation reminders; reviewed imports and reminder retention health pending |
+| School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; reviewed imports and household acceptance pending |
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
 | Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self-consent, source lineage, fresh/unknown projection; guardian consent, presence-aware notifications and household acceptance pending |
@@ -68,10 +68,11 @@ scanner traversal race with replaceable browser output. The scanner now prunes
 excluded directories before traversal while still failing on source I/O errors.
 See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps.md).
 
-- 2037 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
+- 2073 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
   23 subtests. This checkpoint includes the digest lifecycle, source invalidation,
   retention-floor and public-scanner regressions alongside earlier domains.
-  In-progress school-retention code is excluded from this checkpoint and count.
+  School retention includes real HA Store failure/reload and IssueRegistry checks.
+  In-progress frontend-resource and backup-recovery code is excluded from this count.
 - 334 frontend unit tests and 133 Chromium browser tests passed. The full Chromium
   run used two workers. Narrow RU poll review and photo-purge review were visually
   inspected; EN/RU/UK copy is included. The full isolated actual HA suite also passed.
@@ -202,6 +203,19 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   identified the lifetime 10,000-marker cap as a retention/health release gate;
   claimed DST/replay/transaction bugs were ruled out against the actual Engine
   and existing adversarial tests. The first photo-report slice is described above.
+- School reminders now prune only exact old terminal marker/event pairs after
+  35 days (90 days for failure), preserving pending, in-flight and uncertain
+  outcomes. A monotonic retired-through date prevents clock rollback from
+  recreating removed history, even with the module disabled. Creation checks
+  both marker and retained-event capacity before every individual notification.
+  Unpaired/malformed records and clock rollback produce counts-only diagnostic
+  health and localized Repairs. The final exact staged-tree export passed the
+  complete Python and isolated actual-HA suite with real HA Store persistence,
+  injected pre-save failure, fresh Store reload and actual IssueRegistry. The
+  first helper used MemoryStore; it was replaced before claiming durable HA
+  acceptance. A remaining poll test wrongly forbade the chance substring `O2`
+  in an opaque random token; exact descriptor grammar plus a deterministic
+  `O2` token regression replaces that check. See [retention guide](school-retention.md).
 - School homework is explicitly created by parents or the current child subject
   as an ordinary private task with a zero-penalty deadline policy. Parent edits
   use the School route, not generic task reassignment. Same-identity edits retain
@@ -645,8 +659,6 @@ service call does not prove physical sound or volume.
   backup/archive restore and explicit retained-content purge. Backup release
   failure keeps writes and reload gated until a successful unwind; a visible
   bounded Repair/retry workflow remains necessary before release.
-- School reminder lifetime marker retention must avoid replay after clock rollback
-  and expose capacity health; the present 10,000-marker bound is not release-ready.
 - Live model evaluation is pending; local Ollama was not reachable on its default
   port during this checkpoint. No server was started or production provider changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.
