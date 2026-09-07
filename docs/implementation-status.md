@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.3 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.4 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -33,8 +33,8 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair, real encrypted archive creation/key rejection/exact Store-media rehydration; full HA restore and migration pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.3, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only preflight and source/mapping review unit-tested | Strict Store-byte decoding, counts-only validation, immutable source/current-member mapping fingerprints; coherence capture, conversion, shadow acceptance and controlled cutover still pending |
+| Release CI and secret checks | Implemented / CI-tested | All seven jobs passed for alpha.4, including offline actual-HACS install/failure rollback/upgrade; runtime ZIP and tag bytes verified; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only review and disabled-alarm proposals unit-tested | Strict Store-byte decoding, counts-only validation, immutable source/current-member fingerprints, disabled gentle/zero-penalty alarm proposals and private lossless archive; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
 ## Baseline, 2026-09-06
 
@@ -49,7 +49,7 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-Current alpha.4 candidate: real Qwen3.5-9B synthetic evaluation passed 12 cases
+Published alpha.4: real Qwen3.5-9B synthetic evaluation passed 12 cases
 after reproducing and fixing envelope, command selection, alarm-day and quote
 injection failures. Raw quotes cannot enter planning; their terminal answer pass
 cannot return commands. Numeric model days cannot create/change alarm schedules,
@@ -61,7 +61,23 @@ two-alarm preview, Store reload and authenticated confirmation/replay. Offline H
 installed alpha.3, restored it after a failed update, then upgraded to this candidate
 and retained the synthetic household data. Runtime ZIP: 201 files, SHA256
 `92d1295d05efe912e8357bdb1d79f0e44d5f732e2e1103a5e4697f27d04dae3e`.
-CI/publication remain pending for this candidate; no live cutover is claimed.
+All seven jobs in CI `34152121973` passed. The release tag resolves to
+`72d5987a0906d1d070ed01ae346aeeff0cd93019`, and GitHub's asset digest matches.
+No live cutover is claimed.
+
+The next migration slice adds a pure disabled-alarm proposal. AGY provided an
+initial implementation; root corrected target identity revalidation, archive
+comparison and the test's confusion between HA user and Engine member IDs.
+143 focused migration tests passed, including changed binding/role/revision,
+forged reviews, exact decoded archive, absent source buckets, immutability and
+real modern Engine payload validation. The complete local suite passed 2813 Python
+tests, five host skips and 23 subtests; Ruff/format, privacy and locale checks
+passed. The exact alpha.5 runtime passed the full isolated HA suite and five
+offline HACS phases (alpha.3 install, prepared data, failed-update rollback,
+upgrade, verification). Runtime ZIP: 202 files, SHA256
+`c7f3d586d5c266742e1129f232749673d9c46e43affbd71308f19d8b27c16c69`.
+The shopping-planner AGY implementation task timed out without delivering files;
+it is not a completed review or implementation. This is not a complete importer.
 
 Published test prerelease `0.1.0-alpha.2` at commit
 `49c9891c48625d3f62d7baa5c1677a06f1e17e82`. All seven jobs in CI run
@@ -820,7 +836,7 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   persisting intent. The calendar checkpoint passed the actual HA CI job too.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
-- Test prereleases alpha.2 and alpha.3 are published; no migration or HACS default submission yet.
+- Test prereleases through alpha.4 are published; no migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;

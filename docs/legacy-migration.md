@@ -1,6 +1,7 @@
 # Legacy migration contract
 
-Status: design, read-only preflight and immutable source/mapping review; not an import or live cutover feature.
+Status: read-only preflight, immutable source/member review and disabled-alarm
+conversion proposals; not a complete import or live cutover feature.
 The old private integrations remain running until a separately verified switch.
 Only synthetic examples belong in this repository.
 
@@ -82,3 +83,28 @@ a revision bump. Its summary contains only counts, fingerprints and fixed status
 the future local converter. These objects must not be sent to an LLM, diagnostic
 export or ordinary family view. A matching fingerprint proves unchanged inputs,
 not coherent capture: `coherence_verified` and `import_available` remain false.
+
+## Disabled-alarm conversion proposal
+
+`migration.alarm_plan.build_alarm_plan(review, timezone, members=current_members)`
+converts the reviewed weekday/weekend schedules into modern save payloads. It
+revalidates both frozen sources and every current member field, not just a member
+ID. Missing targets, changed bindings, stale revisions, forged reviews and active
+legacy wake-up runs fail closed. Source timezone is not guessed: it is an explicit
+operator input, included in the immutable fingerprint.
+
+All proposed schedules are **disabled, gentle, zero penalty**, regardless of the
+old enabled state. Original enabled flags, finished runs, old challenge material,
+delivery metadata and unknown fields remain only in the unchanged decoded alarm
+archive accessible through the deliberately private payload method. They cannot
+become live challenges, commands, receipts or notification rights. Raw Store-file
+bytes remain in the source review. Public summaries contain only fixed status,
+counts and fingerprints; returned dictionaries cannot mutate the frozen plan.
+
+This helper has no HA, filesystem, transport or Engine side effects. Modern-domain
+tests validate proposed payloads on a fictional state. A future complete converter
+must apply a matched whole-source plan under lock to an empty shadow household and
+persist its private archive atomically. This helper does not establish coherent
+capture, import other task/shopping/court records, expose an import endpoint, or
+permit partial household cutover. Private reminders and unknown shopping quantities
+must not be silently converted into shared tasks or an invented quantity of one.

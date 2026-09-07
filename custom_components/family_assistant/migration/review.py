@@ -219,6 +219,29 @@ class LegacyReview:
             return False
         return compare_digest(self._fingerprint, current._fingerprint)
 
+    def matches_members(self, members) -> bool:
+        """Revalidate frozen source/mapping against all current target identities.
+
+        Not import authority or a lock: apply must repeat this under its state lock.
+        """
+        if (
+            type(self._source) is not LegacySource
+            or type(self._mapping) is not bytes
+            or not 0 < len(self._mapping) <= MAX_BYTES
+            or type(self._fingerprint) is not str
+            or len(self._fingerprint) != 64
+        ):
+            return False
+        try:
+            mapping = json.loads(self._mapping, object_pairs_hook=_object, parse_constant=_constant)
+            current = self._source.review(mapping, members, mapping_revision=self._mapping_revision)
+            return (
+                compare_digest(self._fingerprint, current._fingerprint)
+                and self._counts == current._counts
+            )
+        except (LegacyReviewError, TypeError, ValueError, RecursionError):
+            return False
+
 
 def read_store_pair(assistant: bytes, court: bytes) -> LegacySource:
     """Decode exact schema-1 wrappers from an already obtained private export."""
