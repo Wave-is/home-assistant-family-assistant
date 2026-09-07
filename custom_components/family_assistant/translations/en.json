@@ -833,6 +833,23 @@
     }
   },
   "issues": {
+    "backup_recovery": {
+      "title": "Family Assistant backup needs recovery",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Resume after the failed backup release",
+            "description": "A backup finished or failed, but Family Assistant could not release every write lock. Changes and reloads remain paused to protect consistency. This action retries only the remaining locks from that backup; it does not restore an archive, delete data or interrupt an active backup. Continue to retry."
+          }
+        },
+        "error": {
+          "backup_unavailable": "Some locks could not be released. Changes remain paused. Check integration health and retry after the underlying failure is resolved."
+        },
+        "abort": {
+          "stale_recovery": "This recovery is no longer current. The locks may already have been released. Reopen Repairs if a new issue appears."
+        }
+      }
+    },
     "telegram_attention": {
       "title": "Telegram needs attention",
       "description": "Check the Family Assistant health panel and the Telegram options. The token may be revoked, another poller may use the same bot, or a webhook may exist. Family Assistant does not remove other applications' webhooks."

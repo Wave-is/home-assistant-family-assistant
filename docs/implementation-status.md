@@ -32,7 +32,7 @@ Nothing is production-ready solely because a mock test passes.
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
-| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery and coherent Store/blob copy via actual HA backup callbacks; full encrypted archive/restore and migration pending; no live legacy data modified |
+| Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy via actual HA backup callbacks, admin-confirmed generation-bound failed-release Repair; full encrypted archive/restore and migration pending; no live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | Python, browser, actual HA, HACS and Hassfest all passed on main; release artifact/migration gates still pending |
 | Existing-home migration and verification | Planned | Final integration gate |
 
@@ -657,8 +657,10 @@ service call does not prove physical sound or volume.
 - Archive/retention strategy, comprehensive module health and migration are pending.
 - Private media still needs capacity/tombstone retention, full encrypted
   backup/archive restore and explicit retained-content purge. Backup release
-  failure keeps writes and reload gated until a successful unwind; a visible
-  bounded Repair/retry workflow remains necessary before release.
+  failure keeps writes and reload gated until a successful unwind; its visible
+  generation-bound Repair/retry now passes actual admin/non-admin HTTP tests.
+  An active backup cannot be force-cleared; full encrypted archive restoration
+  remains a separate release gate.
 - Live model evaluation is pending; local Ollama was not reachable on its default
   port during this checkpoint. No server was started or production provider changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.

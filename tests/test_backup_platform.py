@@ -29,13 +29,33 @@ def platform(monkeypatch):
     homeassistant = ModuleType("homeassistant")
     homeassistant.core = core
     homeassistant.exceptions = exceptions
+    helpers = ModuleType("homeassistant.helpers")
+    issue_registry = ModuleType("homeassistant.helpers.issue_registry")
+    issues = {}
+
+    class IssueSeverity:
+        ERROR = "error"
+
+    issue_registry.IssueSeverity = IssueSeverity
+    issue_registry.async_create_issue = lambda _hass, domain, issue_id, **kwargs: (
+        issues.__setitem__((domain, issue_id), kwargs)
+    )
+    issue_registry.async_delete_issue = lambda _hass, domain, issue_id: issues.pop(
+        (domain, issue_id), None
+    )
+    helpers.issue_registry = issue_registry
     monkeypatch.setitem(sys.modules, "homeassistant", homeassistant)
     monkeypatch.setitem(sys.modules, "homeassistant.core", core)
     monkeypatch.setitem(sys.modules, "homeassistant.exceptions", exceptions)
+    monkeypatch.setitem(sys.modules, "homeassistant.helpers", helpers)
+    monkeypatch.setitem(sys.modules, "homeassistant.helpers.issue_registry", issue_registry)
+    sys.modules.pop("custom_components.family_assistant.backup_recovery", None)
     sys.modules.pop("custom_components.family_assistant.backup", None)
     module = importlib.import_module("custom_components.family_assistant.backup")
+    module._test_issues = issues
     yield module
     sys.modules.pop("custom_components.family_assistant.backup", None)
+    sys.modules.pop("custom_components.family_assistant.backup_recovery", None)
 
 
 class Media:
@@ -61,10 +81,11 @@ class Media:
 
 
 class StubEngine:
-    def __init__(self, name, log, *, begin=None, end_error=False):
+    def __init__(self, name, log, *, begin=None, end=None, end_error=False):
         self.name = name
         self.log = log
         self.begin = begin
+        self.end = end
         self.end_error = end_error
 
     async def async_begin_backup(self):
@@ -75,6 +96,8 @@ class StubEngine:
 
     async def async_end_backup(self, token):
         self.log.append(f"end:{self.name}:{token}")
+        if self.end:
+            await self.end()
         if self.end_error:
             raise RuntimeError("synthetic end failure")
 
@@ -86,12 +109,13 @@ def runtime(
     pause=None,
     resume=None,
     begin=None,
+    end=None,
     resume_error=False,
     end_error=False,
 ):
     return SimpleNamespace(
         media=Media(name, log, pause=pause, resume=resume, resume_error=resume_error),
-        engine=StubEngine(name, log, begin=begin, end_error=end_error),
+        engine=StubEngine(name, log, begin=begin, end=end, end_error=end_error),
     )
 
 
@@ -176,6 +200,32 @@ async def test_partial_engine_failure_unwinds_every_acquired_piece(platform):
         "end:a:engine:a",
         "resume:a:media:a",
     ]
+    assert "backup" not in instance.data["family_assistant"]
+
+
+async def test_partial_pre_cleanup_failure_enters_recovery(platform):
+    log = []
+
+    async def fail():
+        raise DomainError("conflict")
+
+    selected = runtime("a", log, begin=fail, resume_error=True)
+    instance = hass({"a": selected})
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_pre_backup(instance)
+
+    coordinator = instance.data["family_assistant"]["backup"]
+    assert coordinator.phase == platform.PHASE_RECOVERY
+    assert coordinator.leases[0].engine_acquired is False
+    assert coordinator.leases[0].media_acquired is True
+    assert platform.recovery_identity(instance) == (
+        coordinator,
+        coordinator.generation,
+    )
+
+    selected.media.resume_error = False
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert coordinator.released.is_set()
     assert "backup" not in instance.data["family_assistant"]
 
 
@@ -302,12 +352,22 @@ async def test_post_attempts_all_releases_before_fixed_error(platform):
     ]
     assert "backup" in instance.data["family_assistant"]
     assert not coordinator.released.is_set()
+    assert coordinator.phase == platform.PHASE_RECOVERY
+    assert platform._test_issues == {
+        ("family_assistant", "backup_recovery"): {
+            "is_fixable": True,
+            "is_persistent": False,
+            "severity": "error",
+            "translation_key": "backup_recovery",
+        }
+    }
 
     instance.data["family_assistant"]["entries"]["a"].engine.end_error = False
     instance.data["family_assistant"]["entries"]["b"].media.resume_error = False
     await platform.async_post_backup(instance)
     assert "backup" not in instance.data["family_assistant"]
     assert coordinator.released.is_set()
+    assert platform._test_issues == {}
 
 
 async def test_actual_engine_and_media_are_frozen_until_post(platform, tmp_path):
@@ -333,3 +393,164 @@ async def test_actual_engine_and_media_are_frozen_until_post(platform, tmp_path)
     await storage.async_resume_backup(token)
     await storage.stop()
     assert writes == []
+
+
+async def test_only_failed_release_is_retried_for_exact_generation(platform):
+    log = []
+    instance = hass(
+        {
+            "a": runtime("a", log),
+            "b": runtime("b", log, end_error=True),
+        }
+    )
+    await platform.async_pre_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_post_backup(instance)
+    before_retry = list(log)
+    assert platform.recovery_identity(instance) == (
+        coordinator,
+        coordinator.generation,
+    )
+
+    instance.data["family_assistant"]["entries"]["b"].engine.end_error = False
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert log[len(before_retry) :] == ["end:b:engine:b"]
+    assert coordinator.phase == platform.PHASE_RELEASED
+    assert coordinator.released.is_set()
+    assert "backup" not in instance.data["family_assistant"]
+
+
+async def test_frozen_or_stale_generation_never_releases(platform):
+    log = []
+    instance = hass({"a": runtime("a", log)})
+    await platform.async_pre_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+    assert coordinator.phase == platform.PHASE_FROZEN
+    assert platform.recovery_identity(instance) is None
+
+    with pytest.raises(_HomeAssistantError, match="^stale_recovery$"):
+        await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert log == ["pause:a", "begin:a"]
+    await platform.async_post_backup(instance)
+
+
+async def test_release_timeout_settles_before_exact_retry(platform, monkeypatch):
+    entered = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def hang():
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    log = []
+    selected = runtime("a", log, resume=hang)
+    instance = hass({"a": selected})
+    await platform.async_pre_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+    monkeypatch.setattr(platform, "BACKUP_TIMEOUT_SECONDS", 0.01)
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_post_backup(instance)
+    assert entered.is_set() and cancelled.is_set()
+    assert coordinator.phase == platform.PHASE_RECOVERY
+    assert coordinator.leases[0].engine_acquired is False
+    assert coordinator.leases[0].media_acquired is True
+
+    selected.media.resume = None
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert log[-1] == "resume:a:media:a"
+    assert coordinator.released.is_set()
+
+
+async def test_per_release_timeout_still_attempts_later_owned_leases(platform, monkeypatch):
+    cancelled = asyncio.Event()
+
+    async def hang():
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    log = []
+    instance = hass(
+        {
+            "a": runtime("a", log),
+            "b": runtime("b", log, end=hang),
+        }
+    )
+    await platform.async_pre_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+    monkeypatch.setattr(platform, "RELEASE_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(platform, "BACKUP_TIMEOUT_SECONDS", 1)
+
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_post_backup(instance)
+
+    assert cancelled.is_set()
+    assert log[4:] == [
+        "end:b:engine:b",
+        "resume:b:media:b",
+        "end:a:engine:a",
+        "resume:a:media:a",
+    ]
+    assert coordinator.leases[1].engine_acquired is True
+    assert coordinator.leases[1].media_acquired is False
+    assert coordinator.leases[0].engine_acquired is False
+    assert coordinator.leases[0].media_acquired is False
+
+    instance.data["family_assistant"]["entries"]["b"].engine.end = None
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert coordinator.released.is_set()
+
+
+@pytest.mark.parametrize("component", ["engine", "media"])
+async def test_owned_release_cancelled_error_becomes_recoverable(platform, component):
+    async def cancel_itself():
+        raise asyncio.CancelledError
+
+    log = []
+    selected = runtime(
+        "a",
+        log,
+        end=cancel_itself if component == "engine" else None,
+        resume=cancel_itself if component == "media" else None,
+    )
+    instance = hass({"a": selected})
+    await platform.async_pre_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_post_backup(instance)
+    assert coordinator.phase == platform.PHASE_RECOVERY
+    assert coordinator.leases[0].engine_acquired is (component == "engine")
+    assert coordinator.leases[0].media_acquired is (component == "media")
+    assert not coordinator.released.is_set()
+
+    selected.engine.end = None
+    selected.media.resume = None
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
+    assert coordinator.released.is_set()
+
+
+async def test_issue_registry_failure_never_clears_or_replaces_safety_error(platform, monkeypatch):
+    issue_registry = sys.modules["homeassistant.helpers.issue_registry"]
+
+    def fail_visibility(*_args, **_kwargs):
+        raise RuntimeError("synthetic issue registry failure")
+
+    monkeypatch.setattr(issue_registry, "async_create_issue", fail_visibility)
+    log = []
+    instance = hass({"a": runtime("a", log, end_error=True)})
+    await platform.async_pre_backup(instance)
+    with pytest.raises(_HomeAssistantError, match="^backup_unavailable$"):
+        await platform.async_post_backup(instance)
+    coordinator = instance.data["family_assistant"]["backup"]
+    assert coordinator.phase == platform.PHASE_RECOVERY
+    assert coordinator.issue_created is False
+    assert not coordinator.released.is_set()
+
+    instance.data["family_assistant"]["entries"]["a"].engine.end_error = False
+    await platform.async_retry_recovery(instance, coordinator, coordinator.generation)
