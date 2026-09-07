@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -81,12 +82,32 @@ def violations(relative: Path, content: bytes) -> list[str]:
 
 def check(root: Path = ROOT) -> list[tuple[str, str]]:
     findings = []
-    for path in root.rglob("*"):
-        relative = path.relative_to(root)
-        if any(part in EXCLUDE for part in relative.parts) or not path.is_file():
-            continue
-        for rule in violations(relative, path.read_bytes()):
-            findings.append((relative.as_posix(), rule))
+
+    def fail(error):
+        raise error
+
+    # Prune excluded build/test directories before traversing them. Playwright
+    # replaces its results directory during a run; a post-traversal filter races
+    # that replacement and needlessly walks dependencies. Real source I/O errors
+    # must still fail the scan, never silently pass an unreadable file/tree.
+    for directory, directories, files in os.walk(root, topdown=True, onerror=fail):
+        directories[:] = [name for name in directories if name not in EXCLUDE]
+        parent = Path(directory)
+        for name in directories[:]:
+            path = parent / name
+            if path.is_symlink():
+                findings.append((path.relative_to(root).as_posix(), "unexpected_symlink"))
+                directories.remove(name)
+        for name in files:
+            if name in EXCLUDE:
+                continue
+            path = parent / name
+            relative = path.relative_to(root)
+            if path.is_symlink():
+                findings.append((relative.as_posix(), "unexpected_symlink"))
+                continue
+            for rule in violations(relative, path.read_bytes()):
+                findings.append((relative.as_posix(), rule))
     return findings
 
 

@@ -236,6 +236,11 @@ def targets(event, state):
     from ..domain.task_delivery import TASK_EVENTS, current_task_event
 
     recipient, key = event["recipient"], event["key"]
+    if key == "family_digest":
+        from ..domain.digests import target as digest_target
+
+        selected = digest_target(state, event, event.get("created_at"))
+        return [selected] if selected is not None else []
     if key in TASK_EVENTS and not current_task_event(state, event):
         return []
     language = state["settings"]["language"]
@@ -311,6 +316,12 @@ def targets(event, state):
 
 
 def render(event, target, state, *, now=None):
+    if event["key"] == "family_digest":
+        from datetime import UTC, datetime
+
+        from .digest_messages import render as render_digest
+
+        return render_digest(event, target, state, now if now is not None else datetime.now(UTC))
     language = target.get("language", "en")
     t = MESSAGES.get(language, MESSAGES["en"])
     data = dict(event["data"])

@@ -25,6 +25,7 @@ CONFIGURABLE_MODULES = (
     "maintenance",
     "polls",
     "presence",
+    "digests",
 )
 
 
@@ -157,6 +158,7 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
                 "search",
                 "recipes",
                 "presence_sources",
+                "digests",
                 "mikrotik",
             ],
         )
@@ -184,6 +186,16 @@ class FamilyOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_presence_source_review(self, user_input=None):
         from .presence_options import review_step
+
+        return await review_step(self, user_input)
+
+    async def async_step_digests(self, user_input=None):
+        from .digest_options import policy_step
+
+        return await policy_step(self, user_input)
+
+    async def async_step_digest_policy_review(self, user_input=None):
+        from .digest_options import review_step
 
         return await review_step(self, user_input)
 

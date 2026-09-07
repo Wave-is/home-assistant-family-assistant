@@ -18,6 +18,8 @@ from . import (
     court_weekly,
     delivery,
     dietary_profiles,
+    digest_settings,
+    digests,
     family_calendar,
     household,
     maintenance,
@@ -63,6 +65,7 @@ HANDLERS = {
     "media": media.handle,
     "polls": polls.handle,
     "presence": presence.handle,
+    "digests": digests.handle,
 }
 BUCKETS = (
     "members",
@@ -89,6 +92,9 @@ BUCKETS = (
     "poll_ballots",
     "poll_reviews",
     "presence",
+    "digest_subscriptions",
+    "digest_markers",
+    "digest_retired",
     "outbox",
     "processed",
     "sequences",
@@ -177,6 +183,9 @@ class Engine:
         self._state.setdefault("poll_ballots", {})
         self._state.setdefault("poll_reviews", {})
         self._state.setdefault("presence", {"bindings": {}, "subscriptions": {}})
+        self._state.setdefault("digest_subscriptions", {})
+        self._state.setdefault("digest_markers", {})
+        self._state.setdefault("digest_retired", {})
         self._persist = persist
         self._lock = asyncio.Lock()
         # This process-local lease is deliberately absent from persisted state.
@@ -368,6 +377,8 @@ class Engine:
             data["maintenance"] = maintenance.view(self._state, actor)
         if actor["role"] != "guest" and "polls" in self._state["settings"]["modules"]:
             data["polls"] = polls.view(self._state, actor, now)
+        if actor["role"] != "guest" and "digests" in self._state["settings"]["modules"]:
+            data["digests"] = digests.view(self._state, actor)
         if parent:
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
@@ -487,11 +498,24 @@ class Engine:
             and module not in self._state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")
-        if module == "maintenance":
+        if action == "settings.digest_policy":
+            digest_settings.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "digest-policy-replay"),
+                payload,
+                result,
+            )
+        elif module == "maintenance":
             maintenance.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "maintenance-replay"),
                 action.split(".", 1)[1],
                 payload,
+            )
+        elif module == "digests":
+            digests.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "digest-replay"),
+                action.split(".", 1)[1],
+                payload,
+                result,
             )
         elif module == "presence":
             presence.authorize_replay(
@@ -590,6 +614,7 @@ class Engine:
             school_reminders.tick(ctx)
             polls.tick(ctx)
             poll_reviews.prune(ctx)
+            digests.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

@@ -355,6 +355,7 @@ async def async_configure_network(hass, entry):
 def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
     """Construct a counts-only export; do not attempt to blacklist every secret."""
     state = runtime.engine.snapshot()
+    from .domain.digests import health_stats as digest_health_stats
     from .domain.media import health_stats
 
     try:
@@ -367,6 +368,7 @@ def safe_diagnostics(runtime: Runtime) -> dict[str, Any]:
         "modules": state["settings"]["modules"],
         "health": dict(runtime.health),
         "media_capacity": media_capacity,
+        "digest_capacity": digest_health_stats(state),
         "counts": {
             key: len(state[key])
             for key in ("members", "shopping", "tasks", "court", "alarms", "alarm_runs", "outbox")

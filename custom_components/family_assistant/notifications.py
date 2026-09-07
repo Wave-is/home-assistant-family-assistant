@@ -62,6 +62,10 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
 
 def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
     """Recheck events whose private source can be revoked before transport."""
+    if event.get("key") == "family_digest":
+        from .domain.digests import delivery_allowed
+
+        return delivery_allowed(state, event, now)
     if event.get("key") == "telegram_reply":
         from .telegram.reply_delivery import current
 

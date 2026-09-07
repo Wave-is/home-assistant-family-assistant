@@ -1,6 +1,7 @@
 """Owner-controlled household preferences, persisted alongside family data."""
 
 from ..const import LANGUAGES, MODULES
+from . import digest_settings
 from .context import Context
 from .household import timezone
 from .recurrence import clock
@@ -10,8 +11,11 @@ from .validation import DomainError, enum, fields, text
 def handle(ctx: Context, action: str, payload: dict) -> dict:
     if ctx.actor["role"] != "owner":
         raise DomainError("forbidden")
+    if action == "digest_policy":
+        return digest_settings.handle(ctx, payload)
     if action != "save":
         raise DomainError("unknown_action")
+    previous_digest_policy = digest_settings.fingerprint(ctx.state)
     fields(
         payload,
         {
@@ -26,10 +30,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "school_preparation_reminders",
             "school_preparation_days_before",
             "school_preparation_time",
+            *digest_settings.DEFAULTS,
         },
         {"name", "language", "modules"},
     )
     modules = payload["modules"]
+    digest_values = digest_settings.validate(
+        {key: payload[key] for key in digest_settings.DEFAULTS if key in payload}
+    )
     if not isinstance(modules, list) or any(m not in MODULES for m in modules):
         raise DomainError("invalid_field", "modules")
     if "pantry_expiry_reminders" in payload and not isinstance(
@@ -86,4 +94,6 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         ]
     if "school_preparation_time" in payload:
         ctx.state["settings"]["school_preparation_time"] = payload["school_preparation_time"]
+    ctx.state["settings"].update(digest_values)
+    digest_settings.advance(ctx.state, previous_digest_policy)
     return ctx.state["settings"]

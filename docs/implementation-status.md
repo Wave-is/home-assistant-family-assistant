@@ -16,7 +16,7 @@ Nothing is production-ready solely because a mock test passes.
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets and standard Assist entity; real-model eval, full article fetching and external agent delegation pending |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
-| Today and module cards | Sixteen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence; richer editors and other module cards pending |
+| Today and module cards | Seventeen cards browser-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; richer editors and automatic resource registration pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence and template skip editor; richer per-step editors and production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
@@ -27,7 +27,7 @@ Nothing is production-ready solely because a mock test passes.
 | Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
 | Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self-consent, source lineage, fresh/unknown projection; guardian consent, presence-aware notifications and household acceptance pending |
-| Digests | Planned | Private morning/evening/weekly design reviewed; implementation in progress, outside this checkpoint |
+| Digests | Implemented / unit-, browser- and HA-tested | Off-default owner schedule, independent self-only subscriptions, private deterministic send-time content, exact replay, quiet hours/expiry and retained-period anti-replay floor; household acceptance and presence-aware routing remain pending |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
@@ -49,11 +49,30 @@ is exercised with a synthetic entity, not by replacing its service registry.
 
 ## Verified checkpoint, 2026-09-07
 
-- 1901 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
-  23 subtests. This checkpoint includes polls, retained-photo purge and background
-  backup/response-authority regressions and presence alongside earlier domains.
-  In-progress digests code is excluded from this checkpoint and count.
-- 324 frontend unit tests and 128 Chromium browser tests passed. The full Chromium
+Private digest acceptance adds a named owner policy review and independent member
+self-subscriptions, a seventeenth localized card and explicit-only authenticated
+preview. Content is rebuilt under current authority immediately before private
+Telegram delivery, never stored in the outbox or automatically quoted to models.
+Global policy epochs prevent disable/re-enable or schedule ABA from reviving old
+intents. Quiet hours do not extend expiry. Exact terminal marker/event retention
+advances three compact monotonic dates in the same Store transaction, preventing
+recreation after clock rollback; malformed lineage cannot poison those dates.
+Counts-only diagnostics and HA Repairs expose capacity without recipient details.
+The card invalidates displayed and in-flight previews on observed source revision
+or module changes, without breaking an exact subscription lost-response retry.
+The weekly half-open API window is displayed with an inclusive final date.
+Actual HA verifies Options, authenticated WebSockets, delivery guards, Store reload
+and Repairs. Narrow RU review and UK preview were visually inspected. Initial
+failures exposed a test's overly strict whole-FlowResult comparison and a privacy
+scanner traversal race with replaceable browser output. The scanner now prunes
+excluded directories before traversal while still failing on source I/O errors.
+See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps.md).
+
+- 2037 Python tests passed, with 2 POSIX-specific CLI tests skipped on Windows and
+  23 subtests. This checkpoint includes the digest lifecycle, source invalidation,
+  retention-floor and public-scanner regressions alongside earlier domains.
+  In-progress school-retention code is excluded from this checkpoint and count.
+- 334 frontend unit tests and 133 Chromium browser tests passed. The full Chromium
   run used two workers. Narrow RU poll review and photo-purge review were visually
   inspected; EN/RU/UK copy is included. The full isolated actual HA suite also passed.
 - Presence source Options require a current owner with HA entity read permission,

@@ -76,7 +76,11 @@ digest_weekly_time: HH:MM = "18:00"
 
 Times use the household `settings.timezone`; malformed zones, booleans used as weekdays, and
 values outside `0..6` are rejected before mutation. Two enabled kinds may share a time, but they
-remain visibly separate messages with separate markers.
+remain visibly separate messages with separate markers. `settings.digest_policy` is the dedicated
+owner-reviewed full-policy action; the general settings action also preserves and validates these
+additive fields. Both advance `settings.digest_policy_revision` on any effective policy, time zone
+or Digests-module change. `policy_fingerprint` covers that monotonic revision, module state, time
+zone and all seven fields, so an A → B → A change cannot revive an older queued descriptor.
 
 `digests.access_set` accepts exactly:
 
@@ -149,9 +153,11 @@ The outbox key is `family_digest`. Its data has exactly:
 
 There are no titles, names, member/source IDs, counts, choices, notes or rendered fragments in
 the descriptor. The outbox's existing `recipient` is the sole routing identity. The marker value
-contains only `event_id` and the same recipient/subscription/policy revisions. Daily messages
-expire six hours after the scheduled instant; weekly messages expire after 24 hours. The
-five-minute creation window is not the delivery expiry.
+contains only `event_id` and the same recipient/subscription/policy revisions. Evening messages
+expire six hours after the scheduled instant and weekly messages after 24 hours. Morning messages
+expire at the earlier of six hours or the next household-local midnight, so a deliberately late
+"morning" schedule cannot turn into a backdated next-day summary. The five-minute creation window
+is not the delivery expiry.
 
 `delivery_allowed(state,event,now)` is pure and fail-closed. At notification claim and again
 immediately before transport it checks the exact event schema, digest module, current policy and
@@ -194,11 +200,20 @@ it contains retained/unresolved totals but no recipient or event identifiers. Re
 delivery remains an explicit existing notification workflow. Pruning and health transitions must
 not mutate state on every clock tick.
 
+`digest_retired` holds at most three monotonic local scheduled dates, one per kind.
+Deleting exact canonical marker/event pairs advances the corresponding retired-through
+date in the same Engine transaction. Creation rejects older/equal scheduled dates for
+every recipient even after clock, policy, module or time-zone rollback. This compact
+boundary never deletes unresolved events or resets on configuration changes. Malformed
+boundaries fail closed and expose retention health. Displayed and in-flight card
+previews are invalidated by an observed global state revision or module-list change;
+the independent subscription retry scope does not use that content version.
+
 ## Integration points and acceptance
 
 The implementation slice needs `domain/digests.py` (`handle`, `authorize_replay`, `view`, `tick`,
 `delivery_allowed`, `snapshot`, and bounded pruning), additive Engine buckets
-`digest_subscriptions` and `digest_markers`, module/settings validation and Engine dispatch/tick/
+`digest_subscriptions`, `digest_markers` and `digest_retired`, module/settings validation and Engine dispatch/tick/
 projection wiring. Notifications registers `family_digest` with both current-source gates.
 Telegram adds private targeting and RU/UK/EN send-time rendering. Config Flow exposes owner global
 policy; the dedicated card exposes only self-consent and authenticated live preview. No new
@@ -216,7 +231,8 @@ Focused acceptance must prove:
    after durable enqueue all block claim or final dispatch;
 5. source revocation during quiet-hour deferral removes that source, an empty digest is
    superseded, and an already-started network send is reported honestly;
-6. quiet hours defer within the six-/24-hour TTL and expiry prevents a stale send;
+6. quiet hours defer within the applicable morning-midnight, six-hour or 24-hour TTL and expiry
+   prevents a stale send;
 7. concurrent ticks, Store faults and exact retries create one event/marker per recipient, kind
    and period and never duplicate after disable/re-enable or source edits;
 8. the outbox, audit, LLM and card-control projections contain no rendered text, source counts,

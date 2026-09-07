@@ -271,6 +271,9 @@ async def main():
             from ha_presence_smoke import verify_presence
 
             await verify_presence(hass, entry, user)
+            from ha_digests_smoke import verify_digests
+
+            await verify_digests(hass, entry, user, child_id)
             from ha_backup_smoke import verify_backup
 
             await verify_backup(hass, entry, user, media_expected)

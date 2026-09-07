@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Family Assistant digests fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #edf4f2;
+        font-family: Arial, sans-serif;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script type="module">
+      import "/custom_components/family_assistant/frontend/family-assistant.js";
+
+      const params = new URLSearchParams(location.search),
+        language = params.get("lang") || "en",
+        requestedActor = params.get("actor") || "parent";
+      const actorIds = {
+        owner: "owner-1",
+        parent: "parent-1",
+        adult: "adult-1",
+        child: "child-1",
+        guest: "guest-1",
+      };
+      const fixture = (window.fixture = {
+        revision: 1,
+        actor: actorIds[requestedActor] || "parent-1",
+        settings: {
+          name: "Example family",
+          timezone: "Europe/Kyiv",
+          modules: ["digests"],
+        },
+        members: [
+          {
+            id: "owner-1",
+            name: "Alex",
+            role: "owner",
+            active: true,
+            revision: 2,
+          },
+          {
+            id: "parent-1",
+            name: "Morgan",
+            role: "parent",
+            active: true,
+            revision: 4,
+          },
+          {
+            id: "adult-1",
+            name: "Taylor",
+            role: "adult",
+            active: true,
+            revision: 3,
+          },
+          {
+            id: "child-1",
+            name: "Sam",
+            role: "child",
+            active: true,
+            revision: 7,
+          },
+          {
+            id: "guest-1",
+            name: "Guest",
+            role: "guest",
+            active: true,
+            revision: 5,
+          },
+        ],
+        policy: {
+          timezone: "Europe/Kyiv",
+          morning: { enabled: true, time: "07:00" },
+          evening: { enabled: false, time: "19:00" },
+          weekly: { enabled: true, weekday: 6, time: "18:00" },
+        },
+        subscriptions: {
+          "owner-1": {
+            revision: 1,
+            recipient_revision: 2,
+            morning: true,
+            evening: false,
+            weekly: true,
+          },
+          "parent-1": {
+            revision: 2,
+            recipient_revision: 4,
+            morning: true,
+            evening: false,
+            weekly: false,
+          },
+          "adult-1": {
+            revision: 1,
+            recipient_revision: 3,
+            morning: false,
+            evening: true,
+            weekly: false,
+          },
+        },
+        // Synthetic raw sources contain privacy canaries. project/preview below
+        // copy only the explicit digest contract.
+        raw: {
+          task: {
+            id: "PRIVATE-TASK-ID",
+            title: "Pack school folder",
+            status: "assigned",
+            due_at: "2026-09-07T13:30:00+00:00",
+            report: "PRIVATE-REPORT-CANARY",
+            media_id: "PRIVATE-MEDIA-CANARY",
+          },
+          calendar: {
+            id: "PRIVATE-EVENT-ID",
+            title: "Music practice",
+            start: "2026-09-07T15:00:00+00:00",
+            all_day: false,
+            location: "PRIVATE-LOCATION-CANARY",
+          },
+          school: {
+            date: "2026-09-07",
+            subject: "Mathematics",
+            start: "08:30",
+            materials: ["Notebook"],
+            room: "PRIVATE-ROOM-CANARY",
+          },
+          presence: { latitude: "PRIVATE-COORDINATE-CANARY" },
+          dietary: { allergy_note: "PRIVATE-ALLERGY-CANARY" },
+          poll: { ballot: "PRIVATE-BALLOT-CANARY" },
+        },
+      });
+
+      const member = (id) => fixture.members.find((item) => item.id === id);
+      const self = () => {
+        const current = member(fixture.actor),
+          record = fixture.subscriptions[fixture.actor],
+          valid = record?.recipient_revision === current?.revision;
+        return {
+          recipient_revision: current.revision,
+          subscription_revision: valid ? record.revision : null,
+          morning: valid ? record.morning : false,
+          evening: valid ? record.evening : false,
+          weekly: valid ? record.weekly : false,
+          can_edit: true,
+          health: current.role === "adult" ? "attention" : "ok",
+        };
+      };
+      const projection = () => {
+        const actor = member(fixture.actor),
+          data = {
+            revision: fixture.revision,
+            actor: fixture.actor,
+            role: actor?.role,
+            settings: structuredClone(fixture.settings),
+            members: structuredClone(fixture.members),
+          };
+        if (
+          !fixture.settings.modules.includes("digests") ||
+          !actor?.active ||
+          actor.role === "guest"
+        ) {
+          data.digests = { policy: null, self: null };
+          return data;
+        }
+        data.digests = {
+          policy: structuredClone(fixture.policy),
+          self: self(),
+        };
+        return data;
+      };
+      const preview = (kind) => ({
+        schema: 1,
+        kind,
+        window_start: "2026-09-07",
+        window_end: kind === "weekly" ? "2026-09-14" : "2026-09-08",
+        sections: [
+          {
+            key: "tasks",
+            rows: [
+              {
+                title: fixture.raw.task.title,
+                status: fixture.raw.task.status,
+                due_at: fixture.raw.task.due_at,
+              },
+            ],
+            count: 1,
+            overflow: 0,
+          },
+          {
+            key: "calendar",
+            rows: [
+              {
+                title: fixture.raw.calendar.title,
+                start: fixture.raw.calendar.start,
+                all_day: fixture.raw.calendar.all_day,
+              },
+            ],
+            count: 1,
+            overflow: 0,
+          },
+          {
+            key: "school",
+            rows: [
+              {
+                date: fixture.raw.school.date,
+                subject: fixture.raw.school.subject,
+                start: fixture.raw.school.start,
+                materials: structuredClone(fixture.raw.school.materials),
+              },
+            ],
+            count: 1,
+            overflow: 0,
+          },
+          { key: "shopping", rows: [], count: 4, overflow: 0 },
+          { key: "polls_open", rows: [], count: 1, overflow: 0 },
+        ],
+      });
+
+      window.project = projection;
+      window.calls = [];
+      window.failMode = null;
+      window.previewFailure = false;
+      const receipts = new Map();
+      const conflict = () => {
+        const error = new Error("conflict");
+        error.code = "conflict";
+        throw error;
+      };
+      const execute = (message) => {
+        window.calls.push(structuredClone(message));
+        const payload = message.payload,
+          current = self();
+        if (receipts.has(message.operation_id)) {
+          const receipt = receipts.get(message.operation_id),
+            live = self();
+          if (
+            live.subscription_revision !== receipt.revision ||
+            ([live.morning, live.evening, live.weekly].some(Boolean)
+              ? "enabled"
+              : "disabled") !== receipt.status
+          )
+            conflict();
+          return structuredClone(receipt);
+        }
+        if (
+          message.action !== "digests.access_set" ||
+          JSON.stringify(Object.keys(payload).sort()) !==
+            JSON.stringify([
+              "evening",
+              "morning",
+              "recipient_revision",
+              "subscription_revision",
+              "weekly",
+            ]) ||
+          payload.recipient_revision !== current.recipient_revision ||
+          payload.subscription_revision !== current.subscription_revision ||
+          ![payload.morning, payload.evening, payload.weekly].every(
+            (value) => typeof value === "boolean",
+          ) ||
+          (payload.subscription_revision === null &&
+            ![payload.morning, payload.evening, payload.weekly].some(Boolean))
+        )
+          conflict();
+        if (window.failMode === "before") {
+          window.failMode = null;
+          throw Object.assign(new Error("before commit"), {
+            code: "transport_error",
+          });
+        }
+        const revision =
+          current.subscription_revision === null
+            ? 1
+            : current.subscription_revision + 1;
+        fixture.subscriptions[fixture.actor] = {
+          revision,
+          recipient_revision: payload.recipient_revision,
+          morning: payload.morning,
+          evening: payload.evening,
+          weekly: payload.weekly,
+        };
+        const receipt = {
+          revision,
+          status: [payload.morning, payload.evening, payload.weekly].some(
+            Boolean,
+          )
+            ? "enabled"
+            : "disabled",
+        };
+        receipts.set(message.operation_id, receipt);
+        if (window.failMode === "after") {
+          window.failMode = null;
+          throw Object.assign(new Error("response lost"), {
+            code: "response_lost",
+          });
+        }
+        return structuredClone(receipt);
+      };
+
+      const card = (window.card = document.createElement(
+        "family-digests-card",
+      ));
+      card.setConfig({
+        type: "custom:family-digests-card",
+        entry_id: "synthetic-digests",
+        language,
+      });
+      card.hass = {
+        language,
+        callWS: async (message) => {
+          if (message.type === "family_assistant/view") return projection();
+          if (message.type === "family_assistant/execute")
+            return execute(message);
+          if (message.type === "family_assistant/digest_preview") {
+            window.calls.push(structuredClone(message));
+            if (window.previewFailure)
+              throw Object.assign(new Error("preview failed"), {
+                code: "forbidden",
+              });
+            return preview(message.kind);
+          }
+          throw { code: "unknown_action" };
+        },
+      };
+      document.querySelector("main").append(card);
+    </script>
+  </body>
+</html>

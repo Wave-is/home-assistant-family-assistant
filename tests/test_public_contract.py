@@ -2,7 +2,10 @@
 
 import ast
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from tools.check_public_tree import check, violations
 
@@ -62,6 +65,35 @@ def test_hacs_single_domain_and_self_contained_runtime():
 
 def test_public_tree_has_no_private_files_or_credentials():
     assert check() == []
+
+
+def test_scanner_prunes_excluded_test_output_before_traversal(tmp_path, monkeypatch):
+    excluded = tmp_path / "test-results"
+    excluded.mkdir()
+    (tmp_path / "example.txt").write_text("public", encoding="utf-8")
+    original = os.scandir
+
+    def guarded(path):
+        assert Path(path) != excluded, "scanner traversed replaceable test output"
+        return original(path)
+
+    monkeypatch.setattr(os, "scandir", guarded)
+    assert check(tmp_path) == []
+
+
+def test_scanner_does_not_ignore_source_traversal_errors(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    source.mkdir()
+    original = os.scandir
+
+    def guarded(path):
+        if Path(path) == source:
+            raise PermissionError("synthetic unreadable source")
+        return original(path)
+
+    monkeypatch.setattr(os, "scandir", guarded)
+    with pytest.raises(PermissionError):
+        check(tmp_path)
 
 
 def test_scanner_detects_synthetic_secret_and_private_path_without_echo():

@@ -1,6 +1,6 @@
 """Resolve reply context without treating quoted Telegram text as authority.
 
-Poll text is rendered only at delivery time and must not be copied automatically
+Poll and digest text is rendered only at delivery time and must not be copied automatically
 into an assistant request through Telegram's reply metadata.  A user can still
 explicitly paste the same words as new message content; that is ordinary,
 untrusted user input rather than an automatic export of a prior private view.
@@ -49,7 +49,7 @@ def _reply_event(state, message, bot):
 
 def reply_refs(state, message, bot):
     event = _reply_event(state, message, bot)
-    if event is None or event.get("key") == "telegram_poll_reply":
+    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest"}:
         return ()
     data = event.get("data", {})
     if not isinstance(data, dict):
@@ -59,7 +59,7 @@ def reply_refs(state, message, bot):
 
 
 def reply_quote(state, message, bot):
-    """Return bounded untrusted quote text, suppressing private poll history."""
+    """Return untrusted quote text, suppressing private poll and digest history."""
     quoted = message.get("reply_to_message", {})
     value = quoted.get("text") if isinstance(quoted, dict) else None
     if not isinstance(value, str):
@@ -71,7 +71,7 @@ def reply_quote(state, message, bot):
     if sender_id != bot_id:
         return value[:MAX_QUOTED_TEXT]
     event = _reply_event(state, message, bot)
-    if event is None or event.get("key") == "telegram_poll_reply":
+    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest"}:
         return ""
     return value[:MAX_QUOTED_TEXT]
 

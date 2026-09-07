@@ -29,7 +29,8 @@
           "school": "School timetable",
           "maintenance": "Home maintenance",
           "polls": "Family polls",
-          "presence": "Family presence"
+          "presence": "Family presence",
+          "digests": "Private family digests"
         }
       }
     },
@@ -169,6 +170,7 @@
           "search": "Internet search (SearXNG)",
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
+          "digests": "Digest schedule",
           "mikrotik": "MikroTik network"
         }
       },
@@ -217,7 +219,8 @@
           "school": "School timetable",
           "maintenance": "Home maintenance",
           "polls": "Family polls",
-          "presence": "Family presence"
+          "presence": "Family presence",
+          "digests": "Private family digests"
         }
       },
       "alarm_device": {
@@ -300,6 +303,26 @@
         "description": "Member: {member}. Action: {action} (enable = assign, remove = remove source). Entity: {entity}. Source revision: {binding_revision}; member revision: {member_revision}. Maximum age: {max_age_seconds} seconds. This changes only the source binding, not consent.",
         "data": {
           "confirmed": "I confirm this exact change"
+        }
+      },
+      "digests": {
+        "title": "Digest schedule",
+        "description": "Set the household policy for private morning, evening and weekly digests. All kinds are off by default and use the household time zone. Each current family member must separately consent for themselves in their Digest card; the owner cannot subscribe anyone else.",
+        "data": {
+          "digest_morning_enabled": "Enable morning digest",
+          "digest_morning_time": "Morning time (HH:MM)",
+          "digest_evening_enabled": "Enable evening digest",
+          "digest_evening_time": "Evening time (HH:MM)",
+          "digest_weekly_enabled": "Enable weekly digest",
+          "digest_weekly_weekday": "Weekly day (Monday = 0, Sunday = 6)",
+          "digest_weekly_time": "Weekly time (HH:MM)"
+        }
+      },
+      "digest_policy_review": {
+        "title": "Review digest schedule",
+        "description": "Time zone: {timezone}. Morning: {morning} at {morning_time}. Evening: {evening} at {evening_time}. Weekly: {weekly} on day {weekly_weekday} at {weekly_time} (Monday = 0, Sunday = 6). This changes only the household policy; it does not subscribe family members.",
+        "data": {
+          "confirmed": "I confirm this exact digest schedule"
         }
       },
       "recipes": {
@@ -817,6 +840,10 @@
     "delivery_attention": {
       "title": "A notification needs review",
       "description": "Some notifications failed or have an uncertain delivery result. Telegram may already have accepted a message before the connection timed out. Family Assistant will not blindly resend it. Review delivery details in the health panel."
+    },
+    "digest_retention_attention": {
+      "title": "Digest retention needs review",
+      "description": "The retained digest marker or event limit was reached, so new digests are paused. Review digest delivery health and resolve pending, uncertain or failed notifications. This Repair contains counts only and does not identify recipients or messages."
     }
   }
 }

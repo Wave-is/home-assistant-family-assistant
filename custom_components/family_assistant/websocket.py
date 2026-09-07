@@ -11,9 +11,10 @@ from .domain.validation import DomainError, text
 
 
 def async_register_api(hass):
+    from .digest_api import preview as digest_preview
     from .recipes.api import recipes
 
-    for handler in (households, view, execute, chat, network_refresh, recipes):
+    for handler in (households, view, execute, chat, network_refresh, recipes, digest_preview):
         websocket_api.async_register_command(hass, handler)
 
 

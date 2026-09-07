@@ -84,6 +84,9 @@ class Scheduler:
                 self.runtime.updated()
             await self.devices.reconcile(now)
             await self.devices.close_incidents(now)
+            from .digest_health import synchronize
+
+            synchronize(self.hass, self.entry, self.runtime)
             self.runtime.health.pop("scheduler", None)
         except DomainError as error:
             if error.code != "backup_in_progress":
