@@ -326,15 +326,15 @@ class Engine:
             else []
         )
         data["task_series"] = [
-            record
-            if parent
-            else {
-                key: value
-                for key, value in record.items()
-                if key not in {"occurrences", "cursor", "creator"}
-            }
+            task_series.public_record(self._state, record, parent=parent)
             for record in self._state["task_series"].values()
-            if parent or actor_id in record["assignees"]
+            if parent
+            or (
+                actor_id in record["assignees"]
+                and isinstance(record.get("assignee_revisions"), dict)
+                and type(record["assignee_revisions"].get(actor_id)) is int
+                and record.get("assignee_revisions", {}).get(actor_id) == actor["revision"]
+            )
             if not maintenance.is_managed_series(record)
         ]
         data["proposals"] = [
@@ -555,6 +555,13 @@ class Engine:
             school_preparation.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "school-preparation-replay"),
                 "backpack_start",
+                payload,
+                result,
+            )
+        elif action in {"tasks.series_save", "tasks.series_enable"}:
+            task_series.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "task-series-replay"),
+                action.split(".", 1)[1],
                 payload,
                 result,
             )

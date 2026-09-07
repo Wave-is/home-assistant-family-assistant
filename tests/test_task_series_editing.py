@@ -11,9 +11,13 @@ from custom_components.family_assistant.domain.validation import DomainError
 
 
 def payload(now, **extra):
+    assignees = extra.get("assignees", ["child"])
     return {
         "title": "Clean kitchen",
-        "assignees": ["child"],
+        "assignees": assignees,
+        "assignee_revisions": {member: 1 for member in assignees if isinstance(member, str)},
+        "actor_revision": 1,
+        "creator_revision": 1,
         "rule": {
             "frequency": "daily",
             "start_date": now.date().isoformat(),
@@ -161,7 +165,12 @@ async def test_stale_revision_conflict_on_edit_and_enable(engine, now):
         await engine.execute(
             "parent",
             "tasks.series_enable",
-            {"id": series_id, "revision": rev + 5, "enabled": False},
+            {
+                "id": series_id,
+                "revision": rev + 5,
+                "enabled": False,
+                "actor_revision": 1,
+            },
             "stale-enable",
             now,
         )
@@ -200,6 +209,9 @@ async def test_partial_optional_preservation_and_explicit_clearing(engine, now):
         "revision": rev,
         "title": "Deep clean kitchen",
         "assignees": ["child", "sibling"],
+        "assignee_revisions": {"child": 1, "sibling": 1},
+        "actor_revision": 1,
+        "creator_revision": 1,
         "rule": created["rule"],
         "due_time": "20:00",
     }
@@ -226,6 +238,9 @@ async def test_partial_optional_preservation_and_explicit_clearing(engine, now):
         "revision": updated["revision"],
         "title": "Reset chore",
         "assignees": ["child"],
+        "assignee_revisions": {"child": 1},
+        "actor_revision": 1,
+        "creator_revision": 1,
         "rule": created["rule"],
         "due_time": "19:00",
         "rotation": False,
@@ -246,7 +261,7 @@ async def test_partial_optional_preservation_and_explicit_clearing(engine, now):
 
 
 @pytest.mark.asyncio
-async def test_preserve_creator_cursor_and_occurrences_across_other_parent_edit(engine, now):
+async def test_revoked_creator_cannot_be_silently_claimed_by_another_parent(engine, now):
     created = await engine.execute("parent", "tasks.series_save", payload(now), "create-p", now)
     series_id = created["id"]
 
@@ -277,28 +292,31 @@ async def test_preserve_creator_cursor_and_occurrences_across_other_parent_edit(
         tick_time,
     )
 
-    # Now owner (another privileged parent) edits the task series
+    # Another privileged parent cannot silently claim or rebind the old creator.
     rev = series_in_state["revision"]
-    edited = await engine.execute(
-        "owner",
-        "tasks.series_save",
-        {
-            "id": series_id,
-            "revision": rev,
-            "title": "Clean kitchen by Owner",
-            "assignees": ["child"],
-            "rule": series_in_state["rule"],
-            "due_time": series_in_state["due_time"],
-        },
-        "owner-edit",
-        tick_time + timedelta(minutes=5),
-    )
+    with pytest.raises(DomainError, match="conflict"):
+        await engine.execute(
+            "owner",
+            "tasks.series_save",
+            {
+                "id": series_id,
+                "revision": rev,
+                "title": "Clean kitchen by Owner",
+                "assignees": ["child"],
+                "assignee_revisions": {"child": 1},
+                "actor_revision": 1,
+                "creator_revision": 2,
+                "rule": series_in_state["rule"],
+                "due_time": series_in_state["due_time"],
+            },
+            "owner-edit",
+            tick_time + timedelta(minutes=5),
+        )
 
-    # Creator must remain original creator ("parent") and NOT be resurrected / changed to "owner"
-    assert edited["creator"] == "parent"
-    # Cursor and occurrences must be preserved
-    assert edited["cursor"] == 1
-    assert edited["occurrences"] == saved_occurrences
+    unchanged = engine.snapshot()["task_series"][series_id]
+    assert unchanged["creator"] == "parent"
+    assert unchanged["cursor"] == 1
+    assert unchanged["occurrences"] == saved_occurrences
 
     # Because creator "parent" is revoked (role is child), ticking next day must NOT create tasks
     next_day_tick = tick_time + timedelta(days=1)
@@ -314,7 +332,12 @@ async def test_idempotent_enable_and_replay(engine, now):
     series_id = created["id"]
     rev = created["revision"]
 
-    enable_payload = {"id": series_id, "revision": rev, "enabled": False}
+    enable_payload = {
+        "id": series_id,
+        "revision": rev,
+        "enabled": False,
+        "actor_revision": 1,
+    }
     disabled = await engine.execute(
         "parent", "tasks.series_enable", enable_payload, "op-enable-1", now
     )
@@ -352,7 +375,12 @@ async def test_store_failure_rolls_back_series_save_and_enable(engine, store, no
         await engine.execute(
             "parent",
             "tasks.series_enable",
-            {"id": series_id, "revision": created["revision"], "enabled": False},
+            {
+                "id": series_id,
+                "revision": created["revision"],
+                "enabled": False,
+                "actor_revision": 1,
+            },
             "failing-enable",
             now,
         )

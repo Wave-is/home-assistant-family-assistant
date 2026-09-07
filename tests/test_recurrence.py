@@ -26,6 +26,9 @@ async def series(engine, now, **extra):
         {
             "title": "Take out recycling",
             "assignees": ["child", "sibling"],
+            "assignee_revisions": {"child": 1, "sibling": 1},
+            "actor_revision": 1,
+            "creator_revision": 1,
             "rule": rule(),
             "due_time": "20:00",
             **extra,
@@ -72,7 +75,7 @@ async def test_multiple_assignees_receive_independent_tasks_once(engine, store, 
 
 
 @pytest.mark.asyncio
-async def test_rotation_survives_restart_and_skips_inactive_member(engine, store, now):
+async def test_rotation_survives_restart_and_stops_on_inactive_member(engine, store, now):
     await series(engine, now, rotation=True)
     await engine.tick(now)
     assert next(iter(engine.snapshot()["tasks"].values()))["assignee"] == "child"
@@ -93,7 +96,7 @@ async def test_rotation_survives_restart_and_skips_inactive_member(engine, store
         now,
     )
     await engine.tick(now + timedelta(days=2))
-    assert engine.snapshot()["tasks"]["T000003"]["assignee"] == "sibling"
+    assert len(engine.snapshot()["tasks"]) == 2
 
 
 @pytest.mark.asyncio
@@ -144,7 +147,12 @@ async def test_disabled_series_and_exception_date_stay_quiet(engine, now):
     await engine.execute(
         "parent",
         "tasks.series_enable",
-        {"id": duty["id"], "revision": duty["revision"], "enabled": False},
+        {
+            "id": duty["id"],
+            "revision": duty["revision"],
+            "enabled": False,
+            "actor_revision": 1,
+        },
         "off",
         now,
     )

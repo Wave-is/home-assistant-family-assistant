@@ -349,6 +349,8 @@ export class FamilyCard extends HTMLElement {
     }
   }
   seriesForm(){
+    const identity=()=>JSON.stringify({entry:this._entry,generation:this._generation,actor:this._data?.actor,role:this._data?.role,members:this._data?.members});
+    const capturedIdentity=identity(),members=structuredClone(this._data.members),actor=members.find(m=>m.id===this._data.actor);
     const form=el("form");this.input(form,"title",this.t.title);
     const advanced=el("details"),advancedBody=el("div",null,"advanced");advanced.append(el("summary",this.t.advanced),advancedBody);
     const people=el("fieldset");people.append(el("legend",this.t.assignee));form.append(people);
@@ -374,21 +376,24 @@ export class FamilyCard extends HTMLElement {
     this.deadlinePolicy(advancedBody);form.append(advanced,el("div",this.t.seriesHint,"sub"));
     const save=el("button",this.t.save,"primary");save.type="submit";form.append(save);
     form.addEventListener("submit",event=>{
-      event.preventDefault();const data=new FormData(form),v=Object.fromEntries(data);
-      this.command("tasks.series_save",{title:v.title,assignees:data.getAll("assignees"),rotation:v.rotation==="on",due_time:v.due_time,
+      event.preventDefault();
+      if(!form.isConnected || this._writing || !this.parent || identity()!==capturedIdentity){this._actionError="conflict";this.render();return;}
+      const data=new FormData(form),v=Object.fromEntries(data),assignees=data.getAll("assignees");
+      this.command("tasks.series_save",{title:v.title,assignees,actor_revision:actor.revision,creator_revision:actor.revision,assignee_revisions:Object.fromEntries(assignees.map(id=>[id,members.find(m=>m.id===id)?.revision])),rotation:v.rotation==="on",due_time:v.due_time,
         reminder_minutes:Number(v.reminder_minutes),grace_minutes:Number(v.grace_minutes),penalty:Number(v.penalty),
         rule:{frequency:v.frequency,start_date:v.start_date,until:v.until || null,time:v.time,timezone:v.timezone,interval:Number(v.interval),weekdays:data.getAll("weekdays").map(Number),exceptions:v.exceptions.split(",").map(s=>s.trim()).filter(Boolean)}});
     });return form;
   }
   renderSeries(body){
     const series=this._data.task_series || [];
+    const actorRevision=this._data.members.find(m=>m.id===this._data.actor)?.revision;
     if(this.parent)body.append(this.button(this._seriesForm?this.t.back:this.t.addSeries,()=>{this._seriesForm=!this._seriesForm;this._form=false;this.render();}));
     if(this._seriesForm)body.append(this.seriesForm());
     for(const item of series){
       const row=el("div",null,"item");row.append(el("strong",`${this.t.recurring} · ${item.title}`));
       const people=item.assignees.map(id=>this._data.members.find(m=>m.id===id)?.name || "").join(", ");
       row.append(el("div",`${people} · ${item.rotation?this.t.rotation:this.t.eachPerson} · ${this.t[item.rule.frequency]} · ${item.rule.time} → ${item.due_time} · ${this.t[item.enabled?"enabled":"disabled"]}`,"sub"));
-      if(this.parent)row.append(this.button(this.t[item.enabled?"disable":"enable"],()=>this.command("tasks.series_enable",{id:item.id,revision:item.revision,enabled:!item.enabled})));
+      if(this.parent)row.append(this.button(this.t[item.enabled?"disable":"enable"],()=>this.command("tasks.series_enable",{id:item.id,revision:item.revision,actor_revision:actorRevision,enabled:!item.enabled})));
       body.append(row);
     }
   }

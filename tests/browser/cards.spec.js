@@ -267,6 +267,8 @@ test("parent creates a rotating duty using the Russian mobile form",async({page}
  await page.getByRole("button",{name:"Сохранить",exact:true}).click();
  const command=(await page.evaluate(()=>window.calls))[0];
  expect(command.action).toBe("tasks.series_save");
+ expect(command.payload.actor_revision).toBe(1);expect(command.payload.creator_revision).toBe(1);
+ expect(command.payload.assignee_revisions).toEqual({child:1});
  expect(command.payload.assignees).toEqual(["child"]);expect(command.payload.rotation).toBe(true);
  expect(command.payload.rule.weekdays).toEqual([0,1,2,3,4]);expect(command.payload.penalty).toBe(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

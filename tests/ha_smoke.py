@@ -505,6 +505,9 @@ async def run_websocket(hass, entry, owner, child_id):
         {
             "title": "Synthetic rotating duty",
             "assignees": [child_id],
+            "actor_revision": engine.snapshot()["members"]["owner"]["revision"],
+            "creator_revision": engine.snapshot()["members"]["owner"]["revision"],
+            "assignee_revisions": {child_id: engine.snapshot()["members"][child_id]["revision"]},
             "rotation": True,
             "rule": {
                 "frequency": "daily",
