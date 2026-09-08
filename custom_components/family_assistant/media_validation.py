@@ -1,4 +1,4 @@
-"""Bounded validation for private task-report images.
+"""Bounded validation for private images and explicit equipment documents.
 
 The storage adapter runs :func:`verify` in an isolated helper process. This
 module deliberately returns code-only failures: decoder messages and paths are
@@ -10,6 +10,8 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
+import re
 import sys
 import warnings
 from os import PathLike
@@ -120,9 +122,115 @@ def _exact_container(content: bytes, image_format: str) -> None:
         raise MediaValidationError("media_invalid")
 
 
-def verify(path: str | PathLike[str]) -> dict[str, str | int]:
-    """Decode one static JPEG, PNG, or WebP and return verified metadata."""
+def _pdf(content: bytes) -> dict[str, str | int]:
+    """Inspect a restricted document, not an antivirus verdict or rendering engine.
+
+    The caller must use the bounded child process for untrusted bytes. Streams
+    are not decoded for text or images. Interactive content is not supported.
+    """
+    if re.match(rb"%PDF-(?:1\.[0-7]|2\.0)(?:\r\n|\r|\n)", content) is None or not content.rstrip(
+        b" \t\r\n"
+    ).endswith(b"%%EOF"):
+        raise MediaValidationError("media_invalid")
+    try:
+        import pypdf
+        from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject, NameObject
+
+        if pypdf.__version__ != "6.17.0":
+            raise MediaValidationError("media_invalid")
+        # Parser diagnostics can contain document text. Never emit them.
+        previous_disabled = logging.root.manager.disable
+        logging.disable(logging.CRITICAL)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                reader = pypdf.PdfReader(io.BytesIO(content), strict=True)
+                if reader.is_encrypted:
+                    raise MediaValidationError("media_invalid")
+                size = reader.trailer.get("/Size")
+                if not isinstance(size, int) or isinstance(size, bool) or not 1 <= size <= 20_000:
+                    raise MediaValidationError("media_too_large")
+                pages = len(reader.pages)
+                if not 1 <= pages <= 100:
+                    raise MediaValidationError("media_too_large")
+                forbidden_keys = {
+                    "/A",
+                    "/AA",
+                    "/OpenAction",
+                    "/JS",
+                    "/JavaScript",
+                    "/AcroForm",
+                    "/XFA",
+                    "/EmbeddedFiles",
+                    "/EF",
+                    "/AF",
+                    "/Launch",
+                    "/RichMediaContent",
+                    "/RichMediaSettings",
+                    "/3DD",
+                    "/Collection",
+                }
+                forbidden_names = {
+                    "/JavaScript",
+                    "/Launch",
+                    "/SubmitForm",
+                    "/ImportData",
+                    "/RichMedia",
+                    "/3D",
+                    "/Movie",
+                    "/Sound",
+                    "/FileAttachment",
+                    "/GoToR",
+                    "/GoToE",
+                    "/URI",
+                    "/Rendition",
+                }
+                stack, references, containers = [(reader.trailer, 0)], set(), set()
+                visited = 0
+                while stack:
+                    obj, depth = stack.pop()
+                    visited += 1
+                    if visited > 20_000 or depth > 64:
+                        raise MediaValidationError("media_too_large")
+                    if isinstance(obj, IndirectObject):
+                        reference = (obj.idnum, obj.generation)
+                        if reference in references:
+                            continue
+                        references.add(reference)
+                        stack.append((obj.get_object(), depth + 1))
+                    elif isinstance(obj, (DictionaryObject, ArrayObject)):
+                        if id(obj) in containers:
+                            continue
+                        containers.add(id(obj))
+                        if len(obj) > 20_000 or len(stack) + len(obj) > 20_000:
+                            raise MediaValidationError("media_too_large")
+                        if isinstance(obj, DictionaryObject):
+                            if forbidden_keys.intersection(obj.keys()):
+                                raise MediaValidationError("media_invalid")
+                            stack.extend((value, depth + 1) for value in obj.values())
+                        else:
+                            stack.extend((value, depth + 1) for value in obj)
+                    elif isinstance(obj, NameObject) and obj in forbidden_names:
+                        raise MediaValidationError("media_invalid")
+        finally:
+            logging.disable(previous_disabled)
+    except MediaValidationError:
+        raise
+    except Exception:
+        raise MediaValidationError("media_invalid") from None
+    return {
+        "mime_type": "application/pdf",
+        "size_bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "pages": pages,
+    }
+
+
+def verify(path: str | PathLike[str], *, allow_pdf=False) -> dict[str, str | int]:
+    """Decode one static image, or an explicitly enabled restricted PDF."""
     content = _read_bounded(path)
+    if allow_pdf is True and content.startswith(b"%PDF-"):
+        return _pdf(content)
     try:
         from PIL import Image
     except ImportError:
@@ -184,10 +292,20 @@ def _apply_process_limits() -> None:
 
 def _main(argv: list[str]) -> int:
     try:
-        if len(argv) != 2:
+        if len(argv) != 2 and not (len(argv) == 4 and argv[2] == "pdf"):
             raise MediaValidationError("media_invalid")
         _apply_process_limits()
-        response = {"ok": True, "result": verify(argv[1])}
+        documents = len(argv) == 4
+        if documents:
+            # This argument is derived exclusively from the HA-installed package
+            # by the trusted parent. It is not an upload/header/path parameter.
+            dependency = Path(argv[3])
+            if not dependency.is_absolute() or dependency.resolve(strict=True) != dependency:
+                raise MediaValidationError("media_invalid")
+            if not (dependency / "pypdf" / "__init__.py").is_file():
+                raise MediaValidationError("media_invalid")
+            sys.path.insert(0, str(dependency))
+        response = {"ok": True, "result": verify(argv[1], allow_pdf=documents)}
     except MediaValidationError as error:
         response = {"ok": False, "code": error.code}
     except Exception:

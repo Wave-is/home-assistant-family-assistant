@@ -393,3 +393,28 @@ additional gate before maintenance documents; the School import object's actual
 domain contract and explicit provider-consent UX are additional gates before
 School import. These are security and recovery requirements, not optional UI
 polish.
+
+## Equipment document acceptance extension, alpha.18
+
+The original image-only boundary above now has a separate `equipment_document`
+purpose. It requires Maintenance but not Tasks, a current parent/owner, and an
+exact equipment revision. Unattached bytes remain uploader-only; explicit attach
+adds a document reference without advancing the equipment revision or disturbing
+source-pinned service recurrence. Attached references resolve in both directions.
+Children/guests cannot read document metadata or bytes. Owner-only reviewed purge
+revokes access immediately and retains the parent-visible deletion record.
+
+Only this purpose can admit PDF. The pinned pypdf6.17.0 strict parser runs in the
+existing isolated helper under size, CPU, address-space, descriptor and wall-time
+bounds. Its object walk rejects forms, actions, attachments, encryption and excessive
+page/object/depth complexity. It does not extract content, render, execute, fetch
+links, scan for viruses or prove that every possible polyglot is harmless.
+The server resolves the installed dependency path; the upload cannot supply it.
+Image report/fault callers retain image-only allowlists at client/domain/storage.
+
+Actual authenticated HA HTTP/WS acceptance passed upload/replay, uploader-private
+staging, shared-parent attachment, child denial, owner purge and private bytes after
+Store reload. RU/UK/EN browser tests passed explicit upload/attach/download/removal;
+no inline image/PDF elements are created. Identity/equipment changes revoke drafts
+and object URLs. Documentation: [equipment documents](equipment-documents.md).
+This does not claim household migration, physical-device or HAOS restore acceptance.

@@ -4,9 +4,23 @@ import { test } from "node:test";
 import {
   downloadMedia,
   uploadMedia,
+  uploadDocument,
+  downloadDocument,
 } from "../custom_components/family_assistant/frontend/media-client.js";
 
 const MAX_BYTES = 10 * 1024 * 1024;
+
+test("document helpers accept PDF without broadening image consumers",async()=>{
+  const file=new Blob(["synthetic pdf"],{type:"application/pdf"});
+  const upload=client(jsonResponse({id:"M_RANDOM-987",revision:6,status:"available"}));
+  await rejectsCode(uploadMedia(upload.hass,options({file,allowPdf:true})),"media_invalid");
+  assert.equal(upload.calls.length,0);
+  assert.equal((await uploadDocument(upload.hass,options({file}))).status,"available");
+  const downloaded=client(imageResponse("synthetic pdf","application/pdf"));
+  assert.equal((await downloadDocument(downloaded.hass,options())).type,"application/pdf");
+  const image=client(imageResponse("synthetic pdf","application/pdf"));
+  await rejectsCode(downloadMedia(image.hass,options({allowPdf:true})),"media_invalid");
+});
 
 function jsonResponse(value, init = {}) {
   return new Response(JSON.stringify(value), {

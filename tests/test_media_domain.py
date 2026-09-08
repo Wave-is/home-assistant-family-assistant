@@ -284,7 +284,7 @@ def test_finalize_is_strict_and_exact_retry_is_stable(engine, now):
         finalize(state, now, reserved, size=1235)
 
 
-@pytest.mark.parametrize("mime_type", sorted(media.MIME_TYPES))
+@pytest.mark.parametrize("mime_type", sorted(media.IMAGE_MIME_TYPES))
 def test_finalize_accepts_each_bounded_image_type_at_exact_size_limit(engine, now, mime_type):
     state = engine.snapshot()
     task = photo_task(state, now)

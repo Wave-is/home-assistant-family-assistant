@@ -20,8 +20,10 @@ from .validation import revision as strict_revision
 
 PURPOSE = "task_report"
 FAULT_PURPOSE = "maintenance_fault"
-PURPOSES = frozenset({PURPOSE, FAULT_PURPOSE})
-MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+DOCUMENT_PURPOSE = "equipment_document"
+PURPOSES = frozenset({PURPOSE, FAULT_PURPOSE, DOCUMENT_PURPOSE})
+IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+MIME_TYPES = IMAGE_MIME_TYPES | {"application/pdf"}
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_VERIFIED_BYTES = 250 * 1024 * 1024
 MAX_PENDING_MEMBER = 5
@@ -57,9 +59,20 @@ def _version(value, field="revision") -> int:
         raise DomainError("invalid_field", field) from None
 
 
-def _modules(state: dict) -> None:
+def mimes_for(purpose) -> frozenset:
+    if purpose == DOCUMENT_PURPOSE:
+        return MIME_TYPES
+    return (
+        IMAGE_MIME_TYPES
+        if isinstance(purpose, str) and purpose in {PURPOSE, FAULT_PURPOSE}
+        else frozenset()
+    )
+
+
+def _modules(state: dict, purpose=PURPOSE) -> None:
     modules = state.get("settings", {}).get("modules", [])
-    if not isinstance(modules, list) or "tasks" not in modules:
+    required = "maintenance" if purpose == DOCUMENT_PURPOSE else "tasks"
+    if not isinstance(modules, list) or required not in modules:
         raise DomainError("module_disabled")
 
 
@@ -301,13 +314,21 @@ def _reservation_fields(payload: dict) -> set[str]:
     purpose = payload.get("purpose")
     if not isinstance(purpose, str) or purpose not in PURPOSES:
         raise DomainError("invalid_field", "purpose")
-    target = {"task_id", "task_revision"} if purpose == PURPOSE else {"fault_id", "fault_revision"}
+    target = {
+        PURPOSE: {"task_id", "task_revision"},
+        FAULT_PURPOSE: {"fault_id", "fault_revision"},
+        DOCUMENT_PURPOSE: {"asset_id", "asset_revision"},
+    }[purpose]
     return {"purpose", "uploader_revision", *target}
 
 
 def _payload_target(state: dict, actor: dict, payload: dict) -> tuple[dict, dict]:
     if payload["purpose"] == PURPOSE:
         return _task_scope(state, actor, payload["task_id"], payload["task_revision"])
+    if payload["purpose"] == DOCUMENT_PURPOSE:
+        from .asset_documents import upload_target
+
+        return upload_target(state, actor, payload["asset_id"], payload["asset_revision"])
     from .fault_photos import upload_target
 
     return upload_target(state, actor, payload["fault_id"], payload["fault_revision"])
@@ -331,9 +352,19 @@ def _reserved_authority(state: dict, actor: dict, record: dict) -> tuple[dict, d
     ):
         raise DomainError("forbidden")
     target = scope["intended_target"]
+    if record.get("status") == "available" and record.get("mime_type") not in mimes_for(
+        record["purpose"]
+    ):
+        raise DomainError("invalid_field", "mime_type")
     if record["purpose"] == PURPOSE:
         task, current_target = _task_scope(
             state, actor, target.get("task_id"), target.get("task_revision")
+        )
+    elif record["purpose"] == DOCUMENT_PURPOSE:
+        from .asset_documents import upload_target
+
+        task, current_target = upload_target(
+            state, actor, target.get("asset_id"), target.get("asset_revision")
         )
     else:
         from .fault_photos import upload_target
@@ -360,7 +391,7 @@ def finalize(
     record = _record(ctx.state, media_id)
     _blob_key(record)
     requested_revision = _version(revision)
-    if verifiedmime not in MIME_TYPES:
+    if verifiedmime not in mimes_for(record.get("purpose")):
         raise DomainError("invalid_field", "mime_type")
     if type(size) is not int or not 1 <= size <= MAX_FILE_BYTES:
         raise DomainError("invalid_field", "size_bytes")
@@ -502,6 +533,10 @@ def purge_task_report(
 
 
 def _attached_reference(state: dict, actor: dict, record: dict) -> bool:
+    if record.get("purpose") == DOCUMENT_PURPOSE:
+        from .asset_documents import attached_reference
+
+        return attached_reference(state, actor, record)
     if record.get("purpose") == FAULT_PURPOSE:
         from .fault_photos import attached_reference
 
@@ -555,13 +590,17 @@ def authorize_blob(state: dict, actor: dict, media_id, now) -> dict:
     record = _record(state, media_id)
     _blob_key(record)
     status = record["status"]
+    if status in {"available", "attached"} and record.get("mime_type") not in mimes_for(
+        record.get("purpose")
+    ):
+        raise DomainError("forbidden")
     if status in PENDING:
-        _modules(state)
+        _modules(state, record.get("purpose"))
         _reserved_authority(state, current, record)
         if timestamp(now, "now") >= timestamp(record.get("expires_at"), "expires_at"):
             raise DomainError("forbidden")
     elif status == "attached":
-        _modules(state)
+        _modules(state, record.get("purpose"))
         if not _attached_reference(state, current, record):
             raise DomainError("forbidden")
     else:

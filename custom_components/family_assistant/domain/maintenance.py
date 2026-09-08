@@ -750,6 +750,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
     _require_module(ctx.state)
+    if action in {"document_attach", "document_purge"}:
+        from . import asset_documents
+
+        return asset_documents.handle(ctx, action, payload)
     if action in {"fault_photo_attach", "fault_photo_purge"}:
         from . import fault_photos
 
@@ -840,6 +844,8 @@ def view(state: dict, actor: dict) -> dict:
     faults = _bucket(state, "faults")
     logs = _bucket(state, "service_logs")
     if parent:
+        from . import asset_documents
+
         services = [
             _public_service(series, series_current(state, series))
             for series in state.get("task_series", {}).values()
@@ -853,6 +859,7 @@ def view(state: dict, actor: dict) -> dict:
             public["can_report"] = current_asset
             public_assets.append(public)
         return {
+            "documents": asset_documents.view(state, current),
             "assets": public_assets,
             "faults": [
                 _public_fault(state, item, parent=True, actor=current) for item in faults.values()
@@ -915,6 +922,11 @@ def view(state: dict, actor: dict) -> dict:
 
 def authorize_replay(ctx: Context, action: str, payload: dict) -> None:
     """Recheck the current actor and dependent module before returning an opaque receipt."""
+    if action in {"document_attach", "document_purge"}:
+        from . import asset_documents
+
+        asset_documents.authorize_replay(ctx, action, payload)
+        return
     if action in {"fault_photo_attach", "fault_photo_purge"}:
         from . import fault_photos
 

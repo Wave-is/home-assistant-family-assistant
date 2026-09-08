@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.16 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.17 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload; media extensions pending |
@@ -24,7 +24,7 @@ Nothing is production-ready solely because a mock test passes.
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; explicit one-week HA calendar draft import tested; photograph import and household acceptance pending |
-| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring text/photo service completion, manual repair history and card; separate initial fault images including authenticated upload/read/purge/Store-reload passed actual HA; documents and production acceptance remain |
+| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring text/photo service completion, manual repair history and card; separate initial fault images and parent-only equipment documents passed authenticated upload/read/purge/Store-reload in actual HA; document release gates and production acceptance remain |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
 | Presence | In progress / unit-, browser- and HA-tested | Independent display and notification-purpose self/guardian consent, HA read permission, source lineage, fresh/unknown evidence; durable bounded private return-home holds/expiry/catch-up tested in actual HA; household acceptance remains |
 | Digests | Implemented / unit-, browser- and HA-tested | Off-default owner schedule, self-only subscriptions, private send-time content, exact replay, quiet hours/expiry and retained-period anti-replay floor; optional independent presence-gated private delivery; household acceptance remains |
@@ -33,10 +33,32 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.16 runtime ZIP/tag verified at109c25cb, all eight Checks jobs passed (34180711105), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.17 runtime ZIP/tag verified at57695ffa, all eight Checks jobs passed (34186485298), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Optional purchase prices in verification, 2026-09-08
+## Equipment documents in verification, 2026-09-08
+
+Alpha.18 candidate adds a distinct parent-private equipment document purpose,
+explicit upload/attach/download, owner-only reviewed purge and retained history.
+The pinned restricted PDF parser is isolated; task/fault image lanes still reject
+PDF. No equipment revisions, service rules, tasks, stock, alarm or court effects.
+RU/UK/EN real-card controls have exact uncertain-request replay, revoked-source
+guards, download-only Blob links and bounded removed-history pagination.
+
+Full Python passed3602/five skips/23 subtests; Ruff470 and privacy/locales passed.
+Main Node passed445; full Chromium209 passed, with four focused document cases and
+Russian mobile visual inspection. Later pagination/strict-ID regressions passed
+the focused Node suite and are included in the final checks. Actual isolated HA
+run81451 passed authenticated document HTTP/WS access, purpose denial, replay,
+owner purge and retained private PDF bytes after Store reload.
+
+An initial lab bootstrap rejected QNAP's bonding_masters control file as if it
+were a network interface. The helper now counts only actual interface directories;
+five synthetic guards verify this does not admit a real interface or capabilities.
+No production configuration was changed. Final frozen runtime, exact-commit CI,
+encrypted restore/upgrade acceptance and publication remain gates.
+
+## Optional purchase prices released, 2026-09-08
 
 Alpha.17 candidate adds explicit purchase-delta totals and currency, immutable
 name/store snapshots and shared-family disclosure. Price is optional and never
@@ -53,7 +75,9 @@ price regressions. Actual HA authenticated optional-price commands, invalid-inpu
 rollback, shared history, exact replay and complete Store reload passed in full
 isolated run86341. The 234-file / 3075598-byte runtime candidate ZIP is827860 bytes,
 SHA-256 `003302d769fa36da61f76154a961142379858198311321a9fd93dc53d308f16a`.
-Exact-commit CI and publication remain gates; production was not changed.
+Published at57695ffa5b61539179f532ae25dd9b0232a04a23; all eight Checks jobs passed
+(34186485298), and tag/target/asset digest and size were verified. Production was
+not changed.
 
 ## Native topology checkpoint verified, 2026-09-08
 

@@ -175,15 +175,32 @@ async def _reap(process):
         raise
 
 
-async def decode_file(path: Path) -> dict:
+def _pdf_dependency_root() -> str:
+    """Resolve only the server-installed dependency, never a user-supplied path."""
+    from importlib.util import find_spec
+
+    spec = find_spec("pypdf")
+    if spec is None or not spec.origin:
+        raise DomainError("media_unavailable")
+    installed = Path(spec.origin).resolve(strict=True)
+    if installed.name != "__init__.py" or installed.parent.name != "pypdf":
+        raise DomainError("media_unavailable")
+    return str(installed.parent.parent)
+
+
+async def decode_document(path: Path) -> dict:
+    return await decode_file(path, document=True)
+
+
+async def decode_file(path: Path, *, document=False) -> dict:
     """Run only our fixed local decoder, with a bounded wall time and response."""
     worker = Path(__file__).with_name("media_validation.py")
+    arguments = [sys.executable, "-I", str(worker), str(path)]
+    if document:
+        arguments.extend(["pdf", await asyncio.to_thread(_pdf_dependency_root)])
     spawning = asyncio.create_task(
         asyncio.create_subprocess_exec(
-            sys.executable,
-            "-I",
-            str(worker),
-            str(path),
+            *arguments,
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
@@ -238,9 +255,11 @@ class MediaStorage:
         clock: Callable[[], datetime],
         *,
         decoder: Callable[[Path], Awaitable[dict]] = decode_file,
+        document_decoder: Callable[[Path], Awaitable[dict]] = decode_document,
     ):
         self.engine, self.root, self.clock = engine, Path(root), clock
         self.decoder = decoder
+        self.document_decoder = document_decoder
         self._busy = set()
         self._active = 0
         self._stopped = False
@@ -311,10 +330,15 @@ class MediaStorage:
             if not total:
                 raise DomainError("media_invalid")
             await _io(_sync_close, stream)
-            verified = await self.decoder(temporary)
+            decoder = (
+                self.document_decoder
+                if original.get("purpose") == media.DOCUMENT_PURPOSE
+                else self.decoder
+            )
+            verified = await decoder(temporary)
             if verified.get("size_bytes") != total or verified.get("sha256") != digest.hexdigest():
                 raise DomainError("media_invalid")
-            if verified.get("mime_type") not in media.MIME_TYPES:
+            if verified.get("mime_type") not in media.mimes_for(original.get("purpose")):
                 raise DomainError("media_invalid")
             await _guard(guard)
             self._record(user_id, media_id, revision, upload=True)

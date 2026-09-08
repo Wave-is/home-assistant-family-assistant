@@ -2,6 +2,7 @@
 
 import { MAINTENANCE_COPY } from "./maintenance-copy.js";
 import { renderFaultPhoto } from "./fault-photo-view.js";
+import { renderAssetDocuments } from "./asset-document-view.js";
 import { FAULT_PHOTO_COPY } from "./fault-photo-copy.js";
 import {
   RECURRENCE_COPY,
@@ -746,6 +747,7 @@ export function renderMaintenance(card, body) {
       }
       if (parent) actions.append(button(copy.manual_service_log, () => openLog(asset)));
       if (actions.children.length) item.append(actions);
+      if (parent) renderAssetDocuments(card,item,asset);
       assetSection.append(item);
     }
     section.append(assetSection);

@@ -1,7 +1,8 @@
 /* Authenticated, bounded client helpers for private Family Assistant images. */
 
-const SEGMENT = /^[A-Za-z0-9_-]{1,128}$/;
+const SEGMENT = /^[A-Za-z0-9_-]{1,128}$(?![\s\S])/;
 const MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const DOCUMENT_MIME_TYPES = new Set([...MIME_TYPES, "application/pdf"]);
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_RECEIPT_BYTES = 64 * 1024;
 const MAX_REVISION = Number.MAX_SAFE_INTEGER;
@@ -171,13 +172,13 @@ function contentLength(response) {
   return result;
 }
 
-export async function uploadMedia(hass, options) {
+async function upload(hass, options, allowed) {
   const scope = validateCommon(hass, options);
   const file = options?.file;
   if (typeof Blob === "undefined" || !(file instanceof Blob)) fail("media_invalid");
   if (!Number.isSafeInteger(file.size) || file.size === 0) fail("media_invalid");
   if (file.size > MAX_BYTES) fail("media_too_large");
-  if (!MIME_TYPES.has(file.type)) fail("media_invalid");
+  if (!allowed.has(file.type)) fail("media_invalid");
 
   const response = await request(hass, scope, {
     method: "PUT",
@@ -216,7 +217,7 @@ export async function uploadMedia(hass, options) {
   return receipt;
 }
 
-export async function downloadMedia(hass, options) {
+async function download(hass, options, allowed) {
   const scope = validateCommon(hass, options);
   const response = await request(hass, scope, {
     method: "GET",
@@ -225,7 +226,7 @@ export async function downloadMedia(hass, options) {
     },
   });
   const mimeType = header(response, "content-type");
-  if (!MIME_TYPES.has(mimeType)) fail("media_invalid");
+  if (!allowed.has(mimeType)) fail("media_invalid");
   const expectedLength = contentLength(response);
   const body = await boundedBody(
     response,
@@ -238,3 +239,10 @@ export async function downloadMedia(hass, options) {
   current(scope.isCurrent);
   return new Blob(body.chunks, { type: mimeType });
 }
+
+export const uploadMedia = (hass, options) => upload(hass, options, MIME_TYPES);
+export const downloadMedia = (hass, options) => download(hass, options, MIME_TYPES);
+// Deliberately distinct entry points. Image consumers cannot opt into PDFs via
+// untrusted options, MIME hints or a changed stored media reference.
+export const uploadDocument = (hass, options) => upload(hass, options, DOCUMENT_MIME_TYPES);
+export const downloadDocument = (hass, options) => download(hass, options, DOCUMENT_MIME_TYPES);

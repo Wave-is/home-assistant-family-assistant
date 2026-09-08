@@ -24,6 +24,7 @@ _MIME_EXTENSION = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    "application/pdf": "pdf",
 }
 _PRIVATE_HEADERS = {
     "Cache-Control": "private, no-store",
