@@ -203,6 +203,9 @@ class NetworkManager:
                         kid_writable=self.entry.options.get("mikrotik", {}).get("allow_kid_control")
                         is True,
                     )
+                    from .watch import observe_backend
+
+                    observe_backend(ctx.state, self._backend)
 
                 await self.runtime.engine.background_update("network_inventory", now, save)
                 self.runtime.health["mikrotik"] = "network_connected"

@@ -154,6 +154,13 @@ async def route(
     t = COPY.get(language, COPY["en"])
 
     def saved(result):
+        if "watch_revision" in result and type(result.get("enabled")) is bool:
+            from .watch_messages import COMMAND_COPY
+
+            return PersonalReply(
+                COMMAND_COPY.get(language, COMMAND_COPY["en"])["on" if result["enabled"] else "off"]
+            )
+
         def scoped(value):
             records = result.get("items", [result])
             return (
@@ -226,6 +233,7 @@ async def route(
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
         from .admission import COPY as ADMISSION_COPY
+        from .watch_messages import COMMAND_COPY
 
         return (
             t["help"]
@@ -233,6 +241,7 @@ async def route(
             + calendar.help_text(language)
             + routines.help_text(language)
             + ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["help"]
+            + COMMAND_COPY.get(language, COMMAND_COPY["en"])["help"]
         )
     from .network import parsed as parse_network
     from .network import status as network_status
@@ -242,6 +251,38 @@ async def route(
         if "mikrotik" not in view["settings"]["modules"]:
             raise DomainError("module_disabled")
         action, payload = network_intent
+        if action == "read.network_watch_toggle":
+            from ..network.watch import public as watch_public
+            from .admission import COPY as ADMISSION_COPY
+
+            watch = watch_public(engine.snapshot(), actor)
+            if not private:
+                return ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["private"]
+            enabled = payload["enabled"]
+            if (enabled and watch["effective"]) or (not enabled and not watch["enabled"]):
+                return saved({"watch_revision": watch["watch_revision"], "enabled": enabled})
+            payload = {
+                "actor_revision": watch["actor_revision"],
+                "watch_revision": watch["watch_revision"],
+                "enabled": enabled,
+                "min_interval_minutes": watch["min_interval_minutes"],
+            }
+            if enabled:
+                from ..network.admission_inventory import observation_token
+
+                payload["observation_token"] = observation_token(engine.snapshot()["network"], now)
+            return saved(
+                await commands.execute(
+                    engine,
+                    actor,
+                    content,
+                    refs,
+                    operation_id,
+                    now,
+                    "mikrotik.admission_watch_set",
+                    payload,
+                )
+            )
         if action == "read.network_admission":
             from .admission import read as read_admission
 

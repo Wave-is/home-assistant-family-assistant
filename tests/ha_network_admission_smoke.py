@@ -128,5 +128,8 @@ async def verify_network_admission(hass, owner_user):
             "PASS: actual HA authenticated local network approval/replay, zero router effects, "
             "private reply source guard, Store reload and outsider denial"
         )
+        from ha_network_watch_smoke import verify_network_watch
+
+        await verify_network_watch(hass, entry, owner_user)
     finally:
         await hass.config_entries.async_remove(entry.entry_id)

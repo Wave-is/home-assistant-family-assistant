@@ -27,8 +27,9 @@ MAC/IP details. Private replies show at most ten unreviewed observations; use th
 card for the rest. Queued details are revoked after source, identity, policy,
 module or freshness changes. No external LLM is needed for these exact commands.
 
-Current mode is **audit only**. Automatic discovery alerts, quarantine and strict
-allowlist enforcement are not implemented by this section. Enforcement requires
+Current mode is **audit only**. Optional self-only private
+[discovery alerts](network-watch.md) are a separate, off-default subscription.
+Quarantine and strict allowlist enforcement are not implemented. Enforcement requires
 separate topology/IPv4/IPv6/FastTrack tests, protected infrastructure exclusions
 and verified router-local recovery. Stored inactive approval rows remain in the
 private ledger; the card currently displays observed rows only. Limits are
@@ -60,8 +61,9 @@ silently deleting history. No auto-pruning is provided in this evaluation slice.
 раскрытия MAC/IP. Ответ содержит до десяти строк, полный наблюдаемый список —
 в карточке. Перед отправкой перепроверяются права, источник и актуальность.
 
-Сейчас это только учёт. Автооповещения о новых устройствах, карантин и строгая
-блокировка ещё не реализованы в этом разделе. Для них нужны отдельные проверки
+Сейчас это только учёт. [Личные оповещения о новых устройствах](network-watch.md)
+включаются отдельно каждым родителем. Карантин и строгая блокировка ещё не
+реализованы. Для них нужны отдельные проверки
 топологии, IPv6/FastTrack и локального аварийного восстановления. Ненаблюдаемые
 одобренные устройства сохраняются в журнале, но пока не выводятся карточкой.
 Лимиты: 1000 строк инвентаря, 1000 одобрений, 1000 планов, 50 архивов источников.
@@ -90,8 +92,9 @@ firewall чи Kid Control. Схвалення не надає мережевог
 не розкриваючи MAC/IP. До десяти рядків у відповіді, решта — у картці.
 Перед надсиланням повторно перевіряються права, джерело та актуальність.
 
-Зараз доступний лише облік. Автосповіщення, карантин і суворий список дозволених
-пристроїв ще не реалізовані цим розділом: потрібні перевірки топології,
+Зараз доступний лише облік. [Особисті сповіщення про нові пристрої](network-watch.md)
+кожен з батьків вмикає окремо. Карантин і суворий список дозволених
+пристроїв ще не реалізовані: потрібні перевірки топології,
 IPv6/FastTrack та локального відновлення. Схвалені ненаблюдувані пристрої
 залишаються в журналі, але поки не показуються карткою. Ліміти: 1000 рядків,
 1000 схвалень, 1000 планів, 50 архівів джерел. Нові зміни зупиняються при

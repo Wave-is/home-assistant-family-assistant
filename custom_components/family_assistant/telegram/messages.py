@@ -239,6 +239,10 @@ def targets(event, state):
     from ..domain.task_delivery import TASK_EVENTS, current_task_event
 
     recipient, key = event["recipient"], event["key"]
+    if key == "network_unreviewed_devices":
+        from .watch_messages import targets as watch_targets
+
+        return watch_targets(state, event)
     if key == "family_digest":
         from ..domain.digests import target as digest_target
 
@@ -319,6 +323,12 @@ def targets(event, state):
 
 
 def render(event, target, state, *, now=None):
+    if event.get("key") == "network_unreviewed_devices":
+        from datetime import UTC, datetime
+
+        from .watch_messages import render as render_watch
+
+        return render_watch(state, event, target, now if now is not None else datetime.now(UTC))
     from ..domain.task_access import personal_task
     from ..domain.task_delivery import TASK_EVENTS
 

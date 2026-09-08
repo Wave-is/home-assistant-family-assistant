@@ -483,6 +483,12 @@ class Engine:
             admission_view = admission.view(self._state, actor, now)
             if admission_view is not None:
                 data["network"]["admission"] = admission_view
+                from ..network import watch
+
+                try:
+                    admission_view["watch"] = watch.public(self._state, actor["id"])
+                except (DomainError, TypeError, ValueError, KeyError):
+                    admission_view["watch"] = {"unavailable": True}
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}
                 for event in self._state["outbox"].values()
@@ -696,6 +702,15 @@ class Engine:
             if "shopping" not in self._state["settings"]["modules"]:
                 raise DomainError("module_disabled")
         elif module == "mikrotik":
+            if action == "mikrotik.admission_watch_set":
+                from ..network import watch
+
+                watch.authorize_replay(
+                    Context(self._state, self._actor(actor_id), now, "watch-replay"),
+                    payload,
+                    result,
+                )
+                return
             if action.startswith("mikrotik.admission_"):
                 from ..network import admission
 
@@ -745,6 +760,9 @@ class Engine:
             polls.tick(ctx)
             poll_reviews.prune(ctx)
             digests.tick(ctx)
+            from ..network import watch
+
+            watch.tick(ctx)
             if working == self._state:
                 return False
             working["revision"] += 1

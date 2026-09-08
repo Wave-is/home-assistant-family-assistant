@@ -187,6 +187,8 @@ def diff_line(key, change, language):
 
 def parsed(state, content, now):
     normalized = " ".join(content.casefold().strip().split()).rstrip("?!. ")
+    if normalized in {"/network_alerts on", "/network_alerts off"}:
+        return "read.network_watch_toggle", {"enabled": normalized.endswith(" on")}
     if normalized in {
         "/unknown_devices",
         "/неизвестные",

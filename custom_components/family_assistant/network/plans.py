@@ -31,6 +31,10 @@ def public(plan):
 
 
 def handle(ctx, action, payload):
+    if action == "admission_watch_set":
+        from . import watch
+
+        return watch.handle(ctx, payload)
     if action.startswith("admission_"):
         from . import admission
 

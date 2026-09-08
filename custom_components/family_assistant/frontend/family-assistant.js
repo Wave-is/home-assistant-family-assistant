@@ -23,6 +23,7 @@ import {renderPolls,reconcilePollsRefresh} from "./polls-view.js";
 import {renderPresence,reconcilePresenceRefresh} from "./presence-view.js";
 import {renderPresenceNotifications,reconcilePresenceNotificationsRefresh} from "./presence-notifications-view.js";
 import {renderNetworkAdmission,reconcileNetworkAdmissionRefresh} from "./network-admission-view.js";
+import {renderNetworkWatch,reconcileNetworkWatchRefresh} from "./network-watch-view.js";
 import {renderDigests,reconcileDigestsRefresh} from "./digests-view.js";
 import {renderMealShopping} from "./meal-shopping-view.js";
 import {renderAvailabilityShell} from "./availability-shell.js";
@@ -246,6 +247,7 @@ export class FamilyCard extends HTMLElement {
     this._conversationDraft=null;this._articleDraft=null;
     this._presenceNotificationsDraft=null;
     this._admissionDraft=null;this._admissionPlanPending={};this._admissionPlanConfirm={};
+    this._networkWatchDraft=null;
     this.render();
     if (this._hass) this.refresh();
   }
@@ -294,6 +296,7 @@ export class FamilyCard extends HTMLElement {
       const presenceForce = reconcilePresenceRefresh(this,previousData);
       const presenceNotificationsForce = reconcilePresenceNotificationsRefresh(this,previousData);
       const admissionForce = reconcileNetworkAdmissionRefresh(this,previousData);
+      const networkWatchForce = reconcileNetworkWatchRefresh(this,previousData);
       const digestsForce = reconcileDigestsRefresh(this,previousData);
       const healthForce = reconcileHealthRefresh(this,previousData);
       const alarmEditorForce = reconcileAlarmEditorRefresh(this,previousData);
@@ -305,7 +308,7 @@ export class FamilyCard extends HTMLElement {
       const mediaForce = reconcileTaskMediaRefresh(this);
       const faultPhotoForce = reconcileFaultPhotos(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -441,6 +444,7 @@ export class FamilyCard extends HTMLElement {
   renderNetwork(body) {
     renderKids(this,body);
     renderNetworkAdmission(this,body);
+    renderNetworkWatch(this,body);
     if(!this.parent){body.append(el("p",this.t.networkParents,"notice"));return;}
     body.append(el("p",this._data.network?.writable?this.t.networkWriteHint:this.t.networkLeaseOnly,"sub"));
     const health=this._data.health?.mikrotik;if(health && health!=="network_connected"){const lang=this._config?.language || this._hass.language?.split("-")[0];body.append(el("p",(ERRORS[lang] || ERRORS.en)[health] || this.t.failure,"notice"));}

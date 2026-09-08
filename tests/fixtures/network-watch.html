@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Private discovery fixture</title><style>body{margin:0;padding:12px;background:#edf4f2;font-family:Arial,sans-serif}main{max-width:650px;margin:auto}</style></head>
+<body><main></main><script type="module">
+import "/custom_components/family_assistant/frontend/family-assistant.js";
+import {watchState,watchTransport} from "./network-watch-data.js";
+const params=new URLSearchParams(location.search),language=params.get("lang")||"en",role=params.get("role")||"parent";
+const state=window.fixture=watchState(role),calls=window.calls=[],transport=watchTransport(state,calls);
+const card=window.card=document.createElement("family-network-card");
+card.setConfig({type:"custom:family-network-card",entry_id:"synthetic-watch",language});
+document.querySelector("main").append(card);
+card.hass={user:{id:`synthetic-${role}`},language,callWS:async message=>transport(message)};
+</script></body></html>

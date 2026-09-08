@@ -63,6 +63,10 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
 
 def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
     """Recheck events whose private source can be revoked before transport."""
+    if event.get("key") == "network_unreviewed_devices":
+        from .network.watch import current
+
+        return current(state, event, now)
     if event.get("key") == "family_digest":
         from .domain.digests import delivery_allowed
 
@@ -191,23 +195,34 @@ class Notifications:
             delivery = event.get("deliveries", {}).get(delivery_id)
             if delivery is None or delivery["state"] != "sending":
                 return None
+
+            def release_unstarted_watch():
+                if event["key"] == "network_unreviewed_devices":
+                    from .network.watch import release_undispatched
+
+                    release_undispatched(ctx, event)
+
             if not _delivery_current(ctx.state, event, ctx.now):
+                release_unstarted_watch()
                 delivery["state"] = "superseded"
                 self._aggregate(event)
                 return None
             policy = ctx.state["settings"].get("notifications", {})
             if event["key"] not in URGENT and quiet_until(ctx.now, policy):
+                release_unstarted_watch()
                 delivery["state"] = "pending"
                 delivery.pop("lease_until", None)
                 self._aggregate(event)
                 return None
             current_targets = self.resolve(deepcopy(event), deepcopy(ctx.state))
             if not self._target_current(delivery["target"], current_targets):
+                release_unstarted_watch()
                 delivery["state"] = "superseded"
                 self._aggregate(event)
                 return None
             decision = notification_presence.evaluate(ctx, event, delivery, observer, dispatch=True)
             if decision != "allow":
+                release_unstarted_watch()
                 if decision == "defer":
                     delivery["state"] = "pending"
                     delivery.pop("lease_until", None)
@@ -286,6 +301,12 @@ class Notifications:
                 rate = ctx.state["notification_rates"].get(delivery["id"])
                 if rate and ctx.now < timestamp(rate, "rate"):
                     continue
+                if event["key"] == "network_unreviewed_devices":
+                    from .network.watch import dispatch_ready, reserve_dispatch
+
+                    if not dispatch_ready(ctx.state, event, ctx.now):
+                        continue
+                    reserve_dispatch(ctx, event)
                 ctx.state["notification_rates"][delivery["id"]] = (
                     ctx.now + timedelta(seconds=1)
                 ).isoformat()
