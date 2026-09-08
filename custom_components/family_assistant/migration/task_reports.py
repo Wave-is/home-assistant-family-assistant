@@ -1,5 +1,6 @@
 """Reconstruct explicit task history; never guess the meaning of an old note."""
 
+import hashlib
 from copy import deepcopy
 from datetime import datetime
 
@@ -83,7 +84,12 @@ def project_unsubmitted_photo_history(row, events, mapping, members):
     return _project_history(row, events, mapping, members, reports=True, photo=True)
 
 
-def _project_history(row, events, mapping, members, *, reports, photo=False):
+def project_photo_history(row, events, mapping, members, photos):
+    """Use only the separate, complete, decoded and owner-matched evidence set."""
+    return _project_history(row, events, mapping, members, reports=True, photo=True, photos=photos)
+
+
+def _project_history(row, events, mapping, members, *, reports, photo=False, photos=None):
     """Only validated, current-mapped parent review; no implicit role creation.
 
     Explicit assignment changes archive the prior person's report; the legacy
@@ -104,6 +110,7 @@ def _project_history(row, events, mapping, members, *, reports, photo=False):
     fields = {"report_type": report_type or "none", "report": None}
     current, previous, last_note, state = None, [], None, None
     last_at, sequence = _stamp(row.get("created_at")), 0
+    generation = 0
     if type(events) is not list or not events:
         _fail()
     for event in events:
@@ -144,10 +151,6 @@ def _project_history(row, events, mapping, members, *, reports, photo=False):
         elif state is None:
             _fail()
         elif kind == "submitted":
-            if photo:
-                # Old text references/captions are neither binary evidence nor
-                # authority to fetch/send Telegram messages during migration.
-                _fail("task_photo_evidence_review_required")
             if (
                 not reports
                 or state not in OPEN
@@ -157,6 +160,19 @@ def _project_history(row, events, mapping, members, *, reports, photo=False):
                 _fail()
             _binding(event.get("actor"), mapping, members)
             report = _body(details.get("report"), empty=True)
+            image = None
+            if photo:
+                image = (photos or {}).get(sequence)
+                if (
+                    not isinstance(image, dict)
+                    or image.get("task_id") != row["task_id"]
+                    or image.get("event_sequence") != sequence
+                    or image.get("report_sha256") != hashlib.sha256(report.encode()).hexdigest()
+                    or image.get("assignee") != assignee["member_id"]
+                    or image.get("assignee_revision") != assignee["member_revision"]
+                ):
+                    _fail("task_photo_evidence_review_required")
+                generation += 1
             if current is not None:
                 previous.append(
                     {
@@ -168,8 +184,13 @@ def _project_history(row, events, mapping, members, *, reports, photo=False):
             current = {
                 "assignee": assignee["member_id"],
                 "assignee_revision": assignee["member_revision"],
-                "report": report,
+                "report": None if photo else report,
                 "submitted_at": event["at"],
+                **(
+                    {"report_generation": generation, "report_media": [image["media_id"]]}
+                    if photo
+                    else {}
+                ),
             }
             last_note = report or None
         elif kind == "changes_requested":
@@ -304,4 +325,7 @@ def _project_history(row, events, mapping, members, *, reports, photo=False):
         fields["submitted_at"] = row["submitted_at"]
     if previous:
         fields["previous_reports"] = previous
+    if photo and generation:
+        # Preserve the high-water mark even after a reassignment cleared current.
+        fields["report_generation"] = generation
     return {"fields": fields, "reviewer": reviewer, "review_policy": "household_parents"}

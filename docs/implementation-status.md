@@ -33,10 +33,28 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.18 runtime ZIP/tag verified at1dd84a03, all eight Checks jobs passed (34190052072), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Whole isolated read-only copy HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text-report proposals; complete reviewer-set comparison; fresh native HA shadow setup/reload/owner view and zero workers/entities tested. Coherent real capture, historical photo evidence, reviewed importer/activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.20 runtime ZIP/tag verified at caadea8c, all eight Checks jobs passed (34195267740), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Whole isolated read-only copy HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text/photo-report proposals; complete reviewer-set comparison; fresh native HA shadow setup/reload/owner view and zero workers/entities tested. Explicit historical photo matching, bounded decoding and private HTTP/reload passed; coherent real capture, reviewed importer/activation and controlled cutover remain pending |
 
-## Whole shadow copy in verification, 2026-09-08
+## Historical photo evidence in verification, 2026-09-08
+
+An internal preparation API requires complete owner-matched source event/reference
+digests and actual selected bytes. The existing bounded POSIX decoder checks images;
+no Telegram lookup or supplied filename is used. Current and prior report rounds
+keep their assignee revisions, separate attachments and generation high-water marks.
+The whole copy carries private Store metadata AND exact private blobs; archive
+replay redecodes all files and checks the frozen mapping. This does not prove image
+meaning or create a public import/matching/activation endpoint.
+
+Full Python3682/five skips/23 subtests passed, including26 new cases. The local
+Windows suite uses the actual verifier on fixed generated fixtures; the resource-
+limited helper correctly refuses Windows. Native HA82355 passed actual bounded
+decoding, archive replay, complete Store/blob reload, authenticated owner GET,
+child denial and zero workers. Main Node448/122 pretests and full Chromium212
+passed; exact committed release CI/publication remain pending. No real source
+export or production data changed.
+
+## Whole shadow copy released, 2026-09-08
 
 Pure whole-candidate construction rejects nonempty targets, any blocked source
 record and changed reviewer sets. Tasks/reminders retain IDs; all other core IDs
@@ -53,8 +71,12 @@ and the Russian layout was visually inspected. Final focused actual HA56501 pass
 on a newly created shadow entry before any ordinary setup, with zero entity registry
 records and no providers. An earlier reused-entry fixture correctly exposed retained
 ordinary entity registry records and was replaced by this fresh-target acceptance.
-Final Python3656/five skips/23 subtests and full Chromium212 passed. Final committed
-CI verification/publication remain gates. There is no public import/activation endpoint and no
+Final Python3656/five skips/23 subtests and full Chromium212 passed. Published
+alpha20 at caadea8c86b6bed9388fe589eb578c73395d2e1e; all eight Checks34195267740
+passed. Tag/target and runtime archive verified:241 files/3144799 runtime bytes,
+ZIP848007 bytes, SHA256
+`6d0a88845e7cfa328817fbc7e56e1f1f54e9878b0bd54235b563cf5b77332e6a`.
+There is no public import/activation endpoint and no
 real source capture, historical-photo resolution or household cutover claim.
 
 ## Migration reviewer comparison released, 2026-09-08

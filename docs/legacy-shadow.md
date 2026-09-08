@@ -32,7 +32,10 @@ Only a current owner can inspect the family projection. Cards show a localized
 read-only notice, visible counts and up to 20 records per section with no mutation
 controls. Source archives, identities and fingerprints never enter diagnostics.
 
-This does **not** verify coherent real source capture, resolve old photo evidence,
+Explicitly matched historical images can now accompany the copy; see the
+[photo evidence contract and limitations](legacy-photo-evidence.md).
+
+This does **not** verify coherent real source capture, automatically resolve old photo evidence,
 authorize changed reviewer sets, transfer real bot ownership, or provide a cutover
 and activation procedure. Those remain separate gates. Validation uses fictional
 sources and isolated actual Home Assistant Store/auth/Options/reload tests only.
@@ -55,7 +58,10 @@ sources and isolated actual Home Assistant Store/auth/Options/reload tests only.
 специальную схему этой копии. Карточки показывают предупреждение и первые 20
 доступных записей каждого раздела без кнопок изменения.
 
-Это ещё не проверка реального захвата старой базы, не восстановление фотоотчётов
+Явно сопоставленные файлы фотоотчётов теперь можно включить в копию; см.
+[правила проверки фотографий](legacy-photo-evidence.md#русский).
+
+Это ещё не проверка реального захвата старой базы, не автоматическое восстановление фотоотчётов
 и не переключение домашнего бота. Согласованный захват, неоднозначные права,
 фотографии и процедура включения требуют отдельной проверки. Рабочая домашняя
 установка этим релизом не заменялась.
@@ -78,7 +84,10 @@ sources and isolated actual Home Assistant Store/auth/Options/reload tests only.
 спеціальну схему копії. Картки показують попередження та перші 20 доступних
 записів кожного розділу без кнопок зміни.
 
-Це ще не перевірка реального знімка старої бази, не відновлення фотозвітів та не
+Явно зіставлені файли фотозвітів тепер можна додати до копії; див.
+[правила перевірки фотографій](legacy-photo-evidence.md#українська).
+
+Це ще не перевірка реального знімка старої бази, не автоматичне відновлення фотозвітів та не
 перемикання домашнього бота. Узгоджений знімок, неоднозначні права, фотографії
 та процедура активації потребують окремої перевірки. Робочу домашню установку
 цим релізом не замінено.

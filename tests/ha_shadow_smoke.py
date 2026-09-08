@@ -1,5 +1,6 @@
 """Actual isolated HA Store/HTTP/Options/reload acceptance of a whole shadow copy."""
 
+import json
 from datetime import UTC, datetime
 from types import MappingProxyType
 
@@ -7,7 +8,7 @@ from ha_legacy_archive_smoke import synthetic_source
 from ha_presence_smoke import _request
 
 
-async def verify_shadow(hass, owner_user):
+async def verify_shadow(hass, owner_user, *, photos=False):
     from homeassistant.config_entries import ConfigEntry, ConfigEntryState
     from homeassistant.helpers.storage import Store
 
@@ -35,6 +36,13 @@ async def verify_shadow(hass, owner_user):
     )
     try:
         assistant, court, mapping, members = synthetic_source(lifecycle=True)
+        if photos:
+            data = json.loads(assistant)
+            data["data"]["ledger"]["tasks"]["T000004"]["report_type"] = "photo"
+            for event in data["data"]["ledger"]["history"]:
+                if event["task_id"] == "T000004" and event["type"] == "created":
+                    event["details"]["report_type"] = "photo"
+            assistant = json.dumps(data).encode()
         child = await hass.auth.async_create_user("Synthetic shadow child")
         target = new_state(owner_user.id, entry.title, modules=[])
         for member in members.values():
@@ -55,8 +63,45 @@ async def verify_shadow(hass, owner_user):
                 if row.get("requires_report") is True
             },
         }
+        prepared = datetime(2026, 9, 8, tzinfo=UTC)
+        evidence = None
+        if photos:
+            from ha_media_smoke import _image
+
+            from custom_components.family_assistant.migration.photo_evidence import (
+                async_prepare_photo_evidence,
+                async_restore_photo_evidence,
+                submission_inventory,
+            )
+
+            inventory = submission_inventory(review, members=members)
+            choices, content = [], {}
+            for index, row in enumerate(inventory):
+                key = f"selected_{index}"
+                choices.append(
+                    {key: row[key] for key in ("task_id", "event_sequence", "report_sha256")}
+                    | {"attachment_key": key}
+                )
+                content[key] = _image("PNG")
+            evidence = await async_prepare_photo_evidence(
+                review,
+                members=members,
+                source_review_fingerprint=review.summary()["fingerprint"],
+                confirmed_by="owner",
+                prepared_at=prepared,
+                confirmations=choices,
+                attachments=content,
+            )
+            assert len(evidence.private_blobs()) == 3
+            restored = await async_restore_photo_evidence(
+                review,
+                members=members,
+                archive=evidence.private_data(),
+                blobs=evidence.private_blobs(),
+            )
+            assert restored.private_data() == evidence.private_data()
         candidate = build_shadow_candidate(
-            review, target, reviewer_policy=policy, prepared_at=datetime(2026, 9, 8, tzinfo=UTC)
+            review, target, reviewer_policy=policy, prepared_at=prepared, photo_evidence=evidence
         )
         expected = candidate.private_state()
         store = Store(hass, 1, f"family_assistant.{entry.entry_id}")
@@ -69,6 +114,10 @@ async def verify_shadow(hass, owner_user):
             assert entry.state == ConfigEntryState.LOADED
             runtime = entry.runtime_data
             assert runtime.engine.shadow_mode
+            if photos and not turn:
+                await hass.async_add_executor_job(
+                    _stage_synthetic_blobs, runtime.media.root, candidate.private_blobs()
+                )
             from homeassistant.helpers import entity_registry
 
             registry = entity_registry.async_get(hass)
@@ -93,6 +142,32 @@ async def verify_shadow(hass, owner_user):
                 and response["result"]["read_only"] == "migration_shadow_read_only"
             )
             assert len(response["result"]["tasks"]) == 3
+            if photos:
+                from aiohttp import ClientSession
+                from ha_media_smoke import _http, _token
+
+                task = next(row for row in response["result"]["tasks"] if row["id"] == "T000004")
+                assert len(task["report_attachments"]) == 1
+                assert len(task["previous_reports"]) == 2
+                assert all(len(row["report_attachments"]) == 1 for row in task["previous_reports"])
+                async with (
+                    _token(hass, owner_user) as owner_token,
+                    _token(hass, child) as child_token,
+                    ClientSession() as session,
+                ):
+                    for image in expected["media"].values():
+                        url = f"http://127.0.0.1:8123/api/family_assistant/media/{entry.entry_id}/{image['id']}"
+                        status, headers, body = await _http(
+                            session, "GET", url, owner_token, image["revision"]
+                        )
+                        assert (
+                            status == 200 and body == candidate.private_blobs()[image["blob_key"]]
+                        )
+                        assert "no-store" in headers.get("Cache-Control", "")
+                        status, _, _ = await _http(
+                            session, "GET", url, child_token, image["revision"]
+                        )
+                        assert status == 403
             denied = await _request(hass, entry, child, 8802)
             assert not denied["success"] and denied["error"]["code"] == "forbidden"
             mutation = await _request(
@@ -124,8 +199,25 @@ async def verify_shadow(hass, owner_user):
             "PASS: whole shadow native Store/reload, owner-only authenticated view, "
             "command/Options denial, zero providers/scheduler and unchanged bytes"
         )
+        if photos:
+            print(
+                "PASS: historical photo rounds, actual bounded decoder/archive replay, "
+                "native Store/blob reload, owner-only authenticated HTTP bytes and zero workers"
+            )
     finally:
         await hass.config_entries.async_remove(entry.entry_id)
+    if not photos:
+        await verify_shadow(hass, owner_user, photos=True)
+
+
+def _stage_synthetic_blobs(root, blobs):
+    """Fixture-only exclusive binary staging; not a production import endpoint."""
+    from custom_components.family_assistant.media_storage import _directory, _path
+
+    _directory(root)
+    for key, content in blobs.items():
+        with _path(root, key).open("xb") as stream:
+            stream.write(content)
 
 
 async def main():

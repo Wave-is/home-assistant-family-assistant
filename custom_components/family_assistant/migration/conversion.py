@@ -12,7 +12,7 @@ from .court_plan import build_court_plan
 from .review import LegacyReview
 from .reviewer_policy import ReviewerPolicyError, build_reviewer_policy_review
 from .shopping_plan import build_shopping_plan
-from .task_plan import build_task_plan
+from .task_plan import TaskPlanError, build_task_plan
 
 
 class ConversionError(ValueError):
@@ -45,7 +45,7 @@ class ConversionReview:
 
 
 def build_conversion_review(
-    review: LegacyReview, timezone: str, *, members=None, reviewer_policy=None
+    review: LegacyReview, timezone: str, *, members=None, reviewer_policy=None, photo_evidence=None
 ) -> ConversionReview:
     if type(review) is not LegacyReview or not review.matches_members(members):
         raise ConversionError("review_changed")
@@ -53,9 +53,13 @@ def build_conversion_review(
         alarm_plan = build_alarm_plan(review, timezone, members=members)
     except AlarmPlanError:
         raise ConversionError("invalid_timezone") from None
+    try:
+        task_plan = build_task_plan(review, members=members, photo_evidence=photo_evidence)
+    except TaskPlanError as error:
+        raise ConversionError(str(error)) from None
     plans = {
         "alarms": alarm_plan,
-        "tasks": build_task_plan(review, members=members),
+        "tasks": task_plan,
         "shopping": build_shopping_plan(review, members=members),
         "court": build_court_plan(review, members=members),
     }
@@ -71,6 +75,11 @@ def build_conversion_review(
             "timezone": timezone,
             "reviewer_authority": authority.private_data() if authority else None,
             "archive": json.loads(encode_private_review(review, members=members)),
+            **(
+                {"photo_evidence": photo_evidence.private_data()}
+                if photo_evidence is not None
+                else {}
+            ),
             "plans": {
                 name: {key: value for key, value in plan.private_data().items() if key != "archive"}
                 for name, plan in plans.items()

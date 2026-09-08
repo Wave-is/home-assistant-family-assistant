@@ -8,11 +8,13 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .photo_evidence import PhotoEvidence, PhotoEvidenceError
 from .preflight import _text
 from .review import LegacyReview
 from .task_progress import project_overdue_progress
 from .task_reports import (
     ReportHistoryError,
+    project_photo_history,
     project_text_history,
     project_unreported_history,
     project_unsubmitted_photo_history,
@@ -49,7 +51,7 @@ class TaskPlan:
         return json.loads(self._private_payload)
 
 
-def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
+def _record(row: dict, mapping: dict, history: list, members: dict, photos=None) -> dict:
     kind = row.get("kind")
     if kind not in {"task", "reminder"}:
         raise TaskPlanError("task_kind_unsupported")
@@ -71,7 +73,11 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
                     if report_type == "text"
                     else project_unsubmitted_photo_history
                 )
-                report_projection = projector(row, history, mapping, members)
+                report_projection = (
+                    project_photo_history(row, history, mapping, members, photos)
+                    if report_type == "photo" and photos is not None
+                    else projector(row, history, mapping, members)
+                )
             except ReportHistoryError as error:
                 raise TaskPlanError(str(error)) from None
         else:
@@ -205,11 +211,22 @@ def _record(row: dict, mapping: dict, history: list, members: dict) -> dict:
     }
 
 
-def build_task_plan(review: LegacyReview, *, members=None) -> TaskPlan:
+def build_task_plan(review: LegacyReview, *, members=None, photo_evidence=None) -> TaskPlan:
     if type(review) is not LegacyReview:
         raise TaskPlanError("invalid_review")
     if not review.matches_members(members):
         raise TaskPlanError("review_changed")
+    photos = None
+    if photo_evidence is not None:
+        if type(photo_evidence) is not PhotoEvidence:
+            raise TaskPlanError("photo_evidence_invalid")
+        try:
+            photo_evidence.require_matches(review, members)
+        except PhotoEvidenceError as error:
+            raise TaskPlanError(str(error)) from None
+        photos = {}
+        for record in photo_evidence.private_data()["records"]:
+            photos.setdefault(record["task_id"], {})[record["event_sequence"]] = record
     assistant, _, mapping = review.private_data()
     ledger = assistant["ledger"] if "ledger" in assistant else assistant
     tasks = ledger.get("tasks", {})
@@ -228,6 +245,7 @@ def build_task_plan(review: LegacyReview, *, members=None) -> TaskPlan:
                     mapping,
                     [event for event in archive["history"] if event["task_id"] == identifier],
                     members,
+                    photos.get(identifier, {}) if photos is not None else None,
                 )
             )
         except TaskPlanError as error:

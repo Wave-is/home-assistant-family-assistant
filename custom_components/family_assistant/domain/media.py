@@ -600,7 +600,14 @@ def authorize_blob(state: dict, actor: dict, media_id, now) -> dict:
         if timestamp(now, "now") >= timestamp(record.get("expires_at"), "expires_at"):
             raise DomainError("forbidden")
     elif status == "attached":
-        _modules(state, record.get("purpose"))
+        if "migration_shadow" in state:
+            from .shadow import validate
+
+            validate(state)
+            if current.get("role") != "owner" or record.get("purpose") != PURPOSE:
+                raise DomainError("forbidden")
+        else:
+            _modules(state, record.get("purpose"))
         if not _attached_reference(state, current, record):
             raise DomainError("forbidden")
     else:

@@ -73,6 +73,7 @@ def _empty_target(target):
 class ShadowCandidate:
     _state: bytes = field(repr=False)
     _summary: bytes = field(repr=False)
+    _blobs: tuple[tuple[str, bytes], ...] = field(default=(), repr=False)
 
     def __repr__(self):
         return "ShadowCandidate(private=True, activation_available=False)"
@@ -84,9 +85,18 @@ class ShadowCandidate:
     def summary(self):
         return json.loads(self._summary)
 
+    def private_blobs(self):
+        """Verified private bytes for a future all-or-nothing Store/blob installer."""
+        return dict(self._blobs)
+
 
 def build_shadow_candidate(
-    review: LegacyReview, target: dict, *, reviewer_policy: dict, prepared_at: datetime
+    review: LegacyReview,
+    target: dict,
+    *,
+    reviewer_policy: dict,
+    prepared_at: datetime,
+    photo_evidence=None,
 ) -> ShadowCandidate:
     """Reject any blocked record/policy difference; no partial module import."""
     _empty_target(target)
@@ -99,6 +109,7 @@ def build_shadow_candidate(
             target["settings"]["timezone"],
             members=target["members"],
             reviewer_policy=reviewer_policy,
+            photo_evidence=photo_evidence,
         )
     except DomainError:
         raise ShadowError("shadow_time_invalid") from None
@@ -164,6 +175,51 @@ def build_shadow_candidate(
             != balance["balance"]
         ):
             raise ShadowError("shadow_balance_mismatch")
+    blobs = {}
+    if photo_evidence is not None:
+        evidence = photo_evidence.private_data()
+        if timestamp(evidence["prepared_at"], "prepared_at") > prepared:
+            raise ShadowError("shadow_time_invalid")
+        blobs = photo_evidence.private_blobs()
+        for image in evidence["records"]:
+            task = state["tasks"].get(image["task_id"])
+            if not isinstance(task, dict):
+                raise ShadowError("shadow_photo_reference_invalid")
+            references = [
+                report
+                for report in [task, *task.get("previous_reports", [])]
+                if report.get("report_media") == [image["media_id"]]
+            ]
+            if len(references) != 1 or image["media_id"] in state.get("media", {}):
+                raise ShadowError("shadow_photo_reference_invalid")
+            report = references[0]
+            if (report.get("assignee"), report.get("assignee_revision")) != (
+                image["assignee"],
+                image["assignee_revision"],
+            ):
+                raise ShadowError("shadow_photo_reference_invalid")
+            state.setdefault("media", {})[image["media_id"]] = {
+                "id": image["media_id"],
+                "revision": 1,
+                "purpose": "task_report",
+                "uploader": evidence["confirmed_by"],
+                "uploader_revision": evidence["owner_revision"],
+                "mime_type": image["mime_type"],
+                "size_bytes": image["size_bytes"],
+                "sha256": image["sha256"],
+                "status": "attached",
+                "blob_key": image["blob_key"],
+                "created_at": evidence["prepared_at"],
+                "updated_at": prepared.isoformat(),
+                "expires_at": None,
+                "scope": {
+                    "kind": "task_report",
+                    "task_id": task["id"],
+                    "report_generation": report["report_generation"],
+                    "assignee": image["assignee"],
+                    "assignee_revision": image["assignee_revision"],
+                },
+            }
     state["schema_version"] = SCHEMA
     state["migration_shadow"] = {
         "version": 1,
@@ -177,6 +233,7 @@ def build_shadow_candidate(
         "id_map": id_map,
         "prepared_at": prepared.isoformat(),
         "target_fingerprint": hashlib.sha256(_encode(target)).hexdigest(),
+        **({"photo_evidence": photo_evidence.private_data()} if photo_evidence is not None else {}),
     }
     validate(state)
 
@@ -199,6 +256,12 @@ def build_shadow_candidate(
                 },
                 "coherence_verified": False,
                 "activation_available": False,
+                **(
+                    {"photo_evidence": photo_evidence.summary()}
+                    if photo_evidence is not None
+                    else {}
+                ),
             }
         ),
+        tuple(blobs.items()),
     )
