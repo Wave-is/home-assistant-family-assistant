@@ -167,6 +167,37 @@
   },
   "options": {
     "step": {
+      "legacy_copy": {
+        "title": "Upload a private review bundle",
+        "description": "Advanced migration preview. Configure the family members first, then choose a ZIP prepared using the migration guide. Limit: 96 MiB; 512 photos, 10 MiB each and 64 MiB total. Files remain inside HA. One review at a time, for 15 minutes. No source changes or automation activation.",
+        "data": {
+          "copy_name": "Separate copy name",
+          "bundle": "Private bundle (.zip)",
+          "private_files_reviewed": "I checked the source files and original photos locally"
+        }
+      },
+      "legacy_copy_matches": {
+        "title": "Check these exact associations",
+        "description": "Review all rows. Reviewer sets must be complete; each photo must match its historical submission. This displays associations, not proof of photo content. Incorrect links require a corrected bundle.\n\n{associations}",
+        "data": {
+          "review_token": "Review page",
+          "confirmed": "I checked every association on this page",
+          "discard_review": "Discard this review only (do not delete any created copy)"
+        }
+      },
+      "legacy_copy_review": {
+        "title": "Create this read-only copy?",
+        "description": "Members: {members}; tasks: {tasks}; shopping: {shopping}; score events: {court}; disabled alarms: {alarms}; verified photo files: {photos}.\n\nFingerprint: {fingerprint}\n\nOwner-only inspection. Messages, devices and automatic penalties stay disabled. This does not prove coherent source capture and does not replace the existing family.",
+        "data": {
+          "review_token": "Reviewed fingerprint",
+          "confirmed": "Create this exact separate read-only copy",
+          "discard_review": "Discard this review only (do not delete any created copy)"
+        }
+      },
+      "legacy_copy_complete": {
+        "title": "Read-only copy registered",
+        "description": "Entry: {entry_id}. Find it under Family Assistant integrations or select its name in a dashboard card. The existing family and source were not replaced. Do not remove its read-only seal to activate it."
+      },
       "init": {
         "title": "Family settings",
         "menu_options": {
@@ -183,7 +214,8 @@
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
-          "mikrotik": "MikroTik network"
+          "mikrotik": "MikroTik network",
+          "legacy_copy": "Legacy read-only copy"
         }
       },
       "guided_onboarding": {
@@ -397,6 +429,17 @@
       }
     },
     "error": {
+      "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
+      "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
+      "migration_copy_confirmation_required": "Confirm exactly the page or fingerprint currently displayed.",
+      "migration_copy_busy": "Another review is active. Finish it or wait for its 15-minute window to expire.",
+      "migration_copy_review_changed": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name.",
+      "migration_copy_conversion_required": "Records, reviewer rights or historical photos need correction. No partial copy was created.",
+      "migration_copy_retry_required": "Could not confirm the result. Retry this same reviewed action. After a restart, use the same archive and copy name; do not invent another target.",
+      "migration_copy_not_loaded": "The sealed copy is registered but not loaded. Inspect its integration status; it was not force-started.",
+      "migration_copy_finished": "Read-only review finished. Existing families and source data were not replaced.",
+      "migration_copy_cancelled": "Review discarded. Any already-created copy and saved retry intent were preserved.",
+      "migration_copy_intent_invalid": "Saved retry coordinates do not match this review. They were not overwritten.",
       "article_invalid_url": "Use a public HTTPS page on the standard port, without login details or a fragment.",
       "chat_unavailable": "Conversation has changed or is unavailable. Refresh the card before sending again.",
       "chat_busy": "Several conversations are already in progress. Try again shortly; no new action was started.",
@@ -512,6 +555,17 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
+      "migration_copy_cancelled": "Review discarded. Any already-created copy and saved retry intent were preserved.",
+      "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
+      "migration_copy_confirmation_required": "Confirm exactly the page or fingerprint currently displayed.",
+      "migration_copy_busy": "Another review is active. Finish it or wait for its 15-minute window to expire.",
+      "migration_copy_review_changed": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name.",
+      "migration_copy_conversion_required": "Records, reviewer rights or historical photos need correction. No partial copy was created.",
+      "migration_copy_retry_required": "Could not confirm the result. Retry this same reviewed action. After a restart, use the same archive and copy name; do not invent another target.",
+      "migration_copy_not_loaded": "The sealed copy is registered but not loaded. Inspect its integration status; it was not force-started.",
+      "migration_copy_finished": "Read-only review finished. Existing families and source data were not replaced.",
+      "migration_copy_intent_invalid": "Saved retry coordinates do not match this review. They were not overwritten.",
       "guided_finished": "Nothing was changed. Reopen Configure whenever you want to continue guided setup.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
       "migration_shadow_read_only": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration.",
@@ -576,6 +630,9 @@
     }
   },
   "exceptions": {
+    "migration_copy_busy": {"message": "Another review is active. Finish it or wait for its 15-minute window to expire."},
+    "migration_copy_primary_owner_required": {"message": "Use the original household owner account, also an active Home Assistant administrator."},
+    "migration_copy_review_changed": {"message": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name."},
     "chat_unavailable": {"message": "Conversation has changed or is unavailable. Refresh the card before sending again."},
     "chat_busy": {"message": "Several conversations are already in progress. Try again shortly; no new action was started."},
     "chat_context_expired": {"message": "This request's retry context has expired. Check the current result before sending a new command."},

@@ -240,3 +240,31 @@ async def test_changed_caller_target_after_native_staging_never_registers(port):
     ):
         await port.register()
     assert not port.added and port.values[STORE] == port.candidate.private_state()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("boundary", ["before", JOURNAL, STORE])
+async def test_external_review_authority_is_rechecked_before_all_staging_effects(port, boundary):
+    from custom_components.family_assistant.domain.validation import DomainError
+
+    allowed = boundary != "before"
+
+    async def authorize():
+        if not allowed:
+            raise DomainError("forbidden")
+
+    async def revoke(key):
+        nonlocal allowed
+        if key == boundary:
+            allowed = False
+
+    port.options.after_save = revoke
+    with pytest.raises((DomainError, port.registration.ShadowRegistrationError)):
+        await port.register(authorize=authorize)
+    assert not port.added
+    if boundary == "before":
+        assert not port.writes
+    elif boundary == JOURNAL:
+        assert port.writes == [JOURNAL] and STORE not in port.values
+    else:
+        assert port.values[STORE] == port.candidate.private_state()

@@ -70,7 +70,9 @@ def _verify_blobs(root, blobs):
             raise ShadowInstallError("shadow_install_conflict")
 
 
-async def async_stage_shadow(hass, *, entry_id, user_id, candidate, target, expected_fingerprint):
+async def async_stage_shadow(
+    hass, *, entry_id, user_id, candidate, target, expected_fingerprint, authorize=None
+):
     """Stage only a fresh unregistered entry, or resume its exact private intent.
 
     The caller must obtain a separate explicit owner review before calling this
@@ -115,6 +117,8 @@ async def async_stage_shadow(hass, *, entry_id, user_id, candidate, target, expe
             or domain.get("backup")
         ):
             raise ShadowInstallError("shadow_install_busy")
+        if authorize is not None:
+            await authorize()
 
     await guard()
     try:

@@ -47,6 +47,31 @@ def test_every_domain_error_is_translated():
     assert codes <= errors.keys(), codes - errors.keys()
 
 
+@pytest.mark.parametrize("language", ["en", "ru", "uk"])
+def test_copy_wizard_abort_reasons_and_discard_labels_are_in_native_options_sections(language):
+    translation = json.loads(
+        (PACKAGE / "translations" / f"{language}.json").read_text(encoding="utf-8")
+    )["options"]
+    tree = ast.parse((PACKAGE / "migration" / "copy_flow.py").read_text(encoding="utf-8"))
+    reasons = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name) and node.func.id == "_abort" and len(node.args) > 1:
+            if isinstance(node.args[1], ast.Constant):
+                reasons.add(node.args[1].value)
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "async_abort":
+            reasons.update(
+                keyword.value.value
+                for keyword in node.keywords
+                if keyword.arg == "reason" and isinstance(keyword.value, ast.Constant)
+            )
+    assert "migration_copy_cancelled" in reasons
+    assert reasons <= translation["abort"].keys()
+    for step in ("legacy_copy_matches", "legacy_copy_review"):
+        assert translation["step"][step]["data"]["discard_review"]
+
+
 def test_hacs_single_domain_and_self_contained_runtime():
     domains = [
         p.name

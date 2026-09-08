@@ -9,6 +9,8 @@ is available for an isolated HA instance. The accepted product
 scope is in [the vision](docs/vision.md). The current implementation and test
 evidence are tracked in [implementation status](docs/implementation-status.md).
 Do not replace an existing installation with this development branch.
+An advanced [read-only legacy copy wizard](docs/legacy-copy-wizard.md) is available
+for isolated evaluation; it does not activate or replace the source installation.
 
 The integration is designed for English, Russian and Ukrainian, configurable
 households, and independent modules. Family data and credentials are kept in

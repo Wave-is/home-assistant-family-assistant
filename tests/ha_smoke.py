@@ -347,6 +347,9 @@ async def main():
             from ha_shadow_smoke import verify_shadow
 
             await verify_shadow(hass, user)
+            from ha_copy_wizard_smoke import verify_copy_wizard
+
+            await verify_copy_wizard(hass, user)
             from ha_personal_task_smoke import verify_personal_tasks
 
             personal_id = await verify_personal_tasks(hass, entry, user, child_id)

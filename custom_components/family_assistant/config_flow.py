@@ -173,6 +173,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "presence_sources",
                 "digests",
                 "mikrotik",
+                "legacy_copy",
             ],
         )
 
@@ -188,6 +189,26 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         if self.hass.data[DOMAIN].get("backup"):
             raise DomainError("backup_in_progress")
         return runtime, actor
+
+    async def async_step_legacy_copy(self, user_input=None):
+        from .migration.copy_flow import upload_step
+
+        return await upload_step(self, user_input)
+
+    async def async_step_legacy_copy_matches(self, user_input=None):
+        from .migration.copy_flow import matches_step
+
+        return await matches_step(self, user_input)
+
+    async def async_step_legacy_copy_review(self, user_input=None):
+        from .migration.copy_flow import review_step
+
+        return await review_step(self, user_input)
+
+    async def async_step_legacy_copy_complete(self, user_input=None):
+        from .migration.copy_flow import complete_step
+
+        return await complete_step(self, user_input)
 
     async def async_step_recipes(self, user_input=None):
         from .recipes.options import options_step

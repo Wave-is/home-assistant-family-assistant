@@ -33,10 +33,29 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.23 runtime ZIP/tag verified at c365837c, all eight Checks jobs passed (34203386117), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Whole isolated read-only copy, staging and sealed registration HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text/photo-report proposals; complete reviewer-set comparison. Native Store/blob staging and ConfigEntry registration have exact same-ID retry, including lost write/add acknowledgement. A durable entry seal refuses missing/changed data without creating a blank writable family. Child denial, owner photo HTTP, reload and zero workers/entities passed. Coherent real capture, matching/import wizard, reviewed residue recovery, activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.24 runtime ZIP/tag verified at 71f0f46b, all eight Checks jobs passed (34205977830), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only copy wizard, staging and sealed registration HA-tested | Native authenticated ZIP/FileSelector upload, paged member/reviewer/photo association review, distinct final counts/hash confirmation and separate sealed ConfigEntry passed. Same-package/unchanged-target reupload retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, operator-free bundle/mapping preparation, reviewed residue recovery, activation and controlled cutover remain pending |
 
-## Native shadow staging in release verification, 2026-09-08
+## Private copy wizard release candidate, 2026-09-08
+
+The native Options flow consumes a bounded private ZIP through HA file_upload,
+requires paged exact member/reviewer/photo associations and a separate final
+counts/hash confirmation, then creates an isolated sealed read-only entry. A
+private immutable intent keeps the original ID/time for exact-file/unchanged-
+target retries. Explicit discard releases only the review, never the existing
+copy or saved retry intent. The source prototype and old installation stay intact.
+Bundle preparation and coherent source capture remain operator-assisted.
+
+Full Python3876/five skips/23 subtests passed, including bounded ZIP central/local
+header checks, authority revocation at persistent boundaries, settled cancellation,
+nonce replay and review discard. Node450/141 passed. Native HA47301 passed real
+authenticated upload, two-page review, three historical photos, sealed creation,
+same-bundle retry and unchanged prototype. Final native discard-preservation cases
+and exact committed CI are still pending; no production rollout is claimed.
+Three additional locale tests ensure abort text is in HA's actual Options abort
+section rather than only the similarly named error catalogue.
+
+## Native shadow staging released, 2026-09-08
 
 The internal fresh-entry staging API replays complete source/member/reviewer/photo
 conversion before any write. Current active administrator-owner authorization,
@@ -51,7 +70,9 @@ Native full HA65579 passed actual Store/blob staging, exact retry after a lost
 acknowledgement following an actual commit, child/registered-target denial, fresh
 setup, owner-only historical photo HTTP, zero entities/workers and reload. No
 fixture-only blob copying remains in this test. Node450/141 passed; no frontend
-source changed. Exact committed release gates and publication remain pending.
+source changed. Alpha23 was published from c365837c after all eight Checks34203386117
+jobs passed; tag and runtime asset were verified. Alpha24 adds the separate
+ConfigEntry seal and registration, verified at71f0f46b in Checks34205977830.
 
 ## Reviewed barcodes released, 2026-09-08
 

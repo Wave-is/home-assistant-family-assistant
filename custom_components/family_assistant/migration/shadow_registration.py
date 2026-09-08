@@ -33,7 +33,7 @@ def _encode(value):
 
 
 async def async_register_shadow(
-    hass, *, entry_id, user_id, candidate, target, expected_fingerprint
+    hass, *, entry_id, user_id, candidate, target, expected_fingerprint, authorize=None
 ):
     """Stage then register exactly one sealed, owner-only read-only entry.
 
@@ -79,6 +79,8 @@ async def async_register_shadow(
             raise ShadowRegistrationError("shadow_registration_forbidden")
         if domain.get("backup"):
             raise ShadowRegistrationError("shadow_registration_busy")
+        if authorize is not None:
+            await authorize()
 
     await guard()
     try:
@@ -124,6 +126,7 @@ async def async_register_shadow(
                     candidate=verified,
                     target=selected,
                     expected_fingerprint=expected_fingerprint,
+                    authorize=authorize,
                 )
                 await guard()
                 if hass.config_entries.async_get_entry(entry_id) is not None:
