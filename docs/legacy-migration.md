@@ -8,7 +8,9 @@ Only synthetic examples belong in this repository.
 The current [advanced read-only copy wizard](legacy-copy-wizard.md) combines the
 internal stages described here. [Cross-ledger consistency checks and deterministic
 packaging](legacy-source-links.md) add a refusal boundary, not source repair or
-activation. Operator-assisted source preparation and controlled cutover remain.
+activation. A [source preparation wizard](legacy-preparation.md) accepts the two
+already obtained exports, explicit member/reviewer mappings and historical photos.
+Coherent source capture and controlled cutover remain separate requirements.
 
 ## Source boundaries
 

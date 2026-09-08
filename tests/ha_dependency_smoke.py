@@ -20,6 +20,7 @@ CASES = {
     "restore": "tools/run_restore_acceptance.py",
     "upgrade": "tools/run_upgrade_acceptance.py",
     "hacs": "tools/run_hacs_upgrade_acceptance.py",
+    "copy-resume": "tools/run_copy_resume_acceptance.py",
 }
 
 
@@ -81,7 +82,7 @@ def main() -> int:
             raise RuntimeError("acceptance_script_missing")
         remaining = args.arguments[1:] if args.arguments[:1] == ["--"] else args.arguments
         print("PASS: pinned PDF wheel installed in offline disposable HA container", flush=True)
-        # Fixed Python interpreter and one of the four shipped acceptance scripts.
+        # Fixed Python interpreter and one of the shipped acceptance scripts.
         os.execv(sys.executable, [sys.executable, str(target), *remaining])  # noqa: S606
     except Exception as err:
         # No pip logs, environment, paths or parser output in failure messages.

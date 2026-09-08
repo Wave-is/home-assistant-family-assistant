@@ -27,7 +27,9 @@ uses Core's persistence lifecycle; atomic registration plus filesystem durabilit
 under every possible power failure is not promised. Unknown staging residues still
 need review. The [advanced private-copy wizard](legacy-copy-wizard.md) now calls
 this method after upload and association review. Source bundle/mapping preparation
-remains operator-assisted; there is no activation endpoint.
+uses the [source preparation wizard](legacy-preparation.md). Indexed complete
+attempts can [resume without reupload](legacy-copy-resume.md). Coherent source
+capture still needs its own verified procedure; there is no activation endpoint.
 
 ## Русский
 
@@ -52,8 +54,11 @@ remains operator-assisted; there is no activation endpoint.
 Результат различает регистрацию и реально загруженный просмотрщик. Отключённая или
 ожидающая повтора запись принудительно не запускается. Используется штатное
 сохранение HA; атомарность всех файлов и регистрации при любом сбое питания не
-обещается. Неизвестные остатки файлов требуют разбора. Публичный мастер загрузки,
-сопоставления и включения пока отсутствует.
+обещается. Неизвестные остатки файлов требуют разбора. [Мастер загрузки и проверки
+копии](legacy-copy-wizard.md#русский) вызывает этот метод после явного согласия.
+[Подготовка из двух экспортов](legacy-preparation.md#русский) и
+[продолжение сохранённой копии](legacy-copy-resume.md#русский) также доступны.
+Согласованный экспорт требует отдельной проверки; включение копии пока отсутствует.
 
 ## Українська
 
@@ -77,5 +82,8 @@ remains operator-assisted; there is no activation endpoint.
 Результат розрізняє реєстрацію та справді завантажений переглядач. Вимкнений запис
 або запис, що очікує повтору, примусово не запускається. Використовується штатне
 збереження HA; атомарність усіх файлів та реєстрації за будь-якого збою живлення
-не гарантується. Невідомі залишки файлів потребують розгляду. Публічного майстра
-завантаження, зіставлення та активації ще немає.
+не гарантується. Невідомі залишки файлів потребують розгляду. [Майстер завантаження
+та перевірки копії](legacy-copy-wizard.md#українська) викликає цей метод після згоди.
+[Підготовка з двох експортів](legacy-preparation.md#українська) та
+[продовження збереженої копії](legacy-copy-resume.md#українська) також доступні.
+Узгоджений експорт потребує окремої перевірки; активації копії ще немає.

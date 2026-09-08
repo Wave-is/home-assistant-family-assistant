@@ -33,10 +33,10 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.30 runtime ZIP/tag verified at 3ce1284, all eight Checks jobs passed (34232293825), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30. Native indexed discovery/direct resume without reupload candidate passed; final hardening/CI pending. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.31 runtime ZIP/tag verified at 3b09a80, all eight Checks jobs passed (34237980964), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
 
-## Indexed copy resume candidate, 2026-09-08
+## Indexed copy resume released, 2026-09-08
 
 Only final-confirmed attempts enter a bounded immutable native Store index before
 staging starts. The original active administrator-owner can discover this prototype's
@@ -55,7 +55,19 @@ runtime/authority read-boundary tests and strict bounded record/photo validation
 Full Python72864 passed 4379 tests, five skips and 23 subtests; Node90116 passed
 450 tests plus 154 pretests; Chromium46500 passed 226. Independent read-only AGY77761
 review found no additional material defects. Ruff (556 files), privacy, locale
-parity and the runtime build passed. Exact-commit CI acceptance remains pending.
+parity and the runtime build passed. All eight Checks jobs34237980964 passed exact
+3b09a80. Alpha.31 tag and runtime asset match the frozen commit; no deployment.
+
+A separate two-process acceptance gate passed after this release (native9439).
+Actual HA creates durable synthetic auth/config/Store state, exits the first HA
+process, then resumes in a fresh process without any review/candidate in memory.
+The hashes-only contract does not supply raw source or candidate objects. Fresh
+owner confirmation loads the same sealed ID with zero workers, child denial and
+exact replay; source/index/intents/media remain unchanged. Runtime SHA256 matches
+the released alpha.31 asset. This proves graceful process restart, not power-loss
+atomicity or activation. Runner unit tests passed 31 with one platform skip; full
+Python passed 4398/five skips/23 subtests before the last two runner regressions.
+Ruff/privacy/locales/build passed; ninth CI restart job is awaiting exact-commit CI.
 
 ## Interrupted copy preservation released, 2026-09-08
 

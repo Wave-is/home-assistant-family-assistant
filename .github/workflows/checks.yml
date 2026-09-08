@@ -65,6 +65,27 @@ jobs:
           /work/tests/ha_dependency_smoke.py
           --wheel /work/dependencies/pypdf-6.17.0-py3-none-any.whl --case smoke
 
+  copy-resume-restart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          path: candidate
+          persist-credentials: false
+      - name: Stage pinned public PDF decoder (hash checked inside isolated runner)
+        run: >-
+          python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
+      - name: Native sealed copy resume across two fresh HA processes
+        run: >-
+          docker run --rm --network none --cap-drop ALL
+          --security-opt no-new-privileges --memory 1g
+          --mount type=bind,src=${{ github.workspace }},dst=/work,readonly
+          --entrypoint python ghcr.io/home-assistant/home-assistant:2026.8.2
+          /work/candidate/tests/ha_dependency_smoke.py
+          --wheel /work/dependencies/pypdf-6.17.0-py3-none-any.whl --case copy-resume --
+          --repository /work/candidate --timeout-seconds 300
+
   encrypted-restore:
     runs-on: ubuntu-latest
     timeout-minutes: 25
