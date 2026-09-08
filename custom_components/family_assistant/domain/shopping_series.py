@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..const import PRIVILEGED
 from . import recurrence, shopping
 from .context import Context
+from .gtin import normalize_gtin
 from .validation import DomainError, fields, number, text, timestamp
 
 
@@ -38,6 +39,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "store",
             "note",
             "buyer",
+            "barcode",
             "rule",
             "enabled",
         },
@@ -75,6 +77,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     category = payload.get("category", existing.get("category", ""))
     store = payload.get("store", existing.get("store", ""))
     note = payload.get("note", existing.get("note", ""))
+    barcode = normalize_gtin(payload.get("barcode", existing.get("barcode", "")))
 
     buyer = payload.get("buyer", existing.get("buyer"))
     if buyer is not None:
@@ -106,6 +109,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         "occurrences": existing.get("occurrences", {}),
     }
 
+    if barcode or "barcode" in existing:
+        item["barcode"] = barcode
     ctx.state["shopping_series"][item["id"]] = ctx.touch(item)
     return item
 
@@ -186,6 +191,8 @@ def tick(ctx: Context) -> None:
             }
             if series.get("buyer"):
                 shopping_payload["buyer"] = series["buyer"]
+            if series.get("barcode"):
+                shopping_payload["barcode"] = series["barcode"]
 
             created_item = shopping.handle(child_ctx, "add", shopping_payload)
             created_item["series_id"] = series["id"]

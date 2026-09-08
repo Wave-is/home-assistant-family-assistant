@@ -92,6 +92,15 @@ test("SHOPPING_ITEM_COPY has exact key parity across en, ru, and uk", () => {
   }
 });
 
+test("different or absent GTIN never appears as a merge candidate; history shows original barcode",()=>{
+  const target={id:"a",name:"Same label",revision:1,status:"approved",quantity:1,purchased:0,barcode:"00000096385074",history:[{action:"add",actor:"p1",at:"2026-09-06T08:00:00Z",detail:{barcode:"00000096385074"}}]};
+  const card=createMockCard({shopping:[target,{...target,id:"b"},{...target,id:"c",barcode:"04006381333931"},{...target,id:"d",barcode:""}]});
+  const list=document.createElement("ul"),row=renderShoppingItem(card,list,target);
+  [...row.querySelectorAll("button")].find(b=>b.textContent===SHOPPING_ITEM_COPY.en.action_merge).click();
+  assert.deepEqual(card._shoppingItemAction.candidates.map(item=>item.id),["b"]);
+  assert.match(row.querySelector("details").textContent,/00000096385074/);
+});
+
 test("server Unicode matching and all reviewed revisions survive refreshed data",()=>{
   const target={id:"a",name:"Straße",merge_name:"strasse",status:"approved",quantity:1,purchased:0,unit:"kg",revision:2};
   const source={...target,id:"b",name:"STRASSE",revision:3};

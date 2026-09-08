@@ -9,7 +9,7 @@ Nothing is production-ready solely because a mock test passes.
 | Clean public source and HACS structure | Test prereleases published | Available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
-| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload; media extensions pending |
+| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN metadata/manual entry, recurring preservation and opt-in local browser scanning unit/browser-tested; authenticated barcode add/edit/purchase history and complete Store reload passed. Voice/photo extensions and real-camera acceptance pending |
 | Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders, identity revocation and private reply persistence HA-tested; legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
@@ -33,10 +33,29 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.20 runtime ZIP/tag verified at caadea8c, all eight Checks jobs passed (34195267740), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.21 runtime ZIP/tag verified at ea5c572e, all eight Checks jobs passed (34198253945), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Whole isolated read-only copy HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text/photo-report proposals; complete reviewer-set comparison; fresh native HA shadow setup/reload/owner view and zero workers/entities tested. Explicit historical photo matching, bounded decoding and private HTTP/reload passed; coherent real capture, reviewed importer/activation and controlled cutover remain pending |
 
-## Historical photo evidence in verification, 2026-09-08
+## Reviewed barcodes in release verification, 2026-09-08
+
+Optional GTIN-8/12/13/14 structural validation and canonical metadata flow through
+add/edit, recurring generation, merge guards and purchase history. Reviewed RU/UK/EN
+forms have manual/HID input and a button-only browser-local camera path; no product
+lookup, image upload, guessed name, automatic purchase or child-approval bypass.
+Camera permission/detection is scoped to the current form/identity, stops on
+cancellation/revocation/hiding and has a one-minute bound. Barcode entry also stops
+an outstanding scan; a keyboard scanner's Enter cannot skip the save review.
+
+Python3708/five skips/23 subtests passed; Node450 plus141 pretests passed.
+Full Chromium220 passed, followed by nine focused cases including the added
+scanner-Enter/manual-override regression. Actual HA78618
+passed authenticated barcode add/edit/read, exact replay, invalid-input rollback,
+historical purchase codes and the entire shopping Store comparison after reload.
+Mobile RU review was visually inspected. Camera browser tests use synthetic local
+video and a controlled detector, not a physical device/native-decoder certification.
+Exact commit release checks and publication remain pending.
+
+## Historical photo evidence released, 2026-09-08
 
 An internal preparation API requires complete owner-matched source event/reference
 digests and actual selected bytes. The existing bounded POSIX decoder checks images;
@@ -51,7 +70,8 @@ Windows suite uses the actual verifier on fixed generated fixtures; the resource
 limited helper correctly refuses Windows. Native HA82355 passed actual bounded
 decoding, archive replay, complete Store/blob reload, authenticated owner GET,
 child denial and zero workers. Main Node448/122 pretests and full Chromium212
-passed; exact committed release CI/publication remain pending. No real source
+passed; exact committed alpha21 release CI and publication verified at ea5c572e,
+eight Checks34198253945 passed. No real source
 export or production data changed.
 
 ## Whole shadow copy released, 2026-09-08

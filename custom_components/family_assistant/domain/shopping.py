@@ -6,6 +6,7 @@ import math
 import unicodedata
 
 from .context import Context
+from .gtin import normalize_gtin
 from .shopping_history import record_event
 from .shopping_price import price
 from .validation import DomainError, fields, number, revision, text
@@ -47,6 +48,10 @@ def _metadata(ctx: Context, payload: dict, *, existing=None) -> dict:
         result[field] = _optional_text(value, field, maximum)
     value = payload["buyer"] if "buyer" in payload else (existing or {}).get("buyer")
     result["buyer"] = _buyer(ctx, value)
+    if "barcode" in payload or "barcode" in (existing or {}):
+        code = normalize_gtin(payload.get("barcode", (existing or {}).get("barcode", "")))
+        if code or "barcode" in (existing or {}):
+            result["barcode"] = code
     return result
 
 
@@ -59,7 +64,9 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("forbidden")
     if action == "add":
         fields(
-            payload, {"name", "quantity", "unit", "category", "store", "note", "buyer"}, {"name"}
+            payload,
+            {"name", "quantity", "unit", "category", "store", "note", "buyer", "barcode"},
+            {"name"},
         )
         metadata = _metadata(ctx, payload)
         unit = _optional_text(payload.get("unit", ""), "unit", 32)
@@ -84,6 +91,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 "quantity": item["quantity"],
                 "unit": item["unit"],
                 "status": item["status"],
+                **({"barcode": item["barcode"]} if item.get("barcode") else {}),
             },
         )
         if item["status"] == "pending":
@@ -93,7 +101,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if action == "edit":
         fields(
             payload,
-            {"id", "revision", "name", "category", "store", "note", "buyer"},
+            {"id", "revision", "name", "category", "store", "note", "buyer", "barcode"},
             {"id", "revision", "name", "category", "store", "note", "buyer"},
         )
         item = ctx.record("shopping", payload["id"], revision(payload["revision"]))
@@ -116,7 +124,12 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             raise DomainError("invalid_transition")
         item.update(replacement)
         ctx.touch(item)
-        record_event(ctx, item["id"], "edit", {"fields": changed})
+        record_event(
+            ctx,
+            item["id"],
+            "edit",
+            {"fields": changed, **({"barcode": item["barcode"]} if "barcode" in changed else {})},
+        )
         return item
 
     if action == "merge":
@@ -200,6 +213,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("conflict", "note")
             if src_item.get("buyer") != target_buyer:
                 raise DomainError("conflict", "buyer")
+            if normalize_gtin(src_item.get("barcode", "")) != normalize_gtin(
+                target_item.get("barcode", "")
+            ):
+                raise DomainError("conflict", "barcode")
 
             quantities.append(src_qty)
             purchased_amounts.append(src_purchased)
@@ -286,6 +303,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             "amount": amount,
             "purchased": item["purchased"],
             "remaining": round(item["quantity"] - item["purchased"], 6),
+            **({"barcode": normalize_gtin(item["barcode"])} if item.get("barcode") else {}),
         }
         if paid is not None:
             detail.update(

@@ -1,5 +1,7 @@
 /* Shopping item rendering and copy for Family Assistant card. */
 import { PRICE_COPY, parsePrice, renderPriceFields } from "./shopping-price.js";
+import { normalizeGtin } from "./gtin.js";
+import { barcodeCopy, renderBarcodeCamera, stopBarcodeCamera } from "./shopping-barcode.js";
 
 export const SHOPPING_ITEM_COPY = {
   en: {
@@ -314,6 +316,7 @@ function editorScope(card) {
   return {
     generation: card._generation,
     entry: card._entry,
+    user: card._hass?.user?.id ?? null,
     actor: actor.id,
     actorRevision: actor.revision,
     role: card._data.role,
@@ -364,6 +367,7 @@ function blankDraft(card, item = null) {
       category: item?.category || "",
       store: item?.store || "",
       note: item?.note || "",
+      barcode: item?.barcode || "",
       buyer: item?.buyer || ""
     },
     original: item ? {
@@ -371,6 +375,7 @@ function blankDraft(card, item = null) {
       category: item.category || "",
       store: item.store || "",
       note: item.note || "",
+      barcode: item.barcode || "",
       buyer: item.buyer || ""
     } : null,
     pending: null,
@@ -381,6 +386,7 @@ function blankDraft(card, item = null) {
 export function openShoppingEditor(card, item = null) {
   const draft = blankDraft(card, item);
   if (!draft) return false;
+  stopBarcodeCamera(card);
   card._shoppingEditorDraft = draft;
   card._shoppingItemAction = null;
   card._shoppingSeriesDraft = null;
@@ -393,6 +399,7 @@ export function openShoppingEditor(card, item = null) {
 }
 
 export function disposeShoppingEditor(card) {
+  stopBarcodeCamera(card);
   card._shoppingEditorDraft = null;
 }
 
@@ -464,6 +471,7 @@ function payloadFor(draft) {
     note: values.note.trim(),
     buyer: values.buyer || null
   };
+  if (values.barcode || draft.original?.barcode) common.barcode = normalizeGtin(values.barcode);
   if (draft.mode === "edit") {
     return Object.freeze({id: draft.itemId, revision: draft.itemRevision, ...common});
   }
@@ -476,6 +484,8 @@ function payloadFor(draft) {
 
 function validDraft(card, draft) {
   const values = draft.values;
+  let barcode;
+  try { barcode = normalizeGtin(values.barcode); } catch { return false; }
   if (
     typeof values.name !== "string" ||
     !values.name.trim() ||
@@ -498,6 +508,7 @@ function validDraft(card, draft) {
       category: values.category.trim(),
       store: values.store.trim(),
       note: values.note.trim(),
+      barcode,
       buyer: values.buyer
     };
     if (Object.keys(normalized).every(key => normalized[key] === draft.original?.[key])) return false;
@@ -545,6 +556,7 @@ function appendReviewLine(host, label, value) {
 
 export function renderShoppingEditor(card, body) {
   const copy = getCopy(card);
+  const codeCopy = barcodeCopy(card);
   const toolbar = el("div", null, "toolbar");
   toolbar.append(el("span", `${card._data?.shopping?.length || 0} ${card.t?.units || ""}`, "sub"));
   if (!card._shoppingEditorDraft && card._data?.role !== "guest") {
@@ -565,6 +577,8 @@ export function renderShoppingEditor(card, body) {
 
   if (draft.step === "form" && !draft.pending) {
     const form = el("form");
+    // A keyboard-style scanner may append Enter; saving still needs the review.
+    form.addEventListener("submit", event => event.preventDefault());
     const controls = {};
     controls.name = field(form, "name", copy.label_name, draft.values.name, {required: true, maximum: 200});
     if (draft.mode === "create") {
@@ -576,6 +590,18 @@ export function renderShoppingEditor(card, body) {
     controls.category = field(form, "category", copy.label_category, draft.values.category, {maximum: 80});
     controls.store = field(form, "store", copy.label_store, draft.values.store, {maximum: 80});
     controls.note = field(form, "note", copy.label_note, draft.values.note, {maximum: 500});
+    controls.barcode = field(form, "barcode", codeCopy.label, draft.values.barcode, {maximum: 14});
+    controls.barcode.inputMode = "numeric";
+    controls.barcode.autocomplete = "off";
+    renderBarcodeCamera(card, form, {
+      isCurrent: () => card._shoppingEditorDraft === draft && !draft.pending && draft.step === "form" && !card._error && sameEditorScope(card, draft.source),
+      onRead: code => {
+        if (card._shoppingEditorDraft !== draft || draft.pending || !sameEditorScope(card, draft.source)) return;
+        draft.values.barcode = code;
+        controls.barcode.value = code;
+        draft.validation = false;
+      }
+    });
     const buyerWrap = el("label", copy.label_buyer);
     const buyer = el("select");
     buyer.name = "buyer";
@@ -600,10 +626,15 @@ export function renderShoppingEditor(card, body) {
       control.addEventListener("input", event => {
         if (card._shoppingEditorDraft !== draft || draft.pending || !sameEditorScope(card, draft.source)) return;
         draft.values[name] = event.target.value;
+        if (name === "barcode") stopBarcodeCamera(card);
         draft.validation = false;
       });
     }
-    if (draft.validation) form.append(el("div", copy.error_invalid_form, "notice"));
+    if (draft.validation) {
+      let message = copy.error_invalid_form;
+      try { normalizeGtin(draft.values.barcode); } catch { message = codeCopy.invalid; }
+      form.append(el("div", message, "notice"));
+    }
     const actions = el("div", null, "actions");
     actions.append(card.button(copy.action_review, () => {
       if (card._shoppingEditorDraft !== draft || !sameEditorScope(card, draft.source)) return;
@@ -613,6 +644,7 @@ export function renderShoppingEditor(card, body) {
         return;
       }
       draft.validation = false;
+      stopBarcodeCamera(card);
       draft.step = "review";
       card.render();
     }, true));
@@ -633,6 +665,7 @@ export function renderShoppingEditor(card, body) {
     appendReviewLine(review, copy.label_category, draft.values.category.trim());
     appendReviewLine(review, copy.label_store, draft.values.store.trim());
     appendReviewLine(review, copy.label_note, draft.values.note.trim());
+    if (draft.values.barcode || draft.original?.barcode) appendReviewLine(review, codeCopy.label, normalizeGtin(draft.values.barcode));
     appendReviewLine(review, copy.label_buyer, draft.values.buyer ? getMemberName(card, draft.values.buyer) : copy.label_no_buyer);
     if (draft.pending && card._actionError) review.append(el("p", copy.uncertainty, "notice"));
     const actions = el("div", null, "actions");
@@ -686,6 +719,7 @@ export function renderShoppingItem(card, list, item) {
   if (item.category) metaParts.push(`${copy.label_category}: ${item.category}`);
   if (item.store) metaParts.push(`${copy.label_store}: ${item.store}`);
   if (item.note) metaParts.push(`${copy.label_note}: ${item.note}`);
+  if (item.barcode) metaParts.push(`${barcodeCopy(card).label}: ${item.barcode}`);
   if (item.creator) metaParts.push(`${copy.label_creator}: ${getMemberName(card, item.creator)}`);
   if (item.buyer) metaParts.push(`${copy.label_buyer}: ${getMemberName(card, item.buyer)}`);
 
@@ -812,6 +846,7 @@ export function renderShoppingItem(card, list, item) {
       const targetStore = normalizeExact(item.store);
       const targetNote = normalizeExact(item.note);
       const targetBuyer = normalizeExact(item.buyer);
+      const targetBarcode = normalizeExact(item.barcode);
 
       const candidateSnapshots = allItems
         .filter(other => {
@@ -826,7 +861,8 @@ export function renderShoppingItem(card, list, item) {
             normalizeExact(other.category) === targetCat &&
             normalizeExact(other.store) === targetStore &&
             normalizeExact(other.note) === targetNote &&
-            normalizeExact(other.buyer) === targetBuyer
+            normalizeExact(other.buyer) === targetBuyer &&
+            normalizeExact(other.barcode) === targetBarcode
           );
         })
         .map(other => ({
@@ -1146,6 +1182,7 @@ export function renderShoppingItem(card, list, item) {
           if (entry.detail.unit) {
             detailParts.push(`${copy.label_unit}: ${entry.detail.unit}`);
           }
+          if (typeof entry.detail.barcode === "string") detailParts.push(`${barcodeCopy(card).label}: ${entry.detail.barcode || "—"}`);
           const paid = entry.action === "purchase" && parsePrice(entry.detail.price?.total, entry.detail.price?.currency);
           if (paid) {
             detailParts.push(`${priceCopy(card).history}: ${paid.total} ${paid.currency}`);
@@ -1157,7 +1194,7 @@ export function renderShoppingItem(card, list, item) {
             detailParts.push(`${copy.source_items_label}: ${srcNames.join(", ")}`);
           }
           if (entry.detail.fields && Array.isArray(entry.detail.fields)) {
-            const labels = entry.detail.fields.map(field => copy[`label_${field}`] || field);
+            const labels = entry.detail.fields.map(field => field === "barcode" ? barcodeCopy(card).label : copy[`label_${field}`] || field);
             detailParts.push(`${copy.changed_fields}: ${labels.join(", ")}`);
           }
           if (entry.detail.merged_into) {

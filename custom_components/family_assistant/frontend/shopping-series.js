@@ -1,4 +1,6 @@
 /* Recurring shopping series UI: textContent-only rendering, typed payloads, parent-only controls. */
+import { normalizeGtin } from "./gtin.js";
+import { barcodeCopy } from "./shopping-barcode.js";
 
 export const SHOPPING_SERIES_COPY = {
   en: {
@@ -326,6 +328,10 @@ function buildSeriesForm(card, t, editing) {
   // Name
   const nameInput = card.input(form, "name", t.name, "text", editing?.name || "", true);
   nameInput.maxLength = 200;
+  const codeCopy = barcodeCopy(card);
+  const barcodeInput = card.input(form, "barcode", codeCopy.label, "text", editing?.barcode || "", false);
+  barcodeInput.maxLength = 14;
+  barcodeInput.inputMode = "numeric";
 
   // Quantity & Unit
   const fieldsRow = el("div", null, "fields");
@@ -557,6 +563,9 @@ function buildSeriesForm(card, t, editing) {
     errorBox.style.display = "none";
 
     const formData = new FormData(form);
+    let barcode;
+    try { barcode = normalizeGtin(String(formData.get("barcode") || "")); }
+    catch { showError(codeCopy.invalid); return; }
     const rawName = String(formData.get("name") || "").trim();
     if (!rawName) {
       showError(t.validationRequired);
@@ -641,6 +650,7 @@ function buildSeriesForm(card, t, editing) {
     };
 
     const buyerVal = String(formData.get("buyer") || "").trim();
+    if (barcode || editing?.barcode) payload.barcode = barcode;
     payload.buyer = buyerVal || null;
 
     if (editing?.id) {

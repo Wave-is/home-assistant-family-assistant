@@ -4,6 +4,7 @@ import {renderShadow} from "./shadow-view.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor} from "./shopping-items.js";
+import {stopBarcodeCamera} from "./shopping-barcode.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
@@ -232,6 +233,7 @@ function el(tag, text, className) {
 export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
+    disposeShoppingEditor(this);
     disposeTaskMedia(this);
     disposeFaultPhotos(this);
     disposeAssetDocuments(this);
@@ -373,6 +375,7 @@ export class FamilyCard extends HTMLElement {
     }
   }
   render() {
+    if(this._error || !this._data || this._data.read_only || this._view!=="shopping")stopBarcodeCamera(this);
     const root=this.shadowRoot;root.replaceChildren(el("style",STYLES));
     const card=el("ha-card");root.append(card);
     const header=el("header");header.append(el("div",(!this._error && this._data?.settings.name) || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));card.append(header);

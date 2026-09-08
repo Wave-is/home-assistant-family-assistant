@@ -144,6 +144,23 @@ test("creates exact typed payload for shopping.series_save", () => {
   });
 });
 
+test("recurring barcode is validated and clearing an existing code remains explicit",()=>{
+  const card=createMockCard();card._shoppingSeriesFormOpen=true;
+  const body=document.createElement("div");renderShoppingSeries(card,body);
+  const form=body.querySelector("form");form.querySelector('[name="name"]').value="Cereal";
+  form.querySelector('[name="barcode"]').value="96385075";
+  form.dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands.length,0);assert.match(form.textContent,/check digit/);
+  form.querySelector('[name="barcode"]').value="96385074";
+  form.dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands[0].payload.barcode,"00000096385074");
+  card._shoppingSeriesDraft=null;card._shoppingSeriesEditingItem={...card.commands[0].payload,id:"B1",revision:3};
+  body.replaceChildren();renderShoppingSeries(card,body);
+  const edit=body.querySelector("form");edit.querySelector('[name="barcode"]').value="";
+  edit.dispatchEvent(new dom.window.Event("submit",{cancelable:true}));
+  assert.equal(card.commands[1].payload.barcode,"");
+});
+
 test("editing a series includes id and revision, preserving optional rule data", () => {
   const existingSeries = {
     id: "B123",

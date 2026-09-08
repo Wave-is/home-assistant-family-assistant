@@ -80,6 +80,20 @@ test("localized editor copy has exact parity", () => {
   assert.deepEqual(Object.keys(SHOPPING_ITEM_COPY.uk).sort(), keys);
 });
 
+test("manual GTIN is reviewed, validated, normalized and can be cleared without quantity changes",async()=>{
+  const {card,body,calls}=makeCard();openShoppingEditor(card);
+  input(body,"name","Fictional item");input(body,"barcode","96385075");click(body,SHOPPING_ITEM_COPY.en.action_review);
+  assert.equal(body.querySelector(".shopping-review"),null);assert.match(body.textContent,/check digit/);
+  input(body,"barcode","96385074");click(body,SHOPPING_ITEM_COPY.en.action_review);
+  assert.match(body.textContent,/00000096385074/);assert.equal(calls.length,0);
+  click(body,SHOPPING_ITEM_COPY.en.action_confirm_add);await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(calls[0].payload.barcode,"00000096385074");
+  const item={id:"S1",revision:1,creator:"p1",name:"Milk",quantity:3,purchased:1,status:"approved",barcode:"00000096385074"};
+  card._data.shopping=[item];openShoppingEditor(card,item);input(body,"barcode","");click(body,SHOPPING_ITEM_COPY.en.action_review);
+  click(body,SHOPPING_ITEM_COPY.en.action_confirm_edit);await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(calls[1].payload.barcode,"");assert.equal("quantity" in calls[1].payload,false);
+});
+
 test("reviewed add sends strict metadata and explains child approval and shared note", async () => {
   const {card, body, calls} = makeCard({role: "child", actor: "c1"});
   click(body, SHOPPING_ITEM_COPY.en.editor_add_title);

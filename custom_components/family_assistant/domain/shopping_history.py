@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .context import Context
+from .gtin import normalize_gtin
 from .shopping_price import price
 from .validation import DomainError, number, text
 
@@ -23,6 +24,7 @@ KNOWN_DETAIL_FIELDS = frozenset(
         "price",
         "name",
         "store",
+        "barcode",
     }
 )
 
@@ -69,7 +71,11 @@ def record_event(
 
         clean_detail: dict[str, Any] = {}
         for k, v in detail.items():
-            if k == "price":
+            if k == "barcode":
+                if action not in {"add", "edit", "purchase"}:
+                    raise DomainError("invalid_field", "barcode")
+                clean_detail[k] = normalize_gtin(v)
+            elif k == "price":
                 clean_detail[k] = price(v)
             elif k in {"name", "store"}:
                 if not isinstance(v, str) or len(v) > (200 if k == "name" else 80):
@@ -95,7 +101,7 @@ def record_event(
                     clean_sources.append(text(src_id, f"sources[{idx}]", 80))
                 clean_detail[k] = clean_sources
             elif k == "fields":
-                allowed_fields = {"name", "category", "store", "note", "buyer"}
+                allowed_fields = {"name", "category", "store", "note", "buyer", "barcode"}
                 if (
                     not isinstance(v, list)
                     or not 1 <= len(v) <= len(allowed_fields)

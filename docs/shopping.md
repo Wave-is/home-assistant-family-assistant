@@ -1,5 +1,7 @@
 # Shopping / Покупки / Покупки
 
+[Barcode entry and local camera scanning / Штрихкоды / Штрихкоди](shopping-barcodes.md)
+
 ## English
 
 **Add item** and **Edit item** open a form and a named review before saving.

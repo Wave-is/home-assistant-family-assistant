@@ -45,3 +45,43 @@ async def verify_shopping_edit(hass, entry, owner, child, child_id, request):
         "PASS: actual HA authenticated shopping metadata, child proposal, "
         "strict revisions and exact replay"
     )
+    await verify_barcode(entry, owner, child, request)
+
+
+async def verify_barcode(entry, owner, child, request):
+    """Structural GTINs cross the real authenticated transport and Store boundary."""
+    code = "00036000291452"
+    payload = {"name": "Synthetic barcode cereal", "quantity": 2, "barcode": "036000291452"}
+    item = await request(owner, "shopping.add", payload, "ha-gtin-add")
+    assert item["barcode"] == code
+    assert await request(owner, "shopping.add", payload, "ha-gtin-add") == item
+    before = entry.runtime_data.engine.snapshot()
+    await request(
+        owner, "shopping.add", {**payload, "barcode": "036000291451"}, error="invalid_field"
+    )
+    assert entry.runtime_data.engine.snapshot() == before
+    buy = {"id": item["id"], "revision": item["revision"], "quantity": 1}
+    purchased = await request(child, "shopping.purchase", buy)
+    assert purchased["history"][-1]["detail"]["barcode"] == code
+    edit = {
+        "id": item["id"],
+        "revision": purchased["revision"],
+        "name": item["name"],
+        "category": "",
+        "store": "",
+        "note": "",
+        "buyer": None,
+        "barcode": "4006381333931",
+    }
+    changed = await request(owner, "shopping.edit", edit, "ha-gtin-edit")
+    assert changed["barcode"] == "04006381333931" and changed["purchased"] == 1
+    observed = next(
+        row for row in (await request(child, "view", {}))["shopping"] if row["id"] == item["id"]
+    )
+    assert observed["barcode"] == changed["barcode"]
+    assert observed["history"][-2]["detail"]["barcode"] == code
+    assert await request(owner, "shopping.edit", edit, "ha-gtin-edit") == changed
+    # The suite's normal entry reload later compares every shopping record.
+    print(
+        "PASS: actual HA barcode add/edit/read, purchase history, invalid rollback and exact replay"
+    )
