@@ -105,4 +105,9 @@ def project(hass, entry, runtime, actor_id: str, user, now) -> dict:
             value = _observation(hass, entity_id)
             if value is not None:
                 observations[member_id] = value
-    return presence.view(state, actor, options, observations, now)
+    from .domain import presence_delivery
+
+    result = presence.view(state, actor, options, observations, now)
+    if "presence" in state.get("settings", {}).get("modules", []):
+        result["notifications"] = presence_delivery.view(state, actor)
+    return result

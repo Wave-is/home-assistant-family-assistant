@@ -1,6 +1,11 @@
 # Opt-in household presence design
 
-Status: proposed first slice; no presence runtime is implemented yet.
+Status: historical first-slice design, retained for decision context. Display
+presence is implemented and HA-tested; alpha.12 added explicit guardian consent
+for children. Alpha.14 adds a separate reviewed notification-purpose policy.
+The original self-only and no-notification limitations below describe the first
+slice, not current behavior. See [current sharing](presence.md) and
+[independent reminder consent](presence-notifications.md) for authoritative usage.
 
 ## Product boundary
 

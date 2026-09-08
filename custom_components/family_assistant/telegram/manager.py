@@ -83,6 +83,7 @@ class TelegramManager:
             self._targets,
             self._send_notification,
             clock=dt_util.utcnow,
+            presence_prepare=self._prepare_presence_notifications,
         )
         self._tasks = []
         self._stopped = False
@@ -182,6 +183,11 @@ class TelegramManager:
                 raise DomainError("forbidden")
 
         return guard
+
+    async def _prepare_presence_notifications(self, state):
+        from ..presence_notification_adapter import prepare
+
+        return await prepare(self.hass, self.entry, self.runtime, state, self._manager_guard)
 
     def _targets(self, event, state):
         if (

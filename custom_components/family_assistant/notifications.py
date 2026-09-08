@@ -14,6 +14,7 @@ from copy import deepcopy
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from .domain import notification_presence, presence_delivery
 from .domain.engine import Engine
 from .domain.pantry_expiry import current_event as current_pantry_expiry_event
 from .domain.school_reminders import (
@@ -91,9 +92,11 @@ class Notifications:
         send: Callable[[dict, dict], Awaitable[str]],
         *,
         clock: Callable[[], datetime] | None = None,
+        presence_prepare: Callable[[dict], Awaitable[Callable]] | None = None,
     ) -> None:
         self.engine, self.resolve, self.send = engine, resolve, send
         self.clock = clock
+        self.presence_prepare = presence_prepare
         self._lock = asyncio.Lock()
 
     def _current_time(self, fallback: datetime) -> datetime:
@@ -107,13 +110,27 @@ class Notifications:
         count = 0
         async with self._lock:
             for _ in range(min(max(limit, 0), 20)):
-                claimed = await self.engine.background_update("outbox_claim", now, self._claim)
+                observer = await self._presence_observer()
+                claimed = await self.engine.background_update(
+                    "outbox_claim", now, lambda ctx, observed=observer: self._claim(ctx, observed)
+                )
                 if claimed is None:
                     break
                 event, delivery = claimed
-                current = await self._authorize_dispatch(event["id"], delivery["id"], now)
+                current = await self._authorize_dispatch(
+                    event["id"], delivery["id"], now, await self._presence_observer()
+                )
                 if current is None:
                     continue
+                if current[1].get("presence_recipient") is not None:
+                    # The first authorization may persist a catch-up rate/hold
+                    # change. Refresh HA account/ACL evidence after that await.
+                    # An unchanged allow decision performs no second Store write.
+                    current = await self._authorize_dispatch(
+                        event["id"], delivery["id"], now, await self._presence_observer()
+                    )
+                    if current is None:
+                        continue
                 event, delivery = current
                 try:
                     async with asyncio.timeout(15):
@@ -132,7 +149,34 @@ class Notifications:
                 count += 1
         return count
 
-    async def _authorize_dispatch(self, event_id, delivery_id, now):
+    async def _presence_observer(self):
+        if self.presence_prepare is None:
+            return None
+        state = self.engine.snapshot()
+        needed = False
+        for event in state["outbox"].values():
+            if event.get("state") not in {"pending", "awaiting_channel", "sending"}:
+                continue
+            if event.get("key") not in notification_presence.GATED_KEYS:
+                continue
+            for target in self.resolve(deepcopy(event), deepcopy(state)):
+                member = notification_presence.recipient(state, event, target)
+                if member and presence_delivery.effective_policy(state, member["id"]) is not None:
+                    needed = True
+                    break
+            if needed:
+                break
+        if not needed:
+            return None
+        try:
+            async with asyncio.timeout(2):
+                return await self.presence_prepare(state)
+        except (TimeoutError, OSError, ValueError, AttributeError, TypeError):
+            # Missing identity/HA state cannot prove home. Existing reviewed policy
+            # still defers; alarm/reply/group/closure lanes never call the observer.
+            return None
+
+    async def _authorize_dispatch(self, event_id, delivery_id, now, observer=None):
         """Recheck a persisted claim immediately before handing it to a transport.
 
         This closes the scheduling window between claim persistence and dispatch.
@@ -162,6 +206,13 @@ class Notifications:
                 delivery["state"] = "superseded"
                 self._aggregate(event)
                 return None
+            decision = notification_presence.evaluate(ctx, event, delivery, observer, dispatch=True)
+            if decision != "allow":
+                if decision == "defer":
+                    delivery["state"] = "pending"
+                    delivery.pop("lease_until", None)
+                self._aggregate(event)
+                return None
             return deepcopy(event), deepcopy(delivery)
 
         return await self.engine.background_update("outbox_dispatch", now, authorize)
@@ -175,7 +226,7 @@ class Notifications:
             for current in current_targets
         )
 
-    def _claim(self, ctx):
+    def _claim(self, ctx, observer=None):
         ctx.now = self._current_time(ctx.now)
         policy = ctx.state["settings"].get("notifications", {})
         for event in ctx.state["outbox"].values():
@@ -227,6 +278,10 @@ class Notifications:
                     self._aggregate(event)
                     continue  # Do not disclose family data to a revoked or unlinked recipient.
                 if delivery.get("next_at") and ctx.now < timestamp(delivery["next_at"], "next_at"):
+                    continue
+                decision = notification_presence.evaluate(ctx, event, delivery, observer)
+                if decision != "allow":
+                    self._aggregate(event)
                     continue
                 rate = ctx.state["notification_rates"].get(delivery["id"])
                 if rate and ctx.now < timestamp(rate, "rate"):

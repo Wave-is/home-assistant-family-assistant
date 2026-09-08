@@ -373,6 +373,10 @@ def _stored_authority(record: dict) -> dict:
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
     """Apply explicit self or guardian consent and return a content-free receipt."""
+    if action in {"notification_access_set", "guardian_notification_access_set"}:
+        from . import presence_delivery
+
+        return presence_delivery.handle(ctx, action, payload)
     if action not in {"access_set", "guardian_access_set"}:
         raise DomainError("unknown_action")
     _module(ctx.state)
@@ -424,6 +428,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
 
 def authorize_replay(ctx: Context, action: str, payload: dict, result: dict) -> None:
     """Recheck the current member, source lineage, and consent receipt."""
+    if action in {"notification_access_set", "guardian_notification_access_set"}:
+        from . import presence_delivery
+
+        return presence_delivery.authorize_replay(ctx, action, payload, result)
     if action not in {"access_set", "guardian_access_set"}:
         raise DomainError("unknown_action")
     _module(ctx.state)

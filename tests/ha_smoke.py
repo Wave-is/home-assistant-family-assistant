@@ -304,6 +304,9 @@ async def main():
             from ha_presence_smoke import verify_presence
 
             await verify_presence(hass, entry, user)
+            from ha_presence_notifications_smoke import verify_presence_notifications
+
+            await verify_presence_notifications(hass, user)
             from ha_digests_smoke import verify_digests
 
             await verify_digests(hass, entry, user, child_id)

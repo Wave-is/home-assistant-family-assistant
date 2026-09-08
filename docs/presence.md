@@ -1,5 +1,12 @@
 # Reported presence / Сообщённое присутствие / Повідомлена присутність
 
+This page describes display consent only. Independent optional
+[return-home reminders / напоминания по возвращении / нагадування після повернення](presence-notifications.md)
+use separate consent in the same card. Disabling display sharing stops only display
+reads; it does not withdraw separately enabled notification-purpose consent.
+Отключение показа статуса не отменяет отдельное согласие на проверку для уведомлений.
+Вимкнення показу статусу не скасовує окремої згоди на перевірку для сповіщень.
+
 ## English
 
 This guide covers display-only Presence with explicit self or guardian consent. It reports limited
