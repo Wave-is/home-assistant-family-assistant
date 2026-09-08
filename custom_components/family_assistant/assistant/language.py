@@ -17,6 +17,14 @@ COPY = {
         "no_sources": "No suitable public sources were found. Family data was not changed.",
         "confirmed": "✅ Applied:\n{result}",
         "rejected": "Cancelled. Nothing was changed.",
+        "feedback_saved": (
+            "Proposal rejected; your private note was saved. The expected command was not "
+            "executed or learned. Review or delete the note in your conversation card."
+        ),
+        "feedback_private": (
+            "Send /feedback in your private chat with the bot. A message already sent to a "
+            "group remains visible there. No proposal was changed."
+        ),
     },
     "ru": {
         "learned": (
@@ -36,6 +44,14 @@ COPY = {
         "no_sources": "Подходящих открытых источников не найдено. Данные семьи не изменены.",
         "confirmed": "✅ Выполнено:\n{result}",
         "rejected": "Отменено. Ничего не изменено.",
+        "feedback_saved": (
+            "Предложение отклонено, личная заметка сохранена. Ожидаемая команда не выполнена "
+            "и не стала правилом. Просмотреть или удалить заметку можно в карточке разговора."
+        ),
+        "feedback_private": (
+            "Отправьте /feedback в личный чат бота. Уже отправленное в группу сообщение "
+            "остаётся видно участникам. Предложение не изменено."
+        ),
     },
     "uk": {
         "learned": (
@@ -53,5 +69,13 @@ COPY = {
         "no_sources": "Відповідних відкритих джерел не знайдено. Дані сім’ї не змінено.",
         "confirmed": "✅ Виконано:\n{result}",
         "rejected": "Скасовано. Нічого не змінено.",
+        "feedback_saved": (
+            "Пропозицію відхилено, особисту нотатку збережено. Очікувану команду не виконано "
+            "й не перетворено на правило. Переглянути або видалити нотатку можна в картці розмови."
+        ),
+        "feedback_private": (
+            "Надішліть /feedback в особистий чат бота. Уже надіслане в групу повідомлення "
+            "залишається видимим учасникам. Пропозицію не змінено."
+        ),
     },
 }

@@ -319,6 +319,9 @@ async def main():
             from ha_developer_smoke import verify_developer_diagnostics
 
             await verify_developer_diagnostics(hass, user)
+            from ha_semantic_feedback_smoke import verify_semantic_feedback
+
+            await verify_semantic_feedback(hass, user)
             from ha_school_retention_smoke import verify_school_retention
 
             await verify_school_retention(hass, entry)

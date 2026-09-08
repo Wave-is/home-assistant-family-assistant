@@ -37,6 +37,7 @@ import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditor
 import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js";
 import {renderArticle,reconcileArticleRefresh,disposeArticle} from "./article-view.js";
 import {renderConversation,reconcileConversationRefresh,disposeConversation} from "./conversation-view.js";
+import {appendProposalFeedback} from "./semantic-feedback-view.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -540,6 +541,7 @@ export class FamilyCard extends HTMLElement {
       const actions=el("div",null,"actions");
       actions.append(this.button(this.t.confirmPlan,()=>this.command("conversation.confirm",{id:plan.id}),true),this.button(this.t.rejectPlan,()=>this.command("conversation.reject",{id:plan.id})));
       item.append(actions);section.append(item);
+      appendProposalFeedback(this,item,plan);
     }
   }
   renderAlarmRuns(body) {

@@ -194,7 +194,8 @@ async def route(
             from ..assistant.language import COPY as ASSISTANT_COPY
 
             if result.get("status") == "rejected":
-                return ASSISTANT_COPY[language]["rejected"]
+                key = "feedback_saved" if result.get("feedback_id") else "rejected"
+                return ASSISTANT_COPY[language][key]
             return scoped(
                 ASSISTANT_COPY[language]["confirmed"].format(
                     result="\n".join(
@@ -443,6 +444,18 @@ async def route(
             "conversation." + ("confirm" if command == "/confirm" else "reject"),
             {"id": fields[0]},
         )
+    elif command == "/feedback" and len(fields) == 3:
+        from ..assistant.language import COPY as ASSISTANT_COPY
+
+        if not private:
+            return ASSISTANT_COPY[language]["feedback_private"]
+        action, payload = (
+            "conversation.reject",
+            {
+                "id": fields[0],
+                "feedback": {"category": fields[1], "expected": fields[2]},
+            },
+        )
     elif command == "/learn" and len(fields) == 2:
         action, payload = "conversation.learn", {"source": fields[0], "canonical": fields[1]}
     elif command == "/forget" and len(fields) == 1:
@@ -451,6 +464,11 @@ async def route(
         if fallback is not None and not command.startswith("/"):
             return await fallback(actor, original_content, operation_id, now, refs)
         return t["unknown"]
+    if action == "conversation.reject" and "feedback" in payload:
+        # These exact ID-bound fields need no separate interpretation plan.
+        # Persist the note and rejection once, without another raw-text copy in
+        # Telegram's plan cache (the channel's own message history is separate).
+        return saved(await engine.execute(actor, action, payload, operation_id, now))
     result = await commands.execute(
         engine, actor, original_content, refs, operation_id, now, action, payload
     )

@@ -20,7 +20,7 @@ Nothing is production-ready solely because a mock test passes.
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence, template and advanced per-step condition editors; production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
-| Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization. Owner-opt-in technical Telegram job counts and deidentified report review/download unit-, browser- and actual-HA-tested. Semantic reproducer and developer patch queue pending |
+| Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization. Owner-opt-in technical Telegram job counts and deidentified report review/download tested. Private pending-proposal rejection notes, atomic retry, scoped purge and card/Telegram controls unit-, browser- and actual-HA-tested. Anonymized semantic reproducer and developer patch queue pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; explicit one-week HA calendar draft import tested; photograph import and household acceptance pending |
@@ -33,10 +33,31 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.27 runtime ZIP/tag verified at 5a37f1d7, all eight Checks jobs passed (34219419802), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.28 runtime ZIP/tag verified at 33d22f2, all eight Checks jobs passed (34223795544), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant and complete reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Direct ZIP review remains available. Same-package/unchanged-target repeat retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, reviewed residue recovery, activation and controlled cutover remain pending |
 
-## Optional technical report candidate, 2026-09-08
+## Private proposal notes candidate, 2026-09-08
+
+Current pending, unexpired proposals can be explicitly rejected with an actor-private
+category, expected intent and optional byte-exact original request. Note and rejection
+commit together; exact retry, failed Store, purging, account revision, capacity and
+corrupt-storage boundaries are covered. No automatic teaching, execution, developer
+sharing or anonymization is claimed. Private Telegram only; generic plan cache does
+not receive another raw-text copy. Dashboard includes EN/RU/UK review and explicit
+purge, preserving failed-write drafts and discarding revoked identity drafts.
+
+AGY implemented the pure module and tests, followed by independent root review and
+extra malformed-role/sequence fixes. Host Python4268/five skips/23 subtests passed;
+Node450 plus154 pretests passed. Three focused native Chromium flows passed. Full
+native HA77517 passed authenticated child-only note/replay, original hash mismatch
+denial, unchanged shopping/learning, parent non-disclosure, complete Store reload and
+explicit owner-denied/child-approved purge. Full Chromium47008 passed226 checks;
+independent AGY80956 read-only review found no further material issues. Exact-commit CI pending.
+Only active proposal rejection is covered; arbitrary answer feedback, anonymized
+semantic reproducers, developer patch queue and old-identity retention remain open.
+[Scope and limitations](semantic-feedback.md). Live household untouched.
+
+## Optional technical report released, 2026-09-08
 
 Owner consent is off by default and generation-bound. Fixed technical categories
 from queued Telegram model job failures are aggregated in the same completion/
@@ -53,7 +74,9 @@ with its synthetic clock. Draining that scheduler before unchanged-denial checks
 made full native21319 pass. Host full Python4142/five skips/23 subtests and
 Node450/146 passed before one additional post-commit consent-race regression.
 Chromium verified exact downloaded JSON bytes and review invalidation.
-Exact-commit release CI remains pending; running household installation unchanged.
+Exact alpha.28 commit33d22f2 passed all eight Checks34223795544 including the last
+post-commit consent guard regression. Tag and ZIP digest were independently verified.
+Running household installation unchanged.
 
 ## Guided private package preparation released, 2026-09-08
 

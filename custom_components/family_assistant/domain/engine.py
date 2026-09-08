@@ -457,6 +457,10 @@ class Engine:
             for record in self._state["memory"].get("phrases", {}).values()
             if record["actor"] == actor_id
         ]
+        if "conversation" in self._state["settings"]["modules"]:
+            from .semantic_feedback import project as feedback_view
+
+            data["semantic_feedback"] = feedback_view(self._state, actor)
         data["kid_control"] = kid_plans.view(self._state, actor_id, now)
         if actor["role"] != "guest" and "calendar" in self._state["settings"]["modules"]:
             data["calendar"] = family_calendar.view(self._state, actor, now)
@@ -645,7 +649,11 @@ class Engine:
                 payload,
                 result,
             )
-        elif action in {"conversation.confirm", "conversation.reject"}:
+        elif action in {
+            "conversation.confirm",
+            "conversation.reject",
+            "conversation.feedback_purge",
+        }:
             proposals.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "proposal-replay"),
                 action.split(".", 1)[1],

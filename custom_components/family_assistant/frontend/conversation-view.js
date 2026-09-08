@@ -1,6 +1,7 @@
 /* Private dashboard conversation with current-scope retries. */
 
 import { CONVERSATION_COPY } from "./conversation-copy.js";
+import { renderFeedbackJournal, disposeSemanticFeedback } from "./semantic-feedback-view.js";
 
 const ROLES = new Set(["owner", "parent", "adult", "child"]);
 
@@ -120,6 +121,8 @@ function projection(data) {
       ? data.settings.modules.includes("conversation")
       : false,
     source: data?.conversation_source ?? null,
+    feedback: data?.semantic_feedback ?? null,
+    proposals: data?.proposals ?? null,
     member: member
       ? {
           id: member.id,
@@ -140,7 +143,7 @@ export function reconcileConversationRefresh(card, previousData) {
     changed &&
     Boolean(
       card._conversationDraft ||
-        card.shadowRoot?.querySelector(".conversation-chat"),
+        card.shadowRoot?.querySelector(".conversation-chat,.semantic-feedback"),
     );
   if (
     card._conversationDraft &&
@@ -155,6 +158,7 @@ export function reconcileConversationRefresh(card, previousData) {
 
 export function disposeConversation(card) {
   if (!card) return;
+  disposeSemanticFeedback(card);
   if (card._conversationDraft) card._conversationDraft.requestToken = null;
   card._conversationDraft = null;
 }
@@ -404,6 +408,7 @@ export function renderConversation(card, body) {
     learning.append(item);
   }
   section.append(learning);
+  renderFeedbackJournal(card,section);
 }
 
 export const _test = { accessOf, responseOf, sourceOf };

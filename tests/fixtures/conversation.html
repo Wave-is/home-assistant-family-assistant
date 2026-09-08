@@ -39,6 +39,8 @@
         configured: params.get("configured") !== "off",
         sourceRevision: "c".repeat(32),
         members,
+        proposals: params.has("feedback") ? [{id:"P123",status:"pending",preview:"Предложено: добавить молоко",expires_at:new Date(Date.now()+300000).toISOString()}] : [],
+        feedback: [],
         learned: [
           {
             id: "L000001",
@@ -76,7 +78,8 @@
         members: structuredClone(fixture.members),
         conversation_source: source(),
         article_source: { enabled: false, configured: false, allowed: false, revision: null },
-        proposals: [],
+        proposals: structuredClone(fixture.proposals),
+        semantic_feedback: {available:true,records:structuredClone(fixture.feedback)},
         learned_phrases: structuredClone(fixture.learned),
       });
 
@@ -140,6 +143,21 @@
       };
       const execute = async (request) => {
         window.executeCalls.push(structuredClone(request));
+        if(request.action === "conversation.reject" && request.payload.feedback){
+          if(window.failure === "note-before"){window.failure=null;throw code("not_ready");}
+          const p=fixture.proposals.find(p=>p.id===request.payload.id);
+          if(!p)throw code("proposal_expired");
+          const f=request.payload.feedback;
+          fixture.feedback.push({id:"F000001",actor:fixture.actor,actor_revision:currentMember().revision,role:fixture.role,
+            proposal_id:p.id,category:f.category,expected:f.expected,source:f.source||"",source_available:!!f.source,preview:p.preview});
+          fixture.proposals=[];
+          return {id:p.id,status:"rejected",items:[],feedback_id:"F000001"};
+        }
+        if(request.action === "conversation.feedback_purge"){
+          if(request.payload.confirmed!==true)throw code("invalid_field");
+          fixture.feedback=fixture.feedback.filter(f=>f.id!==request.payload.id);
+          return {id:request.payload.id,status:"purged",actor_revision:currentMember().revision,role:fixture.role};
+        }
         if (request.action === "conversation.learn") {
           fixture.learned.push({
             id: "L000002",

@@ -52,6 +52,10 @@ Optional technical reports: [English](docs/developer-diagnostics.md) ·
 [Українська](docs/uk/developer-diagnostics.md). Off by default, owner-reviewed,
 with no automatic telemetry or code changes.
 
+Private proposal correction notes: [English](docs/semantic-feedback.md) ·
+[Русский](docs/ru/semantic-feedback.md) · [Українська](docs/uk/semantic-feedback.md).
+These are private local notes, not anonymized bug reports or automatic fixes.
+
 Python 3.14.2+ is the Home Assistant test target. Pure domain tests also run on
 Python 3.11 without Home Assistant. Create a virtual environment, install
 `requirements-dev.txt`, then run `pytest` and `ruff check .`.
