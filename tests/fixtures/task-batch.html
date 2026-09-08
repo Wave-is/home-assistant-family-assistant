@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic task batch acceptance</title>
+<style>
+body{margin:0;padding:16px;font-family:system-ui;background:#eef3f1;color:#19332f}main{max-width:650px;margin:auto}
+body.dark{background:#142320;--ha-card-background:#20342e;--primary-text-color:#eaf4ec;--secondary-text-color:#a8bdb4;--divider-color:#3b5148}
+</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+const query=new URLSearchParams(location.search),language=query.get("lang")||"en";
+if(query.has("dark"))document.body.classList.add("dark");
+document.documentElement.lang=language;
+const task=(id,title,status="assigned",extras={})=>({id,title,status,assignee:"child",assignee_revision:1,creator:"owner",revision:1,report_type:"text",report:status==="submitted"?"Synthetic report":null,checklist:[],due_at:"2099-12-01T09:00:00Z",...extras});
+const fixture={revision:1,actor:"owner",actor_revision:1,role:"owner",
+ settings:{name:"Synthetic household",modules:["tasks"],timezone:"Europe/Kyiv"},
+ members:[{id:"owner",name:"Parent 1",active:true,role:"owner",revision:1},{id:"child",name:"Child 1",active:true,role:"child",revision:1}],
+ task_series:[],tasks:[task("T000001","Water plants"),task("T000002","Tidy desk","submitted"),task("T000003","Completed chore","completed"),task("T000004","Cancelled chore","cancelled"),
+ task("T000005","Private reminder","assigned",{assignee:"owner",report_type:"none",delivery_scope:"personal"}),task("T000006","Managed school task","assigned",{managed_by:"school"}),
+ task("T000029","Private maintenance fault","assigned",{delivery_scope:"private",source:{kind:"maintenance_fault"}}),
+ task("T000030","Private completed maintenance","completed",{delivery_scope:"private",source:{kind:"maintenance_service"}}),
+ ...Array.from({length:22},(_,index)=>task(`T${String(index+7).padStart(6,"0")}`,`Synthetic chore ${index+7}`))],health:{},delivery_issues:[]};
+if(query.get("role")==="child"){fixture.actor="child";fixture.role="child";}
+window.fixture=fixture;window.calls=[];const receipts=new Map();
+const card=document.createElement("family-tasks-card");window.card=card;card.setConfig({view:"tasks",entry_id:"synthetic-batch",language});
+card.hass={language,user:{id:"synthetic-parent-user"},config:{time_zone:"Europe/Kyiv"},callWS:async message=>{
+ if(message.type.endsWith("/households"))return [{entry_id:"synthetic-batch",title:"Synthetic household"}];
+ if(message.type.endsWith("/view"))return structuredClone(fixture);
+ if(!message.type.endsWith("/execute"))throw {code:"unknown_action"};
+ window.calls.push(structuredClone(message));
+ if(window.failCommand)throw {code:"storage_error"};
+ const fingerprint=JSON.stringify([message.action,message.payload]);
+ if(receipts.has(message.operation_id)){
+   const prior=receipts.get(message.operation_id);if(prior.fingerprint!==fingerprint)throw {code:"idempotency_conflict"};
+   return structuredClone(prior.result);
+ }
+ if(!["owner","parent"].includes(fixture.role))throw {code:"forbidden"};
+ const commands=message.action==="batch"?message.payload.commands:[{action:message.action,payload:message.payload}];
+ if(!Array.isArray(commands)||!commands.length||commands.length>20)throw {code:"invalid_field"};
+ const working=structuredClone(fixture.tasks),items=[];
+ for(const command of commands){
+   const row=working.find(item=>item.id===command.payload.id);
+   if(!row||row.revision!==command.payload.revision)throw {code:"conflict"};
+   const status={"tasks.complete":"completed","tasks.cancel":"cancelled","tasks.archive":"archived"}[command.action];
+   if(!status||row.status==="archived"||(status!=="archived"&&["completed","cancelled"].includes(row.status)))throw {code:"invalid_transition"};
+   row.status=status;row.revision++;items.push(structuredClone(row));
+ }
+ fixture.tasks=working;fixture.revision++;
+ const result=message.action==="batch"?{items}:items[0];receipts.set(message.operation_id,{fingerprint,result});
+ if(window.loseReplyOnce){window.loseReplyOnce=false;throw {code:"storage_error"};}
+ return structuredClone(result);
+}};
+document.querySelector("main").append(card);
+</script></html>

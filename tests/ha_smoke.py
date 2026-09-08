@@ -696,6 +696,9 @@ async def run_websocket(hass, entry, owner, child_id):
     assert engine.snapshot()["shopping"][original["id"]]["status"] == "merged"
     print("PASS: HA atomic shopping merge preserved partial quantities, history and replay")
     await verify_task_controls(hass, entry, owner, child_id)
+    from ha_task_batch_smoke import verify_task_batch
+
+    await verify_task_batch(hass, owner)
     await verify_court_controls(hass, entry, owner, child, child_id)
 
 

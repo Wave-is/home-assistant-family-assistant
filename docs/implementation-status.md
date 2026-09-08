@@ -10,7 +10,7 @@ Nothing is production-ready solely because a mock test passes.
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN metadata/manual entry, recurring preservation and opt-in local browser scanning unit/browser-tested; authenticated barcode add/edit/purchase history and complete Store reload passed. Voice/photo extensions and real-camera acceptance pending |
-| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders, identity revocation and private reply persistence HA-tested; legacy parity and complete media lifecycle pending |
+| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders and private replies. Parent-reviewed bulk completion/cancellation/archive passed actual authenticated HA atomic rollback, replay and reload; alpha.32 release checks underway. Legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
@@ -33,8 +33,40 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.31 runtime ZIP/tag verified at 3b09a80, all eight Checks jobs passed (34237980964), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.31 runtime ZIP/tag verified at 3b09a80; subsequent acceptance-only 9f6532d passed all nine Checks jobs (34240668570), including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
+
+## Reviewed task batches candidate, 2026-09-08
+
+Alpha.32 adds a parent-only Tasks-card flow for up to 20 ordinary shared tasks.
+The user reviews exact selected records before separately confirming one atomic
+completion, cancellation or terminal archive. Personal and specialized-module
+tasks retain their own forms. An uncertain request retains its original operation
+ID and revisions even after another card command; changed identity/member binding
+invalidates the old review instead of silently rebasing it. Mobile review uses
+readable task tiles, with record versions in a separate disclosure.
+
+AGY52795 implemented the isolated panel, copy and initial 14 Node tests. Root review
+and Chromium12563 independently reproduced three stale uncertain-retry defects
+(actor revision, assignee revision, reassignment). Root fixed them plus detached
+start/review scope checks; Chromium13183 passed all nine focused cases. Root added
+six further Node regressions and wired the test file into npm's release gate.
+Native85627 passed the full synthetic HA suite, including actual authenticated
+batch rollback on one stale item, child denial, one commit/audit step, unchanged
+sentinel, exact replay after runtime reload, complete/archive/cancel. The final
+native71335 repeated the full HA gate successfully. Full Python11808 passed4400,
+five skips and23 subtests; Node69178 passed450 and final pretests passed174.
+Chromium19008 passed234 and caught one obsolete table selector after the tile
+redesign; root corrected the selector, and complete Chromium50480 passed235.
+The RU mobile review was visually inspected. Ruff562/privacy/locales/runtime
+build passed. AGY46629 independently found that real maintenance tasks use private
+delivery scope without a managed-by flag. Root confirmed the actual projection,
+excluded private/source-marked work on selection and uncertain retry, and added
+actual-HA maintenance creation/projection/sentinel coverage. It also found the
+already-fixed obsolete browser selector and a no-op revision-change unit test;
+root made that test exercise a real subsequent change. Complete Chromium99707
+passed235 after the privacy filter. Final native and exact-commit CI are pending;
+no household deployment.
 
 ## Indexed copy resume released, 2026-09-08
 
@@ -67,7 +99,8 @@ exact replay; source/index/intents/media remain unchanged. Runtime SHA256 matche
 the released alpha.31 asset. This proves graceful process restart, not power-loss
 atomicity or activation. Runner unit tests passed 31 with one platform skip; full
 Python passed 4398/five skips/23 subtests before the last two runner regressions.
-Ruff/privacy/locales/build passed; ninth CI restart job is awaiting exact-commit CI.
+Ruff/privacy/locales/build passed; all nine Checks jobs34240668570 passed exact
+acceptance-only commit9f6532d. No new runtime release was needed for that commit.
 
 ## Interrupted copy preservation released, 2026-09-08
 

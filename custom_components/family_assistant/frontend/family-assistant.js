@@ -7,6 +7,7 @@ import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileS
 import {stopBarcodeCamera} from "./shopping-barcode.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
+import {renderTaskBatch,reconcileTaskBatchRefresh,disposeTaskBatch} from "./task-batch-view.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
 import {reconcileFaultPhotos,disposeFaultPhotos} from "./fault-photo-view.js";
 import {reconcileAssetDocuments,disposeAssetDocuments} from "./asset-document-view.js";
@@ -234,6 +235,7 @@ function el(tag, text, className) {
 export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
+    disposeTaskBatch(this);
     disposeShoppingEditor(this);
     disposeTaskMedia(this);
     disposeFaultPhotos(this);
@@ -274,7 +276,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeFaultPhotos(this); disposeAssetDocuments(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskBatch(this); disposeTaskMedia(this); disposeFaultPhotos(this); disposeAssetDocuments(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -292,6 +294,7 @@ export class FamilyCard extends HTMLElement {
       if (generation !== this._generation) return;
       const previousData = this._data;
       this._data = data; this._error = null;
+      const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
       const recipesForce = reconcileRecipesRefresh(this,previousData);
       const schoolForce = reconcileSchoolRefresh(this,previousData);
@@ -315,7 +318,7 @@ export class FamilyCard extends HTMLElement {
       const faultPhotoForce = reconcileFaultPhotos(this);
       const documentForce = reconcileAssetDocuments(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -435,6 +438,8 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="tasks" && !this._form && !this._taskMediaDraft){
       renderTaskSeries(this,body);
       if(this._taskSeriesDraft)return;
+      renderTaskBatch(this,body);
+      if(this._taskBatchDraft)return;
     }
     if(this._view==="shopping"){renderShoppingSeries(this,body);renderShoppingEditor(this,body);}
     const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
