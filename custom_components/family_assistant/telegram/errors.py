@@ -2,6 +2,19 @@
 
 ERRORS = {
     "en": {
+        "migration_prepare_source_invalid": "The source exports or additional IDs "
+        "are invalid, unsupported or oversized. "
+        "Obtain corrected coherent exports; no "
+        "copy was written.",
+        "migration_prepare_selection_invalid": "Choose an allowed participant, "
+        "complete reviewer set or valid "
+        "bounded file for this page. No "
+        "association was advanced.",
+        "migration_prepare_policy_changed": "The declared old reviewer set differs "
+        "from the destination parents. Discard "
+        "this review and reconcile the source "
+        "policy and target roles; do not omit "
+        "reviewers to bypass this check.",
         "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. "
         "Upload a corrected ZIP using the "
         "documented format; the source was not "
@@ -209,6 +222,21 @@ ERRORS = {
         "expire automatically.",
     },
     "ru": {
+        "migration_prepare_source_invalid": "Экспорты или дополнительные ID "
+        "некорректны, не поддерживаются или "
+        "слишком велики. Подготовьте "
+        "исправленный согласованный экспорт; "
+        "копия не записана.",
+        "migration_prepare_selection_invalid": "Выберите допустимого участника, "
+        "полный список проверяющих или файл "
+        "в пределах лимита для этой "
+        "страницы. Сопоставление не принято.",
+        "migration_prepare_policy_changed": "Указанный полный список прежних "
+        "проверяющих отличается от родителей "
+        "новой семьи. Отмените проверку и "
+        "согласуйте старые права и новые роли; "
+        "не исключайте проверяющих ради обхода "
+        "проверки.",
         "migration_copy_bundle_invalid": "Архив некорректен, неполон или слишком "
         "велик. Загрузите исправленный ZIP по "
         "инструкции; источник не менялся.",
@@ -424,6 +452,21 @@ ERRORS = {
         "после истечения срока.",
     },
     "uk": {
+        "migration_prepare_source_invalid": "Експорти чи додаткові ID некоректні, "
+        "не підтримуються або завеликі. "
+        "Підготуйте виправлений узгоджений "
+        "експорт; копію не записано.",
+        "migration_prepare_selection_invalid": "Виберіть дозволеного учасника, "
+        "повний перелік перевіряльників чи "
+        "файл у межах ліміту для цієї "
+        "сторінки. Зіставлення не прийнято.",
+        "migration_prepare_policy_changed": "Зазначений повний перелік старих "
+        "перевіряльників відрізняється від "
+        "батьків нової родини. Скасуйте "
+        "перевірку та узгодьте старі права й "
+        "нові ролі; не вилучайте "
+        "перевіряльників заради обходу "
+        "перевірки.",
         "migration_copy_bundle_invalid": "Архів некоректний, неповний або "
         "завеликий. Завантажте виправлений ZIP за "
         "інструкцією; джерело не змінювалося.",

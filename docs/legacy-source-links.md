@@ -34,7 +34,9 @@ Input counts/sizes and the final allocation are bounded before ZIP construction;
 the independent parser rechecks its output. Packaging is not image validation or
 member authorization: the wizard still performs those reviews. The archive is
 unencrypted private data. Do not put it in Git, an LLM prompt, diagnostics or an
-issue. A source exporter and user-friendly mapping editor remain separate work.
+issue. The [native preparation wizard](legacy-preparation.md) now collects exact
+member/reviewer/photo choices and invokes this packager. A coherent source exporter
+is still separate work.
 
 ## Русский
 
@@ -60,7 +62,8 @@ issue. A source exporter and user-friendly mapping editor remain separate work.
 приватных данных по формату мастера: без чтения/записи файлов, получения снимков
 из Telegram или угадывания участников. Лимиты проверяются до сборки, результат
 повторно проверяет независимый парсер. Архив не зашифрован, его нельзя отправлять
-модели или публиковать. Удобный экспортёр и редактор сопоставлений ещё не готовы.
+модели или публиковать. [Мастер подготовки](legacy-preparation.md#русский) собирает
+сопоставления через формы. Экспортёр согласованного источника ещё не готов.
 
 ## Українська
 
@@ -86,4 +89,5 @@ issue. A source exporter and user-friendly mapping editor remain separate work.
 даних за форматом майстра: без читання/запису файлів, отримання фото з Telegram
 чи вгадування учасників. Ліміти перевіряються до збірки, результат повторно
 перевіряє незалежний парсер. Архів не зашифрований, його не можна надсилати моделі
-чи публікувати. Зручний експортер і редактор зіставлень ще не готові.
+чи публікувати. [Майстер підготовки](legacy-preparation.md#українська) збирає
+зіставлення через форми. Експортер узгодженого джерела ще не готовий.

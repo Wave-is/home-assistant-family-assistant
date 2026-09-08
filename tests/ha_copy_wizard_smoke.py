@@ -64,14 +64,14 @@ def _review_token(result):
     return marker.default()
 
 
-async def _upload(hass, owner, content):
+async def _upload(
+    hass, owner, content, *, filename="synthetic-review.zip", content_type="application/zip"
+):
     from aiohttp import ClientSession, FormData
 
     async with _token(hass, owner) as token, ClientSession() as session:
         form = FormData()
-        form.add_field(
-            "file", content, filename="synthetic-review.zip", content_type="application/zip"
-        )
+        form.add_field("file", content, filename=filename, content_type=content_type)
         async with session.post(
             "http://127.0.0.1:8123/api/file_upload",
             headers={"Authorization": f"Bearer {token}"},
@@ -274,6 +274,9 @@ async def verify_copy_wizard(hass, owner):
             assert prototype.runtime_data.engine.snapshot() == source_state
             assert await source_store.async_load() == source_state and not prototype.options
         assert len(created) == 1
+        from ha_copy_prepare_smoke import verify_copy_preparation
+
+        await verify_copy_preparation(hass, owner, child, prototype, source_state, flows, created)
         print(
             "PASS: native private ZIP upload/FileSelector, two-page nonce review, "
             "final confirmation, sealed registration, same-bundle reupload replay "

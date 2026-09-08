@@ -5,6 +5,9 @@
 
 ## English
 
+For guided preparation from the two source files instead of a hand-built ZIP,
+use [Prepare a read-only copy from exports](legacy-preparation.md).
+
 This advanced **read-only migration review** passed an isolated native HA test. It is not
 automatic source discovery, a general backup importer or activation of an old
 installation. Start with an isolated public-integration instance. Do not replace
@@ -19,8 +22,8 @@ so a controlled, separately verified cutover is still required.
    uses their exact IDs/revisions; it does not guess people or roles from names.
    Prepare the private bundle described below, including complete effective legacy
    reviewer sets and all historical photo-submission matches. Inspect the actual
-   photographs locally first. This is currently an operator-assisted preparation
-   step, not an automatic export/matching editor.
+   photographs locally first. The separate preparation wizard can collect these
+   associations and package the files; coherent source export remains a prerequisite.
 3. As the original household owner, also an active HA administrator, choose
    **Configure → Legacy read-only copy**. Supply a distinct copy name and the ZIP.
    Review every associations page. It includes participants, reviewer sets and
@@ -96,8 +99,9 @@ there is no partial import or automatic privilege expansion.
 не доказывают согласованность. Настройте участников и привязки HA в новой семье,
 затем подготовьте ZIP по таблице выше с точными ID/ревизиями, полными списками
 проверяющих и всеми историческими фото. Реальные фотографии проверьте локально.
-Подготовка архива пока требует оператора; автоматического экспортёра или редактора
-сопоставлений в этом мастере нет. Архив нельзя отправлять модели или в публичный issue.
+[Отдельный мастер подготовки](legacy-preparation.md#русский) собирает архив через
+выбор участников, проверяющих и фото. Получение согласованного экспорта остаётся
+отдельной процедурой. Архив нельзя отправлять модели или в публичный issue.
 
 Первоначальный владелец семьи, также администратор HA, открывает **Настроить →
 Проверочная копия старой семьи**. Укажите отдельное название, загрузите ZIP,
@@ -143,7 +147,8 @@ there is no partial import or automatic privilege expansion.
 узгодженість. Налаштуйте учасників та прив’язки HA в новій родині, підготуйте ZIP
 за таблицею вище з точними ID/ревізіями, повними переліками перевіряльників та всіма
 історичними фото. Самі фотографії перевірте локально. Підготовка архіву поки
-потребує оператора; автоматичного експортера чи редактора зіставлень тут немає.
+можлива через [окремий майстер](legacy-preparation.md#українська), де вибирають
+учасників, перевіряльників і фото. Узгоджений експорт отримують окремою процедурою.
 Не надсилайте архів моделі чи до публічного issue.
 
 Початковий власник родини, також адміністратор HA, відкриває **Налаштувати →

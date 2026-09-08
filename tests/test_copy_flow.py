@@ -231,6 +231,59 @@ def test_private_markdown_associations_cannot_introduce_links_or_html(module):
 
 
 @pytest.mark.asyncio
+async def test_cancelled_final_writer_settles_then_releases_memory_but_keeps_receipt(
+    module, monkeypatch
+):
+    flow = Flow(module, phase="review")
+    entered, release = asyncio.Event(), asyncio.Event()
+    saved = []
+
+    async def writer(_hass, **kwargs):
+        async def commit():
+            entered.set()
+            await release.wait()
+            saved.append(kwargs["record"]["entry_id"])
+
+        work = asyncio.create_task(commit())
+        try:
+            await asyncio.shield(work)
+        except asyncio.CancelledError:
+            await work
+            raise
+
+    monkeypatch.setattr(module, "async_commit_copy_intent", writer)
+    request = {"review_token": flow.candidate.summary()["fingerprint"], "confirmed": True}
+    task = asyncio.create_task(module.review_step(flow, request))
+    await asyncio.wait_for(entered.wait(), 3)
+    task.cancel()
+    await asyncio.sleep(0)
+    assert flow.slot["busy"] and module._slot(flow) is flow.slot
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert saved == ["a" * 32]
+    assert module._SLOT not in flow.hass.data["family_assistant"]
+
+
+@pytest.mark.asyncio
+async def test_cancelled_match_authorization_releases_only_own_idle_slot(module, monkeypatch):
+    flow = Flow(module)
+    entered = asyncio.Event()
+
+    async def cancelled_guard(*_args):
+        entered.set()
+        await asyncio.Future()
+
+    monkeypatch.setattr(module, "_guard", cancelled_guard)
+    task = asyncio.create_task(module.matches_step(flow))
+    await asyncio.wait_for(entered.wait(), 3)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert module._SLOT not in flow.hass.data["family_assistant"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("phase", ["matches", "review"])
 async def test_owner_can_discard_own_review_without_any_store_or_entry_action(module, phase):
     flow = Flow(module, phase=phase)

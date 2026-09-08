@@ -167,6 +167,48 @@
   },
   "options": {
     "step": {
+      "legacy_prepare": {
+        "title": "Choose the two private source exports",
+        "description": "Use coherent schema-1 Assistant/Court Store exports from the supported source procedure, not independently copied live files. Destination members must already be configured. No credentials or provider settings. Maximum 8 MiB per source; one private review for 15 minutes. This wizard prepares a separate read-only copy, not activation.",
+        "data": {
+          "copy_name": "Separate copy name",
+          "assistant_export": "Assistant export (.json)",
+          "court_export": "Court export (.json)",
+          "additional_members": "Additional legacy reviewer IDs absent from the records (one exact ID per line)",
+          "private_files_reviewed": "I checked the coherent source export and rollback copy locally"
+        }
+      },
+      "legacy_prepare_member": {
+        "title": "Match this legacy identity",
+        "description": "Choose the exact destination participant. Names are not matched automatically; each participant can be used only once. Archive-only is available only for historical identities not required by current records. If nobody fits, discard and configure the destination family first.\n\n{association}",
+        "data": {
+          "review_token": "Current review page",
+          "confirmed": "I checked this exact association",
+          "discard_review": "Discard only this review; keep any existing copy",
+          "member": "Destination participant",
+          "archive_only": "Archive this historical identity without granting a role"
+        }
+      },
+      "legacy_prepare_reviewer": {
+        "title": "Confirm the complete old reviewer set",
+        "description": "Select everyone who could review this task in the old configuration, not just the last reviewer. Include the designated reviewer shown below. The wizard cannot discover or verify old permissions; do not guess. Changed rights block the copy.\n\n{association}",
+        "data": {
+          "review_token": "Current review page",
+          "confirmed": "I checked this exact association",
+          "discard_review": "Discard only this review; keep any existing copy",
+          "reviewers": "Complete effective legacy reviewer IDs"
+        }
+      },
+      "legacy_prepare_photo": {
+        "title": "Match this historical photo",
+        "description": "Select the original image for this exact historical report, not only the latest task photo. Check its contents locally. JPEG/PNG/WebP; maximum 10 MiB per file and 64 MiB total. Image decoding happens before final copy confirmation.\n\n{association}",
+        "data": {
+          "review_token": "Current review page",
+          "confirmed": "I checked this exact association",
+          "discard_review": "Discard only this review; keep any existing copy",
+          "photo": "Original report image"
+        }
+      },
       "legacy_copy": {
         "title": "Upload a private review bundle",
         "description": "Advanced migration preview. Configure the family members first, then choose a ZIP prepared using the migration guide. Limit: 96 MiB; 512 photos, 10 MiB each and 64 MiB total. Files remain inside HA. One review at a time, for 15 minutes. No source changes or automation activation.",
@@ -215,7 +257,8 @@
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
           "mikrotik": "MikroTik network",
-          "legacy_copy": "Legacy read-only copy"
+          "legacy_copy": "Legacy read-only copy",
+          "legacy_prepare": "Prepare a read-only copy from exports"
         }
       },
       "guided_onboarding": {
@@ -429,6 +472,9 @@
       }
     },
     "error": {
+      "migration_prepare_source_invalid": "The source exports or additional IDs are invalid, unsupported or oversized. Obtain corrected coherent exports; no copy was written.",
+      "migration_prepare_selection_invalid": "Choose an allowed participant, complete reviewer set or valid bounded file for this page. No association was advanced.",
+      "migration_prepare_policy_changed": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check.",
       "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
       "migration_copy_source_unsettled": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check.",
       "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
@@ -556,6 +602,9 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "migration_prepare_source_invalid": "The source exports or additional IDs are invalid, unsupported or oversized. Obtain corrected coherent exports; no copy was written.",
+      "migration_prepare_selection_invalid": "Choose an allowed participant, complete reviewer set or valid bounded file for this page. No association was advanced.",
+      "migration_prepare_policy_changed": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check.",
       "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
       "migration_copy_source_unsettled": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check.",
       "migration_copy_cancelled": "Review discarded. Any already-created copy and saved retry intent were preserved.",
@@ -632,6 +681,8 @@
     }
   },
   "exceptions": {
+    "migration_prepare_policy_changed": {"message": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check."},
+    "migration_copy_source_unsettled": {"message": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check."},
     "migration_copy_busy": {"message": "Another review is active. Finish it or wait for its 15-minute window to expire."},
     "migration_copy_primary_owner_required": {"message": "Use the original household owner account, also an active Home Assistant administrator."},
     "migration_copy_review_changed": {"message": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name."},

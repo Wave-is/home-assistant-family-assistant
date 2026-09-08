@@ -33,8 +33,27 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.25 runtime ZIP/tag verified at 41546e28, all eight Checks jobs passed (34212564006), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only copy wizard, staging and sealed registration HA-tested | Native authenticated ZIP/FileSelector upload, paged member/reviewer/photo association review, distinct final counts/hash confirmation and separate sealed ConfigEntry passed. Same-package/unchanged-target reupload retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, operator-free bundle/mapping preparation, reviewed residue recovery, activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.26 runtime ZIP/tag verified at f631b31a, all eight Checks jobs passed (34217245123), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant and complete reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Direct ZIP review remains available. Same-package/unchanged-target repeat retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, reviewed residue recovery, activation and controlled cutover remain pending |
+
+## Guided private package preparation candidate, 2026-09-08
+
+The EN/RU/UK Options path accepts two explicitly selected source exports, then
+requires exact participant, complete old reviewer and historical image choices.
+No automatic name/permission inference occurs. Historical report actors and
+assignees needed by conversion cannot be offered archive-only. Unknown additional
+reviewer IDs can be supplied explicitly. Deterministic packaging joins the
+existing final association/fingerprint review and sealed registration; no source
+exporter or activation is implied.
+
+Full Python3979/five skips/23 subtests and Node450/141 passed before the final
+independent-review regressions. Native45793 passed two source uploads, two member
+choices, two complete reviewer sets, three photos, sealed copy, exact repeat and
+discard preserving the existing copy/intent, plus the full HA suite. AGY10338
+identified overly permissive archive choices and cancellation-held idle slots;
+root checked the actual conversion/writer contracts and added fixes. Focused63
+passed afterward. Final Python3990/five skips/23 subtests and full native8231
+passed with the final guards. Exact release CI is still pending.
 
 ## Cross-ledger source checks and packaging candidate, 2026-09-08
 

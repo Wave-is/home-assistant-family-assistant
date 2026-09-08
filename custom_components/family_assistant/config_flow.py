@@ -174,6 +174,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "digests",
                 "mikrotik",
                 "legacy_copy",
+                "legacy_prepare",
             ],
         )
 
@@ -194,6 +195,26 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         from .migration.copy_flow import upload_step
 
         return await upload_step(self, user_input)
+
+    async def async_step_legacy_prepare(self, user_input=None):
+        from .migration.copy_prepare import source_step
+
+        return await source_step(self, user_input)
+
+    async def async_step_legacy_prepare_member(self, user_input=None):
+        from .migration.copy_prepare import page_step
+
+        return await page_step(self, "prepare_members", user_input)
+
+    async def async_step_legacy_prepare_reviewer(self, user_input=None):
+        from .migration.copy_prepare import page_step
+
+        return await page_step(self, "prepare_reviewers", user_input)
+
+    async def async_step_legacy_prepare_photo(self, user_input=None):
+        from .migration.copy_prepare import page_step
+
+        return await page_step(self, "prepare_photos", user_input)
 
     async def async_step_legacy_copy_matches(self, user_input=None):
         from .migration.copy_flow import matches_step

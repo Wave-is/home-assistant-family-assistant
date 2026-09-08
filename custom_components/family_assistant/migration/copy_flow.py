@@ -157,6 +157,65 @@ async def _uploaded_bundle(hass, file_id):
         raise
 
 
+def _claim_slot(flow, runtime, state, *, phase):
+    existing = flow.hass.data[DOMAIN].get(_SLOT)
+    if existing and (existing["busy"] or existing["expires"] >= time.monotonic()):
+        raise DomainError("migration_copy_busy")
+    slot = {
+        "flow_id": flow.flow_id,
+        "user_id": flow.context["user_id"],
+        "runtime": runtime,
+        "pins": _pins(state),
+        "expires": time.monotonic() + _TTL,
+        "busy": True,
+        "lock": asyncio.Lock(),
+        "phase": phase,
+    }
+    flow.hass.data[DOMAIN][_SLOT] = slot
+    return slot
+
+
+def _empty_copy(flow, state, name):
+    target = new_state(
+        flow.context["user_id"],
+        name,
+        state["settings"]["language"],
+        [],
+        timezone=state["settings"]["timezone"],
+    )
+    target["members"] = deepcopy(state["members"])
+    return target
+
+
+async def _accept_bundle(flow, slot, bundle, digest, target):
+    """Common prepared/ZIP entry point; no persistent write before final review."""
+    await _guard(flow, slot)
+    source, mapping, reviewers, _, _ = bundle.private_inputs()
+    review = source.review(mapping, target["members"], mapping_revision=1)
+    slot.update(
+        bundle=bundle,
+        package_fingerprint=digest,
+        target=target,
+        source_review=review,
+        rows=_match_rows(bundle, target["members"], target["settings"]["language"]),
+        page=0,
+        phase="matches",
+        reviewer_policy={
+            "schema": 1,
+            "revision": 1,
+            "source_review_fingerprint": review.summary()["fingerprint"],
+            "reviewers": reviewers,
+        },
+    )
+    slot["intent"] = await async_select_copy_intent(
+        flow.hass,
+        package_fingerprint=digest,
+        target=target,
+        prepared_at=dt_util.utcnow(),
+        authorize=lambda: _guard(flow, slot),
+    )
+
+
 def _upload_form(flow, error=None):
     return flow.async_show_form(
         step_id="legacy_copy",
@@ -204,57 +263,12 @@ async def upload_step(flow, user_input=None):
         if user_input.get("private_files_reviewed") is not True:
             return _upload_form(flow, "migration_copy_confirmation_required")
         name = text(user_input.get("copy_name"), "copy_name", 80)
-        existing = flow.hass.data[DOMAIN].get(_SLOT)
-        if existing and (existing["busy"] or existing["expires"] >= time.monotonic()):
-            raise DomainError("migration_copy_busy")
         # Exactly one process-local slot bounds private bundle memory. Expired
         # idle slots are replaced; their persistent retry intent is not removed.
-        slot = {
-            "flow_id": flow.flow_id,
-            "user_id": flow.context["user_id"],
-            "runtime": runtime,
-            "pins": _pins(state),
-            "expires": time.monotonic() + _TTL,
-            "busy": True,
-            "lock": asyncio.Lock(),
-            "phase": "upload",
-        }
-        flow.hass.data[DOMAIN][_SLOT] = slot
+        slot = _claim_slot(flow, runtime, state, phase="upload")
         try:
             bundle, digest = await _uploaded_bundle(flow.hass, user_input.get("bundle"))
-            await _guard(flow, slot)
-            target = new_state(
-                flow.context["user_id"],
-                name,
-                state["settings"]["language"],
-                [],
-                timezone=state["settings"]["timezone"],
-            )
-            target["members"] = deepcopy(state["members"])
-            source, mapping, reviewers, _, _ = bundle.private_inputs()
-            review = source.review(mapping, target["members"], mapping_revision=1)
-            slot.update(
-                bundle=bundle,
-                package_fingerprint=digest,
-                target=target,
-                source_review=review,
-                rows=_match_rows(bundle, target["members"], state["settings"]["language"]),
-                page=0,
-                phase="matches",
-                reviewer_policy={
-                    "schema": 1,
-                    "revision": 1,
-                    "source_review_fingerprint": review.summary()["fingerprint"],
-                    "reviewers": reviewers,
-                },
-            )
-            slot["intent"] = await async_select_copy_intent(
-                flow.hass,
-                package_fingerprint=digest,
-                target=target,
-                prepared_at=dt_util.utcnow(),
-                authorize=lambda: _guard(flow, slot),
-            )
+            await _accept_bundle(flow, slot, bundle, digest, _empty_copy(flow, state, name))
         except BaseException:
             _clear(flow, slot)
             raise
@@ -351,6 +365,9 @@ async def matches_step(flow, user_input=None):
         return _abort(flow, "migration_copy_conversion_required")
     except (ValueError, TypeError, KeyError, OSError):
         return _abort(flow, "migration_copy_conversion_required")
+    except asyncio.CancelledError:
+        _abort(flow, "migration_copy_cancelled")
+        raise
 
 
 def _review_form(flow, slot, error=None):
@@ -427,6 +444,9 @@ async def review_step(flow, user_input=None):
         return await complete_step(flow)
     except DomainError as error:
         return _abort(flow, error.code)
+    except asyncio.CancelledError:
+        _abort(flow, "migration_copy_cancelled")
+        raise
 
 
 async def complete_step(flow, user_input=None):
