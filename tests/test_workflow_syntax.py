@@ -1,6 +1,7 @@
 """Local YAML syntax guard; this does not replace GitHub Actions validation."""
 
 from pathlib import Path
+from shlex import split
 
 import pytest
 import yaml
@@ -33,3 +34,14 @@ def test_pdf_bootstrap_is_used_in_each_offline_ha_lane():
         docker = next(command for command in commands if "docker run" in command)
         assert "--network none" in docker and "--cap-drop ALL" in docker
         assert "ha_dependency_smoke.py" in docker and "pypdf-6.17.0-py3-none-any.whl" in docker
+
+
+def test_restore_binary_dependencies_stay_outside_the_public_build_source():
+    value = yaml.safe_load((ROOT / ".github/workflows/checks.yml").read_text(encoding="utf-8"))
+    steps = value["jobs"]["encrypted-restore"]["steps"]
+    checkout = next(step for step in steps if "uses" in step)
+    assert checkout["with"]["path"] == "candidate"
+    command = split(next(step["run"] for step in steps if "docker run" in step.get("run", "")))
+    source = command[command.index("--source") + 1]
+    wheel = command[command.index("--wheel") + 1]
+    assert source == "/work/candidate" and not wheel.startswith(source + "/")

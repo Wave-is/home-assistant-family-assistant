@@ -71,6 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
+          path: candidate
           persist-credentials: false
       - name: Stage pinned public PDF decoder (hash checked inside isolated runner)
         run: >-
@@ -81,9 +82,9 @@ jobs:
           --security-opt no-new-privileges --memory 1g
           --mount type=bind,src=${{ github.workspace }},dst=/work,readonly
           --entrypoint python ghcr.io/home-assistant/home-assistant:2026.8.2
-          /work/tests/ha_dependency_smoke.py
+          /work/candidate/tests/ha_dependency_smoke.py
           --wheel /work/dependencies/pypdf-6.17.0-py3-none-any.whl --case restore --
-          --source /work --timeout-seconds 300
+          --source /work/candidate --timeout-seconds 300
 
   hassfest:
     runs-on: ubuntu-latest
