@@ -160,6 +160,9 @@ ERRORS = {
         "media_too_large": "The photo exceeds the file or image-size limit.",
         "media_unavailable": "Could not confirm the photo operation. Retry the same "
         "reviewed action.",
+        "capacity_reached": "The local inventory capacity is reached. Existing "
+        "records and history are preserved; new changes are "
+        "stopped.",
         "quota_exceeded": "The private photo quota is full. Unattached uploads "
         "expire automatically.",
     },
@@ -328,6 +331,8 @@ ERRORS = {
         "media_too_large": "Фото превышает ограничение размера файла или изображения.",
         "media_unavailable": "Не удалось подтвердить операцию с фото. Повторите то "
         "же проверенное действие.",
+        "capacity_reached": "Достигнут лимит локального журнала. Записи и история "
+        "сохранены; новые изменения не добавляются.",
         "quota_exceeded": "Квота фото заполнена. Неприкреплённые загрузки удаляются "
         "после истечения срока.",
     },
@@ -493,6 +498,8 @@ ERRORS = {
         "media_too_large": "Фото перевищує обмеження розміру файлу або зображення.",
         "media_unavailable": "Не вдалося підтвердити операцію з фото. Повторіть ту "
         "саму перевірену дію.",
+        "capacity_reached": "Досягнуто ліміту локального журналу. Записи та історію "
+        "збережено; нові зміни не додаються.",
         "quota_exceeded": "Квота фото заповнена. Неприкріплені завантаження "
         "видаляються після закінчення строку.",
     },

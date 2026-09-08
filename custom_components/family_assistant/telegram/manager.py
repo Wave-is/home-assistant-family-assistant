@@ -18,6 +18,7 @@ from ..assistant.service import Assistant
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
+from .admission import AdmissionReply
 from .context import PersonalReply, reply_quote, reply_refs, result_refs
 from .enrollment import Enrollment
 from .errors import ERRORS
@@ -570,6 +571,11 @@ class TelegramManager:
                             {
                                 "text": response,
                                 "private_context": isinstance(response, PersonalReply),
+                                **(
+                                    {"admission_context": response.scope}
+                                    if isinstance(response, AdmissionReply)
+                                    else {}
+                                ),
                                 "actor": actor,
                                 "actor_revision": actor_revision,
                                 "bot_id": bot_id,

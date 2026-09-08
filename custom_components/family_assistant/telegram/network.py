@@ -186,6 +186,16 @@ def diff_line(key, change, language):
 
 
 def parsed(state, content, now):
+    normalized = " ".join(content.casefold().strip().split()).rstrip("?!. ")
+    if normalized in {
+        "/unknown_devices",
+        "/неизвестные",
+        "/невідомі",
+        "show unknown devices",
+        "покажи неизвестные устройства",
+        "покажи невідомі пристрої",
+    }:
+        return "read.network_admission", {}
     command, _, tail = content.strip().partition(" ")
     command = command.casefold()
     aliases = {

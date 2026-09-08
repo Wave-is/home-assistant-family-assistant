@@ -31,6 +31,10 @@ def public(plan):
 
 
 def handle(ctx, action, payload):
+    if action.startswith("admission_"):
+        from . import admission
+
+        return admission.handle(ctx, action, payload)
     if action.startswith("kid_"):
         from .kid_plans import handle as handle_kid
 

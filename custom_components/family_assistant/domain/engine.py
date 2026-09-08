@@ -470,6 +470,8 @@ class Engine:
         if actor["role"] != "guest" and "digests" in self._state["settings"]["modules"]:
             data["digests"] = digests.view(self._state, actor)
         if parent:
+            from ..network import admission
+
             data["network"] = {
                 "inventory": self._state["network"].get("inventory"),
                 "writable": self._state["network"].get("writable", False),
@@ -478,6 +480,9 @@ class Engine:
                     for p in self._state["network"].get("plans", {}).values()
                 ][-20:],
             }
+            admission_view = admission.view(self._state, actor, now)
+            if admission_view is not None:
+                data["network"]["admission"] = admission_view
             data["delivery_issues"] = [
                 {k: event[k] for k in ("id", "recipient", "key", "state", "attempts", "created_at")}
                 for event in self._state["outbox"].values()
@@ -691,6 +696,16 @@ class Engine:
             if "shopping" not in self._state["settings"]["modules"]:
                 raise DomainError("module_disabled")
         elif module == "mikrotik":
+            if action.startswith("mikrotik.admission_"):
+                from ..network import admission
+
+                admission.authorize_replay(
+                    Context(self._state, self._actor(actor_id), now, "admission-replay"),
+                    action.split(".", 1)[1],
+                    payload,
+                    result,
+                )
+                return
             kid_control = action.startswith("mikrotik.kid_") and action not in {
                 "mikrotik.kid_adopt",
                 "mikrotik.kid_permission",

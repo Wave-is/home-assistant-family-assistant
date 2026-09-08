@@ -225,11 +225,14 @@ async def route(
     }:
         return t["alive"]
     if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
+        from .admission import COPY as ADMISSION_COPY
+
         return (
             t["help"]
             + rewards.help_text(language)
             + calendar.help_text(language)
             + routines.help_text(language)
+            + ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["help"]
         )
     from .network import parsed as parse_network
     from .network import status as network_status
@@ -239,6 +242,10 @@ async def route(
         if "mikrotik" not in view["settings"]["modules"]:
             raise DomainError("module_disabled")
         action, payload = network_intent
+        if action == "read.network_admission":
+            from .admission import read as read_admission
+
+            return read_admission(view, now, private=private)
         if action == "read.network":
             return network_status(view, payload.get("member"), language)
         return saved(

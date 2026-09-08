@@ -138,6 +138,7 @@
       "media_invalid": "The photo could not be verified. Use a static JPEG, PNG or WebP.",
       "media_too_large": "The photo exceeds the file or image-size limit.",
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
+      "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
@@ -501,6 +502,7 @@
       "media_invalid": "The photo could not be verified. Use a static JPEG, PNG or WebP.",
       "media_too_large": "The photo exceeds the file or image-size limit.",
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
+      "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
@@ -870,6 +872,9 @@
     },
     "media_unavailable": {
       "message": "Could not confirm the photo operation. Retry the same reviewed action."
+    },
+    "capacity_reached": {
+      "message": "The local inventory capacity is reached. Existing records and history are preserved; no new plan can be added."
     },
     "quota_exceeded": {
       "message": "The private photo quota is full. Unattached uploads expire automatically."

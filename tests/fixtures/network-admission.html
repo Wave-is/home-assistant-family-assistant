@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Local network review fixture</title><style>body{margin:0;padding:12px;background:#edf4f2;font-family:Arial,sans-serif}main{max-width:650px;margin:auto}</style></head>
+<body><main></main><script type="module">
+import "/custom_components/family_assistant/frontend/family-assistant.js";
+import {admissionState,admissionTransport} from "./network-admission-data.js";
+const params=new URLSearchParams(location.search),language=params.get("lang")||"en",role=params.get("role")||"owner";
+const state=window.fixture=admissionState(role),calls=window.calls=[],transport=admissionTransport(state,calls);
+const card=window.card=document.createElement("family-network-card");
+card.setConfig({type:"custom:family-network-card",entry_id:"synthetic-admission",language});
+document.querySelector("main").append(card);
+card.hass={user:{id:`synthetic-${role}`},language,callWS:async message=>transport(message)};
+</script></body></html>
