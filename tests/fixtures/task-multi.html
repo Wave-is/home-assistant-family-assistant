@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic independent assignment acceptance</title>
+<style>
+body{margin:0;padding:16px;font-family:system-ui;background:#eef3f1;color:#19332f}main{max-width:650px;margin:auto}
+body.dark{background:#142320;--ha-card-background:#20342e;--primary-text-color:#eaf4ec;--secondary-text-color:#a8bdb4;--divider-color:#3b5148}
+</style><main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+const query=new URLSearchParams(location.search),language=query.get("lang")||"en";
+document.documentElement.lang=language;if(query.has("dark"))document.body.classList.add("dark");
+const fixture={revision:1,actor:"owner",actor_revision:1,role:"owner",
+ settings:{name:"Synthetic household",modules:["tasks"],timezone:"Europe/Berlin"},
+ members:[{id:"owner",name:"Parent 1",role:"owner"},{id:"first",name:"Child 1",role:"child"},{id:"second",name:"Child 2",role:"child"},{id:"guest",name:"Guest",role:"guest"}].map(m=>({...m,active:true,revision:1})),
+ tasks:[],task_series:[],health:{},delivery_issues:[]};
+if(query.get("role")==="child"){fixture.actor="first";fixture.role="child";}
+window.fixture=fixture;window.calls=[];const receipts=new Map();
+const card=document.createElement("family-tasks-card");window.card=card;
+card.setConfig({entry_id:"synthetic-multi",view:"tasks",language});
+card.hass={language,user:{id:"synthetic-multi-user"},config:{time_zone:"Pacific/Honolulu"},callWS:async message=>{
+ if(message.type.endsWith("/households"))return [{entry_id:"synthetic-multi",title:"Synthetic household"}];
+ if(message.type.endsWith("/view"))return structuredClone(fixture);
+ if(!message.type.endsWith("/execute"))throw {code:"unknown_action"};
+ window.calls.push(structuredClone(message));
+ if(window.failCommand)throw {code:"storage_error"};
+ const fingerprint=JSON.stringify([message.action,message.payload]);
+ if(receipts.has(message.operation_id)){
+  const prior=receipts.get(message.operation_id);if(prior.fingerprint!==fingerprint)throw {code:"idempotency_conflict"};
+  return structuredClone(prior.result);
+ }
+ if(window.holdReply)await new Promise(resolve=>window.releaseReply=resolve);
+ const working=structuredClone(fixture.tasks), result=[];
+ const commands=message.action==="batch"?message.payload.commands:[{action:message.action,payload:message.payload}];
+ if(!Array.isArray(commands)||commands.length<1||commands.length>20)throw {code:"invalid_field"};
+ for(const command of commands){
+  const {action,payload}=command;
+  if(action==="tasks.create"){
+   const target=fixture.members.find(m=>m.id===payload.assignee&&m.active&&m.role!=="guest");
+   if(!target||target.revision!==payload.assignee_revision)throw {code:"conflict"};
+   if(!["owner","parent"].includes(fixture.role)&&fixture.actor!==target.id)throw {code:"forbidden"};
+   if(payload.personal&&target.id!==fixture.actor)throw {code:"forbidden"};
+   const item={...structuredClone(payload),id:`T${String(working.length+1).padStart(6,"0")}`,creator:fixture.actor,revision:1,status:"assigned",report:null,
+    checklist:(payload.checklist||[]).map(text=>({text,done:false})),deadline_policy:{reminder_minutes:payload.reminder_minutes,grace_minutes:payload.grace_minutes,penalty:payload.penalty},
+    ...(payload.personal?{delivery_scope:"personal"}:{})};working.push(item);result.push(structuredClone(item));
+  }else if(action==="tasks.cancel"){
+   const item=working.find(t=>t.id===payload.id);if(!item||item.revision!==payload.revision)throw {code:"conflict"};
+   item.status="cancelled";item.revision++;result.push(structuredClone(item));
+  }else throw {code:"unknown_action"};
+ }
+ fixture.tasks=working;fixture.revision++;
+ const reply=message.action==="batch"?{items:result}:result[0];
+ receipts.set(message.operation_id,{fingerprint,result:structuredClone(reply)});
+ if(window.loseReplyOnce){window.loseReplyOnce=false;throw {code:"unconfirmed"};}
+ return reply;
+}};
+document.querySelector("main").append(card);
+</script></html>

@@ -699,6 +699,9 @@ async def run_websocket(hass, entry, owner, child_id):
     from ha_task_batch_smoke import verify_task_batch
 
     await verify_task_batch(hass, owner)
+    from ha_task_multi_create_smoke import verify_task_multi_create
+
+    await verify_task_multi_create(hass, owner)
     await verify_court_controls(hass, entry, owner, child, child_id)
 
 

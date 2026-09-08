@@ -6,7 +6,7 @@ import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor} from "./shopping-items.js";
 import {stopBarcodeCamera} from "./shopping-barcode.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
-import {renderTaskForm} from "./task-form.js";
+import {renderTaskForm,reconcileTaskFormRefresh,disposeTaskForm} from "./task-form.js";
 import {renderTaskBatch,reconcileTaskBatchRefresh,disposeTaskBatch} from "./task-batch-view.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
 import {reconcileFaultPhotos,disposeFaultPhotos} from "./fault-photo-view.js";
@@ -235,6 +235,7 @@ function el(tag, text, className) {
 export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
+    disposeTaskForm(this);
     disposeTaskBatch(this);
     disposeShoppingEditor(this);
     disposeTaskMedia(this);
@@ -276,7 +277,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskBatch(this); disposeTaskMedia(this); disposeFaultPhotos(this); disposeAssetDocuments(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskForm(this); disposeTaskBatch(this); disposeTaskMedia(this); disposeFaultPhotos(this); disposeAssetDocuments(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -294,6 +295,7 @@ export class FamilyCard extends HTMLElement {
       if (generation !== this._generation) return;
       const previousData = this._data;
       this._data = data; this._error = null;
+      const taskFormForce = reconcileTaskFormRefresh(this,previousData);
       const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
       const recipesForce = reconcileRecipesRefresh(this,previousData);
@@ -318,7 +320,7 @@ export class FamilyCard extends HTMLElement {
       const faultPhotoForce = reconcileFaultPhotos(this);
       const documentForce = reconcileAssetDocuments(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (taskFormForce || taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
@@ -344,14 +346,25 @@ export class FamilyCard extends HTMLElement {
     const generation=this._generation;
     const fingerprint=JSON.stringify([this._entry,action,payload]);
     if(operationId || this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:operationId || crypto.randomUUID()};
+    const sentOperationId=this._pending.id;
     this._writing=true;
     for(const b of this.shadowRoot.querySelectorAll("button")) b.disabled=true;
     try {
       const result=await this._hass.callWS({type:"family_assistant/execute",entry_id:this._entry,
-        action,payload,operation_id:this._pending.id});
-      if(generation===this._generation){this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;this._form=null;this._seriesForm=null;}
+        action,payload,operation_id:sentOperationId});
+      if(generation===this._generation){
+        const keepTaskForm=this._taskCreateDraft?.pending && this._taskCreateDraft.pending.operation_id!==sentOperationId;
+        this._pending=null;this._actionError=result?.accepted===false?"wrong_answer":null;
+        if(!keepTaskForm)this._form=null;
+        this._seriesForm=null;
+      }
     } catch(error) {if(generation===this._generation)this._actionError=error.code || this.t.failure;}
-    finally {this._writing=false;await this.refresh();this.render();}
+    finally {
+      if(generation===this._generation){
+        this._writing=false;await this.refresh();
+        if(generation===this._generation)this.render();
+      }
+    }
   }
   form() {
     if(this._view==="tasks")return renderTaskForm(this);
@@ -446,8 +459,15 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
       toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
-    } else if(toolbar && this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();},true));
-    if(toolbar)body.append(toolbar);if(this._form && this._view!=="shopping")body.append(this.form());
+    } else if(toolbar && this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{
+      if(this._form && this._view==="tasks" && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
+      this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();
+    },true));
+    if(toolbar)body.append(toolbar);
+    if(this._form && this._view!=="shopping"){
+      body.append(this.form());
+      if(this._view==="tasks")return;
+    }
     const items=this._data[this._view] || [];
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):this._view==="tasks"?!["completed","cancelled","archived"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);

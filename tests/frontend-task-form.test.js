@@ -11,9 +11,9 @@ function make(){
   const card=document.createElement("family-tasks-card");card.setConfig({entry_id:"demo",language:"en"});
   card._hass={language:"en",config:{time_zone:"Pacific/Honolulu"}};
   card._data={actor:"parent",role:"parent",settings:{name:"Demo",timezone:"Europe/Berlin",modules:["tasks"]},
-    tasks:[],members:[{id:"parent",name:"Parent",active:true,role:"parent"},{id:"child",name:"Child",active:true,role:"child"},{id:"guest",name:"Guest",active:true,role:"guest"}]};
+    tasks:[],members:[{id:"parent",name:"Parent",active:true,role:"parent",revision:1},{id:"child",name:"Child",active:true,role:"child",revision:1},{id:"guest",name:"Guest",active:true,role:"guest",revision:1}]};
   card._form=true;card.render();card.calls=[];
-  card.command=async(action,payload)=>{card.calls.push({action,payload:structuredClone(payload)});};
+  card.command=async(action,payload,opId)=>{card.calls.push({action,payload:structuredClone(payload)});};
   return card;
 }
 const formOf=card=>card.shadowRoot.querySelector("form[data-task-create]");
@@ -25,13 +25,14 @@ test("task create translates copy and uses household zone rather than browser or
   const card=make();input(card,"title","Clean table");input(card,"assignee","child");input(card,"due_at","2026-09-07T17:00");input(card,"checklist","Wipe\n\nDry");
   assert.equal(formOf(card).elements.assignee.options.length,2);
   await submit(card);
-  assert.deepEqual(card.calls[0],{action:"tasks.create",payload:{title:"Clean table",assignee:"child",due_at:"2026-09-07T15:00:00.000Z",report_type:"text",checklist:["Wipe","Dry"],reminder_minutes:60,grace_minutes:30,penalty:0}});
+  assert.deepEqual(card.calls[0],{action:"tasks.create",payload:{title:"Clean table",assignee:"child",assignee_revision:1,due_at:"2026-09-07T15:00:00.000Z",report_type:"text",checklist:["Wipe","Dry"],reminder_minutes:60,grace_minutes:30,penalty:0}});
 });
 
 test("DST gap is rejected and fold requires an explicit occurrence",async()=>{
   const card=make();input(card,"title","Task");input(card,"due_at","2025-03-30T02:30");await submit(card);assert.equal(card.calls.length,0);
   input(card,"due_at","2025-10-26T02:30");await submit(card);assert.equal(card.calls.length,0);
   input(card,"due_fold","1");await submit(card);assert.equal(card.calls[0].payload.due_at,"2025-10-26T01:30:00.000Z");
+  assert.equal(card.calls[0].payload.assignee_revision,1);
 });
 
 test("failed creation retains frozen draft and exact operation ID across rerender",async()=>{
@@ -64,6 +65,7 @@ test("invalid checklist can be corrected; empty deadline is omitted",async()=>{
   const card=make();input(card,"title","Task");input(card,"checklist",Array(51).fill("Step").join("\n"));await submit(card);assert.equal(card.calls.length,0);
   input(card,"checklist","Valid");input(card,"report_type","none");await submit(card);
   assert.equal(card.calls.length,1);assert.equal("due_at" in card.calls[0].payload,false);assert.equal(card.calls[0].payload.report_type,"none");
+  assert.equal(card.calls[0].payload.assignee_revision,1);
 });
 
 test("personal reminder form pins self, no report or penalties, and preserves frozen retry",async()=>{
@@ -75,7 +77,7 @@ test("personal reminder form pins self, no report or penalties, and preserves fr
   for(const key of ["assignee","report_type","grace_minutes","penalty"])assert.equal(formOf(card).elements[key].disabled,true);
   card.command=async(action,payload)=>{card.calls.push({action,payload:structuredClone(payload)});card._actionError="unconfirmed";};
   await submit(card);
-  assert.equal(card.calls[0].payload.personal,true);assert.equal(card.calls[0].payload.report_type,"none");
+  assert.equal(card.calls[0].payload.personal,true);assert.equal(card.calls[0].payload.assignee_revision,1);assert.equal(card.calls[0].payload.report_type,"none");
   assert.equal(card.calls[0].payload.grace_minutes,0);assert.equal(card.calls[0].payload.penalty,0);
   assert.equal(formOf(card).elements.personal.checked,true);
   assert.equal(formOf(card).elements.personal.disabled,true);

@@ -36,7 +36,47 @@ Nothing is production-ready solely because a mock test passes.
 | Release CI and secret checks | Implemented / CI-tested | alpha.31 runtime ZIP/tag verified at 3b09a80; subsequent acceptance-only 9f6532d passed all nine Checks jobs (34240668570), including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
 
-## Reviewed task batches candidate, 2026-09-08
+## Independent multi-person assignments candidate, 2026-09-08
+
+Alpha.33 extends one-off task creation with explicit parent selection of 1–20
+members, a complete review and confirmation. Each receives its own task/report/
+checklist and optional penalty policy; this is not shared completion. The existing
+atomic batch creates all or none. An optional reviewed assignee revision is checked
+under the Engine lock; older unpinned callers remain compatible. Separate frozen
+request IDs survive uncertain replies even after another card command. Personal
+reminders stay self-only. [Workflow](task-multi-assignment.md).
+
+AGY33928 supplied bounded read-only design; AGY26685 implemented only the owned
+form and two Node test files. Root implemented backend revision guards,20 domain
+tests (including queued member updates, failed persistence, independent reports/
+penalties and replay), actual authenticated HA acceptance, browser fixture/tests
+and shared-card wiring. Python31519 passed4420/five skips/23 subtests. Native6056
+passed the full HA suite including separate assignment/Store reload and unchanged
+other child's task. Root Chromium99290 reproduced two form defects missed by Node
+mocks: unrelated real-card success hid uncertain creation and direct rerender
+retained the previous actor's review. Root fixed both, member-role pending guards,
+wall-time/UTC Back separation and localized review copy. Chromium47404 passed8;
+full93604 passed244 including a real DST second-occurrence Back check.
+
+Root then reproduced and fixed shared command finalization clearing a newer
+generation's busy state; focused form tests pass20. Full Node70535/28266 passed450
+plus186 pretests before that additional regression. Review forms no longer show
+an unrelated empty task list/archive below the form. Final general checks and
+independent AGY93002 review followed. Its wall-time/autofill mismatch and retained
+confirmation after closing were reproduced and fixed (22 focused Node tests).
+Its managed-task/privacy claims were independently investigated by AGY52782,
+then verified by root: the actual Engine already blocks generic school revision,
+private/photo receipt replay after reassignment and non-parent audit access.
+Six real-Engine regression tests retain those boundaries without runtime changes.
+Final Node90331 passed 450 tests; pretests passed 189. Chromium56621 had one
+fixture-load timeout (243 passed), focused52694 passed 13, then complete79975
+passed all 244 without changing the affected poll fixture or weakening assertions.
+Native27695 repeated the full actual-HA gate successfully. Root visually inspected
+the final Russian mobile review. Final Python91148 passed 4426 tests, five skips
+and 23 subtests. Ruff (567 files), privacy, locale parity and deterministic runtime
+packaging passed. Commit-specific release CI remains pending; no household deployment.
+
+## Reviewed task batches released, 2026-09-08
 
 Alpha.32 adds a parent-only Tasks-card flow for up to 20 ordinary shared tasks.
 The user reviews exact selected records before separately confirming one atomic
@@ -65,8 +105,11 @@ excluded private/source-marked work on selection and uncertain retry, and added
 actual-HA maintenance creation/projection/sentinel coverage. It also found the
 already-fixed obsolete browser selector and a no-op revision-change unit test;
 root made that test exercise a real subsequent change. Complete Chromium99707
-passed235 after the privacy filter. Final native and exact-commit CI are pending;
-no household deployment.
+passed235 after the privacy filter. Final native2495 passed including real
+maintenance projection/sentinel (root corrected an invalid warranty test fixture).
+Final npm64951 passed450 plus175 pretests, including21 batch tests. All nine
+Checks34244678284 passed exactcadaa9b. Alpha.32 tag and deterministic runtime
+asset match the frozen commit; no household deployment.
 
 ## Indexed copy resume released, 2026-09-08
 

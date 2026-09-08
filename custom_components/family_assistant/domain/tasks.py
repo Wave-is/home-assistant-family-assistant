@@ -44,6 +44,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             {
                 "title",
                 "assignee",
+                "assignee_revision",
                 "due_at",
                 "report_type",
                 "checklist",
@@ -55,6 +56,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             {"title", "assignee"},
         )
         assignee = assignee_member(ctx, payload["assignee"])
+        if "assignee_revision" in payload:
+            expected_assignee_revision = strict_revision(payload["assignee_revision"])
+            if expected_assignee_revision != assignee["revision"]:
+                raise DomainError("conflict")
         personal = payload.get("personal", False)
         if type(personal) is not bool:
             raise DomainError("invalid_field", "personal")
