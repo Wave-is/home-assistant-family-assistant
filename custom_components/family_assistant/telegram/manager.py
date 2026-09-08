@@ -304,6 +304,7 @@ class TelegramManager:
             try:
                 if completion is None and (job := self.jobs.next(self.bot["id"])) is not None:
                     cancelled = False
+                    diagnostic_code = None
                     from ..assistant.jobs import Jobs
 
                     finish_jobs = Jobs(
@@ -341,13 +342,20 @@ class TelegramManager:
                         if code == "backup_in_progress":
                             raise
                         cancelled = code == "forbidden"
+                        diagnostic_code = code
                         response = COPY[job["language"]]["error"].format(
                             error=ERRORS[job["language"]].get(code, code)
                         )
-                    completion = (job, response, cancelled, finish_jobs)
+                    completion = (job, response, cancelled, finish_jobs, diagnostic_code)
                 if completion is not None:
-                    job, response, cancelled, finish_jobs = completion
-                    await finish_jobs.finish(job, response, dt_util.utcnow(), cancelled=cancelled)
+                    job, response, cancelled, finish_jobs, diagnostic_code = completion
+                    await finish_jobs.finish(
+                        job,
+                        response,
+                        dt_util.utcnow(),
+                        cancelled=cancelled,
+                        diagnostic_code=diagnostic_code,
+                    )
                     completion = None
                     self.runtime.health.pop("conversation_storage", None)
                     self.runtime.updated()

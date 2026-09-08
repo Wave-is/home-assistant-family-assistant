@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
+from ..domain import developer_diagnostics
 from ..domain.validation import DomainError, timestamp
 from ..telegram.context import result_refs
 from .language import COPY
@@ -105,6 +106,7 @@ class Jobs:
                 "created_at",
                 "expires_at",
                 "provider_scope",
+                "diagnostic_generation",
             )
         )
 
@@ -173,6 +175,7 @@ class Jobs:
                 "created_at": ctx.now.isoformat(),
                 "expires_at": (ctx.now + timedelta(minutes=5)).isoformat(),
                 "provider_scope": provider_marker,
+                "diagnostic_generation": developer_diagnostics.capture_generation(ctx.state),
             }
             return member["language"]
 
@@ -200,7 +203,7 @@ class Jobs:
             raise DomainError(error)
         return stored["actor"]
 
-    async def finish(self, job, response, now, *, cancelled=False):
+    async def finish(self, job, response, now, *, cancelled=False, diagnostic_code=None):
         def save(ctx):
             ctx.now = self._now(ctx.now)
             stored = (
@@ -220,6 +223,14 @@ class Jobs:
                 status="cancelled" if stale else "complete", finished_at=ctx.now.isoformat()
             )
             if not stale:
+                if diagnostic_code is not None:
+                    developer_diagnostics.record_failure(
+                        ctx.state,
+                        generation=stored.get("diagnostic_generation"),
+                        code=diagnostic_code,
+                        has_quote=bool(stored.get("quoted_text")),
+                        has_refs=bool(stored.get("refs")),
+                    )
                 ctx.operation_id = stored["id"] + ":model-result"
                 ctx.notify(
                     stored["actor"],

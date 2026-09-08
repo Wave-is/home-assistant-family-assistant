@@ -13,6 +13,7 @@ from .domain.validation import DomainError
 def async_register_api(hass):
     from .assistant.article_api import article
     from .assistant.chat_api import chat
+    from .developer_api import report as developer_report
     from .digest_api import preview as digest_preview
     from .recipes.api import recipes
     from .school_import_api import preview as school_calendar_preview
@@ -27,6 +28,7 @@ def async_register_api(hass):
         recipes,
         digest_preview,
         school_calendar_preview,
+        developer_report,
     ):
         websocket_api.async_register_command(hass, handler)
 
@@ -85,6 +87,10 @@ async def view(hass, connection, msg):
             from .recipes.api import source_view
 
             data["recipe_source"] = source_view(runtime, data)
+        if data["role"] == "owner" and not runtime.engine.shadow_mode:
+            from .developer_api import source_view as developer_source_view
+
+            data["developer_diagnostics"] = developer_source_view(runtime, actor_id)
         connection.send_result(msg["id"], data)
     except DomainError as err:
         connection.send_error(msg["id"], err.code, err.code)

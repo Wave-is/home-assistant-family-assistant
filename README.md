@@ -47,6 +47,11 @@ access opt-in.
 
 ## Development
 
+Optional technical reports: [English](docs/developer-diagnostics.md) ·
+[Русский](docs/ru/developer-diagnostics.md) ·
+[Українська](docs/uk/developer-diagnostics.md). Off by default, owner-reviewed,
+with no automatic telemetry or code changes.
+
 Python 3.14.2+ is the Home Assistant test target. Pure domain tests also run on
 Python 3.11 without Home Assistant. Create a virtual environment, install
 `requirements-dev.txt`, then run `pytest` and `ruff check .`.

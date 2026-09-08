@@ -1,6 +1,7 @@
 /* Parent-only, localized operational health and delivery review. */
 
 import { ERRORS } from "./errors.js";
+import { renderDeveloper } from "./developer-view.js";
 
 export const HEALTH_COPY = Object.freeze({
   en: Object.freeze({
@@ -501,6 +502,7 @@ export function renderHealth(card, body) {
     deliverySection.append(item);
   }
   section.append(deliverySection);
+  renderDeveloper(card, section);
   return true;
 }
 
@@ -510,6 +512,7 @@ function signature(card, data) {
     access: current,
     health: healthRows(data),
     issues: deliveryRows(data),
+    developer: data?.role === "owner" ? data?.developer_diagnostics : null,
   });
 }
 

@@ -63,6 +63,15 @@
         ],
       };
       const card = (window.card = document.createElement("family-health-card"));
+      if (params.has("diagnostics") && role === "owner") data.developer_diagnostics = {
+        available: true, enabled: true, generation: 2, count: 1, saturated: false,
+      };
+      window.technicalReport = {
+        format: "family_assistant_defect_report", schema: 1, version: "0.1.0-alpha.28",
+        cases: [{stage:"assistant_job",code:"provider_timeout",has_quote:true,has_refs:false,count:2}],
+        overflow_count: 0, saturated: false,
+        limitations: ["technical_observations_only","no_message_content","not_a_semantic_reproducer"],
+      };
       card.setConfig({ view: "health", language, entry_id: "entry-1" });
       card._data = data;
       window.calls = [];
@@ -70,6 +79,10 @@
         language,
         user: { id: "fixture-user" },
         callWS: async (request) => {
+          if (request.type === "family_assistant/developer_report") {
+            window.calls.push(structuredClone(request));
+            return structuredClone(window.technicalReport);
+          }
           if (request.type === "family_assistant/execute") {
             window.calls.push(structuredClone(request));
             return { id: request.payload.id, state: "pending", reason: request.payload.reason };

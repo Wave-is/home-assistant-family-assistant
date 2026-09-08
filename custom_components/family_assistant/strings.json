@@ -256,6 +256,7 @@
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
+          "developer_diagnostics": "Developer diagnostics",
           "mikrotik": "MikroTik network",
           "legacy_copy": "Legacy read-only copy",
           "legacy_prepare": "Prepare a read-only copy from exports"
@@ -418,6 +419,13 @@
           "digest_weekly_enabled": "Enable weekly digest",
           "digest_weekly_weekday": "Weekly day (Monday = 0, Sunday = 6)",
           "digest_weekly_time": "Weekly time (HH:MM)"
+        }
+      },
+      "developer_diagnostics": {
+        "title": "Developer diagnostics",
+        "description": "Only the owner can enable collection. Off by default. Bounded categories and counts for queued Telegram model failures; no messages, names, IDs, provider addresses or times. Disabling preserves earlier counts and excludes in-flight jobs. Preview and download on the Health card. Nothing is sent automatically. This is not automatic code repair.",
+        "data": {
+          "enabled": "Collect future technical errors (no conversation content)"
         }
       },
       "digest_policy_review": {
@@ -602,6 +610,7 @@
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
     },
     "abort": {
+      "developer_policy_saved": "Developer diagnostics consent saved.",
       "migration_prepare_source_invalid": "The source exports or additional IDs are invalid, unsupported or oversized. Obtain corrected coherent exports; no copy was written.",
       "migration_prepare_selection_invalid": "Choose an allowed participant, complete reviewer set or valid bounded file for this page. No association was advanced.",
       "migration_prepare_policy_changed": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check.",

@@ -12,6 +12,10 @@ async def verify_personal_tasks(hass, entry, owner, child_id):
     from custom_components.family_assistant.const import DOMAIN, SCHEMA_VERSION
     from custom_components.family_assistant.telegram.manager import TelegramManager
 
+    # This section asserts whole-Store equality after denied commands. Drain the
+    # fixture clock first: an unrelated five-second reconciliation may legitimately
+    # commit between websocket roundtrips. The later entry reload restores it.
+    await entry.runtime_data.scheduler.stop()
     engine = entry.runtime_data.engine
     child = await hass.auth.async_get_user(engine.snapshot()["members"][child_id]["ha_user_id"])
     due = (datetime.now(UTC) + timedelta(days=2)).isoformat()

@@ -13,6 +13,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("forbidden")
     if action == "digest_policy":
         return digest_settings.handle(ctx, payload)
+    if action == "developer_policy":
+        from .developer_diagnostics import configure
+
+        return configure(ctx, payload)
     if action != "save":
         raise DomainError("unknown_action")
     previous_digest_policy = digest_settings.fingerprint(ctx.state)

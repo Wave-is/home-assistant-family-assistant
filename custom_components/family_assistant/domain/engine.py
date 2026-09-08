@@ -628,7 +628,18 @@ class Engine:
             and module not in self._state["settings"]["modules"]
         ):
             raise DomainError("module_disabled")
-        if action == "settings.digest_policy":
+        if action == "settings.developer_policy":
+            from .developer_diagnostics import configuration
+
+            if self._actor(actor_id)["role"] != "owner":
+                raise DomainError("forbidden")
+            current = configuration(self._state)
+            if not current["available"] or (current["generation"], current["enabled"]) != (
+                result.get("generation"),
+                result.get("enabled"),
+            ):
+                raise DomainError("conflict")
+        elif action == "settings.digest_policy":
             digest_settings.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "digest-policy-replay"),
                 payload,

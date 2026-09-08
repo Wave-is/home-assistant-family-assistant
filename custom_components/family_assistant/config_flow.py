@@ -175,6 +175,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "mikrotik",
                 "legacy_copy",
                 "legacy_prepare",
+                "developer_diagnostics",
             ],
         )
 
@@ -200,6 +201,11 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         from .migration.copy_prepare import source_step
 
         return await source_step(self, user_input)
+
+    async def async_step_developer_diagnostics(self, user_input=None):
+        from .developer_options import options_step
+
+        return await options_step(self, user_input)
 
     async def async_step_legacy_prepare_member(self, user_input=None):
         from .migration.copy_prepare import page_step

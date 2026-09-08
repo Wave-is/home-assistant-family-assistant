@@ -20,7 +20,7 @@ Nothing is production-ready solely because a mock test passes.
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence, template and advanced per-step condition editors; production acceptance pending |
 | Durable notifications / incident closure | Core unit- and HA-tested | Fanout, retries, quiet hours, uncertainty; Telegram wiring, Repairs and explicit review/retry UI |
-| Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization; developer patch loop pending |
+| Corrections / journal / local learning | In progress / HA-tested | Explicit actor-private phrase dictionary, fresh parsing and authorization. Owner-opt-in technical Telegram job counts and deidentified report review/download unit-, browser- and actual-HA-tested. Semantic reproducer and developer patch queue pending |
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; explicit one-week HA calendar draft import tested; photograph import and household acceptance pending |
@@ -33,10 +33,29 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.26 runtime ZIP/tag verified at f631b31a, all eight Checks jobs passed (34217245123), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.27 runtime ZIP/tag verified at 5a37f1d7, all eight Checks jobs passed (34219419802), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant and complete reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Direct ZIP review remains available. Same-package/unchanged-target repeat retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, reviewed residue recovery, activation and controlled cutover remain pending |
 
-## Guided private package preparation candidate, 2026-09-08
+## Optional technical report candidate, 2026-09-08
+
+Owner consent is off by default and generation-bound. Fixed technical categories
+from queued Telegram model job failures are aggregated in the same completion/
+outbox transaction; no text, IDs, timestamps, URLs, private hashes or raw health
+state are exported. EN/RU/UK Options and Health-card preview/fresh local download
+are implemented. No automatic sharing, semantic reproducer or generated patch
+execution is claimed; [boundaries and workflow](developer-diagnostics.md).
+
+AGY's pure-module and API work was independently checked against actual Engine/
+CommandScope contracts. Root corrected malformed/duplicate bucket handling,
+generation limits and SemVer, then tested exact Store/response-loss retries.
+Native54677 passed the new path; the later old personal-task equality test raced
+with its synthetic clock. Draining that scheduler before unchanged-denial checks
+made full native21319 pass. Host full Python4142/five skips/23 subtests and
+Node450/146 passed before one additional post-commit consent-race regression.
+Chromium verified exact downloaded JSON bytes and review invalidation.
+Exact-commit release CI remains pending; running household installation unchanged.
+
+## Guided private package preparation released, 2026-09-08
 
 The EN/RU/UK Options path accepts two explicitly selected source exports, then
 requires exact participant, complete old reviewer and historical image choices.
@@ -53,7 +72,8 @@ discard preserving the existing copy/intent, plus the full HA suite. AGY10338
 identified overly permissive archive choices and cancellation-held idle slots;
 root checked the actual conversion/writer contracts and added fixes. Focused63
 passed afterward. Final Python3990/five skips/23 subtests and full native8231
-passed with the final guards. Exact release CI is still pending.
+passed with the final guards. All eight exact-commit Checks34219419802 passed;
+alpha.27 tag and runtime ZIP digest were independently verified.
 
 ## Cross-ledger source checks and packaging candidate, 2026-09-08
 
