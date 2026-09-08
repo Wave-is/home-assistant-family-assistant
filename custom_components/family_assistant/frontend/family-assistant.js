@@ -1,5 +1,6 @@
 /* Family Assistant cards. User data is inserted only through textContent. */
 import {ERRORS} from "./errors.js";
+import {renderShadow} from "./shadow-view.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor} from "./shopping-items.js";
@@ -383,6 +384,7 @@ export class FamilyCard extends HTMLElement {
       if(this._error)body.append(this.button(this.t.retry,()=>this.refresh()));return;
     }
     if(this._error){body.append(this.button(this.t.retry,()=>this.refresh()));return;}
+    if(this._data.read_only){renderShadow(this,body);return;}
     if(this._view==="today") {renderToday(this,body);return;}
     this.renderProposals(body);
     if(this._view==="health") {renderHealth(this,body);return;}

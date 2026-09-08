@@ -121,7 +121,7 @@ def _flow(module, settings):
     runtime = SimpleNamespace(engine=engine, updated=lambda: None)
     flow = module.FamilyOptionsFlow()
     flow._authorized_runtime = lambda: (runtime, "owner")
-    flow.config_entry = SimpleNamespace(options={})
+    flow.config_entry = SimpleNamespace(entry_id="synthetic-entry", options={})
     flow.hass = SimpleNamespace(
         data={module.DOMAIN: {}},
         config=SimpleNamespace(time_zone="UTC"),
@@ -147,7 +147,7 @@ def _settings(module, **changes):
 def test_backup_allows_domain_receipt_but_blocks_options_commit(config_flow):
     flow = config_flow.FamilyOptionsFlow()
     flow.hass = SimpleNamespace(data={config_flow.DOMAIN: {"backup": object()}})
-    flow.config_entry = SimpleNamespace(options={"existing": True})
+    flow.config_entry = SimpleNamespace(entry_id="synthetic-entry", options={"existing": True})
 
     # An Engine action may have committed before backup acquired its Engine
     # lease. Finishing that flow writes no options and must acknowledge success.
@@ -157,6 +157,23 @@ def test_backup_allows_domain_receipt_but_blocks_options_commit(config_flow):
     assert acknowledged["type"] == "create_entry"
     assert acknowledged["data"] == {"existing": True}
     assert blocked == {"type": "abort", "reason": "backup_in_progress"}
+
+
+def test_shadow_blocks_even_same_options_finish(config_flow):
+    from test_shadow_mode import isolated_state, never_save
+
+    from custom_components.family_assistant.domain.engine import Engine
+
+    runtime = SimpleNamespace(engine=Engine(isolated_state(), never_save))
+    flow = config_flow.FamilyOptionsFlow()
+    flow.hass = SimpleNamespace(
+        data={config_flow.DOMAIN: {"entries": {"synthetic-entry": runtime}}}
+    )
+    flow.config_entry = SimpleNamespace(entry_id="synthetic-entry", options={"existing": True})
+    assert flow.async_create_entry(title="", data={"existing": True}) == {
+        "type": "abort",
+        "reason": "migration_shadow_read_only",
+    }
 
 
 @pytest.mark.asyncio

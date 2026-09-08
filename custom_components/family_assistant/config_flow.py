@@ -139,6 +139,9 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         description_placeholders=None,
     ):
         """Finish only while the integration's persistent state is writable."""
+        runtime = self.hass.data.get(DOMAIN, {}).get("entries", {}).get(self.config_entry.entry_id)
+        if runtime is not None and runtime.engine.shadow_mode:
+            return self.async_abort(reason="migration_shadow_read_only")
         if self.hass.data.get(DOMAIN, {}).get("backup") and dict(data) != dict(
             self.config_entry.options
         ):
@@ -180,6 +183,8 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         actor = runtime.engine.actor_for_ha(self.context.get("user_id"))
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
+        if runtime.engine.shadow_mode:
+            raise DomainError("migration_shadow_read_only")
         if self.hass.data[DOMAIN].get("backup"):
             raise DomainError("backup_in_progress")
         return runtime, actor

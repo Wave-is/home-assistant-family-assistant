@@ -344,6 +344,9 @@ async def main():
             from ha_legacy_archive_smoke import verify_legacy_archive
 
             await verify_legacy_archive(hass)
+            from ha_shadow_smoke import verify_shadow
+
+            await verify_shadow(hass, user)
             from ha_personal_task_smoke import verify_personal_tasks
 
             personal_id = await verify_personal_tasks(hass, entry, user, child_id)

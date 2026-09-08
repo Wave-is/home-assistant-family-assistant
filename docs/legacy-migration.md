@@ -216,3 +216,7 @@ nonparent authority is not converted into a current role. Even equivalent sets d
 not prove the supplied policy is truthful or coherently captured: `source_policy_verified`,
 `coherence_verified` and `import_available` remain false. This is one acceptance gate,
 not an import endpoint, source exporter, role grant or partial-cutover mechanism.
+
+The next engineering stage can construct an entire isolated read-only copy from
+fully convertible records. It still grants no activation or live import authority.
+See [persistent shadow isolation and its remaining gates](legacy-shadow.md).

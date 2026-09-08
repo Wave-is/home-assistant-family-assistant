@@ -12,6 +12,18 @@ const base={revision:1,settings:{name:"Demo family",modules:["shopping","tasks",
   tasks:[],shopping:[],court:[],alarms:[],alarm_runs:[]};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 
+for(const language of ["en","ru","uk"])test(`shadow copy has no mutation controls: ${language}`,async()=>{
+  for(const {type} of window.customCards){
+    const card=document.createElement(type);card.setConfig({entry_id:"shadow",language});
+    card.hass={language,callWS:async m=>{assert.equal(m.type,"family_assistant/view");return {...base,role:"owner",read_only:"migration_shadow_read_only",settings:{...base.settings,modules:[]},tasks:[{id:"T000001",title:"<img src=x onerror=alert(1)>"}]};}};
+    await tick();
+    assert.ok(card.shadowRoot.querySelector(".migration-shadow [role=status]"));
+    assert.equal(card.shadowRoot.querySelectorAll("button,input,form,img").length,0);
+    assert.ok(card.shadowRoot.textContent.includes("<img src=x onerror=alert(1)>"));
+    card.remove();
+  }
+});
+
 test("all frontend locales have identical keys",()=>{
   for(const locale of Object.values(COPY))assert.deepEqual(Object.keys(locale).sort(),Object.keys(COPY.en).sort());
   for(const locale of Object.values(KID_COPY))assert.deepEqual(Object.keys(locale).sort(),Object.keys(KID_COPY.en).sort());

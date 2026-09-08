@@ -21,6 +21,11 @@ ERRORS = {
         "article_invalid_content": "The page did not contain readable text in a supported format.",
         "backup_in_progress": "A Home Assistant backup is being prepared. Try the "
         "same action after it finishes.",
+        "migration_shadow_read_only": "This migration copy is read-only. Messages, "
+        "devices and changes are disabled; activation "
+        "requires a separate reviewed migration.",
+        "migration_shadow_invalid": "This migration copy has unsafe or invalid "
+        "isolation settings. It was not started.",
         "invalid_field": "Check the entered value.",
         "forbidden": "You do not have permission for this action.",
         "unknown_member": "Family member not found.",
@@ -186,6 +191,12 @@ ERRORS = {
         "article_invalid_content": "На странице не найден читаемый текст в поддерживаемом формате.",
         "backup_in_progress": "Создаётся резервная копия Home Assistant. Повторите "
         "то же действие после её завершения.",
+        "migration_shadow_read_only": "Это копия для проверки переноса, доступная "
+        "только для чтения. Сообщения, устройства и "
+        "изменения отключены; активация требует "
+        "отдельной проверки миграции.",
+        "migration_shadow_invalid": "У копии для переноса неверные или небезопасные "
+        "настройки изоляции. Она не запущена.",
         "invalid_field": "Проверьте введённое значение.",
         "forbidden": "У вас нет права на это действие.",
         "unknown_member": "Участник семьи не найден.",
@@ -357,6 +368,13 @@ ERRORS = {
         "підтримуваному форматі.",
         "backup_in_progress": "Створюється резервна копія Home Assistant. Повторіть "
         "ту саму дію після її завершення.",
+        "migration_shadow_read_only": "Це копія для перевірки перенесення, доступна "
+        "лише для читання. Повідомлення, пристрої та "
+        "зміни вимкнено; активація потребує окремої "
+        "перевірки міграції.",
+        "migration_shadow_invalid": "Копія для перенесення має неправильні або "
+        "небезпечні налаштування ізоляції. Її не "
+        "запущено.",
         "invalid_field": "Перевірте введене значення.",
         "forbidden": "Ви не маєте права на цю дію.",
         "unknown_member": "Учасника родини не знайдено.",

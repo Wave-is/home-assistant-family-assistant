@@ -38,6 +38,7 @@ from . import (
     school_reminders,
     school_work,
     settings,
+    shadow,
     shopping,
     shopping_series,
     task_access,
@@ -165,9 +166,12 @@ class Engine:
     """All state writes are serialized and survive a storage failure unchanged."""
 
     def __init__(self, state: dict, persist: Callable[[dict], Awaitable[None]]) -> None:
-        if state.get("schema_version") != SCHEMA_VERSION:
+        if state.get("schema_version") not in (SCHEMA_VERSION, shadow.SCHEMA):
             raise DomainError("unsupported_schema")
         self._state = deepcopy(state)
+        self._shadow = shadow.validate(self._state)
+        if not self._shadow and state.get("schema_version") == shadow.SCHEMA:
+            raise DomainError("migration_shadow_invalid")
         self._state.setdefault("task_series", {})
         self._state.setdefault("shopping_series", {})
         self._state.setdefault("incidents", {})
@@ -190,7 +194,8 @@ class Engine:
         self._persist = persist
         self._lock = asyncio.Lock()
         # This process-local lease is deliberately absent from persisted state.
-        # A restarted Engine is writable and cannot accept a token from its predecessor.
+        # A restarted ordinary Engine cannot accept a token from its predecessor.
+        # Persistent shadow isolation is independent of this backup lease.
         self._backup_owner = _NO_BACKUP
         self._ended_backup_owner = _NO_BACKUP
         self._closed = False
@@ -200,6 +205,8 @@ class Engine:
     def _require_writable(self) -> None:
         if self._closed:
             raise DomainError("not_ready")
+        if self._shadow:
+            raise DomainError("migration_shadow_read_only")
         if self._backup_owner is not _NO_BACKUP:
             raise DomainError("backup_in_progress")
 
@@ -284,6 +291,8 @@ class Engine:
         """Let owned background work wait for backup without spinning or thawing it."""
         if self._closed:
             raise DomainError("not_ready")
+        if self._shadow:
+            raise DomainError("migration_shadow_read_only")
         await self._writable.wait()
         if self._closed:
             raise DomainError("not_ready")
@@ -332,11 +341,18 @@ class Engine:
         """Trusted persistence/migration access, never return directly to a channel."""
         return deepcopy(self._state)
 
+    @property
+    def shadow_mode(self) -> bool:
+        """No command can clear this persisted isolation marker."""
+        return self._shadow
+
     def actor_for_ha(self, user_id: str | None) -> str:
         if not user_id:
             raise DomainError("forbidden")
         for member in self._state["members"].values():
             if member.get("ha_user_id") == user_id and member.get("active", True):
+                if self._shadow and member["role"] != "owner":
+                    raise DomainError("forbidden")
                 return member["id"]
         raise DomainError("forbidden")
 
@@ -356,6 +372,8 @@ class Engine:
     def view(self, actor_id: str, *, now: datetime | None = None) -> dict:
         """Return an authorized projection; never expose channel IDs or credentials."""
         actor = self._actor(actor_id)
+        if self._shadow and actor["role"] != "owner":
+            raise DomainError("forbidden")
         parent = actor["role"] in PRIVILEGED
         data = {
             "revision": self._state["revision"],
@@ -363,6 +381,8 @@ class Engine:
             "actor": actor_id,
             "role": actor["role"],
         }
+        if self._shadow:
+            data["read_only"] = "migration_shadow_read_only"
         data["members"] = [
             {k: m[k] for k in ("id", "name", "role", "language", "active", "revision")}
             for m in self._state["members"].values()

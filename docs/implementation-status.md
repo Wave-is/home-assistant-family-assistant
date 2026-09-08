@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.18 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prereleases published | Available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload; media extensions pending |
@@ -34,9 +34,30 @@ Nothing is production-ready solely because a mock test passes.
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
 | Release CI and secret checks | Implemented / CI-tested | alpha.18 runtime ZIP/tag verified at1dd84a03, all eight Checks jobs passed (34190052072), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
+| Existing-home migration and verification | Whole isolated read-only copy HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text-report proposals; complete reviewer-set comparison; fresh native HA shadow setup/reload/owner view and zero workers/entities tested. Coherent real capture, historical photo evidence, reviewed importer/activation and controlled cutover remain pending |
 
-## Migration reviewer comparison in verification, 2026-09-08
+## Whole shadow copy in verification, 2026-09-08
+
+Pure whole-candidate construction rejects nonempty targets, any blocked source
+record and changed reviewer sets. Tasks/reminders retain IDs; all other core IDs
+have an explicit private map. Current-week balances and exact source archive replay
+are checked. Modules remain off; the persistent read-only data schema blocks every
+Engine write lane and prevents older releases from treating a copy as writable.
+
+Actual HA69099 passed whole native Store/reload, authenticated owner-only view,
+command/Options denial, zero provider/scheduler starts and unchanged state, before
+the final separate-schema downgrade guard. The exact published alpha19 Engine
+subsequently rejected that new schema. Full Python3649/five skips/23 subtests and
+frontend448 main/122 pretests passed; three mobile Chromium shadow cases passed
+and the Russian layout was visually inspected. Final focused actual HA56501 passed
+on a newly created shadow entry before any ordinary setup, with zero entity registry
+records and no providers. An earlier reused-entry fixture correctly exposed retained
+ordinary entity registry records and was replaced by this fresh-target acceptance.
+Final Python3656/five skips/23 subtests and full Chromium212 passed. Final committed
+CI verification/publication remain gates. There is no public import/activation endpoint and no
+real source capture, historical-photo resolution or household cutover claim.
+
+## Migration reviewer comparison released, 2026-09-08
 
 The next candidate adds complete declared per-task reviewer-set comparison to the
 joined conversion fingerprint. Coverage, designated reviewer, explicit mapping,
@@ -48,8 +69,11 @@ full Python suite passed3624/five skips/23 subtests, Ruff473 passed. A private,
 synthetic-only parity test against the actual old ledger confirmed additional-parent
 review behavior. Actual HA87386 passed private source/archive and joined reviewer
 policy replay through native Store, with exact restored fingerprints and changed-
-binding refusal. Node445 plus122 pretests passed. Exact-commit CI/publication remain
-gates; no source exporter was installed and no live data imported.
+binding refusal. Node445 plus122 pretests passed. Published as alpha19 at
+55dd1565c277bfd3e2bf2219afb89593a00fdd8c; all8 Checks34192326986 passed. Tag/target
+and asset verified:238 files/3118898 runtime bytes, ZIP841146 bytes, SHA256
+`37d5bde2fca0dfe22ac9c939c0e6f7c38fe1f65e1e4ef4f02c4103e30bb8b426`.
+No source exporter was installed and no live data imported.
 
 ## Equipment documents released, 2026-09-08
 

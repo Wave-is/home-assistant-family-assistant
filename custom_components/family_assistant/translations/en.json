@@ -40,6 +40,8 @@
       "chat_context_expired": "This request's retry context has expired. Check the current result before sending a new command.",
       "chat_context_full": "The safe retry-context limit is reached. Existing commands are not repeated; try again later.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
+      "migration_shadow_read_only": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration.",
+      "migration_shadow_invalid": "This migration copy has unsafe or invalid isolation settings. It was not started.",
       "invalid_field": "Check the entered value.",
       "forbidden": "You do not have permission for this action.",
       "unknown_member": "Family member not found.",
@@ -143,6 +145,8 @@
     },
     "abort": {
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
+      "migration_shadow_read_only": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration.",
+      "migration_shadow_invalid": "This migration copy has unsafe or invalid isolation settings. It was not started.",
       "admin_required": "A Home Assistant administrator must create the household.",
       "provider_invalid_url": "Use an explicit HTTP(S) provider base URL without credentials, query or fragment. HTTP requires consent.",
       "provider_authentication": "The provider rejected access. Check its API key or enabled JSON search format.",
@@ -404,6 +408,8 @@
       "article_too_large": "The page exceeds the article reading size limit.",
       "article_invalid_content": "The page did not contain readable text in a supported format.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
+      "migration_shadow_read_only": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration.",
+      "migration_shadow_invalid": "This migration copy has unsafe or invalid isolation settings. It was not started.",
       "invalid_field": "Check the entered value.",
       "forbidden": "You do not have permission for this action.",
       "unknown_member": "Family member not found.",
@@ -508,6 +514,8 @@
     "abort": {
       "guided_finished": "Nothing was changed. Reopen Configure whenever you want to continue guided setup.",
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
+      "migration_shadow_read_only": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration.",
+      "migration_shadow_invalid": "This migration copy has unsafe or invalid isolation settings. It was not started.",
       "forbidden": "You do not have permission for this action.",
       "not_ready": "The household is not loaded.",
       "telegram_not_ready": "Connect and enable your Telegram bot first.",
@@ -579,6 +587,8 @@
     "article_too_large": {"message": "The page exceeds the article reading size limit."},
     "article_invalid_content": {"message": "The page did not contain readable text in a supported format."},
     "backup_in_progress": {"message": "A Home Assistant backup is being prepared. Try the same action after it finishes."},
+    "migration_shadow_read_only": {"message": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration."},
+    "migration_shadow_invalid": {"message": "This migration copy has unsafe or invalid isolation settings. It was not started."},
     "invalid_field": {
       "message": "Check the entered value."
     },

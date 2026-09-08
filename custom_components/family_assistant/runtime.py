@@ -170,6 +170,14 @@ async def _async_setup_runtime(hass, entry) -> bool:
         data["api_registered"] = True
     try:
         await async_configure_frontend(hass, runtime)
+        if runtime.engine.shadow_mode:
+            # A shadow entry never constructs providers, device/media workers,
+            # presence readers or an effect scheduler, regardless of its Options.
+            runtime.health["migration"] = "migration_shadow_read_only"
+            # No entity publication either: generic household automations must not
+            # mistake shadow sensor state changes for real family activity.
+            entry.async_on_unload(entry.add_update_listener(async_options_updated))
+            return True
         await async_configure_presence(hass, entry)
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         from .scheduler import Scheduler
@@ -268,7 +276,8 @@ async def async_unload_runtime(hass, entry) -> bool:
 
 
 async def _async_unload_runtime(hass, entry) -> bool:
-    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+    platforms = [] if entry.runtime_data.engine.shadow_mode else PLATFORMS
+    if platforms and not await hass.config_entries.async_unload_platforms(entry, platforms):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
     await async_stop_chat(runtime)
@@ -298,6 +307,8 @@ async def async_stop_media(runtime):
 
 
 async def async_configure_telegram(hass, entry):
+    if entry.runtime_data.engine.shadow_mode:
+        return
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .telegram.client import TelegramClient
@@ -335,6 +346,8 @@ async def async_options_updated(hass, entry):
                 return
             coordinator = data.get("backup")
             if coordinator is None:
+                if selected.engine.shadow_mode:
+                    return
                 async with selected.options_lock:
                     await async_stop_chat(selected)
                     await async_stop_articles(selected)
@@ -353,6 +366,8 @@ async def async_configure_presence(hass, entry):
     from .domain import presence
 
     runtime = entry.runtime_data
+    if runtime.engine.shadow_mode:
+        return
     try:
         await runtime.engine.system_update(
             "presence_sources",
@@ -368,6 +383,8 @@ async def async_configure_presence(hass, entry):
 
 
 def async_configure_recipes(hass, entry):
+    if entry.runtime_data.engine.shadow_mode:
+        return
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .recipes.mealie import Mealie
@@ -405,6 +422,8 @@ async def async_stop_chat(runtime):
 
 
 def async_configure_assistant(hass, entry):
+    if entry.runtime_data.engine.shadow_mode:
+        return
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .assistant.article_service import ArticleService
@@ -452,6 +471,8 @@ def async_configure_assistant(hass, entry):
 
 
 async def async_configure_network(hass, entry):
+    if entry.runtime_data.engine.shadow_mode:
+        return
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .network.client import RouterClient, certificate_context
