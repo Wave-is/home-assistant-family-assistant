@@ -38,6 +38,13 @@ def module(monkeypatch):
     recovery.async_review_residue = no_residue
     recovery.async_preserve_residue = no_automatic_preservation
     monkeypatch.setitem(sys.modules, recovery.__name__, recovery)
+    index = ModuleType("custom_components.family_assistant.migration.copy_index")
+
+    async def record_index(_hass, **kwargs):
+        await kwargs["authorize"]()
+
+    index.async_record_copy = record_index
+    monkeypatch.setitem(sys.modules, index.__name__, index)
     for name, methods in {
         "copy_intent": ["async_commit_copy_intent", "async_select_copy_intent"],
         "shadow_registration": ["async_register_shadow"],
@@ -450,3 +457,50 @@ async def test_residue_inspection_revocation_never_returns_previous_private_revi
     )
     assert result["type"] == "abort"
     assert module._SLOT not in flow.hass.data["family_assistant"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error_code", [None, "migration_copy_index_full", "migration_copy_index_invalid"]
+)
+async def test_confirmed_copy_index_is_committed_after_intent_before_any_staging(
+    module, monkeypatch, error_code
+):
+    flow = Flow(module, phase="review")
+    effects = []
+
+    async def intent(*_args, **kwargs):
+        await kwargs["authorize"]()
+        effects.append("intent")
+
+    async def record(*_args, **kwargs):
+        await kwargs["authorize"]()
+        assert kwargs["prototype_pins"] == flow.slot["pins"]
+        assert kwargs["intent"] == flow.slot["intent"]
+        assert kwargs["candidate"] is flow.candidate
+        effects.append("index")
+        if error_code:
+            raise DomainError(error_code)
+
+    async def register(*_args, **_kwargs):
+        effects.append("register")
+        return {"entry_id": "a" * 32, "loaded": True}
+
+    monkeypatch.setattr(module, "async_commit_copy_intent", intent)
+    monkeypatch.setattr(module, "async_register_shadow", register)
+    monkeypatch.setattr(
+        sys.modules["custom_components.family_assistant.migration.copy_index"],
+        "async_record_copy",
+        record,
+    )
+    result = await module.review_step(
+        flow, {"review_token": flow.candidate.summary()["fingerprint"], "confirmed": True}
+    )
+    if error_code:
+        assert result["errors"]["base"] == error_code and effects == ["intent", "index"]
+    else:
+        assert result["step_id"] == "legacy_copy_complete" and effects == [
+            "intent",
+            "index",
+            "register",
+        ]

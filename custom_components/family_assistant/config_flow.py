@@ -175,6 +175,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "mikrotik",
                 "legacy_copy",
                 "legacy_prepare",
+                "legacy_resume",
                 "developer_diagnostics",
             ],
         )
@@ -241,6 +242,16 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         from .migration.copy_flow import residue_step
 
         return await residue_step(self, user_input)
+
+    async def async_step_legacy_resume(self, user_input=None):
+        from .migration.copy_resume import select_step
+
+        return await select_step(self, user_input)
+
+    async def async_step_legacy_resume_review(self, user_input=None):
+        from .migration.copy_resume import confirm_step
+
+        return await confirm_step(self, user_input)
 
     async def async_step_recipes(self, user_input=None):
         from .recipes.options import options_step

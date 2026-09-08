@@ -279,6 +279,9 @@ async def verify_copy_wizard(hass, owner):
             assert prototype.runtime_data.engine.snapshot() == source_state
             assert await source_store.async_load() == source_state and not prototype.options
         assert len(created) == 1
+        from ha_copy_resume_smoke import verify_copy_resume
+
+        await verify_copy_resume(hass, owner, child, prototype, source_state, flows, created)
         from ha_copy_prepare_smoke import verify_copy_preparation
 
         await verify_copy_preparation(hass, owner, child, prototype, source_state, flows, created)

@@ -209,6 +209,24 @@
           "photo": "Original report image"
         }
       },
+      "legacy_resume": {
+        "title": "Saved copy attempts",
+        "description": "Only attempts confirmed in this household are listed. Selecting reads and verifies existing private data without creating a copy. Incomplete or changed attempts require the original bundle. Cancel closes only this review.",
+        "data": {
+          "review_token": "Current review",
+          "attempt": "Copy attempt",
+          "discard_review": "Close this review only"
+        }
+      },
+      "legacy_resume_review": {
+        "title": "Register this exact saved read-only copy?",
+        "description": "Copy: {copy_name}. Prepared: {prepared_at}. Reverified: {members} members, {tasks} tasks, {shopping} purchases, {court} court events, {alarms} disabled alarms, {photos} photo blobs. Fingerprint: {fingerprint}. Confirm registration of this same sealed copy; no bot, alarms or network workers will start.",
+        "data": {
+          "review_token": "Current review",
+          "confirmed": "Register this same sealed read-only copy",
+          "discard_review": "Close this review only"
+        }
+      },
       "legacy_copy": {
         "title": "Upload a private review bundle",
         "description": "Advanced migration preview. Configure the family members first, then choose a ZIP prepared using the migration guide. Limit: 96 MiB; 512 photos, 10 MiB each and 64 MiB total. Files remain inside HA. One review at a time, for 15 minutes. No source changes or automation activation.",
@@ -268,7 +286,8 @@
           "developer_diagnostics": "Developer diagnostics",
           "mikrotik": "MikroTik network",
           "legacy_copy": "Legacy read-only copy",
-          "legacy_prepare": "Prepare a read-only copy from exports"
+          "legacy_prepare": "Prepare a read-only copy from exports",
+          "legacy_resume": "Resume a saved read-only copy"
         }
       },
       "guided_onboarding": {
@@ -501,6 +520,11 @@
       "migration_copy_conversion_required": "Records, reviewer rights or historical photos need correction. No partial copy was created.",
       "migration_copy_retry_required": "Could not confirm the result. Retry this same reviewed action. After a restart, use the same archive and copy name; do not invent another target.",
       "migration_copy_not_loaded": "The sealed copy is registered but not loaded. Inspect its integration status; it was not force-started.",
+      "migration_copy_no_pending": "No indexed copy attempts belong to this household. Older attempts require their original bundle.",
+      "migration_copy_partial_bundle_required": "The saved copy is incomplete. Use the original ZIP and copy name for the reviewed recovery path.",
+      "migration_copy_incompatible_bundle_required": "Saved data, participants or settings no longer match. Direct resume is blocked; inspect the original bundle and reviewed target before retrying.",
+      "migration_copy_index_invalid": "The private copy index could not be verified. Nothing was reset or removed.",
+      "migration_copy_index_full": "The private copy index has reached its 16-attempt limit. Existing attempts are retained; no automatic eviction is performed.",
       "migration_copy_finished": "Read-only review finished. Existing families and source data were not replaced.",
       "migration_copy_cancelled": "Review discarded. Any already-created copy and saved retry intent were preserved.",
       "migration_copy_intent_invalid": "Saved retry coordinates do not match this review. They were not overwritten.",
@@ -633,6 +657,11 @@
       "migration_copy_conversion_required": "Records, reviewer rights or historical photos need correction. No partial copy was created.",
       "migration_copy_retry_required": "Could not confirm the result. Retry this same reviewed action. After a restart, use the same archive and copy name; do not invent another target.",
       "migration_copy_not_loaded": "The sealed copy is registered but not loaded. Inspect its integration status; it was not force-started.",
+      "migration_copy_no_pending": "No indexed copy attempts belong to this household. Older attempts require their original bundle.",
+      "migration_copy_partial_bundle_required": "The saved copy is incomplete. Use the original ZIP and copy name for the reviewed recovery path.",
+      "migration_copy_incompatible_bundle_required": "Saved data, participants or settings no longer match. Direct resume is blocked; inspect the original bundle and reviewed target before retrying.",
+      "migration_copy_index_invalid": "The private copy index could not be verified. Nothing was reset or removed.",
+      "migration_copy_index_full": "The private copy index has reached its 16-attempt limit. Existing attempts are retained; no automatic eviction is performed.",
       "migration_copy_finished": "Read-only review finished. Existing families and source data were not replaced.",
       "migration_copy_intent_invalid": "Saved retry coordinates do not match this review. They were not overwritten.",
       "guided_finished": "Nothing was changed. Reopen Configure whenever you want to continue guided setup.",

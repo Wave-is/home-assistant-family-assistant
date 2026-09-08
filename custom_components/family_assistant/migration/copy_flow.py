@@ -426,6 +426,19 @@ async def review_step(flow, user_input=None):
                     target=slot["target"],
                     authorize=lambda: _guard(flow, slot),
                 )
+                from .copy_index import async_record_copy
+
+                await async_record_copy(
+                    flow.hass,
+                    prototype_entry_id=flow.config_entry.entry_id,
+                    user_id=flow.context["user_id"],
+                    prototype_pins=slot["pins"],
+                    intent=slot["intent"],
+                    package_fingerprint=slot["package_fingerprint"],
+                    target=slot["target"],
+                    candidate=slot["candidate"],
+                    authorize=lambda: _guard(flow, slot),
+                )
                 slot["result"] = await async_register_shadow(
                     flow.hass,
                     entry_id=slot["intent"]["entry_id"],
@@ -436,8 +449,14 @@ async def review_step(flow, user_input=None):
                     authorize=lambda: _guard(flow, slot),
                 )
                 slot["phase"] = "complete"
-            except (ValueError, OSError, TypeError, KeyError):
+            except (ValueError, OSError, TypeError, KeyError) as error:
                 await _guard(flow, slot)
+                if str(error) in {
+                    "migration_copy_index_full",
+                    "migration_copy_index_invalid",
+                    "migration_copy_incompatible_bundle_required",
+                }:
+                    return _review_form(flow, slot, str(error))
                 from .residue_recovery import async_review_residue
 
                 try:

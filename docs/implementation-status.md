@@ -33,10 +33,31 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.29 runtime ZIP/tag verified at 771ec38, all eight Checks jobs passed (34227319295), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/preparation time/exact Store. Explicit bounded residue preservation and durable retry candidate passed actual HA Options; final hardened candidate gates pending. No blank writable fallback. Coherent real capture, pending-copy discovery/direct resume, activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.30 runtime ZIP/tag verified at 3ce1284, all eight Checks jobs passed (34232293825), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30. Native indexed discovery/direct resume without reupload candidate passed; final hardening/CI pending. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
 
-## Interrupted copy preservation candidate, 2026-09-08
+## Indexed copy resume candidate, 2026-09-08
+
+Only final-confirmed attempts enter a bounded immutable native Store index before
+staging starts. The original active administrator-owner can discover this prototype's
+attempts through EN/RU/UK Options. Complete native state and photo blobs are rebuilt
+through actual converters against the indexed original summary and exact bytes.
+Separate fresh confirmation registers the same sealed ID, not another household.
+Partial/drifted/unindexed copies still require the original bundle. No automatic
+startup action or index eviction. [Workflow and limits](legacy-copy-resume.md).
+
+Root index/flow/scope tests passed 77. Hardened native27980 passed the full synthetic HA suite,
+including interrupted complete staging, lost review/runtime reload, owner discovery
+and photo reconversion without reupload, child denial, false confirmation, exact
+same-ID registration/replay and unchanged source/index/Store. AGY implemented the
+index core and hardened it; root independently repaired fixture membership, added
+runtime/authority read-boundary tests and strict bounded record/photo validation.
+Full Python72864 passed 4379 tests, five skips and 23 subtests; Node90116 passed
+450 tests plus 154 pretests; Chromium46500 passed 226. Independent read-only AGY77761
+review found no additional material defects. Ruff (556 files), privacy, locale
+parity and the runtime build passed. Exact-commit CI acceptance remains pending.
+
+## Interrupted copy preservation released, 2026-09-08
 
 Separate EN/RU/UK consent preserves recognized temporary photo uploads before
 removing their temporary names and retrying the same sealed copy. Authority,
@@ -55,7 +76,8 @@ unlink retry accounting and revoked-authority failure projection. Full Python158
 passed4333/five skips/23 subtests, Node25093 passed450 plus154 pretests, and complete
 Chromium63963 passed226. Hardened native91546 passed the full HA suite. Independent
 AGY85360 read-only review found no additional material issues. Ruff549files,
-privacy/locales/build passed; exact-commit CI remains pending.
+privacy/locales/build passed; all eight Checks34232293825 passed exact3ce1284.
+Alpha.30 runtime ZIP and tag were verified against that commit.
 No automatic startup cleanup, source coherence, activation or household change.
 
 ## Private proposal notes released, 2026-09-08

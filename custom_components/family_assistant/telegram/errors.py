@@ -46,6 +46,24 @@ ERRORS = {
         "migration_copy_not_loaded": "The sealed copy is registered but not loaded. "
         "Inspect its integration status; it was not "
         "force-started.",
+        "migration_copy_no_pending": "No indexed copy attempts belong to this "
+        "household. Older attempts require their "
+        "original bundle.",
+        "migration_copy_partial_bundle_required": "The saved copy is incomplete. "
+        "Use the original ZIP and copy "
+        "name for the reviewed recovery "
+        "path.",
+        "migration_copy_incompatible_bundle_required": "Saved data, participants or "
+        "settings no longer match. "
+        "Direct resume is blocked; "
+        "inspect the original bundle "
+        "and reviewed target before "
+        "retrying.",
+        "migration_copy_index_invalid": "The private copy index could not be "
+        "verified. Nothing was reset or removed.",
+        "migration_copy_index_full": "The private copy index has reached its "
+        "16-attempt limit. Existing attempts are "
+        "retained; no automatic eviction is performed.",
         "migration_copy_finished": "Read-only review finished. Existing families "
         "and source data were not replaced.",
         "migration_copy_cancelled": "Review discarded. Any already-created copy and "
@@ -269,6 +287,23 @@ ERRORS = {
         "migration_copy_not_loaded": "Защищённая копия зарегистрирована, но не "
         "загружена. Проверьте состояние интеграции; "
         "принудительного запуска не было.",
+        "migration_copy_no_pending": "В журнале нет попыток этой семьи. Для старых "
+        "попыток нужен исходный архив.",
+        "migration_copy_partial_bundle_required": "Копия сохранена не полностью. "
+        "Используйте исходный ZIP и "
+        "название копии для проверенного "
+        "восстановления.",
+        "migration_copy_incompatible_bundle_required": "Данные, участники или "
+        "настройки изменились. "
+        "Продолжение заблокировано; "
+        "перед повтором проверьте "
+        "исходный архив и выбранную "
+        "семью.",
+        "migration_copy_index_invalid": "Не удалось проверить приватный журнал "
+        "копий. Ничего не обнулено и не удалено.",
+        "migration_copy_index_full": "В приватном журнале достигнут предел в 16 "
+        "попыток. Старые попытки сохранены и не "
+        "удаляются автоматически.",
         "migration_copy_finished": "Проверка копии завершена. Рабочие семьи и "
         "исходные данные не заменялись.",
         "migration_copy_cancelled": "Проверка отменена. Уже созданная копия и "
@@ -498,6 +533,23 @@ ERRORS = {
         "migration_copy_not_loaded": "Захищену копію зареєстровано, але не "
         "завантажено. Перевірте стан інтеграції; "
         "примусового запуску не було.",
+        "migration_copy_no_pending": "У журналі немає спроб цієї сім’ї. Для старих "
+        "спроб потрібен вихідний архів.",
+        "migration_copy_partial_bundle_required": "Копія збережена не повністю. "
+        "Використайте вихідний ZIP і "
+        "назву копії для перевіреного "
+        "відновлення.",
+        "migration_copy_incompatible_bundle_required": "Дані, учасники або "
+        "налаштування змінилися. "
+        "Продовження заблоковано; "
+        "перед повтором перевірте "
+        "вихідний архів і вибрану "
+        "сім’ю.",
+        "migration_copy_index_invalid": "Не вдалося перевірити приватний журнал "
+        "копій. Нічого не обнулено й не видалено.",
+        "migration_copy_index_full": "У приватному журналі досягнуто межі в 16 "
+        "спроб. Попередні спроби збережено й не "
+        "видаляються автоматично.",
         "migration_copy_finished": "Перевірку копії завершено. Робочі родини й "
         "вихідні дані не замінювали.",
         "migration_copy_cancelled": "Перевірку скасовано. Уже створену копію та "

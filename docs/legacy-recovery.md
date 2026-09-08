@@ -38,9 +38,10 @@ anonymous**, public or automatically deleted. Protect it with the same local
 access and backup policy as the source export. Cancel discards only the in-memory
 review, not files, copies or journals.
 
-There is no global pending-copy browser, automatic startup repair or direct resume
-without reuploading the original bundle yet. Recovery does not prove coherent
-source capture. Activation and household cutover remain separate acceptance gates.
+For complete attempts indexed since alpha.31, the separate [saved-copy resume
+screen](legacy-copy-resume.md) can avoid reuploading the bundle. Partial or older
+unindexed attempts still need the original ZIP. There is no automatic startup
+repair. Recovery does not prove coherent capture or authorize household cutover.
 
 ## Русский
 
@@ -64,9 +65,11 @@ source capture. Activation and household cutover remain separate acceptance gate
 Отмена закрывает только проверку, сохраняя файлы и журнал. Будильники, бот и сетевые
 команды в копии не запускаются.
 
-Общего списка незавершённых копий, ремонта при старте и продолжения без повторной
-загрузки ZIP пока нет. Это не доказывает согласованность исходного экспорта и не
-разрешает переключение работающей домашней системы.
+Полностью сохранённые попытки из журнала alpha.31 можно продолжить через отдельный
+[экран сохранённых копий](legacy-copy-resume.md), без повторной загрузки ZIP.
+Неполным и старым попыткам вне журнала по-прежнему нужен исходный архив. Ремонта
+при старте нет; это не доказывает согласованность экспорта и не разрешает
+переключение работающей домашней системы.
 
 ## Українська
 
@@ -90,6 +93,8 @@ source capture. Activation and household cutover remain separate acceptance gate
 Скасування закриває лише перевірку, зберігаючи файли та журнал. Будильники, бот і
 мережеві команди у копії не запускаються.
 
-Загального списку незавершених копій, відновлення під час запуску та продовження без
-повторного завантаження ZIP поки немає. Це не доводить узгодженість вихідного експорту
-й не дозволяє перемикання робочої домашньої системи.
+Повністю збережені спроби з журналу alpha.31 можна продовжити через окремий
+[екран збережених копій](legacy-copy-resume.md), без повторного завантаження ZIP.
+Неповним і старим спробам поза журналом і далі потрібен вихідний архів. Відновлення
+під час запуску немає; це не доводить узгодженість експорту й не дозволяє
+перемикання робочої домашньої системи.

@@ -6,6 +6,9 @@
 [Interrupted upload recovery / Восстановление после обрыва /
 Відновлення після переривання](legacy-recovery.md)
 
+[Resume a complete saved copy / Продолжить сохранённую копию /
+Продовжити збережену копію](legacy-copy-resume.md)
+
 ## English
 
 For guided preparation from the two source files instead of a hand-built ZIP,
