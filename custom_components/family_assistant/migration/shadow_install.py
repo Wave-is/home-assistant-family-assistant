@@ -28,6 +28,7 @@ from ..media_storage import (
     _temporary,
 )
 from .shadow import ShadowError, _empty_target, async_reverify_shadow
+from .shadow_entry import entry_marker
 
 
 class ShadowInstallError(ValueError):
@@ -123,6 +124,11 @@ async def async_stage_shadow(hass, *, entry_id, user_id, candidate, target, expe
     state, blobs = verified.private_state(), verified.private_blobs()
     if verified.summary()["fingerprint"] != expected_fingerprint:
         raise ShadowInstallError("shadow_install_changed")
+    receipt = {
+        "mode": "read_only_shadow_staged",
+        "fingerprint": expected_fingerprint,
+        "entry_marker": entry_marker(state, expected_fingerprint),
+    }
     intent = {
         "version": 1,
         "mode": "read_only_shadow_staging",
@@ -144,7 +150,7 @@ async def async_stage_shadow(hass, *, entry_id, user_id, candidate, target, expe
                     raise ShadowInstallError("shadow_install_conflict")
                 await _io(_verify_blobs, root, blobs)
                 await guard()
-                return {"mode": "read_only_shadow_staged", "fingerprint": expected_fingerprint}
+                return receipt
             previous_intent = await journal.async_load()
             if previous_intent is not None and _encode(previous_intent) != _encode(intent):
                 raise ShadowInstallError("shadow_install_conflict")
@@ -169,7 +175,7 @@ async def async_stage_shadow(hass, *, entry_id, user_id, candidate, target, expe
             if _encode(await store.async_load()) != verified._state:
                 raise ShadowInstallError("shadow_install_uncertain")
             await guard()
-            return {"mode": "read_only_shadow_staged", "fingerprint": expected_fingerprint}
+            return receipt
     except ShadowInstallError:
         raise
     except (OSError, ValueError, KeyError):

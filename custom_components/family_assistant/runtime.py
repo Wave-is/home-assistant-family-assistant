@@ -73,9 +73,16 @@ async def async_setup_runtime(hass, entry) -> bool:
 
 
 async def _async_setup_runtime(hass, entry) -> bool:
+    from .migration.shadow_entry import validate_entry_state
     from .websocket import async_register_api
 
     data = hass.data.setdefault(DOMAIN, {"entries": {}})
+    store = Store(hass, SCHEMA_VERSION, f"{DOMAIN}.{entry.entry_id}")
+    state = await store.async_load()
+    try:
+        validate_entry_state(entry.data, state)
+    except DomainError as error:
+        raise ConfigEntryNotReady(translation_domain=DOMAIN, translation_key=error.code) from None
     if "frontend_resource" not in data:
         from homeassistant.components.http import StaticPathConfig
 
@@ -89,8 +96,6 @@ async def _async_setup_runtime(hass, entry) -> bool:
             ]
         )
         data["frontend_resource"] = resource
-    store = Store(hass, SCHEMA_VERSION, f"{DOMAIN}.{entry.entry_id}")
-    state = await store.async_load()
     if state is None:
         state = new_state(
             entry.data["owner_user_id"],

@@ -28,10 +28,12 @@ process-local coordination is recreated. Cancellation drains an owned write befo
 releasing the lock. Different data never overwrites an earlier attempt. Unknown,
 damaged or abruptly abandoned temporary files stop recovery for review; this API
 does not guess ownership, delete residues or promise automatic recovery from every
-filesystem/power-loss state. Separate reviewed cleanup/registration remains pending.
+filesystem/power-loss state. Reviewed cleanup remains pending; a separate internal
+[sealed registration method](legacy-shadow-registration.md) now exists.
 
 A successful receipt means only **read-only shadow staged**. It does not register
-or activate the entry. The synthetic native-HA test separately registers its
+or activate the entry. Its receipt now also carries the exact ConfigEntry seal
+for the separate registration step. The synthetic native-HA test separately registers its
 disposable entry and verifies first setup, owner-only private photo reads, child
 denial, zero entities/workers and exact reload. The source installation is untouched.
 
@@ -66,6 +68,10 @@ denial, zero entities/workers and exact reload. The source installation is untou
 фотографии только для владельца, запрет ребёнку, отсутствие сущностей/фоновых
 процессов и перезагрузка. Домашняя рабочая система не переключалась.
 
+Результат записи также содержит точную защитную отметку для отдельного внутреннего
+[метода регистрации](legacy-shadow-registration.md). Это не публичный мастер и не
+разрешение включить перенесённые автоматизации.
+
 ## Українська
 
 Внутрішній метод `async_stage_shadow` записує **нову, ще не зареєстровану**
@@ -95,3 +101,7 @@ denial, zero entities/workers and exact reload. The source installation is untou
 В ізольованому тесті HA окремо створюється тестовий запис, перевіряються доступ
 власника до фотографій, відмова дитині, відсутність сутностей/фонових процесів і
 перезавантаження. Домашню робочу систему не перемикали.
+
+Результат запису також містить точну захисну позначку для окремого внутрішнього
+[методу реєстрації](legacy-shadow-registration.md). Це не публічний майстер і не
+дозвіл активувати перенесені автоматизації.

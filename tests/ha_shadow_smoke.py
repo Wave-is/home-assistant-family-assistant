@@ -20,6 +20,10 @@ async def verify_shadow(hass, owner_user, *, photos=False):
         ShadowInstallError,
         async_stage_shadow,
     )
+    from custom_components.family_assistant.migration.shadow_registration import (
+        ShadowRegistrationError,
+        async_register_shadow,
+    )
     from custom_components.family_assistant.runtime import async_options_updated, safe_diagnostics
 
     # Prepare the Store before the first setup of this new entry. Reusing a
@@ -174,7 +178,50 @@ async def verify_shadow(hass, owner_user, *, photos=False):
         )
         store = Store(hass, 1, f"family_assistant.{entry.entry_id}")
         assert await store.async_load() == expected
-        await hass.config_entries.async_add(entry)
+        registration_args = {
+            "entry_id": entry.entry_id,
+            "user_id": owner_user.id,
+            "candidate": candidate,
+            "target": target,
+            "expected_fingerprint": candidate.summary()["fingerprint"],
+        }
+        if photos:
+            manager_type = type(hass.config_entries)
+            native_add = manager_type.async_add
+
+            async def added_then_lost(manager, selected_entry):
+                await native_add(manager, selected_entry)
+                if selected_entry.entry_id == registration_args["entry_id"]:
+                    raise OSError("Synthetic lost registration acknowledgement")
+
+            with patch.object(manager_type, "async_add", added_then_lost):
+                try:
+                    await async_register_shadow(hass, **registration_args)
+                except ShadowRegistrationError as error:
+                    assert str(error) == "shadow_registration_retry_required"
+                else:
+                    raise AssertionError("Synthetic lost registration reply was not surfaced")
+        registered = await async_register_shadow(hass, **registration_args)
+        assert registered["mode"] == "read_only_shadow_registered" and registered["loaded"]
+        assert not registered["activation_available"]
+        assert await async_register_shadow(hass, **registration_args) == registered
+        entry = hass.config_entries.async_get_entry(entry.entry_id)
+        assert entry.data["migration_shadow"] == receipt["entry_marker"]
+        try:
+            await async_register_shadow(hass, **(registration_args | {"user_id": child.id}))
+        except ShadowRegistrationError as error:
+            assert str(error) == "shadow_registration_forbidden"
+        else:
+            raise AssertionError("Child repeated a private registration")
+        # Even hostile enabled provider options cannot thaw the sealed runtime.
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                key: {"enabled": True}
+                for key in ("telegram", "mikrotik", "conversation", "recipes")
+            },
+        )
+        await hass.async_block_till_done()
         try:
             await async_stage_shadow(
                 hass,
@@ -272,9 +319,14 @@ async def verify_shadow(hass, owner_user, *, photos=False):
             assert runtime.engine.snapshot() == expected
             assert await store.async_load() == expected
             assert await hass.config_entries.async_unload(entry.entry_id)
+        await verify_shadow_fail_closed(hass, entry, store, expected)
         print(
             "PASS: native shadow installer staged verified blobs then Store, exact retry, "
-            "child denial and registered-target refusal; no automatic entry registration"
+            "child denial and registered-target refusal"
+        )
+        print(
+            "PASS: native sealed shadow registration/exact retry/child denial; "
+            "lost add acknowledgement creates no duplicate entry"
         )
         print(
             "PASS: whole shadow native Store/reload, owner-only authenticated view, "
@@ -289,6 +341,47 @@ async def verify_shadow(hass, owner_user, *, photos=False):
         await hass.config_entries.async_remove(entry.entry_id)
     if not photos:
         await verify_shadow(hass, owner_user, photos=True)
+
+
+async def verify_shadow_fail_closed(hass, entry, store, expected):
+    """Exercise missing/changed native Store loads without editing storage files."""
+    from copy import deepcopy
+    from unittest.mock import patch
+
+    from homeassistant.config_entries import ConfigEntryState
+    from homeassistant.helpers.storage import Store
+
+    original_load, original_save = Store.async_load, Store.async_save
+    writes = []
+    corrupt = deepcopy(expected)
+    corrupt["tasks"]["T000004"]["title"] = "Synthetic altered task"
+    for selected in (None, {}, corrupt):
+
+        async def selected_load(instance, selected=selected):
+            if instance.key == store.key:
+                return deepcopy(selected)
+            return await original_load(instance)
+
+        async def checked_save(instance, value):
+            if instance.key == store.key:
+                writes.append(deepcopy(value))
+            await original_save(instance, value)
+
+        with (
+            patch.object(Store, "async_load", selected_load),
+            patch.object(Store, "async_save", checked_save),
+        ):
+            assert not await hass.config_entries.async_setup(entry.entry_id)
+            assert entry.state == ConfigEntryState.SETUP_RETRY
+            assert entry.entry_id not in hass.data["family_assistant"]["entries"]
+            assert not writes, "Damaged shadow wrote a replacement Store"
+        assert await store.async_load() == expected
+        # Supported reload cancels a scheduled setup retry before restoring the
+        # exact original bytes. No direct .storage writes or file deletion.
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        assert entry.runtime_data.engine.shadow_mode
+        assert await hass.config_entries.async_unload(entry.entry_id)
+    print("PASS: native missing/changed shadow Store fails closed; no blank Store or workers")
 
 
 async def main():
