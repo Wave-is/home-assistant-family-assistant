@@ -10,6 +10,7 @@ import re
 from collections import Counter
 from datetime import date, datetime
 
+from .preflight import _text
 from .review import LegacyReview
 
 _PREFIX = "automatic task control: "
@@ -86,6 +87,7 @@ def _inspect(review):
             or row.get("telegram_message_id") != f"system:{key}"
             or match is None
             or not _date(match[2])
+            or not _text(row.get("week_id"), 128)
         ):
             issue("automatic_source_invalid")
             continue
@@ -157,6 +159,7 @@ def _inspect(review):
                     or details["court_delta_reversed"] != 1
                 ):
                     issue("task_correction_ack_invalid")
+                    continue
                 if pair in acknowledgements:
                     issue("task_correction_ack_duplicate")
                 acknowledgements[pair] = event["sequence"]
@@ -189,7 +192,7 @@ def _inspect(review):
             issue("alarm_penalty_without_court")
 
     matched_tasks = matched_alarms = archive_only = 0
-    for key, (kind, _subject, _day, row) in automatic.items():
+    for key, (kind, subject, _day, row) in automatic.items():
         if kind == "task":
             linked = rollovers.get(key)
             if linked is None:
@@ -199,6 +202,9 @@ def _inspect(review):
             else:
                 matched_tasks += 1
         else:
+            if member(subject) is None or member(subject) != member(row["child"]):
+                issue("alarm_penalty_member_mismatch")
+                continue
             run = alarm_links.get(key)
             if run is None:
                 if row["week_id"] == court["week_id"]:

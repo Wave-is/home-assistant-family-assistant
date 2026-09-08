@@ -232,6 +232,32 @@ def test_pruned_old_alarm_is_explicitly_archive_only_not_verified(data):
     assert report["alarm_penalties_matched"] == 0 and report["coherence_verified"] is False
 
 
+@pytest.mark.parametrize("subject", ["old-child", "unmapped-source"])
+def test_pruned_alarm_source_key_cannot_charge_another_or_unknown_member(data, subject):
+    data[1]["data"]["children"]["old-parent"] = {"pluses": 0, "minuses": 0}
+    assessment(
+        data, f"alarm:{subject}:2026-06-01:missed", week_id="older-period", child="old-parent"
+    )
+    report = result(data)
+    assert "alarm_penalty_member_mismatch" in {row["code"] for row in report["issues"]}
+    assert report["pruned_alarm_events_archive_only"] == 0
+
+
+@pytest.mark.parametrize("period", [None, False, 1, "", " ", "x" * 129])
+def test_malformed_alarm_period_is_not_a_pruned_historical_run(data, period):
+    assessment(data, "alarm:old-child:2026-06-01:missed", week_id=period)
+    assert "automatic_source_invalid" in codes(data)
+
+
+def test_invalid_acknowledgement_does_not_hide_pending_correction(data):
+    rollover(data)
+    assessment(data, cancelled=True)
+    event(data, "court_correction_requested", {"source_key": KEY})
+    ack = event(data, "court_correction_applied", {"source_key": KEY, "court_delta_reversed": 1})
+    ack["actor"] = "old-child"
+    assert {"task_correction_ack_invalid", "task_correction_pending"} <= codes(data)
+
+
 def test_manual_court_reversal_does_not_require_a_task_ack(data):
     rollover(data)
     assessment(data, cancelled=True)
