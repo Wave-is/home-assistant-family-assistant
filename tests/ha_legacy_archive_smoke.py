@@ -283,20 +283,48 @@ async def verify_legacy_archive(hass):
         decode_private_review,
         encode_private_review,
     )
+    from custom_components.family_assistant.migration.conversion import build_conversion_review
     from custom_components.family_assistant.migration.review import read_store_pair
 
     assistant, court, mapping, members = synthetic_source(lifecycle=True)
     review = read_store_pair(assistant, court).review(mapping, members, mapping_revision=1)
     expected = proposals(review, members)
+    source_ledger = review.private_data()[0]["ledger"]
+    reviewer_policy = {
+        "schema": 1,
+        "revision": 1,
+        "source_review_fingerprint": review.summary()["fingerprint"],
+        "reviewers": {
+            key: [row["reviewer"]]
+            for key, row in source_ledger["tasks"].items()
+            if row.get("kind") == "task" and row.get("requires_report") is True
+        },
+    }
+    comparison = build_conversion_review(
+        review, "UTC", members=members, reviewer_policy=reviewer_policy
+    )
     content = encode_private_review(review, members=members)
     key = "synthetic_family_migration_archive"
-    await Store(hass, 1, key).async_save({"private_archive": content.decode()})
+    await Store(hass, 1, key).async_save(
+        {
+            "private_archive": content.decode(),
+            "private_reviewer_policy": reviewer_policy,
+            "private_conversion": comparison.private_data(),
+        }
+    )
     loaded = await Store(hass, 1, key).async_load()
     assert loaded["private_archive"].encode() == content
     restored = decode_private_review(loaded["private_archive"].encode(), members=members)
     assert restored._source._assistant == assistant and restored._source._court == court
     assert restored.summary() == review.summary()
     assert proposals(restored, members) == expected
+    restored_comparison = build_conversion_review(
+        restored, "UTC", members=members, reviewer_policy=loaded["private_reviewer_policy"]
+    )
+    assert restored_comparison.private_data() == loaded["private_conversion"]
+    assert restored_comparison.summary() == comparison.summary()
+    assert comparison.summary()["reviewer_authority"]["changed_tasks_count"] == 0
+    assert comparison.summary()["reviewer_authority"]["source_policy_verified"] is False
     assert expected[0]["proposals"][0]["payload"]["enabled"] is False
     assert len(expected[3]["proposals"]) == 3
     assert expected[3]["blocked"] == []
@@ -330,5 +358,5 @@ async def verify_legacy_archive(hass):
         assert str(error) == "review_changed"
     print(
         "PASS: actual HA Store private review archive, exact source bytes, "
-        "proposal replay and changed-binding refusal; no import"
+        "proposal/reviewer-set replay and changed-binding refusal; no import"
     )

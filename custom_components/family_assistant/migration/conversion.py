@@ -10,6 +10,7 @@ from .alarm_plan import AlarmPlanError, build_alarm_plan
 from .archive import encode_private_review
 from .court_plan import build_court_plan
 from .review import LegacyReview
+from .reviewer_policy import ReviewerPolicyError, build_reviewer_policy_review
 from .shopping_plan import build_shopping_plan
 from .task_plan import build_task_plan
 
@@ -44,7 +45,7 @@ class ConversionReview:
 
 
 def build_conversion_review(
-    review: LegacyReview, timezone: str, *, members=None
+    review: LegacyReview, timezone: str, *, members=None, reviewer_policy=None
 ) -> ConversionReview:
     if type(review) is not LegacyReview or not review.matches_members(members):
         raise ConversionError("review_changed")
@@ -58,10 +59,17 @@ def build_conversion_review(
         "shopping": build_shopping_plan(review, members=members),
         "court": build_court_plan(review, members=members),
     }
+    authority = None
+    if reviewer_policy is not None:
+        try:
+            authority = build_reviewer_policy_review(review, reviewer_policy, members=members)
+        except ReviewerPolicyError as error:
+            raise ConversionError(str(error)) from None
     # Keep raw sources exactly once, not multiple overlapping per-module archives.
     private = _encode(
         {
             "timezone": timezone,
+            "reviewer_authority": authority.private_data() if authority else None,
             "archive": json.loads(encode_private_review(review, members=members)),
             "plans": {
                 name: {key: value for key, value in plan.private_data().items() if key != "archive"}
@@ -75,6 +83,7 @@ def build_conversion_review(
         "review_fingerprint": review.summary()["fingerprint"],
         "source_counts": review.summary()["counts"],
         "modules": {name: plan.summary() for name, plan in plans.items()},
+        "reviewer_authority": authority.summary() if authority else {"mode": "not_supplied"},
         "blocked_records_count": sum(
             len(plan.private_data().get("blocked", [])) for plan in plans.values()
         ),

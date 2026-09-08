@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.17 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.18 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload; media extensions pending |
@@ -33,10 +33,25 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.17 runtime ZIP/tag verified at57695ffa, all eight Checks jobs passed (34186485298), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.18 runtime ZIP/tag verified at1dd84a03, all eight Checks jobs passed (34190052072), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Equipment documents in verification, 2026-09-08
+## Migration reviewer comparison in verification, 2026-09-08
+
+The next candidate adds complete declared per-task reviewer-set comparison to the
+joined conversion fingerprint. Coverage, designated reviewer, explicit mapping,
+duplicates and all current member fields are checked. Per-task differences stay
+private; counts do not grant rights. Missing source policy is explicit, not guessed
+from previous successful reviews. No live capture, role changes or import endpoint.
+18 focused cases plus the legacy conversion/archive subset passed56 tests; the
+full Python suite passed3624/five skips/23 subtests, Ruff473 passed. A private,
+synthetic-only parity test against the actual old ledger confirmed additional-parent
+review behavior. Actual HA87386 passed private source/archive and joined reviewer
+policy replay through native Store, with exact restored fingerprints and changed-
+binding refusal. Node445 plus122 pretests passed. Exact-commit CI/publication remain
+gates; no source exporter was installed and no live data imported.
+
+## Equipment documents released, 2026-09-08
 
 Alpha.18 candidate adds a distinct parent-private equipment document purpose,
 explicit upload/attach/download, owner-only reviewed purge and retained history.
@@ -55,8 +70,14 @@ owner purge and retained private PDF bytes after Store reload.
 An initial lab bootstrap rejected QNAP's bonding_masters control file as if it
 were a network interface. The helper now counts only actual interface directories;
 five synthetic guards verify this does not admit a real interface or capabilities.
-No production configuration was changed. Final frozen runtime, exact-commit CI,
-encrypted restore/upgrade acceptance and publication remain gates.
+No production configuration was changed. Final frozen runtime passed full HA91886.
+Published at1dd84a03c3867caeb18aeec99ef8501b4c542d95; all eight Checks jobs passed
+(34190052072), including encrypted restore and HACS install/upgrade. Tag, target,
+asset size and digest verified: 237 runtime files/3112824 bytes, ZIP839096 bytes,
+SHA256 `f6d70a8c0b5a18fe257efcc668a2dc419291d7a86c3c29b8276438bcfd8c4533`.
+Final Node445 plus122 pretests passed; four document browser cases reran after final
+pagination/strict-ID changes. Four local workflow tests now catch YAML command syntax
+and accidental placement of binary test dependencies inside the public build source.
 
 ## Optional purchase prices released, 2026-09-08
 

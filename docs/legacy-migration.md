@@ -193,3 +193,26 @@ See [Telegram Bot API: updates](https://core.telegram.org/bots/api#getting-updat
 an open overdue task can still produce an incident when its module is activated.
 The complete shadow runtime must keep all modules/transports/effects off, then
 explicitly review activation. These planners must not be used for partial cutover.
+
+## Explicit reviewer-set comparison
+
+`migration.reviewer_policy.build_reviewer_policy_review` compares an explicitly
+supplied **complete** old effective reviewer set for every report task with the
+current target `household_parents` set. A designated reviewer alone may not be the
+effective set: the legacy controller can also allow configured parents. The source
+adapter must capture that policy; names and previous successful reviews do not prove it.
+
+The schema-1 policy pins its revision and exact source/mapping review fingerprint.
+Its per-task coverage must be exact, include each designated reviewer, exclude
+duplicates and resolve every old actor through the explicit immutable mapping.
+No identities are inferred or promoted. Private output lists mapped old, current,
+added and removed reviewers per task. Public summaries contain fixed status, counts
+and fingerprints only. Member, binding, source or policy changes invalidate replay.
+
+`build_conversion_review(..., reviewer_policy=...)` includes this comparison in the
+joined fingerprint/private payload. Omission is explicit `not_supplied`, never
+implicit acceptance. Added/removed reviewers require a separate decision; historical
+nonparent authority is not converted into a current role. Even equivalent sets do
+not prove the supplied policy is truthful or coherently captured: `source_policy_verified`,
+`coherence_verified` and `import_available` remain false. This is one acceptance gate,
+not an import endpoint, source exporter, role grant or partial-cutover mechanism.
