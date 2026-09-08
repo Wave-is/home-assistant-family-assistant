@@ -25,6 +25,13 @@ def test_ci_release_candidate_matches_current_manifest():
     assert versions == [manifest["version"]]
 
 
+def test_native_ollama_is_optional_but_declared_for_import_and_startup_order():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / DOMAIN_PATH / "manifest.json").read_text(encoding="utf-8"))
+    assert "ollama" in manifest["after_dependencies"]
+    assert "ollama" not in manifest["dependencies"]
+
+
 @pytest.fixture
 def source(tmp_path):
     root = tmp_path / "public"

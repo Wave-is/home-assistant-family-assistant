@@ -1,6 +1,7 @@
 {
   "domain": "family_assistant",
   "name": "Family Assistant",
+  "after_dependencies": ["ollama"],
   "codeowners": ["@Wave-is"],
   "config_flow": true,
   "dependencies": ["conversation", "file_upload", "http", "lovelace", "websocket_api"],

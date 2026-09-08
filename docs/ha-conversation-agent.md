@@ -3,6 +3,10 @@
 Evaluation feature, not general support for every HA agent. Direct Ollama and
 its fallback remain independent options.
 
+Ollama is declared as an optional Home Assistant dependency: Core can install its
+Python requirements and order startup, but no Ollama configuration entry or model
+server is created automatically. It is not required to use the other modules.
+
 ## English
 
 1. Enable the Conversation module in Family Assistant's household preferences.
