@@ -1,5 +1,7 @@
 # Isolated migration review / Проверка переноса / Перевірка перенесення
 
+[Internal Store/blob staging, limits and retry / Запись и повтор / Запис і повтор](legacy-shadow-staging.md)
+
 ## English
 
 This is an engineering-stage read-only copy, not an enabled migration wizard or

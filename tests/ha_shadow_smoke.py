@@ -16,6 +16,10 @@ async def verify_shadow(hass, owner_user, *, photos=False):
     from custom_components.family_assistant.domain.validation import DomainError
     from custom_components.family_assistant.migration.review import read_store_pair
     from custom_components.family_assistant.migration.shadow import build_shadow_candidate
+    from custom_components.family_assistant.migration.shadow_install import (
+        ShadowInstallError,
+        async_stage_shadow,
+    )
     from custom_components.family_assistant.runtime import async_options_updated, safe_diagnostics
 
     # Prepare the Store before the first setup of this new entry. Reusing a
@@ -104,9 +108,86 @@ async def verify_shadow(hass, owner_user, *, photos=False):
             review, target, reviewer_policy=policy, prepared_at=prepared, photo_evidence=evidence
         )
         expected = candidate.private_state()
+        try:
+            await async_stage_shadow(
+                hass,
+                entry_id=entry.entry_id,
+                user_id=child.id,
+                candidate=candidate,
+                target=target,
+                expected_fingerprint=candidate.summary()["fingerprint"],
+            )
+        except ShadowInstallError as error:
+            assert str(error) == "shadow_install_forbidden"
+        else:
+            raise AssertionError("Child unexpectedly staged a migration copy")
+        assert await Store(hass, 1, f"family_assistant.{entry.entry_id}").async_load() is None
+        if photos:
+            from unittest.mock import patch
+
+            from custom_components.family_assistant.domain.shadow import SCHEMA
+            from custom_components.family_assistant.migration import shadow_install
+
+            save = shadow_install._settled_save
+
+            async def committed_then_lost(store, value):
+                await save(store, value)
+                if value.get("schema_version") == SCHEMA:
+                    raise OSError("Synthetic lost acknowledgement after native Store commit")
+
+            with patch.object(shadow_install, "_settled_save", committed_then_lost):
+                try:
+                    await async_stage_shadow(
+                        hass,
+                        entry_id=entry.entry_id,
+                        user_id=owner_user.id,
+                        candidate=candidate,
+                        target=target,
+                        expected_fingerprint=candidate.summary()["fingerprint"],
+                    )
+                except ShadowInstallError as error:
+                    assert str(error) == "shadow_install_retry_required"
+                else:
+                    raise AssertionError("Synthetic lost acknowledgement was not surfaced")
+            assert (
+                await Store(hass, 1, f"family_assistant.{entry.entry_id}").async_load() == expected
+            )
+        receipt = await async_stage_shadow(
+            hass,
+            entry_id=entry.entry_id,
+            user_id=owner_user.id,
+            candidate=candidate,
+            target=target,
+            expected_fingerprint=candidate.summary()["fingerprint"],
+        )
+        assert receipt["mode"] == "read_only_shadow_staged"
+        assert (
+            await async_stage_shadow(
+                hass,
+                entry_id=entry.entry_id,
+                user_id=owner_user.id,
+                candidate=candidate,
+                target=target,
+                expected_fingerprint=candidate.summary()["fingerprint"],
+            )
+            == receipt
+        )
         store = Store(hass, 1, f"family_assistant.{entry.entry_id}")
-        await store.async_save(expected)
+        assert await store.async_load() == expected
         await hass.config_entries.async_add(entry)
+        try:
+            await async_stage_shadow(
+                hass,
+                entry_id=entry.entry_id,
+                user_id=owner_user.id,
+                candidate=candidate,
+                target=target,
+                expected_fingerprint=candidate.summary()["fingerprint"],
+            )
+        except ShadowInstallError as error:
+            assert str(error) == "shadow_install_busy"
+        else:
+            raise AssertionError("Registered target unexpectedly accepted staging")
         for turn in range(2):
             if turn:
                 assert await hass.config_entries.async_setup(entry.entry_id)
@@ -114,10 +195,6 @@ async def verify_shadow(hass, owner_user, *, photos=False):
             assert entry.state == ConfigEntryState.LOADED
             runtime = entry.runtime_data
             assert runtime.engine.shadow_mode
-            if photos and not turn:
-                await hass.async_add_executor_job(
-                    _stage_synthetic_blobs, runtime.media.root, candidate.private_blobs()
-                )
             from homeassistant.helpers import entity_registry
 
             registry = entity_registry.async_get(hass)
@@ -196,6 +273,10 @@ async def verify_shadow(hass, owner_user, *, photos=False):
             assert await store.async_load() == expected
             assert await hass.config_entries.async_unload(entry.entry_id)
         print(
+            "PASS: native shadow installer staged verified blobs then Store, exact retry, "
+            "child denial and registered-target refusal; no automatic entry registration"
+        )
+        print(
             "PASS: whole shadow native Store/reload, owner-only authenticated view, "
             "command/Options denial, zero providers/scheduler and unchanged bytes"
         )
@@ -208,16 +289,6 @@ async def verify_shadow(hass, owner_user, *, photos=False):
         await hass.config_entries.async_remove(entry.entry_id)
     if not photos:
         await verify_shadow(hass, owner_user, photos=True)
-
-
-def _stage_synthetic_blobs(root, blobs):
-    """Fixture-only exclusive binary staging; not a production import endpoint."""
-    from custom_components.family_assistant.media_storage import _directory, _path
-
-    _directory(root)
-    for key, content in blobs.items():
-        with _path(root, key).open("xb") as stream:
-            stream.write(content)
 
 
 async def main():

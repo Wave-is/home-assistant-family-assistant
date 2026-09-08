@@ -33,10 +33,27 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.21 runtime ZIP/tag verified at ea5c572e, all eight Checks jobs passed (34198253945), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Whole isolated read-only copy HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text/photo-report proposals; complete reviewer-set comparison; fresh native HA shadow setup/reload/owner view and zero workers/entities tested. Explicit historical photo matching, bounded decoding and private HTTP/reload passed; coherent real capture, reviewed importer/activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.22 runtime ZIP/tag verified at 68da569a, all eight Checks jobs passed (34201156401), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Whole isolated read-only copy and internal staging HA-tested | Strict Store bytes/member fingerprints, disabled alarms, partial shopping, current-week scores and no-report/personal/text/photo-report proposals; complete reviewer-set comparison. Whole revalidation and fresh-entry native Store/blob staging with exact retry passed, including lost-commit acknowledgement, child denial, registered-target refusal, first setup/private HTTP/reload and zero workers/entities. Coherent real capture, matching/import wizard, reviewed residue recovery, activation and controlled cutover remain pending |
 
-## Reviewed barcodes in release verification, 2026-09-08
+## Native shadow staging in release verification, 2026-09-08
+
+The internal fresh-entry staging API replays complete source/member/reviewer/photo
+conversion before any write. Current active administrator-owner authorization,
+target pins and setup/backup coordination guard native HA Store intent and final
+publication. Verified blobs precede the one final Store; exact retries do not
+overwrite unrelated data or register an entry. Cancellation drains owned writes.
+Unknown residues fail closed without deletion; reviewed cleanup remains pending.
+
+Full Python3741/five skips/23 subtests passed, including strict intent-version and
+unknown-residue regressions. Focused58 passed before the final intent-version test.
+Native full HA65579 passed actual Store/blob staging, exact retry after a lost
+acknowledgement following an actual commit, child/registered-target denial, fresh
+setup, owner-only historical photo HTTP, zero entities/workers and reload. No
+fixture-only blob copying remains in this test. Node450/141 passed; no frontend
+source changed. Exact committed release gates and publication remain pending.
+
+## Reviewed barcodes released, 2026-09-08
 
 Optional GTIN-8/12/13/14 structural validation and canonical metadata flow through
 add/edit, recurring generation, merge guards and purchase history. Reviewed RU/UK/EN
@@ -53,7 +70,8 @@ passed authenticated barcode add/edit/read, exact replay, invalid-input rollback
 historical purchase codes and the entire shopping Store comparison after reload.
 Mobile RU review was visually inspected. Camera browser tests use synthetic local
 video and a controlled detector, not a physical device/native-decoder certification.
-Exact commit release checks and publication remain pending.
+All eight Checks34201156401 passed; alpha22 tag and asset verified against
+68da569a64d151762a1e04c373cad99f8ef46d4b. No production rollout.
 
 ## Historical photo evidence released, 2026-09-08
 

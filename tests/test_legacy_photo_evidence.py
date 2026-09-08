@@ -13,6 +13,7 @@ from test_legacy_photo_requirement import photo_source
 from test_legacy_reassignment import reassigned
 from test_legacy_task_plan import wrapped
 from test_legacy_text_report_history import BASE
+from test_shadow_install import port as install_port
 
 from custom_components.family_assistant.domain import media
 from custom_components.family_assistant.domain.engine import Engine, new_state
@@ -23,10 +24,19 @@ from custom_components.family_assistant.migration.review import (
     COURT_KEY,
     read_store_pair,
 )
-from custom_components.family_assistant.migration.shadow import ShadowError, build_shadow_candidate
+from custom_components.family_assistant.migration.shadow import (
+    ShadowError,
+    async_reverify_shadow,
+    build_shadow_candidate,
+)
 from custom_components.family_assistant.migration.task_plan import TaskPlanError, build_task_plan
 
 NOW = BASE + timedelta(days=1)
+
+
+@pytest.fixture
+def port(monkeypatch, tmp_path):
+    return install_port.__wrapped__(monkeypatch, tmp_path)
 
 
 @pytest.fixture(autouse=True)
@@ -346,3 +356,81 @@ async def test_cancellation_settles_decoder_and_cleans_private_temporary_file(mo
     with pytest.raises(asyncio.CancelledError):
         await work
     assert paths and not paths[0].exists() and not paths[0].parent.exists()
+
+
+@pytest.mark.asyncio
+async def test_complete_photo_copy_stages_blobs_before_store_and_retries_exactly(port, monkeypatch):
+    import hashlib
+    from pathlib import Path
+
+    args = inputs()
+    review, target, policy, _, _ = args
+    evidence = await prepare(args)
+    candidate = build_shadow_candidate(
+        review, target, reviewer_policy=policy, prepared_at=NOW, photo_evidence=evidence
+    )
+    port.user.id = target["members"]["owner"]["ha_user_id"]
+    root = Path(
+        port.hass.config.path(
+            "family_assistant_data", hashlib.sha256(b"synthetic-shadow-entry-0001").hexdigest()
+        )
+    )
+    seen = []
+
+    async def before_save(key):
+        if key == "family_assistant.synthetic-shadow-entry-0001":
+            assert {p.name: p.read_bytes() for p in root.iterdir()} == candidate.private_blobs()
+            seen.append(key)
+
+    port.options.before_save = before_save
+    opts = {
+        "candidate": candidate,
+        "target": target,
+        "expected_fingerprint": candidate.summary()["fingerprint"],
+    }
+    receipt = await port.stage(**opts)
+    assert await port.stage(**opts) == receipt
+    assert len(seen) == 1
+    assert await async_reverify_shadow(candidate, target) == candidate
+
+
+@pytest.mark.asyncio
+async def test_second_blob_failure_leaves_no_store_and_retry_keeps_first_blob(port, monkeypatch):
+    import hashlib
+    from pathlib import Path
+
+    args = inputs()
+    review, target, policy, _, _ = args
+    evidence = await prepare(args)
+    candidate = build_shadow_candidate(
+        review, target, reviewer_policy=policy, prepared_at=NOW, photo_evidence=evidence
+    )
+    port.user.id = target["members"]["owner"]["ha_user_id"]
+    real = port.module._put_blob
+    count = 0
+
+    def fail(root, key, content, metadata):
+        nonlocal count
+        count += 1
+        if count == 2:
+            raise OSError("PRIVATE synthetic I/O path")
+        real(root, key, content, metadata)
+
+    monkeypatch.setattr(port.module, "_put_blob", fail)
+    opts = {
+        "candidate": candidate,
+        "target": target,
+        "expected_fingerprint": candidate.summary()["fingerprint"],
+    }
+    with pytest.raises(port.module.ShadowInstallError, match="retry_required"):
+        await port.stage(**opts)
+    assert "family_assistant.synthetic-shadow-entry-0001" not in port.values
+    root = Path(
+        port.hass.config.path(
+            "family_assistant_data", hashlib.sha256(b"synthetic-shadow-entry-0001").hexdigest()
+        )
+    )
+    assert len(list(root.iterdir())) == 1
+    monkeypatch.setattr(port.module, "_put_blob", real)
+    await port.stage(**opts)
+    assert {p.name: p.read_bytes() for p in root.iterdir()} == candidate.private_blobs()

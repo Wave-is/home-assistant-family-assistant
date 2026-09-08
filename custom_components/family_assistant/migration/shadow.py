@@ -65,7 +65,7 @@ def _empty_target(target):
         expected["members"] = members
         if _encode(expected) != _encode(target):
             raise ShadowError("shadow_empty_target_required")
-    except (KeyError, TypeError, AttributeError, DomainError):
+    except (KeyError, TypeError, AttributeError, DomainError, UnicodeError):
         raise ShadowError("shadow_target_invalid") from None
 
 
@@ -86,7 +86,7 @@ class ShadowCandidate:
         return json.loads(self._summary)
 
     def private_blobs(self):
-        """Verified private bytes for a future all-or-nothing Store/blob installer."""
+        """Verified private bytes for the internal fresh-entry Store/blob staging API."""
         return dict(self._blobs)
 
 
@@ -265,3 +265,66 @@ def build_shadow_candidate(
         ),
         tuple(blobs.items()),
     )
+
+
+async def async_reverify_shadow(candidate: ShadowCandidate, target: dict) -> ShadowCandidate:
+    """Rebuild from exact source/mapping/image evidence before a future installer.
+
+    Neither the supplied Store projection nor a dataclass type is proof of a valid
+    conversion. This replays the actual converters and bounded photo decoder. It
+    grants no source-coherence, authentication, activation or cutover authority.
+    """
+    from .archive import ArchiveError, decode_private_review
+    from .photo_evidence import PhotoEvidenceError, async_restore_photo_evidence
+
+    _empty_target(target)
+    frozen_target = _encode(target)
+    if type(candidate) is not ShadowCandidate:
+        raise ShadowError("shadow_candidate_invalid")
+    try:
+        expected = candidate.private_state()
+        archive = expected["migration_archive"]
+        selected_target = json.loads(frozen_target)
+        review = decode_private_review(
+            _encode(archive["archive"]), members=selected_target["members"]
+        )
+        evidence = None
+        blobs = candidate.private_blobs()
+        if len(blobs) != len(candidate._blobs):
+            raise ShadowError("shadow_candidate_invalid")
+        if "photo_evidence" in archive:
+            evidence = await async_restore_photo_evidence(
+                review,
+                members=selected_target["members"],
+                archive=archive["photo_evidence"],
+                blobs=blobs,
+            )
+        elif blobs:
+            raise ShadowError("shadow_candidate_invalid")
+        rebuilt = build_shadow_candidate(
+            review,
+            selected_target,
+            reviewer_policy=archive["reviewer_authority"]["policy"],
+            prepared_at=timestamp(archive["prepared_at"], "prepared_at"),
+            photo_evidence=evidence,
+        )
+        if (
+            rebuilt._state != candidate._state
+            or rebuilt._summary != candidate._summary
+            or rebuilt.private_blobs() != blobs
+            or _encode(target) != frozen_target
+        ):
+            raise ShadowError("shadow_candidate_changed")
+        return rebuilt
+    except ShadowError:
+        raise
+    except (
+        ArchiveError,
+        PhotoEvidenceError,
+        DomainError,
+        KeyError,
+        TypeError,
+        ValueError,
+        RecursionError,
+    ):
+        raise ShadowError("shadow_candidate_invalid") from None
