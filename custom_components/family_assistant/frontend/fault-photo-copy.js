@@ -1,0 +1,36 @@
+/* Private fault observations, distinct from completion reports. */
+export const FAULT_PHOTO_COPY = {
+  en: {
+    title: "Fault photo", add: "Add fault photo", file: "Choose image",
+    privacy: "Original image metadata (including EXIF) may remain. Photos are not sent to Telegram or an AI provider.",
+    note: "One JPEG, PNG or WebP, up to 10 MiB. Upload is private until you attach it. Attaching does not complete the task or send a message.",
+    upload: "Upload privately", attach: "Attach to this fault", confirm: "I reviewed this image and fault",
+    ready: "Uploaded privately. Review the fault before attaching.", view: "View photo", hide: "Hide photo",
+    purge: "Delete fault photo", reason: "Reason for deletion", confirmPurge: "Permanently delete this image; keep the fault and audit history",
+    purgeNote: "Owner only. Access ends immediately; the private image is collected separately. The task and its completion report are unchanged.",
+    cancel: "Cancel", retry: "Retry the same operation", pending: "Working…", history: "Photo history",
+    attached: "Attached", purged: "Deleted", afterReport: "After reporting, you can attach a private photo to the open fault below.",
+  },
+  ru: {
+    title: "Фото поломки", add: "Добавить фото поломки", file: "Выбрать изображение",
+    privacy: "Исходные метаданные изображения, включая EXIF, могут сохраниться. Фото не отправляется в Telegram или ИИ-провайдеру.",
+    note: "Одно JPEG, PNG или WebP до 10 МиБ. До прикрепления загрузка видна только вам. Фото не завершает задачу и не отправляет сообщения.",
+    upload: "Загрузить приватно", attach: "Прикрепить к этой поломке", confirm: "Я проверил изображение и заявку",
+    ready: "Загружено приватно. Проверьте заявку перед прикреплением.", view: "Посмотреть фото", hide: "Скрыть фото",
+    purge: "Удалить фото поломки", reason: "Причина удаления", confirmPurge: "Безвозвратно удалить изображение, сохранив заявку и историю действий",
+    purgeNote: "Только владелец. Доступ закроется сразу; файл будет очищен отдельно. Задача и отчёт о её выполнении не изменятся.",
+    cancel: "Отмена", retry: "Повторить ту же операцию", pending: "Выполняется…", history: "История фото",
+    attached: "Прикреплено", purged: "Удалено", afterReport: "После создания заявки можно прикрепить приватное фото к открытой поломке ниже.",
+  },
+  uk: {
+    title: "Фото несправності", add: "Додати фото несправності", file: "Вибрати зображення",
+    privacy: "Початкові метадані зображення, зокрема EXIF, можуть зберегтися. Фото не надсилається в Telegram або ШІ-провайдеру.",
+    note: "Одне JPEG, PNG або WebP до 10 МіБ. До прикріплення зображення бачите лише ви. Фото не завершує завдання й не надсилає повідомлень.",
+    upload: "Завантажити приватно", attach: "Прикріпити до цієї несправності", confirm: "Я перевірив зображення та заявку",
+    ready: "Завантажено приватно. Перевірте заявку перед прикріпленням.", view: "Переглянути фото", hide: "Сховати фото",
+    purge: "Видалити фото несправності", reason: "Причина видалення", confirmPurge: "Назавжди видалити зображення, зберігши заявку та історію дій",
+    purgeNote: "Лише власник. Доступ закриється одразу; файл буде очищено окремо. Завдання та звіт про його виконання не зміняться.",
+    cancel: "Скасувати", retry: "Повторити ту саму операцію", pending: "Виконується…", history: "Історія фото",
+    attached: "Прикріплено", purged: "Видалено", afterReport: "Після створення заявки можна прикріпити приватне фото до відкритої несправності нижче.",
+  },
+};

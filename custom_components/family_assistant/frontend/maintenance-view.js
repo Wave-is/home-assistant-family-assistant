@@ -1,6 +1,8 @@
 /* Role-scoped household maintenance UI with exact reviewed mutations. */
 
 import { MAINTENANCE_COPY } from "./maintenance-copy.js";
+import { renderFaultPhoto } from "./fault-photo-view.js";
+import { FAULT_PHOTO_COPY } from "./fault-photo-copy.js";
 import {
   RECURRENCE_COPY,
   makeRecurrenceDraft,
@@ -760,6 +762,7 @@ export function renderMaintenance(card, body) {
       if (fault.task_id) item.append(node("p", `${copy.linked_task}: ${fault.task_id}`, "sub"));
       if (parent) item.append(node("p", `${copy.reporter}: ${memberName(card, fault.reporter, copy)} · ${copy.reported_at}: ${fault.created_at}`, "sub"));
       if (fault.details) item.append(node("p", fault.details, "maintenance-note"));
+      renderFaultPhoto(card, item, fault);
       faultSection.append(item);
     }
     section.append(faultSection);
@@ -933,7 +936,7 @@ export function renderMaintenance(card, body) {
     section.append(form);
   } else if (draft.kind === "fault_edit") {
     const form = node("form", null, "item maintenance-form"); form.dataset.maintenanceForm = "fault_edit";
-    form.append(node("h3", copy.report_fault), node("p", draft.targetName, "sub"), node("p", copy.attachments_unavailable, "sub"));
+    form.append(node("h3", copy.report_fault), node("p", draft.targetName, "sub"), node("p", (FAULT_PHOTO_COPY[languageOf(card)] || FAULT_PHOTO_COPY.en).afterReport, "sub"));
     const summary = input(form, copy.fault_summary, "summary", draft.summary);
     const details = textarea(form, copy.fault_details, "details", draft.details);
     summary.addEventListener("input", () => { if (guard(summary, draft)) draft.summary = summary.value; });

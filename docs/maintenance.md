@@ -4,7 +4,8 @@ Development module. Enable **Home maintenance** in integration options and use
 `custom:family-maintenance-card`. Fault reports and recurring services also need
 **Tasks**. The card editor chooses the household/language; the signed-in account
 determines permissions. Recurring service tasks support private photo reports;
-initial fault photos and manual log/document attachments are not supported yet.
+open faults support a separate observation photo. Manual log/document attachments
+are not supported yet.
 
 ## English
 
@@ -21,6 +22,21 @@ ordinary private task assigned to the reviewed responsible person. The reporter
 can follow that fault; the current assignee works in Tasks, and parents review
 completion. An identical open report by the same reporter is rejected. Details,
 warranty and equipment notes are never copied into the task title.
+
+After reporting an open fault, choose **Add fault photo**, select one JPEG/PNG/WebP
+up to 10 MiB, upload privately, then review and explicitly attach it. Until then
+only the uploader can read it; afterward current parents, the reporter and current
+assignee can view it. Changing their member identity/revision revokes stale access.
+An attachment is an observation, **not task completion**. A submitted/closed task
+does not accept new fault photos, but an existing attached image remains readable
+to authorized viewers. Nothing is sent to Telegram, AI or equipment.
+
+Viewing is explicit; no automatic image fetch. Original metadata including EXIF
+may remain. The owner can delete an image with a reason: reads stop immediately,
+the private collector removes bytes, and parent-only photo history is retained.
+After deletion, a new image may be reviewed and attached while the task is open.
+Lost responses retry the same operation; changed scope clears the draft. Images
+live outside the HACS code directory and are included in private HA backups.
 
 Parents can schedule service as an ordinary recurring task: choose assignees,
 rotation or individual duties, recurrence, creation time, due time and checklist.
@@ -87,7 +103,16 @@ family-group message.
 прав не обходится повтором. Приватные задачи не попадают в групповой список и
 автоматический контекст ИИ; уведомления идут исполнителю или родителям лично.
 Если личный чат не подключён, система не подменяет его семейной группой.
-Фото самой поломки и вложения к ручному журналу пока не поддерживаются.
+К открытой заявке можно отдельно добавить одно фото JPEG/PNG/WebP до 10 МиБ:
+выберите файл, загрузите приватно, проверьте изображение и подтвердите прикрепление.
+До прикрепления его видит только загрузивший; после — актуальные родители, автор
+заявки и исполнитель. Фото не завершает задачу и не отправляется в Telegram или ИИ.
+Просмотр запускается явно. EXIF и другие исходные метаданные могут сохраниться.
+Владелец может удалить фото с причиной: доступ прекращается сразу, файл очищается
+отдельно, история действий остаётся у родителей. Пока задача открыта, можно
+прикрепить новое фото. У сданной или закрытой задачи нельзя добавлять новое фото
+поломки; уже прикреплённое остаётся доступно уполномоченным участникам.
+Вложения к ручному журналу и документы пока не поддерживаются.
 Данные хранятся локально вне каталога
 обновляемого HACS-кода; администратор HA и резервные копии имеют к ним доступ.
 
@@ -127,8 +152,16 @@ family-group message.
 виконавцю або батькам особисто. Відсутність особистого чату не перенаправляє їх
 до сімейної групи. Для регламенту можна обрати текстовий або фотозвіт:
 фото приватно завантажується й окремо здається в картці завдань, без Telegram
-чи ШІ. Зміна назви зберігає тип звіту. Фото самої поломки та вкладення до
-ручного журналу поки не підтримуються. Локальні дані поза
+чи ШІ. Зміна назви зберігає тип звіту. До відкритої заявки можна окремо
+додати одне фото JPEG/PNG/WebP до 10 МіБ: оберіть файл, завантажте приватно,
+перевірте зображення та підтвердьте прикріплення. До прикріплення його бачить
+лише автор завантаження; після — чинні батьки, автор заявки й виконавець.
+Фото не завершує завдання й не надсилається в Telegram чи ШІ. Перегляд явний;
+EXIF та інші початкові метадані можуть зберегтися. Власник може видалити фото
+з причиною: доступ закривається одразу, файл очищається окремо, історія дій
+залишається батькам. Нове фото дозволене, поки завдання відкрите; вже прикріплене
+залишається доступним уповноваженим учасникам і після завершення.
+Вкладення до ручного журналу та документи поки не підтримуються. Локальні дані поза
 каталогом HACS доступні адміністратору HA та входять до резервних копій.
 
 ## API boundaries
@@ -139,6 +172,15 @@ family-group message.
 - `asset_retire`: `id`, `revision`, nonempty `reason` (500 chars).
 - `fault_report`: current `asset_id/asset_revision`, `reporter_member_revision`,
   `summary` (200), `details` (2000), `attachment_ids: []`.
+- `media.reserve` for a reported fault: `purpose: "maintenance_fault"`,
+  `fault_id`, `fault_revision`, `uploader_revision`. Authenticated binary PUT
+  finalizes the reservation privately; no bytes/URLs are accepted in commands.
+- `maintenance.fault_photo_attach`: current fault `id/revision`,
+  `actor_member_revision`, verified `media: {id,revision}` owned by this uploader.
+  Only an open task with no attached fault image accepts a new image.
+- `maintenance.fault_photo_purge`: the same exact reference fields plus nonempty
+  `reason` (500 chars), owner only. Maximum 100 retained photo-history events;
+  no truncation or implicit removal of earlier reasons.
 - `service_save`: current asset and optional existing series identity/revision,
   `title`, `assignees: [{id,revision}]`, `rotation`, `rule`, `due_time`,
   `checklist`, `enabled`, `reminder_minutes`, `grace_minutes`, optional
@@ -157,5 +199,5 @@ There is no automatic decrement. Stale references must be explicitly corrected.
 Opaque receipts contain IDs/versions/status, not private notes. Store keeps
 assets/faults/logs under `maintenance` and service rules under `task_series`;
 materialized tasks retain private source provenance locally. API versions are
-strict JSON-safe integers. No photographs, document bytes, paths or URLs are
-accepted as attachments in this stage.
+strict JSON-safe integers. Photographs use the scoped private HTTP transport,
+not JSON. Document bytes, paths and URLs are never accepted as attachments.

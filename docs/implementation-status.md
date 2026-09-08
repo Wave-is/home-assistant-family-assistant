@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.11 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.12 is available for isolated evaluation; alpha.13 fault-photo candidate in progress; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -24,19 +24,47 @@ Nothing is production-ready solely because a mock test passes.
 | Pantry and household stock | In progress / unit-, browser- and HA-tested | Manual stock, minimum/expiry projection, private parent notes, reviewable low-stock and meal shopping proposals, opt-in private expiry reminders, consent-controlled dietary notes and localized cards; extended media/providers pending |
 | Weekly meals | In progress / unit-, browser- and HA-tested | Parent drafts/publication, strict weekly/ingredient validation, private history, reviewed shopping transfer, private dietary section and optional read-only Mealie v3 source with manual candidate review; production provider acceptance pending |
 | School | In progress / unit-, browser- and HA-tested | Parent-reviewed timetables, private homework, reviewed backpack starts, opt-in private preparation reminders, exact terminal retention and counts-only Repairs; explicit one-week HA calendar draft import tested; photograph import and household acceptance pending |
-| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring service reuse with text/photo completion, manual repair history and card; initial fault media/documents and production acceptance pending |
+| Maintenance | In progress / unit-, browser- and HA-tested | Private equipment/warranty/consumables, authorized faults backed by private tasks, recurring text/photo service completion, manual repair history and card; separate initial fault images including authenticated upload/read/purge/Store-reload passed actual HA; documents and production acceptance remain |
 | Polls | Implemented / unit-, browser- and HA-tested | Private ballots, fresh confirmations, Telegram private replies, aggregates and explicit archive/purge; older archive pagination and production acceptance pending |
-| Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self-consent, source lineage, fresh/unknown projection; explicit guardian consent unit/browser tested with actual-HA candidate pending; presence-aware notifications and household acceptance pending |
+| Presence | In progress / unit-, browser- and HA-tested | Opt-in dashboard-only source evidence, HA read permission and self/guardian consent, source lineage, fresh/unknown projection; alpha.12 actual HA/Store/reload verified; presence-aware notifications and household acceptance pending |
 | Digests | Implemented / unit-, browser- and HA-tested | Off-default owner schedule, independent self-only subscriptions, private deterministic send-time content, exact replay, quiet hours/expiry and retained-period anti-replay floor; household acceptance and presence-aware routing remain pending |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
 | Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
 | Unknown clients / allowlist | Planned | Topology + IPv6 + local rollback prerequisite |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.11 runtime ZIP/tag verified, all eight Checks jobs passed at 5be3493 (34167701159), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.12 candidate in progress; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.12 runtime ZIP/tag verified, all eight Checks jobs passed at db5bd99 (34169788842), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.13 candidate in progress; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Explicit guardian presence candidate, 2026-09-08
+## Fault observation photo candidate, 2026-09-08
+
+Alpha.13 adds a second consumer of the existing bounded private image service.
+An open reported fault can reserve/upload one uploader-private image and explicitly
+attach it for current parents/reporter/assignee. It never changes the task, outbox,
+alarm, routine or court. Owner-only explicit purge with a reason revokes reads at
+commit and preserves bounded parent-visible history; a later image does not erase it.
+Malformed or incomplete source records withhold the upload grant without breaking
+ordinary maintenance/digest projection. Competing uploads cannot replace an attachment.
+
+RU/UK/EN real-card tests cover explicit upload, attach, view, owner purge, exact
+lost-response retries, stale/detached controls and identity/module/entry changes.
+Four mobile Chromium scenarios passed; Russian layout was visually inspected.
+AGY Flash High wrote the new public-only HTTP smoke file before its final-response
+timeout; root reviewed contracts, added whole-state no-side-effect checks and a
+second image for authenticated Store-reload verification. The first HA run caught
+an invalid cross-purpose test request: a photo completion cannot include text.
+Removing that field makes the test exercise the intended media-purpose denial.
+The complete second HA run passed upload, authorized bytes, denied reads, collector,
+exact replay, Store-reload and all other module gates. No household credentials
+or production changes involved.
+
+Local3276 Python tests/five skips/23 subtests,425-file Ruff/format, public privacy,
+locale checks,444 main Node plus23 pretest and192 Chromium scenarios passed.
+Final review added three observed-failing regressions for boolean task, assignment
+and asset-source revision pins; all are now strictly validated. The final full
+Python rerun and exact-commit eight-job CI cover those last guards before publication.
+
+## Explicit guardian presence release, 2026-09-08
 
 Alpha.12 adds `presence.guardian_access_set`; `presence.access_set` remains self-only.
 Current active HA-linked parents/owners may explicitly consent for current active
@@ -72,7 +100,9 @@ member-set/Store/reload/unload assertions. Initial CI68138ca passed the actual H
 encrypted restore, upgrade, HACS installer and Python tests but caught the stale
 alpha.11 packaging command. Updated the explicit CI candidate to alpha.12 and
 added a local manifest/workflow agreement regression (observed failing before
-the fix). The pinned alpha.3 upgrade baseline is unchanged. Final CI is pending.
+the fix). The pinned alpha.3 upgrade baseline is unchanged. Final db5bd99 CI
+34169788842 passed all eight gates; alpha.12 was published and its tag, ZIP digest
+and size verified. This is a checkpoint, not full-vision or production completion.
 
 ## Future photo / overdue progress checkpoint, 2026-09-08
 
@@ -1057,7 +1087,7 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   persisting intent. The calendar checkpoint passed the actual HA CI job too.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
-- Test prereleases through alpha.9 are published; no migration or HACS default submission yet.
+- Test prereleases through alpha.12 are published; no migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;

@@ -750,6 +750,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
     _require_module(ctx.state)
+    if action in {"fault_photo_attach", "fault_photo_purge"}:
+        from . import fault_photos
+
+        return fault_photos.handle(ctx, action, payload)
     if action == "asset_save":
         return _asset_save(ctx, payload)
     if action == "asset_retire":
@@ -765,15 +769,24 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     raise DomainError("unknown_action")
 
 
-def _public_fault(state: dict, fault: dict, *, parent: bool) -> dict:
+def _public_fault(state: dict, fault: dict, *, parent: bool, actor: dict) -> dict:
+    from .fault_photos import public_attachment, upload_target
+
     task = state.get("tasks", {}).get(fault.get("task_id"), {})
     result = deepcopy(fault)
     result["task_status"] = task.get("status") if isinstance(task, dict) else "unavailable"
     result["task_revision"] = task.get("revision") if isinstance(task, dict) else None
     result["assignee"] = task.get("assignee") if isinstance(task, dict) else None
     result.pop("normalized_summary", None)
+    try:
+        upload_target(state, actor, fault.get("id"), fault.get("revision"))
+        result["can_upload_photo"] = True
+    except DomainError:
+        result["can_upload_photo"] = False
+    if fault.get("attachment_ids"):
+        result["photo_attachment"] = public_attachment(state, actor, fault)
     if not parent:
-        for key in ("asset_revision", "reporter_member_revision"):
+        for key in ("asset_revision", "reporter_member_revision", "photo_purge", "photo_history"):
             result.pop(key, None)
     return result
 
@@ -841,7 +854,9 @@ def view(state: dict, actor: dict) -> dict:
             public_assets.append(public)
         return {
             "assets": public_assets,
-            "faults": [_public_fault(state, item, parent=True) for item in faults.values()],
+            "faults": [
+                _public_fault(state, item, parent=True, actor=current) for item in faults.values()
+            ],
             "service_logs": [deepcopy(item) for item in logs.values()],
             "services": services,
         }
@@ -894,12 +909,17 @@ def view(state: dict, actor: dict) -> dict:
             and item.get("reporter_member_revision") == actor_revision
         )
         if own_current or _task_assigned_to(task, current):
-            public_faults.append(_public_fault(state, item, parent=False))
+            public_faults.append(_public_fault(state, item, parent=False, actor=current))
     return {**empty, "assets": public_assets, "faults": public_faults}
 
 
 def authorize_replay(ctx: Context, action: str, payload: dict) -> None:
     """Recheck the current actor and dependent module before returning an opaque receipt."""
+    if action in {"fault_photo_attach", "fault_photo_purge"}:
+        from . import fault_photos
+
+        fault_photos.authorize_replay(ctx, action, payload)
+        return
     _require_module(
         ctx.state, tasks_required=action in {"fault_report", "service_save", "service_enable"}
     )

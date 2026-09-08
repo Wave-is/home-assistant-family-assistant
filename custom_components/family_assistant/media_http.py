@@ -197,7 +197,8 @@ def _valid_download(metadata: Any, content: Any, media_id: str, revision: int) -
         and set(metadata) == set(media.PUBLIC_FIELDS)
         and metadata.get("id") == media_id
         and metadata.get("revision") == revision
-        and metadata.get("purpose") == media.PURPOSE
+        and isinstance(metadata.get("purpose"), str)
+        and metadata["purpose"] in media.PURPOSES
         and metadata.get("status") in {"available", "attached"}
         and metadata.get("mime_type") in media.MIME_TYPES
         and type(metadata.get("size_bytes")) is int

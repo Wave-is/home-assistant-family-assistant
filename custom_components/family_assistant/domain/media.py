@@ -1,7 +1,7 @@
-"""Private metadata and authority primitives for verified task-report media.
+"""Private metadata and authority primitives for verified scoped image media.
 
 Binary I/O, decoding, and HTTP handling deliberately live outside this domain.
-This first slice supports one JPEG/PNG/WebP report attachment and has no generic
+Consumers support one JPEG/PNG/WebP attachment and have no generic
 attach command, notification, provider, or device effect.
 """
 
@@ -19,6 +19,8 @@ from .validation import DomainError, fields, text, timestamp
 from .validation import revision as strict_revision
 
 PURPOSE = "task_report"
+FAULT_PURPOSE = "maintenance_fault"
+PURPOSES = frozenset({PURPOSE, FAULT_PURPOSE})
 MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_VERIFIED_BYTES = 250 * 1024 * 1024
@@ -254,14 +256,12 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
-    reservation_fields = {"purpose", "task_id", "task_revision", "uploader_revision"}
+    reservation_fields = _reservation_fields(payload)
     fields(payload, reservation_fields, reservation_fields)
-    if payload["purpose"] != PURPOSE:
-        raise DomainError("invalid_field", "purpose")
     actor = _current_actor(ctx)
     if _version(payload["uploader_revision"], "uploader_revision") != actor["revision"]:
         raise DomainError("conflict")
-    _, intended_target = _task_scope(ctx.state, actor, payload["task_id"], payload["task_revision"])
+    _, intended_target = _payload_target(ctx.state, actor, payload)
     media = _bucket(ctx.state)
     member_pending, household_pending, budget = _pending_and_budget(media, actor["id"])
     if (
@@ -277,7 +277,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         "revision": 1,
         "uploader": actor["id"],
         "uploader_revision": actor["revision"],
-        "purpose": PURPOSE,
+        "purpose": payload["purpose"],
         "mime_type": None,
         "size_bytes": None,
         "sha256": None,
@@ -297,9 +297,26 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     return _receipt(record)
 
 
+def _reservation_fields(payload: dict) -> set[str]:
+    purpose = payload.get("purpose")
+    if not isinstance(purpose, str) or purpose not in PURPOSES:
+        raise DomainError("invalid_field", "purpose")
+    target = {"task_id", "task_revision"} if purpose == PURPOSE else {"fault_id", "fault_revision"}
+    return {"purpose", "uploader_revision", *target}
+
+
+def _payload_target(state: dict, actor: dict, payload: dict) -> tuple[dict, dict]:
+    if payload["purpose"] == PURPOSE:
+        return _task_scope(state, actor, payload["task_id"], payload["task_revision"])
+    from .fault_photos import upload_target
+
+    return upload_target(state, actor, payload["fault_id"], payload["fault_revision"])
+
+
 def _reserved_authority(state: dict, actor: dict, record: dict) -> tuple[dict, dict]:
     if (
-        record.get("purpose") != PURPOSE
+        not isinstance(record.get("purpose"), str)
+        or record.get("purpose") not in PURPOSES
         or record.get("uploader") != actor["id"]
         or record.get("uploader_revision") != actor["revision"]
     ):
@@ -314,9 +331,16 @@ def _reserved_authority(state: dict, actor: dict, record: dict) -> tuple[dict, d
     ):
         raise DomainError("forbidden")
     target = scope["intended_target"]
-    task, current_target = _task_scope(
-        state, actor, target.get("task_id"), target.get("task_revision")
-    )
+    if record["purpose"] == PURPOSE:
+        task, current_target = _task_scope(
+            state, actor, target.get("task_id"), target.get("task_revision")
+        )
+    else:
+        from .fault_photos import upload_target
+
+        task, current_target = upload_target(
+            state, actor, target.get("fault_id"), target.get("fault_revision")
+        )
     if target != current_target:
         raise DomainError("conflict")
     return task, target
@@ -383,6 +407,8 @@ def attach_task_report(ctx: Context, task: dict, reference: dict) -> dict:
     if current_task is not task:
         raise DomainError("conflict")
     record = _record(ctx.state, reference["id"])
+    if record.get("purpose") != PURPOSE:
+        raise DomainError("invalid_field", "purpose")
     _blob_key(record)
     if record["revision"] != _version(reference["revision"]):
         raise DomainError("conflict")
@@ -476,6 +502,12 @@ def purge_task_report(
 
 
 def _attached_reference(state: dict, actor: dict, record: dict) -> bool:
+    if record.get("purpose") == FAULT_PURPOSE:
+        from .fault_photos import attached_reference
+
+        return attached_reference(state, actor, record)
+    if record.get("purpose") != PURPOSE:
+        return False
     scope = record.get("scope")
     if not isinstance(scope, dict) or scope.get("kind") != "task_report":
         return False
@@ -683,25 +715,21 @@ def authorize_replay(ctx: Context, action: str, payload: dict, result: dict | No
         raise DomainError("unknown_action")
     if not isinstance(payload, dict) or not isinstance(result, dict):
         raise DomainError("forbidden")
-    reservation_fields = {"purpose", "task_id", "task_revision", "uploader_revision"}
+    reservation_fields = _reservation_fields(payload)
     fields(payload, reservation_fields, reservation_fields)
     fields(result, {"id", "revision", "status"}, {"id", "revision", "status"})
-    if (
-        payload["purpose"] != PURPOSE
-        or result.get("revision") != 1
-        or result.get("status") != "reserved"
-    ):
+    if result.get("revision") != 1 or result.get("status") != "reserved":
         raise DomainError("forbidden")
     actor = _current_actor(ctx)
     if _version(payload["uploader_revision"], "uploader_revision") != actor["revision"]:
         raise DomainError("conflict")
-    _, target = _task_scope(ctx.state, actor, payload["task_id"], payload["task_revision"])
+    _, target = _payload_target(ctx.state, actor, payload)
     record = _record(ctx.state, result["id"])
     scope = record.get("scope")
     if (
         record.get("uploader") != actor["id"]
         or record.get("uploader_revision") != actor["revision"]
-        or record.get("purpose") != PURPOSE
+        or record.get("purpose") != payload["purpose"]
         or not isinstance(scope, dict)
         or scope.get("kind") != "uploader_private"
         or scope.get("intended_target") != target

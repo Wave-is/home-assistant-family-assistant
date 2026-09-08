@@ -277,6 +277,9 @@ async def main():
             from ha_maintenance_smoke import verify_maintenance
 
             maintenance_ids = await verify_maintenance(hass, entry, user, child_id)
+            from ha_fault_photo_smoke import verify_fault_photos, verify_fault_photos_reload
+
+            fault_photo_expected = await verify_fault_photos(hass, entry, user, child_id)
             maintenance_expected = entry.runtime_data.engine.snapshot()["maintenance"]
             maintenance_task_series = entry.runtime_data.engine.snapshot()["task_series"]
             maintenance_tasks = {
@@ -383,6 +386,7 @@ async def main():
 
             verify_dietary_reload(entry, dietary_expected)
             await verify_media_reload(entry, media_expected)
+            await verify_fault_photos_reload(hass, entry, user, child_id, fault_photo_expected)
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
             assert entry.runtime_data.engine.snapshot()["shopping"] == shopping_expected
             assert len(shopping_after_reload) == len(shopping_expected)

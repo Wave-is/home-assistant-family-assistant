@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic fault photo review</title>
+<style>body{font-family:system-ui;margin:12px;background:#f4f6f8;color:#152632}family-maintenance-card{display:block;max-width:760px;margin:auto}</style></head><body>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+import {setupFaultCard} from "./fault-photo-harness.js";
+const params = new URLSearchParams(location.search);
+window.fixture = await setupFaultCard(params.get("lang") || "en", params.get("role") || "child");
+</script></body></html>

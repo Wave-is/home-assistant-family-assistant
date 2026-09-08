@@ -6,6 +6,7 @@ import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileS
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm} from "./task-form.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
+import {reconcileFaultPhotos,disposeFaultPhotos} from "./fault-photo-view.js";
 import {renderCourt} from "./court-view.js";
 import {renderRewards} from "./rewards-view.js";
 import {renderCalendar} from "./calendar-view.js";
@@ -227,6 +228,7 @@ export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
     disposeTaskMedia(this);
+    disposeFaultPhotos(this);
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
     if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests"].includes(this._view)) throw new Error("Unknown Family Assistant view");
@@ -260,7 +262,7 @@ export class FamilyCard extends HTMLElement {
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
   connectedCallback() { this._timer = setInterval(()=>this.refresh(),10000); }
-  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
+  disconnectedCallback() { clearInterval(this._timer); disposeTaskMedia(this); disposeFaultPhotos(this); disposeArticle(this); disposeConversation(this); disposeShoppingEditor(this); }
   async refresh() {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
@@ -295,9 +297,10 @@ export class FamilyCard extends HTMLElement {
       const shoppingEditorForce = reconcileShoppingEditorRefresh(this,previousData);
       const routineForce = reconcileRoutineRefresh(this,previousData);
       const mediaForce = reconcileTaskMediaRefresh(this);
+      const faultPhotoForce = reconcileFaultPhotos(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
-    } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
+      if (dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+    } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (generation === this._generation) this._loading = false; }
   }
   button(text, action, primary=false) {

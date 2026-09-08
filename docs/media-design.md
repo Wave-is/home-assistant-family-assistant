@@ -1,6 +1,6 @@
 # Shared private media design
 
-Status: image-only task-report backend/card and bounded file recovery implemented.
+Status: image-only task-report and maintenance-fault backend/cards and bounded file recovery implemented.
 Full backup/restore acceptance, retained-content policy, maintenance documents and
 School image import are not yet release-ready. The sections below distinguish
 the implemented first slice from the remaining shared-media design.
@@ -10,9 +10,10 @@ the implemented first slice from the remaining shared-media design.
 The product vision calls for task photo reports, maintenance fault photos and
 documents, and a reviewed School timetable-photo import
 ([vision](vision.md)). Task creation accepts `report_type="photo"` and submission
-now requires an available, privately verified media reference; maintenance fault and service
-log commands require `attachment_ids` to be an empty list; and School has no
-import record or action yet
+now requires an available, privately verified media reference. Initial maintenance
+fault creation and service-log commands still require `attachment_ids: []`;
+an existing open fault now accepts a separately reviewed `fault_photo_attach`.
+School supports reviewed calendar import but not timetable-image import
 ([tasks.py](../custom_components/family_assistant/domain/tasks.py),
 [maintenance.py](../custom_components/family_assistant/domain/maintenance.py),
 [school.py](../custom_components/family_assistant/domain/school.py)). The first
@@ -34,7 +35,7 @@ alone is never family permission
 ## Accepted input
 
 The complete shared service is designed for the four formats below. The first
-implementation slice is deliberately narrower: one `task_report` attachment,
+implementation is deliberately narrower: one `task_report` or `maintenance_fault` attachment,
 JPEG/PNG/WebP only. PDF remains rejected until the maintenance-document lane
 has a bounded parser and its own acceptance tests.
 
@@ -85,9 +86,9 @@ private shape (timestamps omitted below only for readability):
 }
 ```
 
-`purpose` starts with only the consumer being implemented. Planned values are
-`task_report`, `maintenance_fault`, `maintenance_service_log`, and
-`school_timetable_import`; unsupported values fail closed. `scope` is one of:
+Implemented purposes are `task_report` and `maintenance_fault`; planned values
+are `maintenance_service_log` and `school_timetable_import`. Unsupported values
+fail closed. The implemented and planned scope shapes are:
 
 ```text
 {kind: "uploader_private", member, member_revision, intended_target}
