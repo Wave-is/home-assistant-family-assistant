@@ -33,6 +33,8 @@ def checksum(data):
 
 def udp_frame(src_mac, dst_mac, src_ip, dst_ip, src_port, dst_port, data):
     udp = struct.pack("!HHHH", src_port, dst_port, len(data) + 8, 0) + data
+    pseudo = src_ip + dst_ip + struct.pack("!BBH", 0, 17, len(udp))
+    udp = udp[:6] + struct.pack("!H", checksum(pseudo + udp) or 65535) + udp[8:]
     header = struct.pack("!BBHHHBBH4s4s", 0x45, 0, 20 + len(udp), 1, 0, 64, 17, 0, src_ip, dst_ip)
     header = header[:10] + struct.pack("!H", checksum(header)) + header[12:]
     return dst_mac + src_mac + b"\x08\x00" + header + udp
@@ -53,9 +55,13 @@ def udp_payload(frame):
     ):
         return None
     offset = 14 + head
-    src, dst, length, _ = struct.unpack("!HHHH", frame[offset : offset + 8])
+    src, dst, length, udp_check = struct.unpack("!HHHH", frame[offset : offset + 8])
     if length < 8 or length != total - head:
         return None
+    if udp_check:
+        pseudo = frame[26:34] + struct.pack("!BBH", 0, 17, length)
+        if checksum(pseudo + frame[offset : offset + length]):
+            return None
     return src, dst, frame[offset + 8 : offset + length]
 
 
@@ -176,9 +182,19 @@ async def arp_reply(link, frame, address, mac_address):
         await link.send(sender_mac + mac_address + b"\x08\x06" + payload)
 
 
-async def forwarded_probe(lan, server_link, address, *, client_mac=CLIENT_MAC):
-    """One bidirectional routed IPv4 UDP flow with a fresh payload and port."""
-    nonce, port = secrets.token_bytes(24), 40000 + secrets.randbelow(10000)
+async def forwarded_probe(
+    lan, server_link, address, *, client_mac=CLIENT_MAC, client_port=None, observations=None
+):
+    """Fresh payload; an explicit lab port permits established-flow testing."""
+    if client_port is not None and (
+        type(client_port) is not int or not 40000 <= client_port < 50000
+    ):
+        raise ValueError("Only bounded synthetic client ports are accepted")
+    if observations is not None:
+        observations.clear()
+        observations.update(forwarded=False, returned=False)
+    nonce = secrets.token_bytes(24)
+    port = client_port if client_port is not None else 40000 + secrets.randbelow(10000)
     client_ip, server_ip = ip(address), ip("203.0.113.10")
     frame = udp_frame(client_mac, ROUTER_LAN_MAC, client_ip, server_ip, port, 45001, nonce)
     pending = {}
@@ -210,6 +226,8 @@ async def forwarded_probe(lan, server_link, address, *, client_mac=CLIENT_MAC):
                             (port, 45001),
                             nonce,
                         ):
+                            if observations is not None:
+                                observations["forwarded"] = True
                             await server_link.send(
                                 udp_frame(
                                     SERVER_MAC,
@@ -232,6 +250,8 @@ async def forwarded_probe(lan, server_link, address, *, client_mac=CLIENT_MAC):
                             (45001, port),
                             nonce,
                         ):
+                            if observations is not None:
+                                observations["returned"] = True
                             return True
         return False
     finally:

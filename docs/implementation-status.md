@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prerelease published | alpha.15 is available for isolated evaluation; alpha.16 private discovery candidate in progress; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Test prerelease published | alpha.16 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
@@ -29,14 +29,30 @@ Nothing is production-ready solely because a mock test passes.
 | Presence | In progress / unit-, browser- and HA-tested | Independent display and notification-purpose self/guardian consent, HA read permission, source lineage, fresh/unknown evidence; durable bounded private return-home holds/expiry/catch-up tested in actual HA; household acceptance remains |
 | Digests | Implemented / unit-, browser- and HA-tested | Off-default owner schedule, self-only subscriptions, private send-time content, exact replay, quiet hours/expiry and retained-period anti-replay floor; optional independent presence-gated private delivery; household acceptance remains |
 | MikroTik inventory / HA matching | Implemented / unit-, HA- and native-tested | HTTPS/CA options, bounded tables, registry MAC/current tracker evidence, ambiguous/stale handling and parent-only card; native CHR REST inventory passed |
-| Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange produced a dynamic lease; public executor converted/commented/read back/replayed over verified REST; native multi-target fault rollback remains a separate gate |
-| Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Adopted profiles; pause/resume, hours/rate, temporary grants/pauses, private outcomes and timers. Native hAP checks plus CHR REST, routed IPv4 UDP, autonomous expiry and actual VM startup restoration passed; richer modes/topologies remain |
+| Static leases / comments | Implemented / unit-, browser-, HA- and native-tested | Native DHCP exchange and conversion/comment/read-back/replay; two-target native permission failure, exact static compensation, uncertain dynamic conversion response, selected DHCP recovery and unchanged sentinels passed; broader fault/topology acceptance remains |
+| Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.15 runtime ZIP/tag verified at05448be7, all eight Checks jobs passed (34177834134), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; alpha.16 candidate in progress; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.16 runtime ZIP/tag verified at109c25cb, all eight Checks jobs passed (34180711105), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Private discovery candidate, 2026-09-08
+## Native topology checkpoint in verification, 2026-09-08
+
+Developer-only CHR7.20.1/vmxnet3 tests now distinguish configuration read-back,
+round-trip failure and actual outbound delivery. Raw Kid Control with active
+FastTrack can still pass traffic; an unsuccessful echo must not be reported as
+complete quarantine. A focused run passed no-outbound IPv4/IPv6 checks after
+fixture-only acceleration withdrawal and exact selected connection expiry.
+The public runtime remains unchanged and makes no new isolation claim.
+
+Two-target native lease compensation passed in a separate full run, including
+the deliberately lost response after a real conversion, native permission denial,
+selected DHCP recovery and an unchanged unselected sentinel. Pure packet tests
+passed88 cases; the full Python suite passed3525/five skips/23 subtests and
+frontend444 main cases plus92 pretests. Final unified native CI is pending.
+See [the evidence and boundaries](network-topology-testing.md).
+
+## Private discovery released, 2026-09-08
 
 Alpha.16 adds self-only parent/owner subscriptions. Current observed devices form
 an explicit baseline without initial alerts. New unreviewed MACs are batched;
@@ -53,7 +69,10 @@ has 24 passes, including stale-observation status. Russian mobile layout was
 visually inspected.
 Actual authenticated HA baseline, private TelegramManager delivery, duplicate
 suppression, command withdrawal and Store reload passed with no router writes.
-Exact-source release CI remains pending.
+Published at `109c25cbc8a9b655be39be6ca4f2e8168d3a9e3c`, all eight Checks jobs
+passed (34180711105). The verified 824268-byte ZIP has 232 runtime files /
+3066059 uncompressed bytes, SHA-256
+`a121d680a0471a8b9aa685142b85d516befc146aab882866239067c9d16877c4`.
 See [the three-language discovery guide](network-watch.md).
 
 ## Local network review released, 2026-09-08
@@ -1171,7 +1190,7 @@ See [digest guide](digests.md) and [concrete UI release gaps](ui-acceptance-gaps
   persisting intent. The calendar checkpoint passed the actual HA CI job too.
   The initial
   Python CI import-path difference was fixed with an explicit pytest root.
-- Test prereleases through alpha.15 are published; no migration or HACS default submission yet.
+- Test prereleases through alpha.16 are published; no migration or HACS default submission yet.
 
 Transport caveat: a timeout after Telegram accepts a message cannot be deduplicated
 with sendMessage. The outbox marks it uncertain and does not blindly resend;

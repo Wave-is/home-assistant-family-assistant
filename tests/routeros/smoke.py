@@ -51,6 +51,9 @@ class VirtualRouter:
 
     async def boot(self, existing=False):
         self.pending = ""
+        nic_model = os.environ.get("FAMILY_ROUTEROS_NIC", "vmxnet3")
+        if nic_model not in {"virtio-net-pci", "vmxnet3"}:
+            raise RuntimeError("Only reviewed isolated FastPath-capable NIC models are accepted")
         self.process = await asyncio.create_subprocess_exec(
             "/usr/bin/qemu-system-x86_64",
             "-machine",
@@ -62,16 +65,16 @@ class VirtualRouter:
             "-drive",
             f"file={self.disk},format=raw,if=ide",
             "-nic",
-            "user,model=e1000,net=192.0.2.0/24,dhcpstart=192.0.2.15,"
+            f"user,model={nic_model},net=192.0.2.0/24,dhcpstart=192.0.2.15,"
             "restrict=on,hostfwd=tcp:127.0.0.1:18443-:443",
             "-netdev",
             "socket,id=lan,udp=127.0.0.1:30001,localaddr=127.0.0.1:30002",
             "-device",
-            "e1000,netdev=lan,mac=02:FA:00:00:00:01",
+            f"{nic_model},netdev=lan,mac=02:FA:00:00:00:01",
             "-netdev",
             "socket,id=server,udp=127.0.0.1:30003,localaddr=127.0.0.1:30004",
             "-device",
-            "e1000,netdev=server,mac=02:FA:00:00:00:02",
+            f"{nic_model},netdev=server,mac=02:FA:00:00:00:02",
             "-display",
             "none",
             "-monitor",
@@ -306,8 +309,18 @@ async def rest_acceptance(vm):
             print("PASS: native DHCP discover/offer/request/ack", flush=True)
             assert await forwarded_probe(lan, server_link, address), "Baseline routed UDP failed"
             print("PASS: baseline bidirectional routed IPv4 UDP", flush=True)
-            await native_leases(client, audit, address)
-            await native_kids(vm, client, lan, server_link, address)
+            if os.environ.get("FAMILY_ROUTEROS_TOPOLOGY_ONLY") == "1":
+                print("FOCUSED RUN: lease/timer lifecycle suite omitted, topology only", flush=True)
+            else:
+                from tests.routeros.lease_faults import native_lease_faults
+
+                address = await native_lease_faults(client, audit, lan, server_link, address)
+                await native_leases(client, audit, address)
+                address = await native_lease_faults(client, audit, lan, server_link, address)
+                await native_kids(vm, client, lan, server_link, address)
+            from tests.routeros.topology import verify_topology
+
+            await verify_topology(vm, client, lan, server_link, address)
         finally:
             lan.close()
             server_link.close()

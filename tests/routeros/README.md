@@ -58,12 +58,33 @@ The harness exercises actual verified-HTTPS inventory and the integration's
 `LeaseExecutor`/`KidExecutor`, including durable-intent callbacks, selected-record
 read-back, terminal replay, native scheduler expiry and isolated VM restart.
 The packet fixture obtains a real dynamic DHCP lease and sends routed IPv4 UDP
-between two emulated subnets to check restriction effects. Unit tests separately
+between two emulated subnets to check restriction effects. The extended topology
+fixture also answers scoped IPv6 Neighbor Discovery, probes routed IPv6 and
+calibrates a dedicated established IPv4 FastTrack flow using actual packet-counter
+growth before adopting it into Kid Control. It separately records raw pause
+behavior, including possible outbound or full-exchange bypass. Only after a
+fixture-owned acceleration rule is disabled and two exact synthetic tuples are
+expired does it assert no outbound delivery for old/new IPv4 and learned IPv6.
+Independent control clients remain reachable and resume restores the selected
+client. These fixture-only operations are not public runtime functionality.
+
+Two-target lease fault tests use native read-only credentials to deny the second
+comment. They verify first-target compensation, unchanged denied/unselected
+records, zero-call terminal replay, uncertain make-static response reconciliation
+and actual DHCP recovery. Existing static comments must be restored exactly.
+Unit tests separately
 cover faults, role revocation and rollback; the native lab is not a replacement.
 
 Consult [the acceptance matrix](../../docs/implementation-status.md) for which
-gates actually passed on a given checkpoint. This lab does not establish IPv6,
-FastTrack, hardware-offloaded bridge, downstream NAT, real Wi-Fi, throughput or
+gates actually passed on a given checkpoint and [topology boundaries](../../docs/network-topology-testing.md).
+`FAMILY_ROUTEROS_NIC` accepts only `vmxnet3` (verified default) or
+`virtio-net-pci` (diagnostic comparison; the current fixture did not establish
+accelerated packets with it). `FAMILY_ROUTEROS_TOPOLOGY_ONLY=1`
+explicitly skips lease/timer/reboot acceptance and must not be reported as a full
+pass. Neither option enables external networking.
+
+This lab does not establish IPv6 FastTrack, rotating IPv6 addresses,
+hardware-offloaded bridge, downstream NAT, real Wi-Fi, throughput or
 production migration correctness. The CHR free license's bandwidth limit also
 precludes a meaningful speed-limit performance claim.
 
