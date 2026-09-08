@@ -438,6 +438,18 @@ async def review_step(flow, user_input=None):
                 slot["phase"] = "complete"
             except (ValueError, OSError, TypeError, KeyError):
                 await _guard(flow, slot)
+                from .residue_recovery import async_review_residue
+
+                try:
+                    recovery = await async_review_residue(flow.hass, **_residue_inputs(flow, slot))
+                    await _guard(flow, slot)
+                except (ValueError, OSError, TypeError, KeyError):
+                    await _guard(flow, slot)
+                    return _review_form(flow, slot, "migration_copy_retry_required")
+                if recovery is not None:
+                    slot["recovery"] = recovery
+                    slot["phase"] = "residue"
+                    return _residue_form(flow, slot)
                 return _review_form(flow, slot, "migration_copy_retry_required")
             finally:
                 slot["busy"] = False
@@ -466,3 +478,81 @@ async def complete_step(flow, user_input=None):
         )
     except DomainError as error:
         return _abort(flow, error.code)
+
+
+def _residue_inputs(flow, slot):
+    return {
+        "entry_id": slot["intent"]["entry_id"],
+        "user_id": flow.context["user_id"],
+        "candidate": slot["candidate"],
+        "target": slot["target"],
+        "expected_fingerprint": slot["candidate"].summary()["fingerprint"],
+        "authorize": lambda: _guard(flow, slot),
+    }
+
+
+def _residue_form(flow, slot, error=None):
+    summary = slot["recovery"].summary()
+    fingerprint = summary["fingerprint"]
+    return flow.async_show_form(
+        step_id="legacy_copy_residue",
+        data_schema=vol.Schema(
+            {
+                vol.Required("review_token", default=fingerprint): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[{"value": fingerprint, "label": fingerprint}]
+                    )
+                ),
+                vol.Required("confirmed", default=False): bool,
+                vol.Optional("discard_review", default=False): bool,
+            }
+        ),
+        description_placeholders={key: str(value) for key, value in summary.items()},
+        errors={"base": error} if error else {},
+    )
+
+
+async def residue_step(flow, user_input=None):
+    """Separate explicit preservation consent; registering stays read-only."""
+    from .residue_recovery import async_preserve_residue
+
+    try:
+        slot = _slot(flow)
+        async with slot["lock"]:
+            await _guard(flow, slot)
+            if slot["phase"] == "complete":
+                return await complete_step(flow)
+            if slot["phase"] != "residue":
+                raise DomainError("migration_copy_review_changed")
+            if user_input is None:
+                return _residue_form(flow, slot)
+            if user_input.get("review_token") != slot["recovery"].summary()["fingerprint"]:
+                return _residue_form(flow, slot, "migration_copy_confirmation_required")
+            if user_input.get("discard_review") is True:
+                return _abort(flow, "migration_copy_cancelled")
+            if user_input.get("confirmed") is not True:
+                return _residue_form(flow, slot, "migration_copy_confirmation_required")
+            slot["busy"] = True
+            try:
+                await async_preserve_residue(
+                    flow.hass,
+                    review=slot["recovery"],
+                    confirmed=True,
+                    **_residue_inputs(flow, slot),
+                )
+                await _guard(flow, slot)
+                slot["result"] = await async_register_shadow(
+                    flow.hass, **_residue_inputs(flow, slot)
+                )
+                slot["phase"] = "complete"
+            except (ValueError, OSError, TypeError, KeyError):
+                await _guard(flow, slot)
+                return _residue_form(flow, slot, "migration_copy_retry_required")
+            finally:
+                slot["busy"] = False
+        return await complete_step(flow)
+    except DomainError as error:
+        return _abort(flow, error.code)
+    except asyncio.CancelledError:
+        _abort(flow, "migration_copy_cancelled")
+        raise

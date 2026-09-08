@@ -27,6 +27,17 @@ def module(monkeypatch):
     util.dt = SimpleNamespace(utcnow=lambda: None)
     monkeypatch.setitem(sys.modules, "homeassistant.helpers", helpers)
     monkeypatch.setitem(sys.modules, "homeassistant.util", util)
+    recovery = ModuleType("custom_components.family_assistant.migration.residue_recovery")
+
+    async def no_residue(*_args, **_kwargs):
+        return None
+
+    async def no_automatic_preservation(*_args, **_kwargs):
+        raise AssertionError("Preservation requires separate explicit confirmation")
+
+    recovery.async_review_residue = no_residue
+    recovery.async_preserve_residue = no_automatic_preservation
+    monkeypatch.setitem(sys.modules, recovery.__name__, recovery)
     for name, methods in {
         "copy_intent": ["async_commit_copy_intent", "async_select_copy_intent"],
         "shadow_registration": ["async_register_shadow"],
@@ -294,4 +305,148 @@ async def test_owner_can_discard_own_review_without_any_store_or_entry_action(mo
         method, token = module.review_step, flow.candidate.summary()["fingerprint"]
     result = await method(flow, {"review_token": token, "discard_review": True, "confirmed": False})
     assert result["reason"] == "migration_copy_cancelled"
+    assert module._SLOT not in flow.hass.data["family_assistant"]
+
+
+def _residue_flow(module):
+    flow = Flow(module, phase="residue")
+    flow.slot["recovery"] = SimpleNamespace(
+        summary=lambda: {"fingerprint": "c" * 64, "temp_count": 2, "temp_bytes": 37}
+    )
+    return flow
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("confirmation", [False, 1, "true", None])
+async def test_residue_requires_separate_exact_confirmation(module, confirmation):
+    flow = _residue_flow(module)
+    shown = await module.residue_step(flow)
+    assert shown["description_placeholders"]["temp_count"] == "2"
+    refused = await module.residue_step(flow, {"review_token": "c" * 64, "confirmed": confirmation})
+    assert refused["errors"] and flow.slot["phase"] == "residue"
+
+
+@pytest.mark.asyncio
+async def test_residue_wrong_token_and_discard_have_no_filesystem_effects(module):
+    flow = _residue_flow(module)
+    refused = await module.residue_step(flow, {"review_token": "d" * 64, "confirmed": True})
+    assert refused["errors"]
+    cancelled = await module.residue_step(flow, {"review_token": "c" * 64, "discard_review": True})
+    assert cancelled["reason"] == "migration_copy_cancelled"
+    assert module._SLOT not in flow.hass.data["family_assistant"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["preserve", "register", "revoked", "none"])
+async def test_residue_retry_pins_candidate_and_preserves_before_registration(
+    module, monkeypatch, failure
+):
+    flow = _residue_flow(module)
+    port = sys.modules["custom_components.family_assistant.migration.residue_recovery"]
+    effects = []
+    pending_failure = failure
+
+    async def preserve(_hass, **kwargs):
+        nonlocal pending_failure
+        await kwargs["authorize"]()
+        assert kwargs["review"] is flow.slot["recovery"] and kwargs["confirmed"] is True
+        effects.append(("preserve", kwargs["entry_id"], kwargs["expected_fingerprint"]))
+        if pending_failure == "preserve":
+            pending_failure = "none"
+            raise ValueError("synthetic_retry")
+        if pending_failure == "revoked":
+            flow.user.is_active = False
+
+    async def register(_hass, **kwargs):
+        nonlocal pending_failure
+        await kwargs["authorize"]()
+        effects.append(("register", kwargs["entry_id"], kwargs["expected_fingerprint"]))
+        if pending_failure == "register":
+            pending_failure = "none"
+            raise ValueError("synthetic_retry")
+        return {"entry_id": kwargs["entry_id"], "loaded": True}
+
+    monkeypatch.setattr(port, "async_preserve_residue", preserve)
+    monkeypatch.setattr(module, "async_register_shadow", register)
+    request = {"review_token": "c" * 64, "confirmed": True}
+    result = await module.residue_step(flow, request)
+    if failure == "revoked":
+        assert result["type"] == "abort" and [row[0] for row in effects] == ["preserve"]
+        return
+    if failure != "none":
+        assert result["step_id"] == "legacy_copy_residue" and result["errors"]
+        assert not flow.slot["busy"]
+        result = await module.residue_step(flow, request)
+    assert result["step_id"] == "legacy_copy_complete"
+    assert effects[-2][0] == "preserve" and effects[-1][0] == "register"
+    assert all(row[1:] == ("a" * 32, flow.candidate.summary()["fingerprint"]) for row in effects)
+    before = len(effects)
+    assert (await module.residue_step(flow, request))["step_id"] == "legacy_copy_complete"
+    assert len(effects) == before
+
+
+@pytest.mark.asyncio
+async def test_failed_registration_offers_read_only_residue_review_not_preservation(
+    module, monkeypatch
+):
+    flow = _residue_flow(module)
+    recovery = flow.slot.pop("recovery")
+    flow.slot["phase"] = "review"
+    calls = []
+
+    async def intent(*_args, **kwargs):
+        await kwargs["authorize"]()
+
+    async def register(*_args, **_kwargs):
+        raise ValueError("synthetic_interrupted")
+
+    async def inspect(_hass, **kwargs):
+        await kwargs["authorize"]()
+        calls.append(kwargs["entry_id"])
+        return recovery
+
+    monkeypatch.setattr(module, "async_commit_copy_intent", intent)
+    monkeypatch.setattr(module, "async_register_shadow", register)
+    monkeypatch.setattr(
+        sys.modules["custom_components.family_assistant.migration.residue_recovery"],
+        "async_review_residue",
+        inspect,
+    )
+    result = await module.review_step(
+        flow, {"review_token": flow.candidate.summary()["fingerprint"], "confirmed": True}
+    )
+    assert result["step_id"] == "legacy_copy_residue" and calls == ["a" * 32]
+    assert flow.slot["recovery"] is recovery and not flow.slot["busy"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raise_during_review", [False, True])
+async def test_residue_inspection_revocation_never_returns_previous_private_review(
+    module, monkeypatch, raise_during_review
+):
+    flow = Flow(module, phase="review")
+
+    async def intent(*_args, **_kwargs):
+        return None
+
+    async def register(*_args, **_kwargs):
+        raise ValueError("synthetic_interrupted")
+
+    async def inspect(*_args, **_kwargs):
+        flow.user.is_active = False
+        if raise_during_review:
+            raise ValueError("synthetic_inspection_failure")
+        return None
+
+    monkeypatch.setattr(module, "async_commit_copy_intent", intent)
+    monkeypatch.setattr(module, "async_register_shadow", register)
+    monkeypatch.setattr(
+        sys.modules["custom_components.family_assistant.migration.residue_recovery"],
+        "async_review_residue",
+        inspect,
+    )
+    result = await module.review_step(
+        flow, {"review_token": flow.candidate.summary()["fingerprint"], "confirmed": True}
+    )
+    assert result["type"] == "abort"
     assert module._SLOT not in flow.hass.data["family_assistant"]

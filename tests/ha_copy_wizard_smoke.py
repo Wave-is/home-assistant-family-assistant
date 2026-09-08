@@ -256,9 +256,14 @@ async def verify_copy_wizard(hass, owner):
                 result["flow_id"], {"review_token": final_token, "confirmed": False}
             )
             assert not_confirmed["step_id"] == "legacy_copy_review" and not_confirmed["errors"]
-            result = await hass.config_entries.options.async_configure(
-                result["flow_id"], {"review_token": final_token, "confirmed": True}
-            )
+            if not turn:
+                from ha_residue_recovery_smoke import verify_residue_wizard
+
+                result = await verify_residue_wizard(hass, owner, child, result, slot)
+            else:
+                result = await hass.config_entries.options.async_configure(
+                    result["flow_id"], {"review_token": final_token, "confirmed": True}
+                )
             assert result["step_id"] == "legacy_copy_complete" and not result["errors"], result
             entry = hass.config_entries.async_get_entry(target_id)
             assert entry.state == ConfigEntryState.LOADED and entry.runtime_data.engine.shadow_mode

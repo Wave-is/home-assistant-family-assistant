@@ -236,6 +236,15 @@
           "discard_review": "Discard this review only (do not delete any created copy)"
         }
       },
+      "legacy_copy_residue": {
+        "title": "Preserve interrupted temporary files?",
+        "description": "This copy has {temp_count} reviewed temporary files ({temp_bytes} bytes), or an unfinished preservation attempt. The same exact files will be checked again. First preserve and verify their bytes in private recovery storage; only then remove the temporary names and retry this same read-only copy. Existing photos, source Stores and unrelated files are not removed. Preserved files are retained; this does not activate the copy.\n\nReviewed fingerprint: {fingerprint}",
+        "data": {
+          "review_token": "Reviewed recovery fingerprint",
+          "confirmed": "Preserve these temporary files and retry this exact read-only copy",
+          "discard_review": "Discard only this review; do not change any files"
+        }
+      },
       "legacy_copy_complete": {
         "title": "Read-only copy registered",
         "description": "Entry: {entry_id}. Find it under Family Assistant integrations or select its name in a dashboard card. The existing family and source were not replaced. Do not remove its read-only seal to activate it."

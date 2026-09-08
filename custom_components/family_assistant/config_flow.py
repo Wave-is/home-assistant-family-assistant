@@ -237,6 +237,11 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
 
         return await complete_step(self, user_input)
 
+    async def async_step_legacy_copy_residue(self, user_input=None):
+        from .migration.copy_flow import residue_step
+
+        return await residue_step(self, user_input)
+
     async def async_step_recipes(self, user_input=None):
         from .recipes.options import options_step
 

@@ -28,6 +28,7 @@ PRIVATE_NAMES = {
     "snapshot",
     ".codex-remote-attachments",
     "family_assistant_data",
+    "family_assistant_recovery",
 }
 PRIVATE_SUFFIXES = {
     ".db",

@@ -3,6 +3,9 @@
 [Source consistency and deterministic private packaging / Согласованность и сборка
 архива / Узгодженість і створення архіву](legacy-source-links.md)
 
+[Interrupted upload recovery / Восстановление после обрыва /
+Відновлення після переривання](legacy-recovery.md)
+
 ## English
 
 For guided preparation from the two source files instead of a hand-built ZIP,

@@ -33,10 +33,32 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.28 runtime ZIP/tag verified at 33d22f2, all eight Checks jobs passed (34223795544), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
-| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant and complete reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Direct ZIP review remains available. Same-package/unchanged-target repeat retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, reviewed residue recovery, activation and controlled cutover remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.29 runtime ZIP/tag verified at 771ec38, all eight Checks jobs passed (34227319295), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/preparation time/exact Store. Explicit bounded residue preservation and durable retry candidate passed actual HA Options; final hardened candidate gates pending. No blank writable fallback. Coherent real capture, pending-copy discovery/direct resume, activation and controlled cutover remain pending |
 
-## Private proposal notes candidate, 2026-09-08
+## Interrupted copy preservation candidate, 2026-09-08
+
+Separate EN/RU/UK consent preserves recognized temporary photo uploads before
+removing their temporary names and retrying the same sealed copy. Authority,
+candidate, native staging intent/Store and filesystem identity are rechecked.
+Unknown files, external links, drift and registered targets fail closed. Native
+Store journals retain prepared/completed attempts for exact acknowledgement-loss
+retry; archives stay private and retained. [Workflow and limits](legacy-recovery.md).
+
+Root implemented the HA wrapper and Options path; AGY implemented the bounded
+filesystem helper, followed by root review and a second AGY hardening pass. Focused
+wrapper/flow tests passed48. Native93755 passed the complete synthetic suite,
+including partial upload/publication hardlink, separate consent, interrupted
+journal, durable-plan reload, unchanged Store and same sealed registration.
+AGY9811 hardened capacity/manifest/archive boundaries; root then fixed multi-alias
+unlink retry accounting and revoked-authority failure projection. Full Python15829
+passed4333/five skips/23 subtests, Node25093 passed450 plus154 pretests, and complete
+Chromium63963 passed226. Hardened native91546 passed the full HA suite. Independent
+AGY85360 read-only review found no additional material issues. Ruff549files,
+privacy/locales/build passed; exact-commit CI remains pending.
+No automatic startup cleanup, source coherence, activation or household change.
+
+## Private proposal notes released, 2026-09-08
 
 Current pending, unexpired proposals can be explicitly rejected with an actor-private
 category, expected intent and optional byte-exact original request. Note and rejection
@@ -52,7 +74,8 @@ Node450 plus154 pretests passed. Three focused native Chromium flows passed. Ful
 native HA77517 passed authenticated child-only note/replay, original hash mismatch
 denial, unchanged shopping/learning, parent non-disclosure, complete Store reload and
 explicit owner-denied/child-approved purge. Full Chromium47008 passed226 checks;
-independent AGY80956 read-only review found no further material issues. Exact-commit CI pending.
+independent AGY80956 read-only review found no further material issues. All eight
+Checks jobs34227319295 passed exact commit771ec38; alpha.29 ZIP/tag verified.
 Only active proposal rejection is covered; arbitrary answer feedback, anonymized
 semantic reproducers, developer patch queue and old-identity retention remain open.
 [Scope and limitations](semantic-feedback.md). Live household untouched.
