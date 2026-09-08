@@ -33,10 +33,29 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.24 runtime ZIP/tag verified at 71f0f46b, all eight Checks jobs passed (34205977830), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.25 runtime ZIP/tag verified at 41546e28, all eight Checks jobs passed (34212564006), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy wizard, staging and sealed registration HA-tested | Native authenticated ZIP/FileSelector upload, paged member/reviewer/photo association review, distinct final counts/hash confirmation and separate sealed ConfigEntry passed. Same-package/unchanged-target reupload retains ID/preparation time/exact Store; missing/changed data cannot become a blank writable family. Child denial, owner photo HTTP, reload, disabled alarms and zero workers/entities passed. Coherent real capture, operator-free bundle/mapping preparation, reviewed residue recovery, activation and controlled cutover remain pending |
 
-## Private copy wizard release candidate, 2026-09-08
+## Cross-ledger source checks and packaging candidate, 2026-09-08
+
+Whole-copy construction now rejects one-sided automatic Court/task/alarm effects,
+duplicate/malformed receipts, historical-assignee mismatches and unfinished score
+corrections. A deterministic bounded private ZIP writer reuses the independent
+parser; it does not capture files or grant permissions. The wizard has a specific
+RU/UK/EN source-consistency error. Complete capture coherence remains unproven;
+pruned alarm history outside the current Court period is explicitly archive-only.
+
+Full Python3935/five skips/23 subtests and Node450/141 passed. The exact alpha.25
+synthetic whole-copy seal is unchanged by the new guard. Native private
+legacy-controller82589 passed Court-first commit refusal, idempotent completion of
+the missing rollover without a duplicate minus, deterministic ZIP roundtrip and
+actual reversal/acknowledgement. Public native17272 passed the complete HA suite,
+including orphan-penalty upload refusal and zero Store/entry effects. Exact release
+CI is still pending. The two earlier native failures were invalid fixture API
+sequences (unaccepted task; correction on a no-report task); the corrected fixture
+uses actual parent-reviewed task contracts. No production records were operated on.
+
+## Private copy wizard released, 2026-09-08
 
 The native Options flow consumes a bounded private ZIP through HA file_upload,
 requires paged exact member/reviewer/photo associations and a separate final
@@ -50,8 +69,9 @@ Full Python3876/five skips/23 subtests passed, including bounded ZIP central/loc
 header checks, authority revocation at persistent boundaries, settled cancellation,
 nonce replay and review discard. Node450/141 passed. Native HA47301 passed real
 authenticated upload, two-page review, three historical photos, sealed creation,
-same-bundle retry and unchanged prototype. Final native discard-preservation cases
-and exact committed CI are still pending; no production rollout is claimed.
+same-bundle retry and unchanged prototype. Native6521 then passed the full suite
+including discard-preservation cases. All eight Checks34212564006 passed on
+41546e28; alpha25 tag and runtime ZIP digest/size were verified. No production rollout.
 Three additional locale tests ensure abort text is in HA's actual Options abort
 section rather than only the similarly named error catalogue.
 

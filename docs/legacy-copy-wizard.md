@@ -1,5 +1,8 @@
 # Legacy copy wizard / Мастер проверочной копии / Майстер перевірочної копії
 
+[Source consistency and deterministic private packaging / Согласованность и сборка
+архива / Узгодженість і створення архіву](legacy-source-links.md)
+
 ## English
 
 This advanced **read-only migration review** passed an isolated native HA test. It is not

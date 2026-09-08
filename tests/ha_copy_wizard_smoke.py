@@ -10,7 +10,7 @@ from ha_legacy_archive_smoke import synthetic_source
 from ha_media_smoke import _image, _token
 
 
-def _package(members):
+def _package(members, *, orphan_penalty=False):
     from custom_components.family_assistant.migration.photo_evidence import submission_inventory
     from custom_components.family_assistant.migration.review import read_store_pair
 
@@ -21,6 +21,15 @@ def _package(members):
         if event["task_id"] == "T000004" and event["type"] == "created":
             event["details"]["report_type"] = "photo"
     assistant = json.dumps(data).encode()
+    if orphan_penalty:
+        court_data = json.loads(court)
+        source_key = "task:T000002:missed:2026-09-07"
+        court_data["data"]["history"][0].update(
+            parent_user_id=0,
+            telegram_message_id=f"system:{source_key}",
+            original_text=f"automatic task control: {source_key}",
+        )
+        court = json.dumps(court_data).encode()
     # Enough explicitly archive-only historical identity rows for a second page.
     mapping.update({f"archived-fictional-{n}": {"archive_only": True} for n in range(8)})
     review = read_store_pair(assistant, court).review(mapping, members, mapping_revision=1)
@@ -130,6 +139,31 @@ async def verify_copy_wizard(hass, owner):
         bundle = _package(source_state["members"])
         denied = await _open(hass, prototype, child, flows)
         assert denied["type"] == "abort" and denied["reason"] == "forbidden"
+        inconsistent = await _open(hass, prototype, owner, flows)
+        inconsistent = await hass.config_entries.options.async_configure(
+            inconsistent["flow_id"],
+            {
+                "copy_name": "Synthetic inconsistent archive",
+                "bundle": await _upload(
+                    hass, owner, _package(source_state["members"], orphan_penalty=True)
+                ),
+                "private_files_reviewed": True,
+            },
+        )
+        refused_id = hass.data["family_assistant"]["migration_copy_review"]["intent"]["entry_id"]
+        while inconsistent.get("step_id") == "legacy_copy_matches":
+            inconsistent = await hass.config_entries.options.async_configure(
+                inconsistent["flow_id"],
+                {"review_token": _review_token(inconsistent), "confirmed": True},
+            )
+        assert (
+            inconsistent["type"] == "abort"
+            and inconsistent["reason"] == "migration_copy_source_unsettled"
+        )
+        assert "migration_copy_review" not in hass.data["family_assistant"]
+        assert hass.config_entries.async_get_entry(refused_id) is None
+        for key in (f"family_assistant.{refused_id}", f"family_assistant.copy_intent.{refused_id}"):
+            assert await Store(hass, 1, key).async_load() is None
         cancelled = await _open(hass, prototype, owner, flows)
         cancelled = await hass.config_entries.options.async_configure(
             cancelled["flow_id"],
@@ -243,7 +277,9 @@ async def verify_copy_wizard(hass, owner):
         print(
             "PASS: native private ZIP upload/FileSelector, two-page nonce review, "
             "final confirmation, sealed registration, same-bundle reupload replay "
-            "and unchanged prototype; discarded reviews preserve existing copies and retry intents"
+            "and unchanged prototype; discarded reviews preserve existing copies "
+            "and retry intents; "
+            "one-sided source penalties block registration without Store writes"
         )
     finally:
         slot = hass.data["family_assistant"].get("migration_copy_review")

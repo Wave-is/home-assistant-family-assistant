@@ -2,6 +2,7 @@
 export const ERRORS = {
   "en": {
     "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
+    "migration_copy_source_unsettled": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check.",
     "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
     "migration_copy_confirmation_required": "Confirm exactly the page or fingerprint currently displayed.",
     "migration_copy_busy": "Another review is active. Finish it or wait for its 15-minute window to expire.",
@@ -128,6 +129,7 @@ export const ERRORS = {
   },
   "ru": {
     "migration_copy_bundle_invalid": "Архив некорректен, неполон или слишком велик. Загрузите исправленный ZIP по инструкции; источник не менялся.",
+    "migration_copy_source_unsettled": "В источнике не сходятся штрафы за задачи/будильники или не завершена отмена баллов. Копия не записана. Сначала согласуйте исходные записи, затем подготовьте и проверьте новый согласованный экспорт; не удаляйте историю ради обхода проверки.",
     "migration_copy_primary_owner_required": "Нужен первоначальный владелец семьи, который также является действующим администратором HA.",
     "migration_copy_confirmation_required": "Подтвердите именно показанную сейчас страницу или отпечаток.",
     "migration_copy_busy": "Другая проверка активна. Завершите её или дождитесь истечения её 15-минутного окна.",
@@ -254,6 +256,7 @@ export const ERRORS = {
   },
   "uk": {
     "migration_copy_bundle_invalid": "Архів некоректний, неповний або завеликий. Завантажте виправлений ZIP за інструкцією; джерело не змінювалося.",
+    "migration_copy_source_unsettled": "У джерелі не збігаються штрафи за завдання/будильники або не завершено скасування балів. Копію не записано. Спочатку узгодьте вихідні записи, потім підготуйте й перевірте новий узгоджений експорт; не видаляйте історію заради обходу перевірки.",
     "migration_copy_primary_owner_required": "Потрібен початковий власник родини, який також є активним адміністратором HA.",
     "migration_copy_confirmation_required": "Підтвердьте саме показану зараз сторінку або відбиток.",
     "migration_copy_busy": "Інша перевірка активна. Завершіть її або дочекайтеся завершення її 15-хвилинного вікна.",

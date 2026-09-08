@@ -5,6 +5,11 @@ and joined conversion proposals; not a complete import or live cutover feature.
 The old private integrations remain running until a separately verified switch.
 Only synthetic examples belong in this repository.
 
+The current [advanced read-only copy wizard](legacy-copy-wizard.md) combines the
+internal stages described here. [Cross-ledger consistency checks and deterministic
+packaging](legacy-source-links.md) add a refusal boundary, not source repair or
+activation. Operator-assisted source preparation and controlled cutover remain.
+
 ## Source boundaries
 
 The reviewed legacy Assistant Store can contain either the schema-1 task ledger
@@ -126,7 +131,8 @@ collects alarm, task, shopping and current-score proposals in a single immutable
 review. Its summary exposes fixed codes, counts and fingerprints only. Every
 blocked row remains present in the owner-private source archive. Raw sources are
 stored once, with the reviewed mapping, not as repeated overlapping copies.
-There is still no apply endpoint or claim of coherent capture.
+The joined proposal itself grants no write authority or claim of coherent capture;
+the separate owner-confirmed wizard performs read-only-copy staging/registration.
 
 `migration.archive.encode_private_review` produces **private bytes containing the
 entire source**, not a sanitized diagnostic export. Keep them only in owner-private

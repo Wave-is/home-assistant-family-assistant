@@ -4,9 +4,10 @@
 
 ## English
 
-This is an engineering-stage read-only copy, not an enabled migration wizard or
-permission to replace an existing household. There is no public import/activation
-endpoint yet. Do not edit `.storage`, replace a live Store, remove the isolation
+This is an engineering-stage read-only copy. The advanced
+[private-copy wizard](legacy-copy-wizard.md) can create it in an isolated public
+instance, but it is not permission to replace an existing household or activate
+the copied automations. Do not edit `.storage`, replace a live Store, remove the isolation
 marker or enable an older integration against a migration copy.
 
 The pure `migration.shadow.build_shadow_candidate` constructor requires an exact
@@ -44,8 +45,9 @@ sources and isolated actual Home Assistant Store/auth/Options/reload tests only.
 
 ## Русский
 
-Это копия для инженерной проверки, а не готовый мастер миграции. Публичного
-действия импорта или включения пока нет. Не редактируйте `.storage`, не заменяйте
+Это копия для инженерной проверки. Расширенный [мастер](legacy-copy-wizard.md#русский)
+может создать её в отдельном тестовом экземпляре, но не включает автоматизации
+и не заменяет рабочую семью. Не редактируйте `.storage`, не заменяйте
 живое хранилище и не снимайте защиту вручную.
 
 Копия создаётся только целиком в пустом целевом пространстве, с явно указанными
@@ -70,8 +72,9 @@ sources and isolated actual Home Assistant Store/auth/Options/reload tests only.
 
 ## Українська
 
-Це копія для інженерної перевірки, а не готовий майстер міграції. Публічної дії
-імпорту або активації поки немає. Не редагуйте `.storage`, не замінюйте робоче
+Це копія для інженерної перевірки. Розширений [майстер](legacy-copy-wizard.md#українська)
+може створити її в окремому тестовому екземплярі, але не вмикає автоматизації
+й не замінює робочу родину. Не редагуйте `.storage`, не замінюйте робоче
 сховище та не прибирайте захист вручну.
 
 Копія створюється лише цілком у порожньому цільовому просторі, з явно визначеними

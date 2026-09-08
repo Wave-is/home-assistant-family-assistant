@@ -23,7 +23,7 @@ from ..media_storage import _settle
 from .copy_bundle import MAX_BUNDLE_BYTES, parse_copy_bundle
 from .copy_intent import async_commit_copy_intent, async_select_copy_intent
 from .photo_evidence import async_prepare_photo_evidence
-from .shadow import build_shadow_candidate
+from .shadow import ShadowError, build_shadow_candidate
 from .shadow_registration import async_register_shadow
 
 _SLOT = "migration_copy_review"
@@ -345,6 +345,10 @@ async def matches_step(flow, user_input=None):
         return await review_step(flow)
     except DomainError as error:
         return _abort(flow, error.code)
+    except ShadowError as error:
+        if str(error) == "shadow_source_effects_unsettled":
+            return _abort(flow, "migration_copy_source_unsettled")
+        return _abort(flow, "migration_copy_conversion_required")
     except (ValueError, TypeError, KeyError, OSError):
         return _abort(flow, "migration_copy_conversion_required")
 

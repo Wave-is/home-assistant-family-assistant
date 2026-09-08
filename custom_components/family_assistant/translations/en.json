@@ -430,6 +430,7 @@
     },
     "error": {
       "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
+      "migration_copy_source_unsettled": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check.",
       "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
       "migration_copy_confirmation_required": "Confirm exactly the page or fingerprint currently displayed.",
       "migration_copy_busy": "Another review is active. Finish it or wait for its 15-minute window to expire.",
@@ -556,6 +557,7 @@
     },
     "abort": {
       "migration_copy_bundle_invalid": "Invalid, incomplete or oversized bundle. Upload a corrected ZIP using the documented format; the source was not changed.",
+      "migration_copy_source_unsettled": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check.",
       "migration_copy_cancelled": "Review discarded. Any already-created copy and saved retry intent were preserved.",
       "migration_copy_primary_owner_required": "Use the original household owner account, also an active Home Assistant administrator.",
       "migration_copy_confirmation_required": "Confirm exactly the page or fingerprint currently displayed.",

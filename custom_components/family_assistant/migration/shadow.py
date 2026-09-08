@@ -18,6 +18,7 @@ from ..domain.validation import DomainError, timestamp
 from .conversion import ConversionError, build_conversion_review
 from .preflight import _bounded_json, _text
 from .review import LegacyReview
+from .source_links import SourceLinkError, inspect_source_links
 
 _TASK_ID = re.compile(r"T[0-9]{6,12}")
 
@@ -102,6 +103,11 @@ def build_shadow_candidate(
     _empty_target(target)
     if type(review) is not LegacyReview or not review.matches_members(target["members"]):
         raise ShadowError("review_changed")
+    try:
+        if inspect_source_links(review, members=target["members"])["issues"]:
+            raise ShadowError("shadow_source_effects_unsettled")
+    except SourceLinkError:
+        raise ShadowError("shadow_source_effects_unsettled") from None
     try:
         prepared = timestamp(prepared_at, "prepared_at")
         conversion = build_conversion_review(

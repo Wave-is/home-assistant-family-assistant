@@ -25,7 +25,9 @@ The receipt distinguishes registered from loaded. A disabled/unloaded/retrying
 entry is not force-reloaded and is never reported as a working viewer. Registration
 uses Core's persistence lifecycle; atomic registration plus filesystem durability
 under every possible power failure is not promised. Unknown staging residues still
-need review. No public upload/matching flow or activation endpoint exists yet.
+need review. The [advanced private-copy wizard](legacy-copy-wizard.md) now calls
+this method after upload and association review. Source bundle/mapping preparation
+remains operator-assisted; there is no activation endpoint.
 
 ## Русский
 
