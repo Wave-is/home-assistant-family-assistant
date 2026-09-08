@@ -54,7 +54,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Stage pinned public PDF decoder (hash checked inside isolated runner)
-        run: python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
+        run: >-
+          python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
       - name: Real Home Assistant isolated smoke test
         run: >-
           docker run --rm --network none --cap-drop ALL
@@ -72,7 +73,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Stage pinned public PDF decoder (hash checked inside isolated runner)
-        run: python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
+        run: >-
+          python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
       - name: Native encrypted Core restore and fresh authenticated bootstrap
         run: >-
           docker run --rm --network none --cap-drop ALL
@@ -106,7 +108,8 @@ jobs:
           path: baseline
           persist-credentials: false
       - name: Stage pinned public PDF decoder (hash checked inside isolated runner)
-        run: python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
+        run: >-
+          python -m pip download --no-deps --only-binary=:all: --dest dependencies pypdf==6.17.0
       - name: Retain synthetic Config Entry, Options and domain data across versions
         run: >-
           docker run --rm --network none --cap-drop ALL

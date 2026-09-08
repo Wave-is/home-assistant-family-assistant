@@ -6,4 +6,5 @@ voluptuous>=0.15,<1
 tzdata>=2025.2
 Pillow==12.3.0
 pypdf==6.17.0
+PyYAML==6.0.3
 jsonschema>=4.23,<5
