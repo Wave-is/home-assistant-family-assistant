@@ -13,6 +13,7 @@ from datetime import datetime
 
 from ..domain.validation import DomainError, revision, text, timestamp
 from . import article, plans
+from .provider import bind_actor
 
 MAX_ACTIVE_HOUSEHOLD = 2
 MAX_COMPLETED = 32
@@ -199,7 +200,7 @@ class ArticleService:
                     {"title": fetched["title"], "text": fetched["text"]},
                     now,
                 )
-                result = await self.cascade.generate(
+                result = await bind_actor(self.cascade, actor, actor_revision, language).generate(
                     messages,
                     plans.ARTICLE_SCHEMA,
                     plans.validate_article_answer,

@@ -45,6 +45,10 @@ Optional explicit [article reading](docs/articles.md) uses your configured model
 without sending family context. It is off by default and has a separate child
 access opt-in.
 
+Optional [existing HA conversation agent](docs/ha-conversation-agent.md): reviewed
+official Ollama/no-control adapter for Core 2026.8.2, independent of direct
+Ollama and fallback settings. Other agent integrations are not yet supported.
+
 ## Development
 
 Optional technical reports: [English](docs/developer-diagnostics.md) ·

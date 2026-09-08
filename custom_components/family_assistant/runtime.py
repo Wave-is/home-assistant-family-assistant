@@ -452,11 +452,22 @@ def async_configure_assistant(hass, entry):
         # Deterministic family commands do not require an enabled model.
         runtime.chat = ChatService()
     config = entry.options.get("conversation", {})
-    if config.get("enabled") and config.get("primary"):
-        session = async_get_clientsession(hass)
-        providers = [
+    if config.get("enabled") and (config.get("primary") or config.get("ha_agent")):
+        # A native HA-only provider owns its transport. Do not create another
+        # HTTP session (or initialize discovery/DNS) unless a direct source needs it.
+        session = (
+            async_get_clientsession(hass)
+            if any(config.get(key) for key in ("primary", "fallback", "search"))
+            else None
+        )
+        providers = []
+        if config.get("ha_agent"):
+            from .assistant.ha_agent_provider import HAConversationAgent
+
+            providers.append(HAConversationAgent(hass, entry, config["ha_agent"]))
+        providers.extend(
             Ollama(session, config[key]) for key in ("primary", "fallback") if config.get(key)
-        ]
+        )
         search = Search(session, config["search"]) if config.get("search") else None
         runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
         article_policy = entry.options.get("articles", {})

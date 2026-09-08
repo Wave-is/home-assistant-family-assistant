@@ -13,6 +13,7 @@ from ..domain.validation import revision as strict_revision
 from ..telegram.presentation import summary
 from . import plans
 from .language import COPY
+from .provider import bind_actor
 
 
 class Assistant:
@@ -45,6 +46,7 @@ class Assistant:
         actor_revision = strict_revision(
             next(m["revision"] for m in view["members"] if m["id"] == actor)
         )
+        cascade = bind_actor(self.cascade, actor, actor_revision, language)
         t = COPY[language]
         proposal_id = "P" + hashlib.sha256(operation_id.encode()).hexdigest()[:20]
         existing = self.engine.snapshot()["proposals"].get(proposal_id)
@@ -58,7 +60,7 @@ class Assistant:
             await self._check_scope(scope_check)
             return t["preview"].format(preview=existing["preview"], id=proposal_id)
         async with asyncio.timeout(100):
-            value = await self.cascade.generate(
+            value = await cascade.generate(
                 plans.messages(view, content, refs, now, quoted_text=quoted_text),
                 plans.request_schema(content),
                 plans.validate,
@@ -101,10 +103,11 @@ class Assistant:
                     language,
                     now,
                     t,
+                    cascade=cascade,
                     scope_check=scope_check,
                 )
             if quoted_text and value["kind"] == "answer":
-                value = await self.cascade.generate(
+                value = await cascade.generate(
                     plans.quote_messages(language, content, quoted_text, now),
                     plans.ARTICLE_SCHEMA,
                     self._answer_only,
@@ -116,7 +119,7 @@ class Assistant:
             await self._check_scope(scope_check)
             return t["model"].format(text=reply)
 
-    async def _search(self, view, content, value, language, now, t, *, scope_check=None):
+    async def _search(self, view, content, value, language, now, t, *, cascade, scope_check=None):
         if self.search is None:
             raise DomainError("search_not_configured")
         query = value["query"]
@@ -135,7 +138,7 @@ class Assistant:
             return t["no_sources"]
         # Search is terminal/read-only. Retrieved instructions cannot reach a mutation path.
         empty_view = {**view, **{bucket: [] for bucket in plans.READS}}
-        value = await self.cascade.generate(
+        value = await cascade.generate(
             plans.messages(empty_view, content, (), now, evidence=results),
             {
                 "type": "object",

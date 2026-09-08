@@ -238,6 +238,16 @@ ERRORS = {
         "stopped.",
         "quota_exceeded": "The private photo quota is full. Unattached uploads "
         "expire automatically.",
+        "ha_agent_unsupported": "This agent is not supported: use the official "
+        "Ollama conversation agent on Core 2026.8.2, "
+        "without Home Assistant control or a custom prompt.",
+        "ha_agent_unavailable": "The selected Home Assistant conversation entity is "
+        "not loaded or available.",
+        "ha_agent_changed": "The selected agent or its configuration changed. "
+        "Review the selection again.",
+        "ha_agent_account_required": "This provider requires your linked, active "
+        "Home Assistant account. Ask the owner to link "
+        "it or configure direct Ollama as a fallback.",
     },
     "ru": {
         "migration_prepare_source_invalid": "Экспорты или дополнительные ID "
@@ -485,6 +495,16 @@ ERRORS = {
         "сохранены; новые изменения не добавляются.",
         "quota_exceeded": "Квота фото заполнена. Неприкреплённые загрузки удаляются "
         "после истечения срока.",
+        "ha_agent_unsupported": "Этот агент не поддерживается: нужен штатный "
+        "разговорный агент Ollama в Core 2026.8.2, без "
+        "управления домом и изменённых инструкций.",
+        "ha_agent_unavailable": "Выбранная разговорная сущность Home Assistant не "
+        "загружена или недоступна.",
+        "ha_agent_changed": "Агент или его настройки изменились. Проверьте выбор заново.",
+        "ha_agent_account_required": "Для этого провайдера нужна ваша связанная "
+        "активная учётная запись Home Assistant. "
+        "Владелец может связать её или настроить "
+        "прямую Ollama как резерв.",
     },
     "uk": {
         "migration_prepare_source_invalid": "Експорти чи додаткові ID некоректні, "
@@ -728,5 +748,15 @@ ERRORS = {
         "збережено; нові зміни не додаються.",
         "quota_exceeded": "Квота фото заповнена. Неприкріплені завантаження "
         "видаляються після закінчення строку.",
+        "ha_agent_unsupported": "Цей агент не підтримується: потрібен штатний "
+        "розмовний агент Ollama в Core 2026.8.2, без "
+        "керування домом та змінених інструкцій.",
+        "ha_agent_unavailable": "Вибрана розмовна сутність Home Assistant не "
+        "завантажена або недоступна.",
+        "ha_agent_changed": "Агент або його налаштування змінилися. Перевірте вибір ще раз.",
+        "ha_agent_account_required": "Для цього провайдера потрібен ваш пов'язаний "
+        "активний обліковий запис Home Assistant. "
+        "Власник може пов'язати його або налаштувати "
+        "пряму Ollama як резерв.",
     },
 }

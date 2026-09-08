@@ -84,6 +84,20 @@ def configured_options(**extra):
     }
 
 
+@pytest.mark.asyncio
+async def test_article_policy_accepts_configured_ha_agent_without_direct_ollama():
+    options = configured_options()
+    options["conversation"].pop("primary")
+    options["conversation"]["ha_agent"] = {
+        "type": "ha_agent",
+        "entity_id": "conversation.synthetic",
+        "timeout": 15,
+    }
+    flow = Flow(options)
+    result = await begin(flow, {"enabled": True, "allow_children": False})
+    assert result["step_id"] == "article_policy_review"
+
+
 class Engine:
     def __init__(self):
         self.state = state()

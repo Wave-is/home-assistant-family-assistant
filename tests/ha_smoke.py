@@ -6,6 +6,7 @@ docker run --rm --network none -v "$PWD:/work:ro" --entrypoint python \
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import shutil
 import tempfile
@@ -49,7 +50,7 @@ class SyntheticSiren(SirenEntity):
         self.async_write_ha_state()
 
 
-async def main():
+async def main(*, case="all"):
     source = Path(__file__).resolve().parents[1] / "custom_components" / "family_assistant"
     with tempfile.TemporaryDirectory(prefix="family-ha-smoke-") as directory:
         shutil.copytree(source, Path(directory) / "custom_components" / "family_assistant")
@@ -78,6 +79,11 @@ async def main():
             await hass.async_start()
             await hass.async_block_till_done()
             assert hass.state is CoreState.running
+            if case == "ha-agent":
+                from ha_ha_agent_smoke import verify_existing_ha_agent
+
+                await verify_existing_ha_agent(hass, user)
+                return
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -249,6 +255,9 @@ async def main():
             from ha_assistant_scope_smoke import verify_ha_assistant_scope
 
             await verify_ha_assistant_scope(hass, entry, user, child_id)
+            from ha_ha_agent_smoke import verify_existing_ha_agent
+
+            await verify_existing_ha_agent(hass, user)
             from ha_command_scope_smoke import verify_command_scope
 
             await verify_command_scope(hass, entry, user)
@@ -1335,4 +1344,6 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--case", choices=("all", "ha-agent"), default="all")
+    asyncio.run(main(case=parser.parse_args().case))

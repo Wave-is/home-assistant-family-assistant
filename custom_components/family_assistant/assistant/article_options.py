@@ -93,13 +93,22 @@ def _conversation_ready(runtime, state, options) -> bool:
     modules = state.get("settings", {}).get("modules", [])
     conversation = options.get("conversation")
     primary = conversation.get("primary") if isinstance(conversation, dict) else None
+    ha_agent = conversation.get("ha_agent") if isinstance(conversation, dict) else None
+    configured = (
+        isinstance(primary, dict)
+        and isinstance(primary.get("model"), str)
+        and bool(primary["model"].strip())
+    ) or (
+        isinstance(ha_agent, dict)
+        and ha_agent.get("type") == "ha_agent"
+        and isinstance(ha_agent.get("entity_id"), str)
+        and ha_agent["entity_id"].startswith("conversation.")
+    )
     return bool(
         "conversation" in modules
         and isinstance(conversation, dict)
         and conversation.get("enabled") is True
-        and isinstance(primary, dict)
-        and isinstance(primary.get("model"), str)
-        and bool(primary["model"].strip())
+        and configured
         and runtime.assistant is not None
     )
 

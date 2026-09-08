@@ -55,7 +55,13 @@ Anonymous voice satellites do not inherit owner authority. The registered
 HA 2026.8.2 does not supply the original user prompt in LLMContext, so a tool's
 `request` is explicitly untrusted and cannot silently authorize a mutation.
 Every tool call independently validates its schema and current HA identity.
-Delegating the family's bot to another HA conversation agent is still pending.
+A separately reviewed [existing HA agent](ha-conversation-agent.md) can now be
+the preferred provider: only the exact official Ollama conversation entity in
+Core 2026.8.2, with default instructions and no native LLM/control API. It uses
+the caller's active linked HA identity outside the prompt, fresh native chat
+sessions, strict output validation, target/config/client pins and pre/post-call
+authority checks. Unlinked callers may use configured direct Ollama providers,
+never an owner's identity. Other agents/Core versions remain unsupported.
 
 Explicit `/learn source | canonical` rules are private to the teaching actor.
 They map an exact normalized phrase to a supported command, never Python,

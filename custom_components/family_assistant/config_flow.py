@@ -167,6 +167,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "telegram_group",
                 "telegram_member",
                 "conversation",
+                "ha_agent",
                 "search",
                 "articles",
                 "recipes",
@@ -262,6 +263,16 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         from .assistant.article_options import options_step
 
         return await options_step(self, user_input)
+
+    async def async_step_ha_agent(self, user_input=None):
+        from .assistant.ha_agent_options import options_step
+
+        return await options_step(self, user_input)
+
+    async def async_step_ha_agent_review(self, user_input=None):
+        from .assistant.ha_agent_options import review_step
+
+        return await review_step(self, user_input)
 
     async def async_step_article_policy_review(self, user_input=None):
         from .assistant.article_options import review_step

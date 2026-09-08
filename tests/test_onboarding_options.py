@@ -115,6 +115,7 @@ async def test_guide_is_localized_read_only_and_routes_only_available_steps(modu
         "member",
         "telegram",
         "conversation",
+        "ha_agent",
         "search",
         "alarm_device",
         "guided_finish",

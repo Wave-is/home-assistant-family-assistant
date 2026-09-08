@@ -287,7 +287,8 @@
           "mikrotik": "MikroTik network",
           "legacy_copy": "Legacy read-only copy",
           "legacy_prepare": "Prepare a read-only copy from exports",
-          "legacy_resume": "Resume a saved read-only copy"
+          "legacy_resume": "Resume a saved read-only copy",
+          "ha_agent": "Existing Home Assistant agent"
         }
       },
       "guided_onboarding": {
@@ -302,7 +303,8 @@
           "conversation": "Language model",
           "search": "Internet search",
           "alarm_device": "Dedicated wake-up siren",
-          "guided_finish": "Finish for now"
+          "guided_finish": "Finish for now",
+          "ha_agent": "Existing Home Assistant agent"
         }
       },
       "member": {
@@ -505,6 +507,22 @@
           "management_confirmed": "I verified these management devices and authorize only reviewed network plans",
           "allow_kid_control": "Allow reviewed Kid Control commands"
         }
+      },
+      "ha_agent": {
+        "title": "Existing Home Assistant conversation agent",
+        "description": "Optional preferred provider. This release supports only the official Ollama conversation agent on Home Assistant Core 2026.8.2, with Control Home Assistant disabled, no LLM API and the default instructions. Create a separate no-control agent in the Ollama integration if necessary. Selection checks settings, not model availability; no inference is sent. Calls use the family member's linked, active Home Assistant account; unlinked members use configured direct Ollama providers. Current primary/fallback addresses and keys are preserved. Other agent integrations and Core versions are not supported yet.",
+        "data": {
+          "enabled": "Use this agent first",
+          "entity_id": "No-control Ollama conversation entity",
+          "timeout": "Response timeout (seconds)"
+        }
+      },
+      "ha_agent_review": {
+        "title": "Review existing agent",
+        "description": "Preferred Home Assistant agent: {entity}. Setting: {state}. Only this explicit selection is saved. Direct Ollama primary and fallback settings are kept. This does not enable the agent's Home Assistant control tools. Confirm to apply.",
+        "data": {
+          "confirmed": "Confirm this selection"
+        }
       }
     },
     "error": {
@@ -640,7 +658,11 @@
       "media_too_large": "The photo exceeds the file or image-size limit.",
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
       "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
-      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
+      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically.",
+      "ha_agent_unsupported": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt.",
+      "ha_agent_unavailable": "The selected Home Assistant conversation entity is not loaded or available.",
+      "ha_agent_changed": "The selected agent or its configuration changed. Review the selection again.",
+      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
     },
     "abort": {
       "developer_policy_saved": "Developer diagnostics consent saved.",
@@ -687,7 +709,11 @@
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
       "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
       "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
-      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase.",
+      "ha_agent_unsupported": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt.",
+      "ha_agent_unavailable": "The selected Home Assistant conversation entity is not loaded or available.",
+      "ha_agent_changed": "The selected agent or its configuration changed. Review the selection again.",
+      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
     }
   },
   "entity": {
@@ -728,24 +754,64 @@
     }
   },
   "exceptions": {
-    "migration_prepare_policy_changed": {"message": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check."},
-    "migration_copy_source_unsettled": {"message": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check."},
-    "migration_copy_busy": {"message": "Another review is active. Finish it or wait for its 15-minute window to expire."},
-    "migration_copy_primary_owner_required": {"message": "Use the original household owner account, also an active Home Assistant administrator."},
-    "migration_copy_review_changed": {"message": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name."},
-    "chat_unavailable": {"message": "Conversation has changed or is unavailable. Refresh the card before sending again."},
-    "chat_busy": {"message": "Several conversations are already in progress. Try again shortly; no new action was started."},
-    "chat_context_expired": {"message": "This request's retry context has expired. Check the current result before sending a new command."},
-    "chat_context_full": {"message": "The safe retry-context limit is reached. Existing commands are not repeated; try again later."},
-    "article_invalid_url": {"message": "Use a public HTTPS page on the standard port, without login details or a fragment."},
-    "article_timeout": {"message": "The page did not respond within the time limit. No family action was performed."},
-    "article_unavailable": {"message": "The public page could not be retrieved."},
-    "article_unsupported": {"message": "This page format or encoding is not supported. Use a plain-text or HTML article."},
-    "article_too_large": {"message": "The page exceeds the article reading size limit."},
-    "article_invalid_content": {"message": "The page did not contain readable text in a supported format."},
-    "backup_in_progress": {"message": "A Home Assistant backup is being prepared. Try the same action after it finishes."},
-    "migration_shadow_read_only": {"message": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration."},
-    "migration_shadow_invalid": {"message": "This migration copy has unsafe or invalid isolation settings. It was not started."},
+    "ha_agent_unsupported": {"message":"This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt."},
+    "ha_agent_unavailable": {"message":"The selected Home Assistant conversation entity is not loaded or available."},
+    "ha_agent_changed": {"message":"The selected agent or its configuration changed. Review the selection again."},
+    "ha_agent_account_required": {"message":"This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."},
+    "migration_prepare_policy_changed": {
+      "message": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check."
+    },
+    "migration_copy_source_unsettled": {
+      "message": "The source has unmatched task/alarm penalties or unfinished score corrections. No copy was written. Reconcile the original records, then prepare and review a fresh coherent export; do not remove history to bypass this check."
+    },
+    "migration_copy_busy": {
+      "message": "Another review is active. Finish it or wait for its 15-minute window to expire."
+    },
+    "migration_copy_primary_owner_required": {
+      "message": "Use the original household owner account, also an active Home Assistant administrator."
+    },
+    "migration_copy_review_changed": {
+      "message": "The owner, members, runtime or review window changed. Review again; for retries use the same archive and copy name."
+    },
+    "chat_unavailable": {
+      "message": "Conversation has changed or is unavailable. Refresh the card before sending again."
+    },
+    "chat_busy": {
+      "message": "Several conversations are already in progress. Try again shortly; no new action was started."
+    },
+    "chat_context_expired": {
+      "message": "This request's retry context has expired. Check the current result before sending a new command."
+    },
+    "chat_context_full": {
+      "message": "The safe retry-context limit is reached. Existing commands are not repeated; try again later."
+    },
+    "article_invalid_url": {
+      "message": "Use a public HTTPS page on the standard port, without login details or a fragment."
+    },
+    "article_timeout": {
+      "message": "The page did not respond within the time limit. No family action was performed."
+    },
+    "article_unavailable": {
+      "message": "The public page could not be retrieved."
+    },
+    "article_unsupported": {
+      "message": "This page format or encoding is not supported. Use a plain-text or HTML article."
+    },
+    "article_too_large": {
+      "message": "The page exceeds the article reading size limit."
+    },
+    "article_invalid_content": {
+      "message": "The page did not contain readable text in a supported format."
+    },
+    "backup_in_progress": {
+      "message": "A Home Assistant backup is being prepared. Try the same action after it finishes."
+    },
+    "migration_shadow_read_only": {
+      "message": "This migration copy is read-only. Messages, devices and changes are disabled; activation requires a separate reviewed migration."
+    },
+    "migration_shadow_invalid": {
+      "message": "This migration copy has unsafe or invalid isolation settings. It was not started."
+    },
     "invalid_field": {
       "message": "Check the entered value."
     },
@@ -1079,6 +1145,12 @@
         "pair": "Couple",
         "parents_children": "Parents and children",
         "single_parent": "One parent and children"
+      }
+    },
+    "ha_agent_state": {
+      "options": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
       }
     }
   },

@@ -49,6 +49,25 @@ def test_minimal_household_is_ready_without_optional_services():
     assert item(report, "siren")["status"] == "optional"
 
 
+def test_existing_ha_agent_readiness_is_structural_and_never_exposes_the_selection():
+    current = state()
+    current["settings"]["modules"].append("conversation")
+    options = {
+        "conversation": {
+            "enabled": True,
+            "ha_agent": {
+                "type": "ha_agent",
+                "entity_id": "conversation.synthetic_private_selection",
+                "timeout": 15,
+            },
+        }
+    }
+    for ready, expected in ((False, "attention"), (True, "ready")):
+        report = readiness(current, options, "owner", {"assistant_ready": ready})
+        assert item(report, "models")["status"] == expected
+        assert "synthetic_private_selection" not in json.dumps(report)
+
+
 def test_unlinked_template_member_is_attention_not_a_required_second_person():
     current = state()
     current["members"]["child"] = {
@@ -239,6 +258,7 @@ def test_guided_translation_keys_and_placeholders_match_in_all_languages():
         "telegram_member",
         "telegram_group",
         "conversation",
+        "ha_agent",
         "search",
         "alarm_device",
         "guided_finish",

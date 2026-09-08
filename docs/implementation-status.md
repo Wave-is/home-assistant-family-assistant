@@ -10,11 +10,11 @@ Nothing is production-ready solely because a mock test passes.
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN metadata/manual entry, recurring preservation and opt-in local browser scanning unit/browser-tested; authenticated barcode add/edit/purchase history and complete Store reload passed. Voice/photo extensions and real-camera acceptance pending |
-| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders and private replies. Parent-reviewed bulk completion/cancellation/archive passed actual authenticated HA atomic rollback, replay and reload; alpha.32 release checks underway. Legacy parity and complete media lifecycle pending |
+| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders and private replies. Parent-reviewed bulk completion/cancellation/archive passed actual authenticated HA atomic rollback, replay and reload; released alpha.32; reviewed independent multi-member assignments released alpha.33. Legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
-| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real Qwen evaluation identified schema/day/quote fixes, broader model acceptance and external agent delegation pending |
+| LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real Qwen evaluation identified schema/day/quote fixes, broader model acceptance remains; explicitly bounded existing official HA Ollama agent/native identity gate passed in the alpha.34 candidate |
 | RU / UK / EN | In progress | Existing forms/cards/errors translated; Telegram/docs and future modules pending |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; ownership-safe Lovelace registration, module-graph versioning and offline HACS install/upgrade tested; richer overview and live provider acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
@@ -33,10 +33,39 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.31 runtime ZIP/tag verified at 3b09a80; subsequent acceptance-only 9f6532d passed all nine Checks jobs (34240668570), including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.33 runtime ZIP/tag verified at fa76da3; all nine Checks jobs (34249784758) passed, including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
 
-## Independent multi-person assignments candidate, 2026-09-08
+## Existing Home Assistant agent candidate, 2026-09-08
+
+Alpha.34 adds an off-default, separately reviewed native provider slot before
+unchanged direct Ollama primary/fallback. Only the exact official Ollama entity
+on Core2026.8.2 is supported, with no native control API and default prompt.
+Opaque target/client/config proofs and persistent entry/subentry binding protect
+selection; request-local actor context is carried through plan, quote, search
+and article calls. Revoked authority does not continue to another provider;
+unlinked users may use configured direct providers without globally cooling down
+the HA provider. [Setup and limits](ha-conversation-agent.md).
+
+AGY26111 supplied an initial draft; root replaced permissive/invented native
+interfaces and implemented the wizard. Further implementation assistance stalled
+or timed out; no unverified output was merged. AGY95889 read-only review's
+subentry.options and unassigned-result claims were checked against actual Core
+and exception flow; neither was reproducible. Root added cancellation/error tests.
+Native checks first exposed unknown last activity and an unnecessary direct
+HTTP/DNS session in the network-none fixture; both causes were diagnosed and fixed.
+Focused native38169 and extended86917 passed actual official entity/stream parsing,
+reviewed Options, proposal/confirmation, child context and private projection,
+inactive/unlinked denial, Store/reload/off and unsolicited-tool-call denial.
+Full native41835 also passed. Full Python66825 passed4544/five skips/23subtests
+before two final exception regressions. Node2704 passed450; Chromium10612 passed244.
+Final Python74383 passed4546/five skips/23subtests; focused118 passed, explicit
+Node pretests189 passed. Full native21923 repeated every gate including extended
+child/privacy/reload/off acceptance. Ruff575/privacy/locales and deterministic
+alpha.34 runtime packaging passed. Exact final commit/CI/release checks remain pending.
+No household deployment or support for arbitrary third-party agents is claimed.
+
+## Independent multi-person assignments released, 2026-09-08
 
 Alpha.33 extends one-off task creation with explicit parent selection of 1–20
 members, a complete review and confirmation. Each receives its own task/report/
@@ -74,7 +103,8 @@ passed all 244 without changing the affected poll fixture or weakening assertion
 Native27695 repeated the full actual-HA gate successfully. Root visually inspected
 the final Russian mobile review. Final Python91148 passed 4426 tests, five skips
 and 23 subtests. Ruff (567 files), privacy, locale parity and deterministic runtime
-packaging passed. Commit-specific release CI remains pending; no household deployment.
+packaging passed. All nine Checks34249784758 passed exactfa76da3; the alpha.33
+tag and deterministic ZIP match that frozen commit. No household deployment.
 
 ## Reviewed task batches released, 2026-09-08
 

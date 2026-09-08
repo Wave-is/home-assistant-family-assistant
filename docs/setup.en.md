@@ -90,6 +90,11 @@ requests do not change state. There is no hidden developer provider or automatic
 
 ## Optional model, fallback and search
 
+Already use an HA conversation agent? See the separate [existing-agent
+setup](ha-conversation-agent.md#english). The current adapter supports only the
+official no-control Ollama agent on Core 2026.8.2, with an explicit selection.
+Direct connections below remain available independently.
+
 1. Enable Conversation in Household preferences. In Language model and fallback,
    enter your own Ollama base URL and exact installed model name (`ollama list`
    or `/api/tags`). Configure an independent fallback URL/model if needed.

@@ -4,9 +4,48 @@ import asyncio
 import inspect
 import json
 import time
+from dataclasses import dataclass
 
 from ..domain.validation import DomainError, text
+from ..domain.validation import revision as strict_revision
 from .http import endpoint, request_json
+
+
+class ActorProviderUnavailable(DomainError):
+    """This caller cannot use a provider; do not disable it for other callers."""
+
+
+@dataclass(frozen=True)
+class ActorRequest:
+    """Server-supplied family identity, never derived from model/prompt content."""
+
+    actor: str
+    revision: int
+    language: str
+
+    def __post_init__(self):
+        text(self.actor, "actor", 180)
+        strict_revision(self.revision)
+        if not isinstance(self.language, str) or self.language not in {"en", "ru", "uk"}:
+            raise DomainError("invalid_field", "language")
+
+
+def bind_actor(cascade, actor, revision, language):
+    """Preserve the existing custom/test cascade contract without ambient identity."""
+    if isinstance(cascade, Cascade):
+        return _ActorCascade(cascade, ActorRequest(actor, revision, language))
+    return cascade
+
+
+@dataclass(frozen=True)
+class _ActorCascade:
+    parent: object
+    request: ActorRequest
+
+    async def generate(self, messages, schema, validate, *, scope_check=None):
+        return await self.parent.generate(
+            messages, schema, validate, scope_check=scope_check, actor_request=self.request
+        )
 
 
 class Ollama:
@@ -82,7 +121,7 @@ class Cascade:
         if inspect.isawaitable(result):
             await result
 
-    async def generate(self, messages, schema, validate, *, scope_check=None):
+    async def generate(self, messages, schema, validate, *, scope_check=None, actor_request=None):
         # One inference per household; the Telegram polling task never waits here.
         async with self.lock:
             await self.check_scope(scope_check)
@@ -92,11 +131,21 @@ class Cascade:
                 if self.clock() < self.cooldown.get(index, 0):
                     continue
                 try:
-                    value = await provider.generate(messages, schema)
+                    scoped_generate = getattr(provider, "generate_for_actor", None)
+                    if scoped_generate is not None:
+                        value = await scoped_generate(messages, schema, actor_request)
+                    else:
+                        value = await provider.generate(messages, schema)
+                except ActorProviderUnavailable as err:
+                    await self.check_scope(scope_check)
+                    last = err.code
+                    continue
                 except DomainError as err:
                     # A revoked request may not alter provider health/cooldown or
                     # continue to a fallback based on its stale provider error.
                     await self.check_scope(scope_check)
+                    if err.code in {"forbidden", "conflict", "ha_agent_changed"}:
+                        raise
                     last = err.code
                     self.cooldown[index] = self.clock() + 30
                     continue

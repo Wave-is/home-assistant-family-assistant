@@ -172,10 +172,16 @@ def _models(options: Mapping, enabled: set[str], runtime_status: Mapping) -> dic
         status = "off"
     else:
         primary = config.get("primary")
+        ha_agent = config.get("ha_agent")
         configured = (
             isinstance(primary, Mapping)
             and _text(primary.get("url"), 2048)
             and _text(primary.get("model"), 128)
+        ) or (
+            isinstance(ha_agent, Mapping)
+            and ha_agent.get("type") == "ha_agent"
+            and _text(ha_agent.get("entity_id"), 128)
+            and ha_agent["entity_id"].startswith("conversation.")
         )
         status = (
             "ready" if configured and runtime_status.get("assistant_ready") is True else "attention"
