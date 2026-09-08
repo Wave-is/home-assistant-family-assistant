@@ -9,7 +9,7 @@ Nothing is production-ready solely because a mock test passes.
 | Clean public source and HACS structure | Test prerelease published | alpha.16 is available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
-| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; media/price extensions pending |
+| Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload; media extensions pending |
 | Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders, identity revocation and private reply persistence HA-tested; legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
@@ -36,7 +36,26 @@ Nothing is production-ready solely because a mock test passes.
 | Release CI and secret checks | Implemented / CI-tested | alpha.16 runtime ZIP/tag verified at109c25cb, all eight Checks jobs passed (34180711105), including encrypted restore and offline actual-HACS install/failure rollback/upgrade; live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Joined read-only conversion/archive unit-tested | Strict Store-byte decoding and immutable member fingerprints; disabled alarms, partial shopping, current-week scores, no-report/personal/text-report proposals; explicit ambiguous history/reviewer/media blockers; coherent capture, complete conversion, shadow acceptance and controlled cutover still pending |
 
-## Native topology checkpoint in verification, 2026-09-08
+## Optional purchase prices in verification, 2026-09-08
+
+Alpha.17 candidate adds explicit purchase-delta totals and currency, immutable
+name/store snapshots and shared-family disclosure. Price is optional and never
+backfilled, reused for the remainder, converted between currencies or sent to a
+shop. Strict decimal validation, replay, approvals and non-guest purchase roles
+are unchanged. Card drafts pin the current actor/source; an uncertain response
+keeps the exact operation ID even if the shared pending-command slot changes.
+
+Full local Python passed3566/five skips/23 subtests, Ruff461/privacy/locales passed;
+frontend444 main Node and14 focused price cases passed. Full Chromium passed205
+scenarios, including RU/UK/EN mobile price entry and response-loss retry. Russian
+layout visually inspected. All106 pretest cases passed after three extra optional-
+price regressions. Actual HA authenticated optional-price commands, invalid-input
+rollback, shared history, exact replay and complete Store reload passed in full
+isolated run86341. The 234-file / 3075598-byte runtime candidate ZIP is827860 bytes,
+SHA-256 `003302d769fa36da61f76154a961142379858198311321a9fd93dc53d308f16a`.
+Exact-commit CI and publication remain gates; production was not changed.
+
+## Native topology checkpoint verified, 2026-09-08
 
 Developer-only CHR7.20.1/vmxnet3 tests now distinguish configuration read-back,
 round-trip failure and actual outbound delivery. Raw Kid Control with active
@@ -49,7 +68,11 @@ Two-target native lease compensation passed in a separate full run, including
 the deliberately lost response after a real conversion, native permission denial,
 selected DHCP recovery and an unchanged unselected sentinel. Pure packet tests
 passed88 cases; the full Python suite passed3525/five skips/23 subtests and
-frontend444 main cases plus92 pretests. Final unified native CI is pending.
+frontend444 main cases plus92 pretests. Full unified local run96736 passed; exact
+commit d89a048a81791bbdb5ce2630939c784817eee638 passed all eight Checks jobs
+(34184754899) and Native RouterOS acceptance (34184755848). The fixture mitigation
+is not a public runtime feature. Resume checks deliberately use unaccelerated
+routing and do not claim FastTrack restoration acceptance.
 See [the evidence and boundaries](network-topology-testing.md).
 
 ## Private discovery released, 2026-09-08

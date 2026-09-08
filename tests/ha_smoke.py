@@ -395,6 +395,11 @@ async def main():
             await verify_fault_photos_reload(hass, entry, user, child_id, fault_photo_expected)
             shopping_after_reload = entry.runtime_data.engine.view("owner")["shopping"]
             assert entry.runtime_data.engine.snapshot()["shopping"] == shopping_expected
+            assert any(
+                event.get("detail", {}).get("price") == {"total": "1.234", "currency": "EUR"}
+                for item in shopping_expected.values()
+                for event in item.get("history", [])
+            ), "Actual priced history must survive the Store reload comparison"
             assert len(shopping_after_reload) == len(shopping_expected)
             pantry_after_reload = entry.runtime_data.engine.snapshot()["pantry"]
             assert len(pantry_after_reload["items"]) == 1
@@ -931,6 +936,9 @@ async def verify_court_controls(hass, entry, owner, child, child_id):
     from ha_shopping_edit_smoke import verify_shopping_edit
 
     await verify_shopping_edit(hass, entry, owner, child, child_id, request)
+    from ha_shopping_price_smoke import verify_shopping_price
+
+    await verify_shopping_price(entry, owner, child, request)
 
 
 async def verify_pantry_controls(hass, entry, owner, child, request):

@@ -1,4 +1,5 @@
 /* Shopping item rendering and copy for Family Assistant card. */
+import { PRICE_COPY, parsePrice, renderPriceFields } from "./shopping-price.js";
 
 export const SHOPPING_ITEM_COPY = {
   en: {
@@ -286,10 +287,12 @@ function canInteract(card, generationAtStart) {
 
 async function executeCardCommand(card, action, payload, generationAtStart) {
   if (!canInteract(card, generationAtStart)) return false;
+  const state = card._shoppingItemAction;
+  if (action === "shopping.purchase" && state?.itemId === payload.id && !state.operationId) state.operationId = crypto.randomUUID();
   try {
-    await card.command(action, payload);
+    await card.command(action, payload, action === "shopping.purchase" ? state?.operationId : undefined);
     if (card._generation === generationAtStart) {
-      if (!card._actionError) {
+      if (!card._actionError && card._shoppingItemAction === state) {
         card._shoppingItemAction = null;
         card.render();
       }
@@ -321,6 +324,17 @@ function editorScope(card) {
 function sameEditorScope(card, source) {
   const current = editorScope(card);
   return Boolean(current && source && Object.keys(current).every(key => current[key] === source[key]));
+}
+
+function priceCopy(card) {
+  const language = card._config?.language || card._hass?.language?.split("-")[0] || "en";
+  return PRICE_COPY[language] || PRICE_COPY.en;
+}
+
+function currentPurchaseScope(card, action) {
+  if (!sameEditorScope(card, action.priceScope) || action.priceUser !== (card._hass?.user?.id ?? null)) return false;
+  const item = (card._data?.shopping || []).find(row => row?.id === action.itemId);
+  return Boolean(item && (action.frozenPayload || (item.status === "approved" && item.revision === action.targetRevision && (item.unit ?? "") === action.targetUnit)));
 }
 
 function mayEdit(card, item) {
@@ -385,6 +399,11 @@ export function disposeShoppingEditor(card) {
 export function reconcileShoppingEditorRefresh(card) {
   const draft = card._shoppingEditorDraft;
   const action = card._shoppingItemAction;
+  if (action?.priceScope && !currentPurchaseScope(card, action)) {
+    card._shoppingItemAction = null;
+    disposeShoppingEditor(card);
+    return true;
+  }
   if (
     action?.type?.startsWith("merge_") &&
     !(card._actionError && action.frozenPayload)
@@ -684,6 +703,7 @@ export function renderShoppingItem(card, list, item) {
 
   // Controls container
   const actionsEl = el("div", null, "actions");
+  if (card._shoppingItemAction?.priceScope && !currentPurchaseScope(card, card._shoppingItemAction)) card._shoppingItemAction = null;
   const actionState = card._shoppingItemAction;
   const isCurrentAction = actionState && actionState.itemId === item.id;
 
@@ -750,6 +770,8 @@ export function renderShoppingItem(card, list, item) {
         itemId: item.id,
         targetRevision: item.revision,
         targetUnit: item.unit != null ? item.unit : "",
+        priceScope: editorScope(card),
+        priceUser: card._hass?.user?.id ?? null,
         draftQuantity: "",
         frozenPayload: null,
         retryReady: false,
@@ -875,6 +897,17 @@ export function renderShoppingItem(card, list, item) {
         actionState.draftQuantity = e.target.value;
       });
 
+      const costCopy = priceCopy(card);
+      const priceNotice = el("div", costCopy.invalid, "notice");
+      priceNotice.setAttribute("role", "alert");
+      priceNotice.style.display = "none";
+      const priceInputs = renderPriceFields(form, costCopy, actionState, {
+        disabled: isWriting || isInputFrozen || !currentPurchaseScope(card, actionState),
+        isCurrent: () => form.isConnected && card._shoppingItemAction === actionState && canInteract(card, startGeneration) && currentPurchaseScope(card, actionState),
+        onChange: () => { priceNotice.style.display = "none"; }
+      });
+      form.append(priceNotice);
+
       const validationNotice = el("div", copy.error_invalid_quantity, "notice");
       validationNotice.style.display = "none";
       form.append(validationNotice);
@@ -897,6 +930,7 @@ export function renderShoppingItem(card, list, item) {
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (!canInteract(card, startGeneration)) return;
+        if (actionState.priceScope && (!form.isConnected || card._shoppingItemAction !== actionState || !currentPurchaseScope(card, actionState))) return;
 
         if (isFailedRetry && actionState.frozenPayload) {
           executeCardCommand(card, "shopping.purchase", actionState.frozenPayload, startGeneration);
@@ -910,6 +944,12 @@ export function renderShoppingItem(card, list, item) {
         }
         validationNotice.style.display = "none";
 
+        const paid = actionState.includePrice === true ? parsePrice(priceInputs.totalInput.value, priceInputs.currencyInput.value) : null;
+        if (actionState.includePrice === true && (!currentPurchaseScope(card, actionState) || !paid)) {
+          priceNotice.style.display = "block";
+          return;
+        }
+
         const numVal = round6(parseFloat(enteredVal));
         actionState.draftQuantity = enteredVal;
         const payload = {
@@ -918,6 +958,7 @@ export function renderShoppingItem(card, list, item) {
           quantity: numVal,
           unit: actionState.targetUnit !== undefined ? actionState.targetUnit : (item.unit != null ? item.unit : "")
         };
+        if (paid) payload.price = paid;
         actionState.frozenPayload = payload;
         executeCardCommand(card, "shopping.purchase", payload, startGeneration);
       });
@@ -1104,6 +1145,12 @@ export function renderShoppingItem(card, list, item) {
           }
           if (entry.detail.unit) {
             detailParts.push(`${copy.label_unit}: ${entry.detail.unit}`);
+          }
+          const paid = entry.action === "purchase" && parsePrice(entry.detail.price?.total, entry.detail.price?.currency);
+          if (paid) {
+            detailParts.push(`${priceCopy(card).history}: ${paid.total} ${paid.currency}`);
+            if (typeof entry.detail.name === "string") detailParts.push(`${copy.label_name}: ${entry.detail.name}`);
+            if (typeof entry.detail.store === "string" && entry.detail.store) detailParts.push(`${copy.label_store}: ${entry.detail.store}`);
           }
           if (entry.detail.sources && Array.isArray(entry.detail.sources)) {
             const srcNames = entry.detail.sources.map(sid => getItemDisplayName(card, sid));

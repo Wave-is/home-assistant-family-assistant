@@ -84,8 +84,10 @@ snapshot-wide deletion left a selected connection present. The test does not
 guess that a successful DELETE response means all selected state is gone.
 After verified disappearance, both new/old IPv4 tuples and the learned IPv6
 address showed no outbound delivery. Independent control clients still passed;
-resume restored the selected client's exchanges. Final full-suite/CI integration
-of this stronger checkpoint is pending.
+resume restored the selected client's unaccelerated exchanges. The full unified
+local run96736 passed. Exact commit d89a048a81791bbdb5ce2630939c784817eee638 passed
+all eight Checks jobs (34184754899) and Native RouterOS acceptance (34184755848).
+Restoration of accelerated traffic is not claimed by the unaccelerated resume test.
 
 This mitigation exists only inside the disposable developer fixture. The public
 runtime neither disables a user's FastTrack rules nor flushes connections, and

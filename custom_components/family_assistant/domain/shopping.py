@@ -7,6 +7,7 @@ import unicodedata
 
 from .context import Context
 from .shopping_history import record_event
+from .shopping_price import price
 from .validation import DomainError, fields, number, revision, text
 
 TERMINAL_STATUSES = frozenset({"pending", "archived", "purchased", "merged"})
@@ -246,7 +247,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
 
     if action not in {"approve", "reject", "archive", "purchase"}:
         raise DomainError("unknown_action")
-    fields(payload, {"id", "revision", "quantity", "unit"}, {"id", "revision"})
+    allowed = {"id", "revision", "quantity", "unit"}
+    if action == "purchase":
+        allowed.add("price")
+    fields(payload, allowed, {"id", "revision"})
     item = ctx.record("shopping", payload["id"], revision(payload["revision"]))
     if action in {"approve", "reject", "archive"}:
         ctx.require_parent()
@@ -276,12 +280,20 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         amount = round(
             number(payload.get("quantity", remaining), "quantity", 0.000001, remaining), 6
         )
+        paid = price(payload["price"]) if "price" in payload else None
         item["purchased"] = round(item["purchased"] + amount, 6)
         detail = {
             "amount": amount,
             "purchased": item["purchased"],
             "remaining": round(item["quantity"] - item["purchased"], 6),
         }
+        if paid is not None:
+            detail.update(
+                price=paid,
+                name=item["name"],
+                unit=item["unit"],
+                store=item.get("store", ""),
+            )
         if item["purchased"] >= round(item["quantity"], 6):
             item["status"] = "purchased"
             item["purchased_at"] = ctx.now.isoformat()

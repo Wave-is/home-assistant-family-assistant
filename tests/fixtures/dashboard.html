@@ -207,10 +207,15 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
      if("report" in p)item.report=p.report;if("note" in p)item.review_note=p.note;item.revision++;
    }
    if(message.action==="shopping.purchase"){
+     if(window.shoppingOperations.has(message.operation_id))return structuredClone(window.shoppingOperations.get(message.operation_id));
      const item=data.shopping.find(i=>i.id===message.payload.id),amount=message.payload.quantity ?? item.quantity-item.purchased;
+     if(!item||item.revision!==message.payload.revision)throw {code:"revision_conflict"};
      item.purchased+=amount;item.revision++;
      if(item.purchased>=item.quantity)item.status="purchased";
-     (item.history??=[]).push({at:"2026-09-06T09:00:00Z",actor:"owner",action:"purchase",detail:{amount,purchased:item.purchased,remaining:item.quantity-item.purchased}});
+     (item.history??=[]).push({at:"2026-09-06T09:00:00Z",actor:"owner",action:"purchase",detail:{amount,purchased:item.purchased,remaining:item.quantity-item.purchased,...(message.payload.price?{price:structuredClone(message.payload.price),name:item.name,unit:item.unit,store:item.store||""}:{})}});
+     window.shoppingOperations.set(message.operation_id,structuredClone(item));data.revision++;
+     if(window.commitThenLose&&!window.lostOnce){window.lostOnce=true;throw {code:"storage_error"};}
+     return structuredClone(item);
    }
    if(message.action==="shopping.merge"){
      const target=data.shopping.find(i=>i.id===message.payload.id);

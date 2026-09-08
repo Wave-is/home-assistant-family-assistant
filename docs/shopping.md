@@ -15,6 +15,18 @@ Use **Bought remaining** to record the full remaining quantity, or **Partial
 purchase** for an amount bought now. Quantities use six-decimal precision. Parents
 can approve/reject children's suggestions and archive items without deleting them.
 
+In **Partial purchase**, optionally enable **Record the total paid for this quantity**.
+This also works when the entered quantity is the entire remainder. Enter the total
+paid now (0–999999999, up to four decimal places) and a three-letter currency code
+such as EUR, USD or UAH. A decimal comma is accepted in the card. Zero means free;
+leaving the option off records no price. The total belongs only to this purchase
+quantity, not the original item quantity or a unit. History retains the item/store
+at purchase time. All active family members can see it: do not enter private
+financial information. Different currencies are not added or converted; codes
+are syntax-checked, not verified against a currency directory. No old price is
+invented, reused for the remainder, or imported from a shop. Price entry is a
+dashboard feature; ordinary Telegram purchase commands remain unpriced.
+
 **Merge items** lets a parent select up to 19 approved open duplicates into the
 current item. Names match ignoring case and repeated whitespace; units, category,
 store, note and buyer must match exactly. Review the totals and confirm. Pending
@@ -53,6 +65,17 @@ data. A failed save keeps the draft. All schedules and occurrences live in local
 HA storage, outside HACS-managed source files. No real shopping purchase is placed.
 
 ## Русский
+
+В форме **Частичная покупка** можно включить **Записать сумму за это количество** —
+в том числе при покупке всего остатка. Введите уплаченную сейчас сумму
+(0–999999999, до четырёх знаков после точки или запятой) и код валюты из трёх
+латинских букв, например EUR, USD или UAH. Ноль означает бесплатно; выключенная
+опция означает отсутствие цены. Сумма относится только к отмеченному количеству,
+не к исходному объёму и не к единице товара. История сохраняет название и магазин
+на момент покупки. Её видят все активные члены семьи: не вводите приватные
+финансовые сведения. Валюты не суммируются и не конвертируются; проверяется формат
+кода, не его наличие в справочнике. Старые цены не придумываются и не переносятся
+на остаток. Это функция дашборда; обычные команды покупки в Telegram цены не записывают.
 
 **Добавить покупку** и **Изменить** открывают форму с проверкой перед сохранением.
 Можно изменить категорию, магазин, заметку и покупателя; заметку видит семья.
@@ -107,6 +130,17 @@ HA storage, outside HACS-managed source files. No real shopping purchase is plac
 заменяются обновлением HACS. Система ведёт список, а не оформляет заказ в магазине.
 
 ## Українська
+
+У формі **Часткова покупка** можна ввімкнути **Записати суму за цю кількість** —
+зокрема купуючи весь залишок. Укажіть сплачену зараз суму (0–999999999, до чотирьох
+знаків після крапки або коми) й код валюти з трьох латинських літер, наприклад EUR,
+USD чи UAH. Нуль означає безкоштовно; вимкнена опція — відсутність ціни. Сума
+стосується лише позначеної кількості, не початкового обсягу чи одиниці товару.
+Історія зберігає назву й магазин на момент покупки. Її бачать усі активні члени
+родини: не вводьте приватні фінансові відомості. Валюти не додаються й не
+конвертуються; перевіряється формат коду, не його наявність у довіднику. Минулі
+ціни не вигадуються й не переносяться на залишок. Це функція дашборда; звичайні
+команди покупки в Telegram цін не записують.
 
 **Додати покупку** та **Редагувати** відкривають форму з перевіркою перед збереженням.
 Можна змінити категорію, магазин, примітку й покупця; примітку бачить родина.

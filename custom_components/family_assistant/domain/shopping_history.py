@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .context import Context
+from .shopping_price import price
 from .validation import DomainError, number, text
 
 ACTIONS = frozenset({"add", "approve", "reject", "archive", "purchase", "merge", "edit"})
@@ -19,6 +20,9 @@ KNOWN_DETAIL_FIELDS = frozenset(
         "sources",
         "merged_into",
         "fields",
+        "price",
+        "name",
+        "store",
     }
 )
 
@@ -57,13 +61,21 @@ def record_event(
     }
 
     if detail:
+        if {"price", "name", "store"} & detail.keys() and action != "purchase":
+            raise DomainError("invalid_field", "price")
         unknown = detail.keys() - KNOWN_DETAIL_FIELDS
         if unknown:
             raise DomainError("invalid_field", sorted(unknown)[0])
 
         clean_detail: dict[str, Any] = {}
         for k, v in detail.items():
-            if k in {"quantity", "purchased", "remaining", "amount"}:
+            if k == "price":
+                clean_detail[k] = price(v)
+            elif k in {"name", "store"}:
+                if not isinstance(v, str) or len(v) > (200 if k == "name" else 80):
+                    raise DomainError("invalid_field", k)
+                clean_detail[k] = v
+            elif k in {"quantity", "purchased", "remaining", "amount"}:
                 clean_detail[k] = number(v, k, 0.0, 1000000.0)
             elif k == "unit":
                 if not isinstance(v, str) or len(v) > 32:
