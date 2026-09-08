@@ -244,6 +244,14 @@ async def route(
             + ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["help"]
             + COMMAND_COPY.get(language, COMMAND_COPY["en"])["help"]
         )
+    from .proposal_reply import parse_reply
+
+    proposal_reply = parse_reply(content, refs)
+    if proposal_reply is not None:
+        action, payload = proposal_reply
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, action, payload)
+        )
     from .network import parsed as parse_network
     from .network import status as network_status
 

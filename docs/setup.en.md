@@ -6,6 +6,9 @@ Development guide. **Test prereleases are available, not a stable production rel
 Assistant instance for evaluation; do not replace a working family system.
 See [implemented and pending features](implementation-status.md).
 
+[Voice shopping through Assist](voice-shopping.md#english): setup, spoken review
+and signed-in-account permissions. Telegram voice notes are a separate unsupported input.
+
 ## Installation and data
 
 The release installation path is HACS → Custom repositories → this repository
@@ -121,7 +124,9 @@ Direct connections below remain available independently.
    against current roles and record revisions. No inferred change happens silently.
 6. The module creates a standard conversation entity for Assist. Select it in
    your pipeline. An unlinked/anonymous voice endpoint does not inherit a parent
-   role. Existing external conversation-agent delegation is not implemented yet.
+   role. [Spoken review](voice-shopping.md) supports the same scoped proposal.
+   Existing-agent delegation is limited to the separately reviewed official
+   no-control Ollama adapter described above, not arbitrary HA agents.
 
 Calendar computations stay deterministic. Search results cannot execute commands.
 Provider outages do not disable the core lists, tasks or alarms. The developer

@@ -79,6 +79,11 @@ async def main(*, case="all"):
             await hass.async_start()
             await hass.async_block_till_done()
             assert hass.state is CoreState.running
+            if case == "voice":
+                from ha_voice_smoke import verify_voice_shopping
+
+                await verify_voice_shopping(hass, user)
+                return
             if case == "ha-agent":
                 from ha_ha_agent_smoke import verify_existing_ha_agent
 
@@ -258,6 +263,9 @@ async def main(*, case="all"):
             from ha_ha_agent_smoke import verify_existing_ha_agent
 
             await verify_existing_ha_agent(hass, user)
+            from ha_voice_smoke import verify_voice_shopping
+
+            await verify_voice_shopping(hass, user)
             from ha_command_scope_smoke import verify_command_scope
 
             await verify_command_scope(hass, entry, user)
@@ -1345,5 +1353,5 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=("all", "ha-agent"), default="all")
+    parser.add_argument("--case", choices=("all", "ha-agent", "voice"), default="all")
     asyncio.run(main(case=parser.parse_args().case))

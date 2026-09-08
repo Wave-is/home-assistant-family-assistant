@@ -2,6 +2,8 @@
 
 [Barcode entry and local camera scanning / Штрихкоды / Штрихкоди](shopping-barcodes.md)
 
+[Voice shopping through Assist / Голосовые покупки / Голосові покупки](voice-shopping.md)
+
 ## English
 
 **Add item** and **Edit item** open a form and a named review before saving.

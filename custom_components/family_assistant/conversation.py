@@ -113,6 +113,20 @@ class FamilyConversation(ConversationEntity):
                 on_commit=scope.notify,
             )
             await scope.check()
+            # Native speech must not ask the listener to dictate a long opaque ID.
+            # The same actor/session owns the saved reference; domain confirmation
+            # still checks identity, expiration and every proposed action.
+            proposal_id = "P" + hashlib.sha256(operation.encode()).hexdigest()[:20]
+            proposal = scope.runtime.engine.snapshot().get("proposals", {}).get(proposal_id)
+            if (
+                isinstance(proposal, dict)
+                and proposal.get("actor") == scope.actor
+                and proposal.get("actor_revision") == scope.actor_revision
+                and proposal.get("status") == "pending"
+            ):
+                from .telegram.proposal_reply import VOICE_PREVIEW
+
+                reply = VOICE_PREVIEW[language].format(preview=proposal["preview"])
         except (DomainError, TimeoutError, OSError) as err:
             failed = True
             code = (

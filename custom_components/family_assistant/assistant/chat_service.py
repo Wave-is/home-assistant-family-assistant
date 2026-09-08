@@ -340,8 +340,12 @@ class ChatService:
             sessions[session_hash] = {
                 "actor": actor,
                 "actor_revision": actor_revision,
-                "refs": refs,
+                # This request keeps its frozen refs below, but a concurrent
+                # follow-up cannot confirm an older preview while a new turn
+                # is still running or after the new turn failed.
+                "refs": [],
                 "updated_at": now.isoformat(),
+                "latest_operation": operation_key,
             }
             operations[operation_key] = {
                 "actor": actor,
@@ -362,15 +366,24 @@ class ChatService:
     async def _save_refs(self, engine, actor, actor_revision, session_hash, operation_id, now):
         def save(ctx):
             result = ctx.state.get("processed", {}).get(operation_id, {}).get("result")
+            refs = _valid_refs(result_refs(result)) if isinstance(result, dict) else []
             if not isinstance(result, dict):
-                return
-            refs = _valid_refs(result_refs(result))
+                proposal_id = "P" + hashlib.sha256(operation_id.encode()).hexdigest()[:20]
+                proposal = ctx.state.get("proposals", {}).get(proposal_id, {})
+                if (
+                    proposal.get("actor") == actor
+                    and proposal.get("actor_revision") == actor_revision
+                    and proposal.get("status") == "pending"
+                ):
+                    refs = [proposal_id]
             bucket = ctx.state.setdefault("memory", {}).setdefault("dashboard_chat", {})
             session = bucket.setdefault("sessions", {}).get(session_hash)
             if (
                 isinstance(session, dict)
                 and session.get("actor") == actor
                 and session.get("actor_revision") == actor_revision
+                and session.get("latest_operation")
+                == _hash(actor, str(actor_revision), operation_id)
             ):
                 session["refs"] = refs
                 session["updated_at"] = now.isoformat()
