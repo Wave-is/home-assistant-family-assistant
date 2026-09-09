@@ -37,6 +37,20 @@ private ledger; the card currently displays observed rows only. Limits are
 50 archived source policies; reaching capacity stops new changes instead of
 silently deleting history. No auto-pruning is provided in this evaluation slice.
 
+#### Strict mode preconditions
+
+Before enabling any strict blocking mode in production, the integration requires
+explicit evidence that:
+
+- topology tests confirm no bypass path for protected traffic categories;
+- IPv4 and IPv6 restriction probes were successful in representative tests;
+- FastTrack and known offload bypass behavior is measured (counter/flag evidence);
+- router/HA management hosts are explicitly excluded from blocks;
+- local restart and exception recovery behavior is verified.
+
+If any precondition is missing, strict/blocking controls remain disabled and the
+card shows an actionable reason.
+
 ## Русский
 
 Включите модуль MikroTik, настройте его подключение в параметрах интеграции и
@@ -69,6 +83,19 @@ silently deleting history. No auto-pruning is provided in this evaluation slice.
 Лимиты: 1000 строк инвентаря, 1000 одобрений, 1000 планов, 50 архивов источников.
 При заполнении новые изменения останавливаются; история не удаляется скрыто.
 
+#### Пререквизиты строгого режима
+
+Карантин/строгая блокировка включаются только после подтверждения:
+
+- отдельного прогона топологии без обходов защищённых потоков;
+- подтверждённой работы IPv4 и IPv6 ограничений;
+- проверки FastTrack и аппаратных ускорений с измеримым изменением флагов/счетчиков;
+- явного исключения HA и управляемой инфраструктуры из блокировок;
+- проверки локального восстановления после рестарта и завершения исключений.
+
+Если хотя бы одно условие не выполнено, строгий режим остаётся недоступным, а
+карточка показывает причину блокировки.
+
 ## Українська
 
 Увімкніть MikroTik, налаштуйте підключення в параметрах інтеграції та повторно
@@ -99,3 +126,16 @@ IPv6/FastTrack та локального відновлення. Схвален�
 залишаються в журналі, але поки не показуються карткою. Ліміти: 1000 рядків,
 1000 схвалень, 1000 планів, 50 архівів джерел. Нові зміни зупиняються при
 заповненні; історія не видаляється автоматично.
+
+#### Попередні вимоги для строгого режиму
+
+Карантин та суворий список дозволених пристроїв вмикаються лише після підтвердження:
+
+- окремого прогона топології без обходів для захищених потоків;
+- підтверджених IPv4/IPv6 обмежень на репрезентативних тестах;
+- вимірювання FastTrack/апаратних прискорень (лічильники або прапорці);
+- явного виключення HA, роутера керування та критичних сервісів;
+- перевірки локального відновлення після рестарту і завершення дозволених винятків.
+
+Якщо будь-яка умова не виконана, строгий режим лишається недоступним, а карточка
+показує причину відмови.

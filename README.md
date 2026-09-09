@@ -7,7 +7,8 @@ checks, rewards, routines and family networking, using your own Telegram bot.
 [test prerelease](https://github.com/Wave-is/home-assistant-family-assistant/releases)
 is available for an isolated HA instance. The accepted product
 scope is in [the vision](docs/vision.md). The current implementation and test
-evidence are tracked in [implementation status](docs/implementation-status.md).
+evidence are tracked in [implementation status](docs/implementation-status.md),
+including the current `v1-pre` execution queue.
 Do not replace an existing installation with this development branch.
 An advanced [read-only legacy copy wizard](docs/legacy-copy-wizard.md) is available
 for isolated evaluation; it does not activate or replace the source installation.
@@ -19,6 +20,9 @@ Home Assistant storage, outside the HACS-managed code directory.
 Setup guides: [English](docs/setup.en.md) · [Русский](docs/setup.ru.md) ·
 [Українська](docs/setup.uk.md). The guides distinguish working features from
 pending implementation and explain how to create and link your own bot.
+
+Release process and gating criteria are collected in
+[release.md](docs/release.md).
 
 Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Voice shopping / Голосом / Голосом](docs/voice-shopping.md) ·

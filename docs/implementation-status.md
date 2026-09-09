@@ -33,8 +33,41 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Quarantine/strict enforcement remain pending; topology + IPv6 + local rollback prerequisite for enforcement |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.34 runtime ZIP/tag verified at f2a371c; all nine Checks jobs (34258915209) passed, including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | alpha.35 runtime ZIP/tag verified at 8ffe6889; all nine Checks jobs (34261542830) passed, including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
+
+## Immediate v1-pre execution queue (2026-09-09)
+
+1. **Live Telegram acceptance on real user/channel**
+   - Current status: implemented as synthetic transport only.
+   - Next: execute read/write flow with a real group and parent chat.
+   - Required evidence: actual-HA acceptance tests for mention/reply, duplicate handling,
+     replay and restricted command denial.
+
+2. **Live physical-device critical checks**
+   - Current status: alarms and shopping media are HA-tested, but physical verification
+     is still marked pending.
+   - Next: explicit acceptance gates for siren audibility and photo/reportability
+     under representative device conditions.
+
+3. **MikroTik strict enforcement policy**
+   - Current status: discovery/static/convert/controls are implemented; strict
+     enforcement is topology-dependent and not globally available.
+   - Next: publish hard precondition matrix + explicit mode boundaries,
+     plus failure messaging when topology/preconditions are not met.
+
+4. **Close critical incident lifecycle**
+   - Current status: alarm/state incidents and network discovery alerts are HA-tested,
+     but explicit closure confirmation and retry boundary are still pending.
+   - Next: require closing confirmation for every active outage/incident alert and
+     ensure non-recoverable states do not create silent gaps in delivery.
+
+5. **RU/UK/EN documentation parity**
+   - Current status: base setup exists, setup/docs for some modules still incomplete.
+   - Next: close module cards, setup flows and onboarding wording in all three locales.
+
+Completion rule for v1-pre: no item moves to v1-rc without a matching reproducible
+test or proof in the table above and in corresponding release artifacts.
 
 ## Spoken review candidate, 2026-09-08
 
