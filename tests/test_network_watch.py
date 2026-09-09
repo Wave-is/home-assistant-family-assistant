@@ -9,7 +9,7 @@ from test_network_admission import CLIENT, setup
 from custom_components.family_assistant.domain.engine import Engine
 from custom_components.family_assistant.domain.validation import DomainError
 from custom_components.family_assistant.network.admission_inventory import observation_token
-from custom_components.family_assistant.network.watch import ACTION, KEY, current
+from custom_components.family_assistant.network.watch import ACTION, INCIDENT_KEY, KEY, current
 from custom_components.family_assistant.notifications import Notifications
 from custom_components.family_assistant.telegram.messages import render, targets
 from custom_components.family_assistant.telegram.router import route
@@ -502,3 +502,116 @@ async def test_old_subscribe_command_does_not_undo_later_withdrawal(engine, now)
     with pytest.raises(DomainError, match="conflict"):
         await route(e, "parent", "/network_alerts on", "subscribe", now, private=True)
     assert e.snapshot() == before
+
+
+@pytest.mark.asyncio
+async def test_network_watch_incident_lifecycle_opens_persists_and_closes_with_cleared_notification(
+    engine, now
+):
+    e = await prepared(engine, now)
+    await e.execute("parent", f"mikrotik.{ACTION}", payload(e, now), "subscribe", now)
+
+    # 1. New unreviewed device arrives: opens incident and enqueues alert
+    await observe(e, now, NEW)
+    await e.tick(now)
+    snap1 = e.snapshot()
+    incident = snap1["incidents"].get("network_watch:parent")
+    assert incident is not None
+    assert incident["state"] == "open"
+    assert incident["macs"] == [NEW]
+    assert len(events(e)) == 1
+
+    # 2. Device still unreviewed on next tick: incident stays open, no duplicate alert
+    later = now + timedelta(minutes=5)
+    await observe(e, later, NEW)
+    await e.tick(later)
+    snap2 = e.snapshot()
+    incident2 = snap2["incidents"].get("network_watch:parent")
+    assert incident2["state"] == "open"
+    assert incident2["macs"] == [NEW]
+
+    # 3. Device reviewed (approved via admission entries): incident closes and emits cleared notification
+    def approve(ctx):
+        ctx.state["network"]["admission"] = {
+            "backend": ctx.state["network"]["backend"],
+            "revision": 1,
+            "entries": {NEW: {"label": "Approved Device"}},
+            "updated_at": later.isoformat(),
+        }
+
+    await e.system_update("approve-new-device", later, approve)
+    review_time = later + timedelta(minutes=1)
+    await observe(e, review_time, NEW)
+    await e.tick(review_time)
+
+    snap3 = e.snapshot()
+    incident3 = snap3["incidents"].get("network_watch:parent")
+    assert incident3["state"] == "closed"
+    assert incident3["macs"] == []
+
+    cleared_events = [
+        ev for ev in snap3["outbox"].values() if ev["key"] == INCIDENT_KEY
+    ]
+    assert len(cleared_events) == 1
+    cleared = cleared_events[0]
+    assert cleared["recipient"] == "parent"
+
+    # Verify rendering across locales
+    for lang in ("en", "ru", "uk"):
+        target = {"channel": "telegram", "id": 850001, "language": lang, "bot_id": 850002}
+        msg = render(cleared, target, snap3, now=review_time)
+        assert "✅" in msg["text"]
+
+    # 4. Subsequent tick: no duplicate closure notification
+    after_time = review_time + timedelta(minutes=5)
+    await observe(e, after_time, NEW)
+    await e.tick(after_time)
+    snap4 = e.snapshot()
+    assert len([ev for ev in snap4["outbox"].values() if ev["key"] == INCIDENT_KEY]) == 1
+
+
+@pytest.mark.asyncio
+async def test_network_watch_quiet_hours_unannounced_incident_closes_silently_on_review(
+    engine, now
+):
+    e = await prepared(engine, now)
+    # Enable quiet hours covering 08:00
+    def set_quiet(ctx):
+        ctx.state["settings"]["notifications"] = {
+            "quiet_enabled": True,
+            "quiet_start": "07:00",
+            "quiet_end": "09:00",
+            "timezone": "UTC",
+        }
+
+    await e.system_update("quiet-policy", now, set_quiet)
+    await e.execute("parent", f"mikrotik.{ACTION}", payload(e, now), "subscribe", now)
+
+    # Device arrives during quiet hours: incident is opened, but no alert dispatched
+    await observe(e, now, NEW)
+    await e.tick(now)
+    snap = e.snapshot()
+    assert not events(e)  # No alert due to quiet hours
+    inc = snap["incidents"].get("network_watch:parent")
+    assert inc is not None and inc["state"] == "open"
+
+    # Device is reviewed before quiet hours expire
+    def approve(ctx):
+        ctx.state["network"]["admission"] = {
+            "backend": ctx.state["network"]["backend"],
+            "revision": 1,
+            "entries": {NEW: {"label": "Approved In Quiet"}},
+            "updated_at": now.isoformat(),
+        }
+
+    await e.system_update("approve-in-quiet", now, approve)
+    later = now + timedelta(minutes=5)
+    await observe(e, later, NEW)
+    await e.tick(later)
+
+    snap2 = e.snapshot()
+    inc2 = snap2["incidents"].get("network_watch:parent")
+    assert inc2["state"] == "closed"
+    # Never announced -> no cleared notification sent
+    assert not [ev for ev in snap2["outbox"].values() if ev["key"] == INCIDENT_KEY]
+

@@ -273,43 +273,51 @@ def tick(ctx):
             record["capacity_blocked"] = True
             continue
         record["seen"] = sorted(set(record["seen"]) | new)
-        was_pending = bool(record["pending"])
         record["pending"] = sorted(pending)
 
-        # Incident lifecycle: track open state in incidents dict without emitting
-        # a separate outbox event for the open transition.  A closure notification
-        # (network_watch_cleared) is only sent if the prior discovery batch was already
-        # announced (last_enqueued_at set) and all devices are now reviewed.
+        # Incident lifecycle: track open state in incidents dict.
+        # An incident opens when new unreviewed devices are detected, and stays open
+        # while any tracked devices remain unreviewed. A closure notification
+        # (network_watch_cleared) is sent when all tracked devices have been reviewed
+        # if a discovery alert was previously announced.
         incident_id = f"network_watch:{member_id}"
         incident = ctx.state["incidents"].get(incident_id)
         if pending:
-            # Open or keep open silently — the discovery notification below is the signal.
             if not incident or incident.get("state") != "open":
                 ctx.state["incidents"][incident_id] = {
                     "id": incident_id,
                     "generation": (incident["generation"] + 1 if incident else 1),
                     "state": "open",
                     "opened_at": ctx.now.isoformat(),
-                    "event_id": None,  # no separate open-notification
+                    "event_id": None,  # no separate open-notification; discovery alert below serves as announcement
                     "recipient": member_id,
+                    "macs": sorted(pending),
                 }
+            else:
+                incident["macs"] = sorted(set(incident.get("macs", [])) | set(pending))
         elif incident and incident.get("state") == "open":
-            # Devices cleared: close and notify only if at least one batch was dispatched.
-            incident["state"] = "closed"
-            incident["closed_at"] = ctx.now.isoformat()
-            if was_pending and record.get("last_enqueued_at"):
-                ctx.notify(
-                    member_id,
-                    INCIDENT_KEY,
-                    {
-                        "actor_revision": member["revision"],
-                        "watch_revision": record["revision"],
-                        "backend": record["backend"],
-                        "telegram_id": record["telegram_id"],
-                    },
-                )
+            remaining = set(incident.get("macs", [])) & unreviewed
+            if remaining:
+                incident["macs"] = sorted(remaining)
+            else:
+                incident["state"] = "closed"
+                incident["closed_at"] = ctx.now.isoformat()
+                incident["macs"] = []
+                if record.get("last_enqueued_at"):
+                    ctx.notify(
+                        member_id,
+                        INCIDENT_KEY,
+                        {
+                            "actor_revision": member["revision"],
+                            "watch_revision": record["revision"],
+                            "backend": record["backend"],
+                            "telegram_id": record["telegram_id"],
+                        },
+                    )
+                    record["last_enqueued_at"] = None
 
         from ..notifications import quiet_until
+
 
         if quiet_until(ctx.now, ctx.state["settings"].get("notifications", {})):
             continue  # Keep markers, not expiring outbox intents, through quiet hours.
