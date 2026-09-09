@@ -98,9 +98,9 @@ incidents close silently if resolved before quiet hours expire.
 
 Trilingual parity reaches 100% across all 975 translation keys (`strings.json`,
 `en.json`, `ru.json`, `uk.json`) and all Telegram message templates, verified by
-contract tests. Full Python test suite passed (4,653+ passed, 5 skipped, 23 subtests).
-Deterministic alpha.36 packaging verified (271 files, 983,833 archive bytes, SHA-256
-`2b78531e3cc71ffd93254536dc7f208b8b5a6e5a78b50e7bef06259be4e530e3`).
+contract tests. Full Python test suite passed (4,655 passed, 5 skipped, 23 subtests).
+Deterministic alpha.36 packaging verified (271 files, 983,813 archive bytes, SHA-256
+`641c9f7d480db21fbebe19d1c9986d7172c464cadf3ca72d3f34ba47adcf1c3d`).
 [Release notes](releases/0.1.0-alpha.36.md).
 
 ## Spoken review candidate, 2026-09-08
