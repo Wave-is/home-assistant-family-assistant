@@ -50,6 +50,8 @@ async def verify_network_watch(hass, entry, owner_user):
     await observe(new)
     queued = [event for event in engine.snapshot()["outbox"].values() if event["key"] == KEY]
     assert len(queued) == 1 and queued[0]["data"]["macs"] == [new]
+    incident = engine.snapshot()["incidents"].get("network_watch:owner")
+    assert incident is not None and incident["state"] == "open"
     no_effects = deepcopy(engine.snapshot()["network"]["tables"])
 
     class SyntheticTelegram:
@@ -71,6 +73,27 @@ async def verify_network_watch(hass, entry, owner_user):
         assert await manager.notifications.run(datetime.now(UTC)) == 1
         assert len(client.sent) == 1 and client.sent[0]["chat_id"] == 840001
         assert new in client.sent[0]["text"]
+        assert await manager.notifications.run(datetime.now(UTC)) == 0
+
+        # Review device via admission: incident closes and sends cleared notification
+        def approve(ctx):
+            ctx.state["network"]["admission"] = {
+                "backend": ctx.state["network"]["backend"],
+                "revision": 1,
+                "entries": {new: {"label": "Approved Synthetic Device"}},
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+
+        await engine.system_update("approve-synthetic-device", datetime.now(UTC), approve)
+        await engine.tick(datetime.now(UTC))
+        assert engine.snapshot()["incidents"]["network_watch:owner"]["state"] == "closed"
+        assert any(
+            event["key"] == "network_watch_cleared"
+            for event in engine.snapshot()["outbox"].values()
+        )
+        assert await manager.notifications.run(datetime.now(UTC)) == 1
+        assert len(client.sent) == 2 and client.sent[1]["chat_id"] == 840001
+        assert "✅" in client.sent[1]["text"]
         assert await manager.notifications.run(datetime.now(UTC)) == 0
         # Actual Telegram update uses current actor binding and durable interpretation.
         update = {

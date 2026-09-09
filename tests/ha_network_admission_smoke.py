@@ -61,6 +61,9 @@ async def verify_network_admission(hass, owner_user):
         admission = view["network"]["admission"]
         assert admission["mode"] == "audit_only" and admission["enforcement"] is False
         assert admission["counts"]["unreviewed"] == 1
+        assert "strict_available" in admission
+        assert admission["strict_available"] is False
+        assert "no_topology_evidence" in admission["unmet_preconditions"]
         actor_revision = engine.snapshot()["members"]["owner"]["revision"]
         payload = {
             "actor_revision": actor_revision,
@@ -96,6 +99,47 @@ async def verify_network_admission(hass, owner_user):
             hass, entry, owner_user, 704, "mikrotik.admission_apply", apply, "ha-admission-apply"
         )
         assert result["success"] and result["result"]["revision"] == 1, result
+
+        # Record strict preconditions evidence via HA execute API
+        evidence_payload = {
+            "actor_revision": actor_revision,
+            "ipv4_restricted": True,
+            "ipv6_restricted": True,
+            "fasttrack_bypassed": True,
+            "management_excluded": True,
+            "restart_verified": True,
+            "notes": "Verified in isolated lab",
+        }
+        evidence_result = await _request(
+            hass,
+            entry,
+            owner_user,
+            705,
+            "mikrotik.network_record_strict_evidence",
+            evidence_payload,
+            "ha-strict-evidence",
+        )
+        assert evidence_result["success"], evidence_result
+        assert evidence_result["result"]["strict_available"] is True
+        assert evidence_result["result"]["unmet_preconditions"] == []
+
+        # Replay authorization preserves exact result
+        replay_ev = await _request(
+            hass,
+            entry,
+            owner_user,
+            706,
+            "mikrotik.network_record_strict_evidence",
+            evidence_payload,
+            "ha-strict-evidence",
+        )
+        assert replay_ev["success"] and replay_ev["result"] == evidence_result["result"]
+
+        # View now exposes strict mode available
+        view_after = (await _request(hass, entry, owner_user, 707))["result"]
+        assert view_after["network"]["admission"]["strict_available"] is True
+        assert view_after["network"]["admission"]["unmet_preconditions"] == []
+
         applied = engine.snapshot()
         for key in ("tables", "inventory", "plans", "kid_plans"):
             assert applied["network"].get(key) == before["network"].get(key)
@@ -119,14 +163,25 @@ async def verify_network_admission(hass, owner_user):
         restored = entry.runtime_data.engine.snapshot()
         assert restored["network"]["admission"] == applied["network"]["admission"]
         assert restored["network"]["admission_plans"] == applied["network"]["admission_plans"]
+        assert restored["network"]["strict_evidence"] == applied["network"]["strict_evidence"]
         outsider = await hass.auth.async_create_user("Synthetic network outsider")
         denied = await _request(
-            hass, entry, outsider, 705, "mikrotik.admission_apply", apply, "ha-outsider-apply"
+            hass, entry, outsider, 708, "mikrotik.admission_apply", apply, "ha-outsider-apply"
         )
         assert denied["success"] is False, denied
+        denied_ev = await _request(
+            hass,
+            entry,
+            outsider,
+            709,
+            "mikrotik.network_record_strict_evidence",
+            evidence_payload,
+            "ha-outsider-evidence",
+        )
+        assert denied_ev["success"] is False, denied_ev
         print(
-            "PASS: actual HA authenticated local network approval/replay, zero router effects, "
-            "private reply source guard, Store reload and outsider denial"
+            "PASS: actual HA authenticated local network approval/replay, strict evidence, "
+            "zero router effects, private reply source guard, Store reload and outsider denial"
         )
         from ha_network_watch_smoke import verify_network_watch
 
