@@ -23,6 +23,10 @@ MESSAGES = {
         "network_plan_finished": (
             "🌐 Network plan {id}: {status}. Details and read-back are on the Home network card."
         ),
+        "network_watch_cleared": (
+            "✅ All previously unreviewed devices have been reviewed. "
+            "The network discovery alert is closed. Review the Home network card."
+        ),
         "alarm_challenge": "⏰ Wake-up check: {question} = ?\nChoose the answer below.",
         "alarm_missed": "⏰ {member}: wake-up was not confirmed within 30 minutes.",
         "alarm_closed": "✅ {member}: the wake-up incident is closed ({stage}).",
@@ -70,6 +74,10 @@ MESSAGES = {
         "network_plan_finished": (
             "🌐 План сети {id}: {status}. "
             "Подробности и результат проверки — в карточке домашней сети."
+        ),
+        "network_watch_cleared": (
+            "✅ Все ранее неизвестные устройства проверены. "
+            "Оповещение о новых устройствах в сети закрыто. Откройте карточку домашней сети."
         ),
         "alarm_challenge": "⏰ Проверка подъёма: {question} = ?\nВыберите ответ кнопкой.",
         "alarm_missed": "⏰ {member}: подъём не подтверждён за 30 минут.",
@@ -120,6 +128,10 @@ MESSAGES = {
         "network_plan_finished": (
             "🌐 План мережі {id}: {status}. "
             "Подробиці й результат перевірки — у картці домашньої мережі."
+        ),
+        "network_watch_cleared": (
+            "✅ Усі раніше невідомі пристрої перевірено. "
+            "Сповіщення про нові пристрої в мережі закрито. Відкрийте картку домашньої мережі."
         ),
         "alarm_challenge": "⏰ Перевірка підйому: {question} = ?\nВиберіть відповідь кнопкою.",
         "alarm_missed": "⏰ {member}: підйом не підтверджено за 30 хвилин.",

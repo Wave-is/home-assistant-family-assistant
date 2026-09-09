@@ -8,6 +8,7 @@ from .admission_inventory import classify, observation_token
 
 ACTION = "admission_watch_set"
 KEY = "network_unreviewed_devices"
+INCIDENT_KEY = "network_watch_cleared"  # sent when all pending devices reviewed
 MAX_SEEN = 10_000
 MAX_PENDING = 1000
 EVENT_LIFETIME = timedelta(hours=1)
@@ -272,7 +273,42 @@ def tick(ctx):
             record["capacity_blocked"] = True
             continue
         record["seen"] = sorted(set(record["seen"]) | new)
+        was_pending = bool(record["pending"])
         record["pending"] = sorted(pending)
+
+        # Incident lifecycle: track open state in incidents dict without emitting
+        # a separate outbox event for the open transition.  A closure notification
+        # (network_watch_cleared) is only sent if the prior discovery batch was already
+        # announced (last_enqueued_at set) and all devices are now reviewed.
+        incident_id = f"network_watch:{member_id}"
+        incident = ctx.state["incidents"].get(incident_id)
+        if pending:
+            # Open or keep open silently — the discovery notification below is the signal.
+            if not incident or incident.get("state") != "open":
+                ctx.state["incidents"][incident_id] = {
+                    "id": incident_id,
+                    "generation": (incident["generation"] + 1 if incident else 1),
+                    "state": "open",
+                    "opened_at": ctx.now.isoformat(),
+                    "event_id": None,  # no separate open-notification
+                    "recipient": member_id,
+                }
+        elif incident and incident.get("state") == "open":
+            # Devices cleared: close and notify only if at least one batch was dispatched.
+            incident["state"] = "closed"
+            incident["closed_at"] = ctx.now.isoformat()
+            if was_pending and record.get("last_enqueued_at"):
+                ctx.notify(
+                    member_id,
+                    INCIDENT_KEY,
+                    {
+                        "actor_revision": member["revision"],
+                        "watch_revision": record["revision"],
+                        "backend": record["backend"],
+                        "telegram_id": record["telegram_id"],
+                    },
+                )
+
         from ..notifications import quiet_until
 
         if quiet_until(ctx.now, ctx.state["settings"].get("notifications", {})):
@@ -299,6 +335,9 @@ def tick(ctx):
         )
         record["pending"] = []
         record["last_enqueued_at"] = ctx.now.isoformat()
+
+
+
 
 
 def current(state, event, now=None):
