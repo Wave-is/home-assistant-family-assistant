@@ -289,7 +289,8 @@ def tick(ctx):
                     "generation": (incident["generation"] + 1 if incident else 1),
                     "state": "open",
                     "opened_at": ctx.now.isoformat(),
-                    "event_id": None,  # no separate open-notification; discovery alert below serves as announcement
+                    # Discovery alert below announces; no separate event here.
+                    "event_id": None,
                     "recipient": member_id,
                     "macs": sorted(pending),
                 }
@@ -318,7 +319,6 @@ def tick(ctx):
 
         from ..notifications import quiet_until
 
-
         if quiet_until(ctx.now, ctx.state["settings"].get("notifications", {})):
             continue  # Keep markers, not expiring outbox intents, through quiet hours.
         last = record["last_enqueued_at"]
@@ -343,9 +343,6 @@ def tick(ctx):
         )
         record["pending"] = []
         record["last_enqueued_at"] = ctx.now.isoformat()
-
-
-
 
 
 def current(state, event, now=None):

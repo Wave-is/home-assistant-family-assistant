@@ -530,7 +530,8 @@ async def test_network_watch_incident_lifecycle_opens_persists_and_closes_with_c
     assert incident2["state"] == "open"
     assert incident2["macs"] == [NEW]
 
-    # 3. Device reviewed (approved via admission entries): incident closes and emits cleared notification
+    # 3. Device reviewed (approved via admission entries):
+    # incident closes and emits cleared notification
     def approve(ctx):
         ctx.state["network"]["admission"] = {
             "backend": ctx.state["network"]["backend"],
@@ -549,9 +550,7 @@ async def test_network_watch_incident_lifecycle_opens_persists_and_closes_with_c
     assert incident3["state"] == "closed"
     assert incident3["macs"] == []
 
-    cleared_events = [
-        ev for ev in snap3["outbox"].values() if ev["key"] == INCIDENT_KEY
-    ]
+    cleared_events = [ev for ev in snap3["outbox"].values() if ev["key"] == INCIDENT_KEY]
     assert len(cleared_events) == 1
     cleared = cleared_events[0]
     assert cleared["recipient"] == "parent"
@@ -575,6 +574,7 @@ async def test_network_watch_quiet_hours_unannounced_incident_closes_silently_on
     engine, now
 ):
     e = await prepared(engine, now)
+
     # Enable quiet hours covering 08:00
     def set_quiet(ctx):
         ctx.state["settings"]["notifications"] = {
@@ -614,4 +614,3 @@ async def test_network_watch_quiet_hours_unannounced_incident_closes_silently_on
     assert inc2["state"] == "closed"
     # Never announced -> no cleared notification sent
     assert not [ev for ev in snap2["outbox"].values() if ev["key"] == INCIDENT_KEY]
-
