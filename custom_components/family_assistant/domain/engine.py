@@ -750,6 +750,17 @@ class Engine:
                     result,
                 )
                 return
+            if action == "mikrotik.network_record_strict_evidence":
+                from ..network.strict_preconditions import check
+
+                # Owner-only; replay is valid only when the stored evidence still
+                # matches the current strict-mode evaluation result.
+                if self._actor(actor_id)["role"] != "owner":
+                    raise DomainError("forbidden")
+                unmet = check(self._state, now)
+                if result.get("strict_available") != (not unmet):
+                    raise DomainError("conflict")
+                return
             if action.startswith("mikrotik.admission_"):
                 from ..network import admission
 

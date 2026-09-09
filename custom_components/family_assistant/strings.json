@@ -754,10 +754,18 @@
     }
   },
   "exceptions": {
-    "ha_agent_unsupported": {"message":"This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt."},
-    "ha_agent_unavailable": {"message":"The selected Home Assistant conversation entity is not loaded or available."},
-    "ha_agent_changed": {"message":"The selected agent or its configuration changed. Review the selection again."},
-    "ha_agent_account_required": {"message":"This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."},
+    "ha_agent_unsupported": {
+      "message": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt."
+    },
+    "ha_agent_unavailable": {
+      "message": "The selected Home Assistant conversation entity is not loaded or available."
+    },
+    "ha_agent_changed": {
+      "message": "The selected agent or its configuration changed. Review the selection again."
+    },
+    "ha_agent_account_required": {
+      "message": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
+    },
     "migration_prepare_policy_changed": {
       "message": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check."
     },
@@ -1151,6 +1159,19 @@
       "options": {
         "enabled": "Enabled",
         "disabled": "Disabled"
+      }
+    },
+    "strict_precondition_reason": {
+      "options": {
+        "module_disabled": "MikroTik module is disabled",
+        "no_topology_evidence": "No topology evidence recorded",
+        "evidence_expired": "Topology evidence has expired (>30 days)",
+        "evidence_wrong_backend": "Evidence is for a different router (backend changed)",
+        "ipv4_restriction_unverified": "IPv4 restriction rules not verified",
+        "ipv6_restriction_unverified": "IPv6 restriction rules not verified",
+        "fasttrack_bypass_unaccounted": "FastTrack bypass rules not accounted for",
+        "management_hosts_not_excluded": "Management hosts not excluded from strict rules",
+        "restart_recovery_unverified": "Router restart recovery procedure not verified"
       }
     }
   },
