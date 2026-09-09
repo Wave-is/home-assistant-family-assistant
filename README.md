@@ -3,15 +3,14 @@
 A local-first family workspace for Home Assistant. Shopping, tasks, wake-up
 checks, rewards, routines and family networking, using your own Telegram bot.
 
-**Development in progress; no stable production release yet.** A
-[test prerelease](https://github.com/Wave-is/home-assistant-family-assistant/releases)
+**Release candidate 0.1.0-rc.1 available for validation.** A
+[release candidate](https://github.com/Wave-is/home-assistant-family-assistant/releases)
 is available for an isolated HA instance. The accepted product
 scope is in [the vision](docs/vision.md). The current implementation and test
-evidence are tracked in [implementation status](docs/implementation-status.md),
-including the current `v1-pre` execution queue.
-Do not replace an existing installation with this development branch.
-An advanced [read-only legacy copy wizard](docs/legacy-copy-wizard.md) is available
-for isolated evaluation; it does not activate or replace the source installation.
+evidence are tracked in [implementation status](docs/implementation-status.md).
+Do not replace an existing installation without creating a full Home Assistant snapshot.
+A verified [safe migration contract](docs/legacy-migration.md) and
+[rollback and recovery guide](docs/rollback.md) are provided across English, Russian, and Ukrainian.
 
 The integration is designed for English, Russian and Ukrainian, configurable
 households, and independent modules. Family data and credentials are kept in
@@ -21,8 +20,10 @@ Setup guides: [English](docs/setup.en.md) · [Русский](docs/setup.ru.md) 
 [Українська](docs/setup.uk.md). The guides distinguish working features from
 pending implementation and explain how to create and link your own bot.
 
-Release process and gating criteria are collected in
-[release.md](docs/release.md).
+Release policy and gating criteria are collected in
+[release.md](docs/release.md). Migration contract and rollback procedures:
+[Legacy migration / Миграция / Міграція](docs/legacy-migration.md) ·
+[Rollback and recovery / Откат и восстановление / Відкат та відновлення](docs/rollback.md).
 
 Module guides: [Shopping / Покупки / Покупки](docs/shopping.md) ·
 [Voice shopping / Голосом / Голосом](docs/voice-shopping.md) ·
