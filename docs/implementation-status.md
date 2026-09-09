@@ -78,6 +78,31 @@ test or proof in the table above and in corresponding release artifacts.
 
 Items 1 and 2 (live hardware/Telegram) remain as the only open v1-pre gates.
 
+## Strict preconditions and incident closure candidate, 2026-09-09
+
+Alpha.36 closes the software prerequisites for `v1-pre`: MikroTik strict enforcement
+precondition gating, network watch incident lifecycle with closure confirmation,
+and complete RU/UK/EN localization parity.
+
+The MikroTik strict gate enforces a hard precondition matrix (module active, topology
+evidence within 30 days, backend match, verified IPv4/IPv6 rules, FastTrack bypass
+accounted for, management hosts excluded, restart recovery verified) before strict
+mode can be activated. Evidence recording is owner-only, bound to the router backend
+hash, expires in 30 days, and is validated by replay authorization in the Engine.
+View projection exposes `strict_available` and machine-readable reason codes.
+
+Network watch tracks unreviewed devices as explicit incidents: opening upon new
+discovery, persisting while unreviewed, and closing with a localized `network_watch_cleared`
+notification across EN/RU/UK when all devices are reviewed. Unannounced quiet-hour
+incidents close silently if resolved before quiet hours expire.
+
+Trilingual parity reaches 100% across all 975 translation keys (`strings.json`,
+`en.json`, `ru.json`, `uk.json`) and all Telegram message templates, verified by
+contract tests. Full Python test suite passed (4,653+ passed, 5 skipped, 23 subtests).
+Deterministic alpha.36 packaging verified (271 files, 983,833 archive bytes, SHA-256
+`2b78531e3cc71ffd93254536dc7f208b8b5a6e5a78b50e7bef06259be4e530e3`).
+[Release notes](releases/0.1.0-alpha.36.md).
+
 ## Spoken review candidate, 2026-09-08
 
 Actor/session-scoped proposal references now survive native reload and allow exact
