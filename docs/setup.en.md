@@ -214,6 +214,24 @@ Kid Control is described below; allowlist enforcement and end-to-end filtering
 remain separate gates. See the
 [network boundaries and remaining gates](network-architecture.md).
 
+### Device discovery alerts and strict preconditions
+
+Parents can subscribe to unreviewed device discovery alerts in the Home network
+card or via their own Telegram bot: `/network_alerts on` (and `/network_alerts off`).
+New unreviewed MACs are batched to avoid notification bursts, and held during quiet
+hours without expiring. An alert opens an active incident. Once all previously
+unreviewed devices are reviewed (or approved via an admission plan), the integration
+sends an explicit closure confirmation:
+`All previously unreviewed devices have been reviewed. The network discovery alert is closed.`
+
+Strict network enforcement cannot be turned on without meeting hard router preconditions.
+The owner must record topology evidence via `mikrotik.network_record_strict_evidence`
+confirming: IPv4 and IPv6 restriction rules, FastTrack bypass accounting, management
+host exclusions, and router reboot recovery. Evidence is bound to the router's hardware
+hash and expires after 30 days. The Home network card indicates whether strict mode
+is available and lists any unmet precondition reason codes.
+See [network admission and strict preconditions](network-admission.md).
+
 ## Wake-up checks and delivery problems
 
 The Tasks card also has **Add recurring duty**. Choose one or more people, a
