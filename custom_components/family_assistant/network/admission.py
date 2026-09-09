@@ -1,8 +1,9 @@
 """Owner-reviewed local device approvals; no router effect or enforcement.
 
 An HA name match is evidence, not admission. These plans modify only the private
-Family Assistant ledger. A future enforcement backend needs its own capability,
-topology, immutable management exclusions and router-local rollback checks.
+Family Assistant ledger. Strict blocking (quarantine / allowlist enforcement)
+requires explicit topology evidence recorded via the ``network_record_strict_evidence``
+action before activation is permitted.  See network/strict_preconditions.py.
 """
 
 import re
@@ -12,6 +13,8 @@ from datetime import timedelta
 from ..domain.validation import DomainError, fields, revision, text, timestamp
 from .admission_inventory import classify, observation_token
 from .inventory import mac
+from .strict_preconditions import public_status as strict_status
+from .strict_preconditions import record_evidence as _record_evidence
 
 PREFIX = "admission_"
 MAX_PLANS = 1000
@@ -98,9 +101,13 @@ def _current_plan(ctx, payload):
 
 
 def handle(ctx, action, payload):
+    if action == "network_record_strict_evidence":
+        # Owner-only action; auth and payload validation are inside the module.
+        return _record_evidence(ctx, payload)
     actor = _actor(ctx, payload)
     network = ctx.state["network"]
     if action == "admission_preview":
+
         fields(
             payload,
             {
@@ -315,5 +322,6 @@ def view(state, actor, now):
         mode="audit_only",
         enforcement=False,
         plans=plans[-20:],
+        **strict_status(state, now),
     )
     return result

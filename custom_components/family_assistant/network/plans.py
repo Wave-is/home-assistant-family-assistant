@@ -35,6 +35,10 @@ def handle(ctx, action, payload):
         from . import watch
 
         return watch.handle(ctx, payload)
+    if action == "network_record_strict_evidence":
+        from . import admission
+
+        return admission.handle(ctx, action, payload)
     if action.startswith("admission_"):
         from . import admission
 
