@@ -69,8 +69,13 @@ def _validate_evidence(record: object) -> dict:
         raise DomainError("network_response")
     revision(record["revision"])
     timestamp(record["recorded_at"], "recorded_at")
-    for key in ("ipv4_verified", "ipv6_verified", "fasttrack_accounted",
-                "management_excluded", "restart_verified"):
+    for key in (
+        "ipv4_verified",
+        "ipv6_verified",
+        "fasttrack_accounted",
+        "management_excluded",
+        "restart_verified",
+    ):
         if type(record[key]) is not bool:
             raise DomainError("network_response")
     notes = record.get("notes")
@@ -156,14 +161,24 @@ def record_evidence(ctx, payload: dict) -> dict:
         raise DomainError("conflict")
 
     allowed = {
-        "actor_revision", "ipv4_verified", "ipv6_verified",
-        "fasttrack_accounted", "management_excluded", "restart_verified", "notes",
+        "actor_revision",
+        "ipv4_verified",
+        "ipv6_verified",
+        "fasttrack_accounted",
+        "management_excluded",
+        "restart_verified",
+        "notes",
     }
     required = allowed - {"notes"}
     fields(payload, allowed, required)
 
-    for key in ("ipv4_verified", "ipv6_verified", "fasttrack_accounted",
-                "management_excluded", "restart_verified"):
+    for key in (
+        "ipv4_verified",
+        "ipv6_verified",
+        "fasttrack_accounted",
+        "management_excluded",
+        "restart_verified",
+    ):
         if type(payload[key]) is not bool:
             raise DomainError("invalid_field", key)
 

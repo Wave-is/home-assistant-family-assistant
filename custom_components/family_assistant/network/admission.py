@@ -107,7 +107,6 @@ def handle(ctx, action, payload):
     actor = _actor(ctx, payload)
     network = ctx.state["network"]
     if action == "admission_preview":
-
         fields(
             payload,
             {
