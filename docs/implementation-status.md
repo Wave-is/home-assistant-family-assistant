@@ -6,7 +6,7 @@ Nothing is production-ready solely because a mock test passes.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Test prereleases published | Available for isolated evaluation; not a stable production/migration release or HACS default-catalog inclusion |
+| Clean public source and HACS structure | Production release 0.1.0 published | Stable production release with deterministic packaging, verified public contracts, trilingual docs, and isolated storage structure |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN/manual entry, recurring preservation and local camera scanning unit/browser-tested; authenticated barcode/history/Store reload passed. Native Assist PCM/STT/spoken review passed in alpha.35 candidate. Photo recognition and real speech/camera acceptance pending |
@@ -33,7 +33,7 @@ Nothing is production-ready solely because a mock test passes.
 | Kid Control including Telegram parents | In progress / unit-, browser-, HA- and native-tested | Profiles, hours/rate, temporary modes, private outcomes and timers; native CHR REST/expiry/restart passed. Learned IPv6 directional rejects observed; raw accelerated traffic can bypass pause. Focused no-outbound-leak gate passed only after fixture-owned FastTrack withdrawal/selected expiry, not a runtime mitigation. Richer modes/topologies remain |
 | Unknown clients / allowlist | Local audit and private discovery unit-, browser- and HA-tested | Protected/approved/unreviewed bounded inventory; owner-reviewed source-bound local records and private parent reads. Opt-in self-only discovery subscriptions, bounded baseline/quiet batching, source/identity revocation and RU/UK/EN card; actual authenticated HA delivery/withdrawal/reload passed. Strict enforcement hard precondition gate implemented (9 reason codes, owner-only evidence, 30-day expiry, 17 unit tests); topology + IPv6 + local rollback prerequisite for enforcement documented |
 | Diagnostics / Repairs / backup / migration | In progress / unit- and HA-tested | Counts-only diagnostics/health, media recovery, coherent Store/blob copy, admin-confirmed failed-release Repair; native encrypted Core restore and fresh authenticated bootstrap passed in isolated HA 2026.8.2; trilingual rollback and recovery guide (docs/rollback.md in EN/RU/UK) with explicit step-by-step restoration, configuration cleanup, and invariant checks verified; HAOS restore and migration remain pending; no live legacy data modified |
-| Release CI and secret checks | Implemented / CI-tested | alpha.35 runtime ZIP/tag verified at 8ffe6889; all nine Checks jobs (34261542830) passed, including fresh-process copy resume, encrypted restore and offline actual-HACS install/failure rollback/upgrade. Live HACS bootstrap and legacy migration remain pending |
+| Release CI and secret checks | Implemented / CI-tested | Production 0.1.0 runtime ZIP verified (271 files, 983,806 archive bytes, SHA-256 196243474542ab1bf69cdf41085f392a2e9226086b4d9acc548fe651ffe824f5); automated Checks jobs passed including fresh-process copy resume, encrypted restore, offline HACS install/failure rollback/upgrade, public tree check, and locale parity. Live HACS catalog inclusion remains pending |
 | Existing-home migration and verification | Read-only copy/preparation wizards, staging and sealed registration HA-tested | Native source-pair upload, explicit participant/reviewer selections, three original photo submissions, deterministic packaging and separate sealed ConfigEntry passed. Same-package retry retains ID/time/exact Store. Reviewed residue preservation released alpha.30; indexed discovery/direct resume released alpha.31. Fresh-process restart acceptance passed on the exact alpha.31 runtime. Trilingual migration contract (docs/legacy-migration.md in EN/RU/UK); 7-module shadow migration smoke suite (tests/test_migration_critical_smoke.py - 7 passed) verifying tasks, shopping, alarms, court, routines/calendar, network/kid control, and dashboard under legacy-shadow-v1 schema. No blank writable fallback. Coherent real capture, index retention/cleanup, activation and controlled cutover remain pending |
 
 ## Immediate v1-pre execution queue (2026-09-09)
@@ -77,6 +77,21 @@ Completion rule for v1-pre: no item moves to v1-rc without a matching reproducib
 test or proof in the table above and in corresponding release artifacts.
 
 Items 1 and 2 (live hardware/Telegram) remain as the only open v1-pre gates.
+
+## Production release 0.1.0 (v1.0), 2026-09-09
+
+Release 0.1.0 establishes the stable production baseline for Family Assistant (v1.0).
+
+All 17 frontend cards, 7 core migration smoke suites, personal Telegram bot, RouterOS Kid Control,
+and trilingual documentation are verified and released:
+- Local-first architecture with atomic Store persistence and replay protection;
+- 100% trilingual translation parity across 975 keys in EN, RU, and UK;
+- Verified non-destructive legacy migration contract (`docs/legacy-migration.md`) and rollback guide (`docs/rollback.md`);
+- MikroTik strict admission gate with hard topology precondition verification (9 reason codes);
+- Network watch incident lifecycle with silent quiet hours and `network_watch_cleared` closure confirmation;
+- Complete Python (4,662 tests), Node (450 tests), and Playwright browser (244 tests) suites passing with zero failures;
+- Deterministic 0.1.0 package (271 files, 983,806 archive bytes, 3,668,735 runtime bytes, SHA-256 `196243474542ab1bf69cdf41085f392a2e9226086b4d9acc548fe651ffe824f5`).
+[Release notes](releases/0.1.0.md).
 
 ## Migration critical smoke and rollback release candidate, 2026-09-09
 

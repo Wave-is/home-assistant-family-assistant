@@ -3,13 +3,12 @@
 A local-first family workspace for Home Assistant. Shopping, tasks, wake-up
 checks, rewards, routines and family networking, using your own Telegram bot.
 
-**Release candidate 0.1.0-rc.1 available for validation.** A
-[release candidate](https://github.com/Wave-is/home-assistant-family-assistant/releases)
-is available for an isolated HA instance. The accepted product
-scope is in [the vision](docs/vision.md). The current implementation and test
+**Production release 0.1.0 (v1.0) is available.**
+The stable [0.1.0 release](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.1.0)
+provides a complete local-first family workspace for Home Assistant. The full product
+scope is defined in [the vision](docs/vision.md). Implementation details and verification
 evidence are tracked in [implementation status](docs/implementation-status.md).
-Do not replace an existing installation without creating a full Home Assistant snapshot.
-A verified [safe migration contract](docs/legacy-migration.md) and
+For existing installations, a verified [safe migration contract](docs/legacy-migration.md) and
 [rollback and recovery guide](docs/rollback.md) are provided across English, Russian, and Ukrainian.
 
 The integration is designed for English, Russian and Ukrainian, configurable
