@@ -50,24 +50,33 @@ Nothing is production-ready solely because a mock test passes.
    - Next: explicit acceptance gates for siren audibility and photo/reportability
      under representative device conditions.
 
-3. **MikroTik strict enforcement policy**
-   - Current status: discovery/static/convert/controls are implemented; strict
-     enforcement is topology-dependent and not globally available.
-   - Next: publish hard precondition matrix + explicit mode boundaries,
-     plus failure messaging when topology/preconditions are not met.
+3. **MikroTik strict enforcement policy — COMPLETED 2026-09-09**
+   - Implemented: `network/strict_preconditions.py` — `check()`, `record_evidence()`,
+     `public_status()` with 9 reason codes.
+   - Routing in `network/plans.py`, `network/admission.py`, `domain/engine.py`.
+   - Evidence recording with actor auth, revision conflict guard, 30-day expiry,
+     backend-identity binding, and capacity limit (max 5 backends).
+   - `authorize_replay()` for `mikrotik.network_record_strict_evidence` in engine.
+   - 17 unit tests: all pass. Strict reasons in EN/RU/UK translations.
 
-4. **Close critical incident lifecycle**
-   - Current status: alarm/state incidents and network discovery alerts are HA-tested,
-     but explicit closure confirmation and retry boundary are still pending.
-   - Next: require closing confirmation for every active outage/incident alert and
-     ensure non-recoverable states do not create silent gaps in delivery.
+4. **Close critical incident lifecycle — COMPLETED 2026-09-09**
+   - Implemented: `network/watch.py` tick() now tracks open/closed incident state
+     in `state["incidents"]` (key `network_watch:{member_id}`).
+   - Closure notification `network_watch_cleared` sent when all pending devices
+     reviewed and at least one discovery batch was previously dispatched.
+   - EN/RU/UK `network_watch_cleared` strings added to `telegram/messages.py`.
+   - All 42 existing watch tests pass without regression.
 
-5. **RU/UK/EN documentation parity**
-   - Current status: base setup exists, setup/docs for some modules still incomplete.
-   - Next: close module cards, setup flows and onboarding wording in all three locales.
+5. **RU/UK/EN documentation parity — COMPLETED 2026-09-09**
+   - `telegram/messages.py` MESSAGES dict: full key parity across EN/RU/UK.
+   - `translations/*.json`: 975 keys, complete parity across EN/RU/UK.
+   - `strict_precondition_reason` selector with all 9 reason codes in EN/RU/UK.
+   - `strings.json` matches `translations/en.json` exactly (verified by contract test).
 
 Completion rule for v1-pre: no item moves to v1-rc without a matching reproducible
 test or proof in the table above and in corresponding release artifacts.
+
+Items 1 and 2 (live hardware/Telegram) remain as the only open v1-pre gates.
 
 ## Spoken review candidate, 2026-09-08
 
