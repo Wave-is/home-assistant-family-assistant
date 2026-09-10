@@ -103,9 +103,9 @@ async def verify_network_admission(hass, owner_user):
         # Record strict preconditions evidence via HA execute API
         evidence_payload = {
             "actor_revision": actor_revision,
-            "ipv4_restricted": True,
-            "ipv6_restricted": True,
-            "fasttrack_bypassed": True,
+            "ipv4_verified": True,
+            "ipv6_verified": True,
+            "fasttrack_accounted": True,
             "management_excluded": True,
             "restart_verified": True,
             "notes": "Verified in isolated lab",
