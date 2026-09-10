@@ -1,7 +1,7 @@
 """Actual HA private discovery subscription and TelegramManager synthetic delivery."""
 
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from ha_presence_smoke import _request
 
@@ -91,10 +91,16 @@ async def verify_network_watch(hass, entry, owner_user):
             event["key"] == "network_watch_cleared"
             for event in engine.snapshot()["outbox"].values()
         )
-        assert await manager.notifications.run(datetime.now(UTC)) == 1
-        assert len(client.sent) == 2 and client.sent[1]["chat_id"] == 840001
-        assert "✅" in client.sent[1]["text"]
-        assert await manager.notifications.run(datetime.now(UTC)) == 0
+        cleared_now = datetime.now(UTC) + timedelta(seconds=2)
+        live_clock = manager.notifications.clock
+        manager.notifications.clock = lambda: cleared_now
+        try:
+            assert await manager.notifications.run(cleared_now) == 1
+            assert len(client.sent) == 2 and client.sent[1]["chat_id"] == 840001
+            assert "✅" in client.sent[1]["text"]
+            assert await manager.notifications.run(cleared_now) == 0
+        finally:
+            manager.notifications.clock = live_clock
         # Actual Telegram update uses current actor binding and durable interpretation.
         update = {
             "update_id": 860001,
