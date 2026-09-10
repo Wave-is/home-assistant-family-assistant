@@ -300,6 +300,7 @@ async def verify_backup(hass, entry, owner, media_expected) -> None:
         assert "backup" not in data
         assert entry.state is config_entries.ConfigEntryState.LOADED
         runtime = entry.runtime_data
+        await runtime.scheduler.stop()
         token = await runtime.media.async_pause_backup()
         await runtime.media.async_resume_backup(token)
 
