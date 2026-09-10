@@ -18,7 +18,8 @@ MODULES = (
     "presence",
     "digests",
     "mikrotik",
+    "price_watch",
 )
-DEFAULT_MODULES = ("shopping", "tasks", "alarms", "court")
+DEFAULT_MODULES = ("shopping", "tasks", "alarms", "court", "price_watch")
 ROLES = ("owner", "parent", "adult", "child", "guest")
 PRIVILEGED = frozenset({"owner", "parent"})

@@ -42,6 +42,12 @@ MESSAGES = {
             "Any recorded points remain separately reviewable."
         ),
         "shopping_approval": "🛒 Purchase approval requested: {id} · {title}",
+        "price_watch_drop": (
+            "📉 Price drop: {name} — {old_price} → {new_price} {currency}. Check the link."
+        ),
+        "price_watch_available": (
+            "✅ Back in stock: {name} — {price_text}. Check the link."
+        ),
         "pantry_expiry": (
             "📦 Pantry reminder: {name} has the recorded expiry date {expires_on}. "
             "Check it manually. This is not a food-safety assessment, and stock was not changed."
@@ -96,6 +102,12 @@ MESSAGES = {
             "Начисленные баллы проверяются отдельно."
         ),
         "shopping_approval": "🛒 Покупка ждёт одобрения: {id} · {title}",
+        "price_watch_drop": (
+            "📉 Цена снизилась: {name} — {old_price} → {new_price} {currency}. Проверьте ссылку."
+        ),
+        "price_watch_available": (
+            "✅ Снова в наличии: {name} — {price_text}. Проверьте ссылку."
+        ),
         "pantry_expiry": (
             "📦 Напоминание о запасах: для «{name}» записан срок годности: {expires_on}. "
             "Проверьте вручную. Это не оценка безопасности продукта; остаток не изменён."
@@ -152,6 +164,12 @@ MESSAGES = {
             "Нараховані бали перевіряються окремо."
         ),
         "shopping_approval": "🛒 Покупка чекає схвалення: {id} · {title}",
+        "price_watch_drop": (
+            "📉 Ціна знизилась: {name} — {old_price} → {new_price} {currency}. Перевірте посилання."
+        ),
+        "price_watch_available": (
+            "✅ Знову в наявності: {name} — {price_text}. Перевірте посилання."
+        ),
         "pantry_expiry": (
             "📦 Нагадування про запаси: для «{name}» записано термін придатності: {expires_on}. "
             "Перевірте вручну. Це не оцінка безпечності продукту; залишок не змінено."

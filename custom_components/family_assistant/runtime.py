@@ -42,6 +42,7 @@ class Runtime:
     media: Any = None
     media_unsub: Any = None
     media_task: Any = None
+    price_watcher: Any = None
     options_lock: Any = field(default_factory=asyncio.Lock)
 
     @callback
@@ -212,6 +213,10 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         async_configure_recipes(hass, entry)
+        from .price_watch_fetcher import PriceWatchScheduler
+
+        runtime.price_watcher = PriceWatchScheduler(hass, entry, runtime)
+        runtime.price_watcher.start()
         from .llm_api import async_register
 
         async_register(hass, entry)
@@ -224,6 +229,8 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await async_stop_chat(runtime)
         await async_stop_articles(runtime)
         await async_stop_media(runtime)
+        if runtime.price_watcher:
+            runtime.price_watcher.stop()
         if runtime.network:
             await runtime.network.stop()
         if runtime.telegram:
@@ -288,6 +295,8 @@ async def _async_unload_runtime(hass, entry) -> bool:
     await async_stop_chat(runtime)
     await async_stop_articles(runtime)
     await async_stop_media(runtime)
+    if runtime.price_watcher:
+        runtime.price_watcher.stop()
     if runtime.network:
         await runtime.network.stop()
     if runtime.telegram:

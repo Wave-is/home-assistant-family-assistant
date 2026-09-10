@@ -30,6 +30,7 @@ from . import (
     poll_reviews,
     polls,
     presence,
+    price_watch,
     proposals,
     rewards,
     routines,
@@ -68,6 +69,7 @@ HANDLERS = {
     "polls": polls.handle,
     "presence": presence.handle,
     "digests": digests.handle,
+    "price_watch": price_watch.handle,
 }
 BUCKETS = (
     "members",
@@ -109,6 +111,7 @@ BUCKETS = (
     "proposals",
     "assistant_jobs",
 )
+
 
 _NO_BACKUP = object()
 

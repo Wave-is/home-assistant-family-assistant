@@ -141,7 +141,8 @@
       "media_too_large": "The photo exceeds the file or image-size limit.",
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
       "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
-      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically."
+      "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically.",
+      "limit_exceeded": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one."
     },
     "abort": {
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
@@ -1119,6 +1120,9 @@
     },
     "quota_exceeded": {
       "message": "The private photo quota is full. Unattached uploads expire automatically."
+    },
+    "limit_exceeded": {
+      "message": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one."
     }
   },
   "selector": {
