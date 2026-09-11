@@ -25,6 +25,12 @@ WORDS = {
         "cancelled": "cancelled",
         "archived": "archived",
         "rejected": "rejected",
+        "in_stock": "in stock",
+        "out_of_stock": "out of stock",
+        "preorder": "pre-order",
+        "backorder": "backorder",
+        "discontinued": "discontinued",
+        "unknown_status": "awaiting check",
         "days": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
     },
     "ru": {
@@ -47,6 +53,12 @@ WORDS = {
         "cancelled": "отменена",
         "archived": "в архиве",
         "rejected": "отклонено",
+        "in_stock": "в наличии",
+        "out_of_stock": "нет в наличии",
+        "preorder": "предзаказ",
+        "backorder": "под заказ",
+        "discontinued": "снят с продажи",
+        "unknown_status": "ожидает проверки",
         "days": ("пн", "вт", "ср", "чт", "пт", "сб", "вс"),
     },
     "uk": {
@@ -69,6 +81,12 @@ WORDS = {
         "cancelled": "скасовано",
         "archived": "в архіві",
         "rejected": "відхилено",
+        "in_stock": "в наявності",
+        "out_of_stock": "немає в наявності",
+        "preorder": "передзамовлення",
+        "backorder": "під замовлення",
+        "discontinued": "знято з продажу",
+        "unknown_status": "очікує перевірки",
         "days": ("пн", "вт", "ср", "чт", "пт", "сб", "нд"),
     },
 }
@@ -76,6 +94,18 @@ WORDS = {
 
 def summary(item, view, language):
     words = WORDS.get(language, WORDS["en"])
+    if "url" in item and (str(item.get("id", "")).startswith("PW") or "price_text" in item):
+        parts = [item.get("name", "")]
+        price_text = item.get("price_text", "")
+        currency = item.get("currency", "")
+        if price_text:
+            parts.append(f"{price_text} {currency}".strip())
+        avail = item.get("availability")
+        if avail and avail != "unknown":
+            parts.append(words.get(avail, avail))
+        elif avail == "unknown" and not price_text:
+            parts.append(words.get("unknown_status", "awaiting check"))
+        return " · ".join(part for part in parts if part)
     name = next(
         (m["name"] for m in view["members"] if m["id"] == item.get("member", item.get("assignee"))),
         "",

@@ -192,16 +192,17 @@ def _edit(ctx: Context, payload: dict) -> dict:
 
 
 def _remove(ctx: Context, payload: dict) -> dict:
-    fields(payload, {"id", "revision"}, {"id", "revision"})
+    fields(payload, {"id", "revision"}, {"id"})
     watchers: dict = ctx.state.get("price_watches", {})
     watcher_id = text(payload["id"], "id", 80)
     watcher = watchers.get(watcher_id)
     if watcher is None:
         raise DomainError("not_found")
-    from .validation import revision as validate_revision
+    if "revision" in payload:
+        from .validation import revision as validate_revision
 
-    if validate_revision(payload["revision"]) != watcher.get("revision"):
-        raise DomainError("conflict")
+        if validate_revision(payload["revision"]) != watcher.get("revision"):
+            raise DomainError("conflict")
     return watchers.pop(watcher_id)
 
 

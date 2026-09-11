@@ -496,6 +496,11 @@ class Engine:
             data["polls"] = polls.view(self._state, actor, now)
         if actor["role"] != "guest" and "digests" in self._state["settings"]["modules"]:
             data["digests"] = digests.view(self._state, actor)
+        if actor["role"] != "guest" and "price_watch" in self._state["settings"]["modules"]:
+            data["price_watches"] = [
+                {k: v for k, v in record.items()}
+                for record in self._state.get("price_watches", {}).values()
+            ]
         if parent:
             from ..network import admission
 

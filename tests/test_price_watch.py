@@ -393,3 +393,52 @@ async def test_duplicate_operation_id_is_idempotent(engine, now):
         "parent", "price_watch.add", {"url": "https://example.com/p/idem"}, "pw-add-idem", now
     )
     assert engine.snapshot() == snap1
+
+
+# ── telegram commands & view projection ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_price_watch_view_projection(engine, now):
+    watcher = await engine.execute(
+        "parent", "price_watch.add", {"url": "https://example.com/proj", "name": "Projected"}, "pw-proj", now
+    )
+    view = engine.view("parent", now=now)
+    assert "price_watches" in view
+    assert any(w["id"] == watcher["id"] and w["name"] == "Projected" for w in view["price_watches"])
+
+
+@pytest.mark.asyncio
+async def test_telegram_watch_and_watchlist(engine, now):
+    from custom_components.family_assistant.telegram.router import route
+
+    # Test adding via /watch URL | Name
+    resp = await route(engine, "parent", "/watch https://example.com/watch1 | My Watch 1", "op-w1", now)
+    assert "PW" in resp
+    assert "My Watch 1" in resp
+
+    # Test /watchlist listing
+    list_resp = await route(engine, "parent", "/watchlist", "op-list", now)
+    assert "My Watch 1" in list_resp
+    assert "https://example.com/watch1" in list_resp
+
+    # Test /prices alias
+    prices_resp = await route(engine, "parent", "/prices", "op-prices", now)
+    assert list_resp == prices_resp
+
+    # Test direct URL input
+    direct_resp = await route(engine, "parent", "https://example.com/watch2 | My Watch 2", "op-w2", now)
+    assert "PW" in direct_resp
+    assert "My Watch 2" in direct_resp
+
+    # Extract ID and test /unwatch
+    snap = engine.snapshot()["price_watches"]
+    w1_id = next(k for k, v in snap.items() if v["url"] == "https://example.com/watch1")
+    unwatch_resp = await route(engine, "parent", f"/unwatch {w1_id}", "op-unw", now)
+    assert "🗑" in unwatch_resp
+    assert w1_id in unwatch_resp
+
+    # Confirm deleted from watchlist
+    after_list = await route(engine, "parent", "/watchlist", "op-list2", now)
+    assert "My Watch 1" not in after_list
+    assert "My Watch 2" in after_list

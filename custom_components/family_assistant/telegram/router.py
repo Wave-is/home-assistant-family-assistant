@@ -27,10 +27,13 @@ COPY = {
             "Reply to a wake-up check using its fresh buttons.\n"
             "/week — this week's scores\n/appeal record ID | reason\n"
             "/award member | points | reason\n/reverse record ID | reason\n"
-            "/courtresolve record ID | uphold or reverse | reason"
+            "/courtresolve record ID | uphold or reverse | reason\n"
+            "/watchlist — price watch\n/watch URL | optional name\n"
+            "/unwatch ID — remove price watch"
         ),
         "empty": "No records yet.",
         "saved": "✅ Saved: {id} · {title}",
+        "unwatched": "🗑 Price watch removed: {id} · {title}",
         "private_saved": (
             "✅ Saved: {id}. Private task details are in your private chat or dashboard."
         ),
@@ -59,10 +62,13 @@ COPY = {
             "Сетевые изменения — после проверки плана и /netconfirm.\n"
             "/week — баллы за неделю\n/appeal ID записи | причина\n"
             "/award участник | баллы | причина\n/reverse ID записи | причина\n"
-            "/courtresolve ID записи | uphold (оставить) или reverse (отменить) | причина"
+            "/courtresolve ID записи | uphold (оставить) или reverse (отменить) | причина\n"
+            "/watchlist — мониторинг цен\n/watch ссылка | название (необязательно)\n"
+            "/unwatch ID — удалить из отслеживания"
         ),
         "empty": "Пока нет записей.",
         "saved": "✅ Сохранено: {id} · {title}",
+        "unwatched": "🗑 Отслеживание снято: {id} · {title}",
         "private_saved": (
             "✅ Сохранено: {id}. Подробности личной задачи — в личном чате или на дашборде."
         ),
@@ -84,16 +90,19 @@ COPY = {
             "завдання\n/task учасник | завдання\n/done T000001 | звіт\n/approve "
             "T000001 — підтвердження батьків\n/alarms — перевірки підйому\n"
             "/stats — бали та причини\nПідтверджуйте підйом свіжими кнопками "
-            "перевірки.\n/internet учасник — інтернет дитини\n/netpause учасник\n"
+            "перевірки.\n/internet участник — інтернет дитини\n/netpause учасник\n"
             "/netresume учасник\n/netgrant учасник | 30 — тимчасовий доступ\n"
             "/netschedule учасник | будні | 08:00-22:00\n"
             "Мережеві зміни — після перевірки плану та /netconfirm.\n"
             "/week — бали за тиждень\n/appeal ID запису | причина\n"
             "/award учасник | бали | причина\n/reverse ID запису | причина\n"
-            "/courtresolve ID запису | uphold (залишити) або reverse (скасувати) | причина"
+            "/courtresolve ID запису | uphold (залишити) або reverse (скасувати) | причина\n"
+            "/watchlist — моніторинг цін\n/watch посилання | назва (необов’язково)\n"
+            "/unwatch ID — видалити з відстеження"
         ),
         "empty": "Поки немає записів.",
         "saved": "✅ Збережено: {id} · {title}",
+        "unwatched": "🗑 Відстеження скасовано: {id} · {title}",
         "private_saved": (
             "✅ Збережено: {id}. Подробиці приватного завдання — в особистому чаті або на дашборді."
         ),
@@ -341,26 +350,31 @@ async def route(
         raise parse_error
     if intent and intent.action.startswith("read."):
         command = {"read.court": "/stats", "read.tasks": "/tasks"}[intent.action]
-    if command in {"/shopping", "/tasks", "/stats", "/week", "/alarms"}:
+    if command in {"/shopping", "/tasks", "/stats", "/week", "/alarms", "/watchlist", "/prices"}:
         bucket = {
             "/shopping": "shopping",
             "/tasks": "tasks",
             "/stats": "court",
             "/week": "court",
             "/alarms": "alarms",
+            "/watchlist": "price_watches",
+            "/prices": "price_watches",
         }[command]
-        if bucket not in view["settings"]["modules"]:
+        module = "price_watch" if bucket == "price_watches" else bucket
+        if module not in view["settings"]["modules"]:
             raise DomainError("module_disabled")
         if bucket == "court":
             return court_stats(engine.view(actor, now=now), language, weekly=command == "/week")
         lines = []
-        for item in view[bucket]:
+        for item in view.get(bucket, []):
             if item.get("status") in {"archived", "cancelled", "rejected", "merged"}:
                 continue
             if bucket == "shopping" and item.get("status") == "purchased":
                 continue
             label = summary(item, view, language)
             lines.append(f"{item['id']} · {label}")
+            if bucket == "price_watches" and item.get("url"):
+                lines.append(f"  {item['url']}")
         response = "\n".join(lines)[:3800] or t["empty"]
         if private and bucket == "tasks" and any(personal_task(item) for item in view[bucket]):
             return PersonalReply(response)
@@ -468,6 +482,26 @@ async def route(
         action, payload = "conversation.learn", {"source": fields[0], "canonical": fields[1]}
     elif command == "/forget" and len(fields) == 1:
         action, payload = "conversation.forget", {"id": fields[0]}
+    elif (command == "/watch" and 1 <= len(fields) <= 2) or command.startswith("http://") or command.startswith("https://"):
+        if command == "/watch":
+            url = fields[0]
+            name = fields[1] if len(fields) == 2 and fields[1] else None
+        else:
+            url = original_content.split("|")[0].strip()
+            name_parts = original_content.split("|", 1)
+            name = name_parts[1].strip() if len(name_parts) > 1 and name_parts[1].strip() else None
+        action, payload = "price_watch.add", {"url": url}
+        if name:
+            payload["name"] = name
+    elif command == "/unwatch" and len(fields) == 1:
+        target_id = fields[0].strip().upper()
+        record = next((r for r in view.get("price_watches", []) if r["id"].upper() == target_id), None)
+        if not record:
+            raise DomainError("not_found")
+        action, payload = (
+            "price_watch.remove",
+            {"id": record["id"], "revision": record["revision"]},
+        )
     if action is None:
         if fallback is not None and not command.startswith("/"):
             return await fallback(actor, original_content, operation_id, now, refs)
@@ -480,4 +514,8 @@ async def route(
     result = await commands.execute(
         engine, actor, original_content, refs, operation_id, now, action, payload
     )
+    if action == "price_watch.remove":
+        return t.get("unwatched", t["saved"]).format(
+            id=result["id"], title=result.get("name", result["id"])
+        )
     return saved(result)

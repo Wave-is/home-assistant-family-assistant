@@ -18,6 +18,8 @@ REVISION_ACTIONS = {
     "court.resolve_appeal",
     "alarms.save",
     "alarms.enable",
+    "price_watch.edit",
+    "price_watch.remove",
 }
 
 
@@ -27,6 +29,8 @@ def with_record_revision(action, payload, view):
     if action not in REVISION_ACTIONS or "revision" in result or not result.get("id"):
         return result
     bucket = action.split(".", 1)[0]
+    if bucket == "price_watch":
+        bucket = "price_watches"
     record = next((record for record in view.get(bucket, []) if record["id"] == result["id"]), None)
     if record is None:
         raise DomainError("not_found")
