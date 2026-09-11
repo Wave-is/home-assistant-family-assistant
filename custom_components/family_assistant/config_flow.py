@@ -75,7 +75,13 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            user = await self.hass.auth.async_get_user(self.context.get("user_id"))
+            user_id = self.context.get("user_id")
+            user = await self.hass.auth.async_get_user(user_id) if user_id else None
+            if user is None:
+                users = await self.hass.auth.async_get_users()
+                admin_users = [u for u in users if u.is_active and u.is_admin]
+                if admin_users:
+                    user = next((u for u in admin_users if u.is_owner), admin_users[0])
             if user is None or not user.is_admin:
                 return self.async_abort(reason="admin_required")
             if not user_input["name"].strip() or not user_input["owner_name"].strip():
