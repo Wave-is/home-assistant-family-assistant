@@ -9,6 +9,11 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up Family Assistant from configuration.yaml."""
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one household and its server-side API."""
     from .runtime import async_setup_runtime
