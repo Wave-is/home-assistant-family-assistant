@@ -110,24 +110,27 @@ def _inspect(review):
             assignees[task_id] = None if task_id in assignees else details.get("assignee")
         elif kind == "revised":
             previous, current = details.get("previous"), details.get("current")
-            if (
-                type(previous) is dict
-                and type(current) is dict
-                and "assignee" in previous
-                and "assignee" in current
-                and previous["assignee"] == assignees.get(task_id)
-            ):
-                assignees[task_id] = current["assignee"]
+            if type(previous) is dict and type(current) is dict:
+                if "assignee" in previous or "assignee" in current:
+                    if (
+                        "assignee" in previous
+                        and "assignee" in current
+                        and previous["assignee"] == assignees.get(task_id)
+                    ):
+                        assignees[task_id] = current["assignee"]
+                    else:
+                        assignees[task_id] = None
             else:
-                # A later receipt must not borrow today's possibly reassigned owner.
                 assignees[task_id] = None
+
         elif kind == "missed_and_rolled_over":
             day = details.get("missed_date")
             expected = f"task:{task_id}:missed:{day}"
-            key = details.get("court_source_key")
+            key = details.get("court_source_key") or expected
             if (
                 not _date(day)
                 or key != expected
+
                 or type(details.get("court_delta")) is not int
                 or details["court_delta"] != -1
                 or event.get("actor") != "system"

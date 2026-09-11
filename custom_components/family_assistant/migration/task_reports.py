@@ -243,12 +243,12 @@ def _project_history(row, events, mapping, members, *, reports, photo=False, pho
             if (
                 not isinstance(before, dict)
                 or not isinstance(after, dict)
-                or before.get("assignee") != assignee_key
+                or before.get("assignee", assignee_key) != assignee_key
             ):
                 _fail("task_report_reassignment_review_required")
             if state not in OPEN or destination not in OPEN:
                 _fail()
-            next_key = after.get("assignee")
+            next_key = after.get("assignee", assignee_key)
             next_assignee = _binding(next_key, mapping, members)
             if next_key != assignee_key:
                 if destination not in {"assigned", "overdue"}:
