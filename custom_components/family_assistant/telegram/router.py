@@ -360,6 +360,12 @@ async def route(
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
 
+    from ..online_school.messages import query as school_query
+
+    school_reply = school_query(engine, actor, content, now, private=private, language=language)
+    if school_reply is not None:
+        return school_reply
+
     def saved(result):
         if "watch_revision" in result and type(result.get("enabled")) is bool:
             from .watch_messages import COMMAND_COPY

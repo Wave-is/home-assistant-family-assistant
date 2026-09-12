@@ -302,3 +302,21 @@ work, duplicates do not repeat mutations, and tasks survive a restart. Test
 both wake-up stages with the intended device while awake. Keep automatic
 penalties disabled until delivery and wake-up tests are satisfactory. A public
 release, migration and hardware acceptance remain separate gates.
+
+## Online school (development branch)
+
+Enable School, add a child, then open integration settings → Services → Online
+school. Choose + for a separate connection. For Respublika (including A+ STEAM),
+enter the HTTPS site origin without `/auth`, login and password. After login is
+checked, explicitly map a discovered student to the family child. Repeat for
+other children or schools. Credentials stay in Home Assistant, not the card or
+public repository.
+
+The School card shows upcoming lessons, exact homework/topics/links and literal
+marks/absence records. Check the last successful update and fetched coverage.
+Ask your own bot privately: `/school Name`, `/homework Name`, `/grades Name`;
+append today or tomorrow as needed. Opt into private evening preparation and
+change notices separately and choose recipients with linked personal bot chats.
+No school records are sent to the group, old marks are silent on first import,
+and no homework or teacher messages are submitted. Only Respublika is supported
+initially; see [limits and further use cases](online-schools.md).

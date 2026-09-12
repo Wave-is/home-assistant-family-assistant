@@ -202,6 +202,7 @@ async def test_school_reviewed_child_identity_change_requires_explicit_fresh_rev
     assert "school" not in school_engine.view("child", now=now)
     await member_change(school_engine, now, role="child")
     assert school_engine.view("child", now=now)["school"] == {
+        "online": {"sources": []},
         "timetables": [],
         "upcoming": [],
         "homework": [],
@@ -255,6 +256,7 @@ async def test_school_one_active_archive_and_full_replacement(school_engine, now
     )
     assert archived["status"] == "archived"
     assert school_engine.view("child", now=now)["school"] == {
+        "online": {"sources": []},
         "timetables": [],
         "upcoming": [],
         "homework": [],

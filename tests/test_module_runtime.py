@@ -30,10 +30,14 @@ def harness(engine, monkeypatch):
     async def network(_hass, _entry):
         calls.append("network")
 
+    async def school(_hass, _entry):
+        calls.append("school")
+
     adapter.async_stop_chat = stop_chat
     adapter.async_stop_articles = stop_articles
     adapter.async_configure_assistant = assistant
     adapter.async_configure_network = network
+    adapter.async_configure_online_school = school
     monkeypatch.setitem(sys.modules, adapter.__name__, adapter)
     runtime = SimpleNamespace(
         engine=engine,

@@ -713,6 +713,11 @@ class TelegramManager:
                                 "text": response,
                                 "private_context": isinstance(response, PersonalReply),
                                 **(
+                                    {"school_context": response.school_scope}
+                                    if hasattr(response, "school_scope")
+                                    else {}
+                                ),
+                                **(
                                     {"admission_context": response.scope}
                                     if isinstance(response, AdmissionReply)
                                     else {}

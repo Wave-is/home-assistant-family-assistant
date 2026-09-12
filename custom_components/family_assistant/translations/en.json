@@ -35,6 +35,7 @@
       }
     },
     "error": {
+      "capacity_exceeded": "The configured source limit has been reached. Review existing connections first.",
       "chat_unavailable": "Conversation has changed or is unavailable. Refresh the card before sending again.",
       "chat_busy": "Several conversations are already in progress. Try again shortly; no new action was started.",
       "chat_context_expired": "This request's retry context has expired. Check the current result before sending a new command.",
@@ -143,7 +144,14 @@
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
       "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically.",
-      "limit_exceeded": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one."
+      "limit_exceeded": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one.",
+      "online_school_auth_failed": "School login failed or the session expired. Check the account in its portal.",
+      "online_school_unavailable": "School is unavailable. Saved data has not been erased.",
+      "online_school_rate_limited": "School has limited requests; retry later.",
+      "online_school_invalid_response": "The school response could not be safely understood. Saved data was kept.",
+      "online_school_student_mismatch": "The response does not belong to the selected student. No data was imported.",
+      "online_school_invalid_config": "Check the school HTTPS origin, login, password and time zone.",
+      "online_school_timeout": "School did not respond in time. Saved data was kept."
     },
     "abort": {
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
@@ -164,7 +172,14 @@
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
       "assistant_job_expired": "The queued request expired. Nothing was executed. Please send it again.",
       "learning_template_required": "Use an unrecognized phrase and a supported reusable command without a fixed record ID or date. Built-in commands cannot be replaced.",
-      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase."
+      "learning_limit": "This account reached its 200-phrase limit. Update an existing phrase.",
+      "online_school_auth_failed": "School login failed or the session expired. Check the account in its portal.",
+      "online_school_unavailable": "School is unavailable. Saved data has not been erased.",
+      "online_school_rate_limited": "School has limited requests; retry later.",
+      "online_school_invalid_response": "The school response could not be safely understood. Saved data was kept.",
+      "online_school_student_mismatch": "The response does not belong to the selected student. No data was imported.",
+      "online_school_invalid_config": "Check the school HTTPS origin, login, password and time zone.",
+      "online_school_timeout": "School did not respond in time. Saved data was kept."
     }
   },
   "options": {
@@ -554,7 +569,8 @@
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
           "digests": "Digest schedule",
-          "init": "← Back to main menu"
+          "init": "← Back to main menu",
+          "online_school": "Online school"
         }
       },
       "menu_maintenance": {
@@ -591,11 +607,43 @@
           "legacy_prepare": "Prepare a read-only copy from exports",
           "legacy_resume": "Resume a saved read-only copy",
           "ha_agent": "Existing Home Assistant agent",
-          "init": "← Back to main menu"
+          "init": "← Back to main menu",
+          "online_school": "Online school"
+        }
+      },
+      "online_school": {
+        "title": "Online school",
+        "description": "Choose an existing connection, or + for a new account/child. Different children may use different schools. Enable the School module and add a child first.",
+        "data": {
+          "source": "Connection (+ = new)"
+        }
+      },
+      "online_school_account": {
+        "title": "Online school",
+        "description": "Read-only Respublika account. Enter the HTTPS site origin (without /auth). Credentials stay in this Home Assistant entry. Leave password blank to keep it only for the same URL and username. Disabling stops polling; saved data is retained. No messages or homework are submitted to school.",
+        "data": {
+          "enabled": "Enable connection",
+          "label": "School label",
+          "url": "School HTTPS origin",
+          "username": "School login",
+          "password": "Password (blank = keep current)",
+          "member": "Family child"
+        }
+      },
+      "online_school_student": {
+        "title": "Online school",
+        "description": "Bind the school student explicitly to {member}. Notifications are OFF by default; select private recipients only. Preparation time is household-local; lesson date is a preparation target, not a verified submission deadline. The initial import does not announce old marks.",
+        "data": {
+          "student_id": "Student in the school account",
+          "notifications": "Enable private preparation reminders",
+          "notify_changes": "Also notify about changes and new marks",
+          "homework_time": "Preparation time (HH:MM)",
+          "recipients": "Private recipients"
         }
       }
     },
     "error": {
+      "capacity_exceeded": "The configured source limit has been reached. Review existing connections first.",
       "migration_prepare_source_invalid": "The source exports or additional IDs are invalid, unsupported or oversized. Obtain corrected coherent exports; no copy was written.",
       "migration_prepare_selection_invalid": "Choose an allowed participant, complete reviewer set or valid bounded file for this page. No association was advanced.",
       "migration_prepare_policy_changed": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check.",
@@ -740,7 +788,14 @@
       "photo_unavailable": "The photo could not be downloaded. Send it again.",
       "provider_images_unsupported": "This provider does not support photo input. Configure an image-capable provider.",
       "telegram_unavailable": "Telegram is not connected. Check the bot connection before inviting members.",
-      "file_too_large": "The file exceeds the supported size."
+      "file_too_large": "The file exceeds the supported size.",
+      "online_school_auth_failed": "School login failed or the session expired. Check the account in its portal.",
+      "online_school_unavailable": "School is unavailable. Saved data has not been erased.",
+      "online_school_rate_limited": "School has limited requests; retry later.",
+      "online_school_invalid_response": "The school response could not be safely understood. Saved data was kept.",
+      "online_school_student_mismatch": "The response does not belong to the selected student. No data was imported.",
+      "online_school_invalid_config": "Check the school HTTPS origin, login, password and time zone.",
+      "online_school_timeout": "School did not respond in time. Saved data was kept."
     },
     "abort": {
       "developer_policy_saved": "Developer diagnostics consent saved.",
@@ -791,7 +846,14 @@
       "ha_agent_unsupported": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt.",
       "ha_agent_unavailable": "The selected Home Assistant conversation entity is not loaded or available.",
       "ha_agent_changed": "The selected agent or its configuration changed. Review the selection again.",
-      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
+      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback.",
+      "online_school_auth_failed": "School login failed or the session expired. Check the account in its portal.",
+      "online_school_unavailable": "School is unavailable. Saved data has not been erased.",
+      "online_school_rate_limited": "School has limited requests; retry later.",
+      "online_school_invalid_response": "The school response could not be safely understood. Saved data was kept.",
+      "online_school_student_mismatch": "The response does not belong to the selected student. No data was imported.",
+      "online_school_invalid_config": "Check the school HTTPS origin, login, password and time zone.",
+      "online_school_timeout": "School did not respond in time. Saved data was kept."
     }
   },
   "entity": {
@@ -832,6 +894,9 @@
     }
   },
   "exceptions": {
+    "capacity_exceeded": {
+      "message": "The configured source limit has been reached. Review existing connections first."
+    },
     "file_too_large": {
       "message": "The file exceeds the supported size."
     },
@@ -1227,6 +1292,27 @@
     },
     "photo_target_required": {
       "message": "Specify the task with /report TASK_ID or reply to its task message."
+    },
+    "online_school_auth_failed": {
+      "message": "School login failed or the session expired. Check the account in its portal."
+    },
+    "online_school_unavailable": {
+      "message": "School is unavailable. Saved data has not been erased."
+    },
+    "online_school_rate_limited": {
+      "message": "School has limited requests; retry later."
+    },
+    "online_school_invalid_response": {
+      "message": "The school response could not be safely understood. Saved data was kept."
+    },
+    "online_school_student_mismatch": {
+      "message": "The response does not belong to the selected student. No data was imported."
+    },
+    "online_school_invalid_config": {
+      "message": "Check the school HTTPS origin, login, password and time zone."
+    },
+    "online_school_timeout": {
+      "message": "School did not respond in time. Saved data was kept."
     }
   },
   "selector": {

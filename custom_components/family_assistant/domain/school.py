@@ -403,6 +403,10 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     """Route explicit school work or a parent-reviewed timetable mutation."""
     if not isinstance(payload, dict):
         raise DomainError("invalid_field", "payload")
+    if action.startswith("online_"):
+        from .online_school import handle as online_command
+
+        return online_command(ctx, action.removeprefix("online_"), payload)
     if action in {"homework_create", "homework_revise"}:
         from .school_work import handle as homework_command
 

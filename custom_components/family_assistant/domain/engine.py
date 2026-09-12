@@ -480,6 +480,9 @@ class Engine:
             and "school" in self._state["settings"]["modules"]
         ):
             data["school"] = school.view(self._state, actor, now)
+            from . import online_school
+
+            data["school"]["online"] = online_school.view(self._state, actor_id, now)
             data["school"].update(school_preparation.view(self._state, actor))
             data["school"].update(school_reminders.view(self._state, actor))
             data["school"]["homework"] = (
@@ -705,6 +708,12 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
                 result,
+            )
+        elif action.startswith("school.online_"):
+            from . import online_school
+
+            online_school.authorize_replay(
+                self._state, actor_id, action.removeprefix("school.online_"), payload, result, now
             )
         elif action == "school.preparation_reminder_access_set":
             school_reminders.authorize_replay(

@@ -1760,6 +1760,23 @@ service call does not prove physical sound or volume.
 
 ## Next work
 
+### Parallel online-school extension (2026-09-13, development branch)
+
+Accepted scope and source evidence: [online-school connectors](online-schools.md).
+The `codex/online-school-connectors` branch adds reviewed per-child accounts,
+Respublika read-only sessions, bounded private facts, native three-language
+Options, a School dashboard section, deterministic private bot reads and opt-in
+preparation/change notices. It preserves the existing manual School module.
+Provider/domain normalization passed a separate counts-only authorized portal
+smoke. This does **not** establish nonempty real journal/file acceptance, native
+HA lifecycle readiness or household deployment. Those gates and subsequent
+subject/long-work/provider enhancements remain explicit in the connector document.
+
+The independent `codex/home-assistant-next` branch contains reviewed tab-local
+family-profile/wizard draft recovery, including uncertain-create reconciliation
+without duplicate writes. Its commit is `ecdf6d200e8897fc37b65d1565c43597392aac61`;
+it has not been merged into this school branch or deployed with it.
+
 1. Extend language/context coverage and the LLM/search cascade; keep calendar
    calculations and authorization deterministic.
 2. Complete module controls and localization; extend offline HACS acceptance with live bootstrap/card loading before household cutover.

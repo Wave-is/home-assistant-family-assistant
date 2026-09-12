@@ -74,6 +74,15 @@ jobs:
           /work/tests/ha_dependency_smoke.py
           --wheel /work/dependencies/pypdf-6.17.0-py3-none-any.whl --case smoke -- --case panel
 
+      - name: Online school native Options and isolated runtime acceptance
+        run: >-
+          docker run --rm --network none --cap-drop ALL
+          --security-opt no-new-privileges --memory 1g
+          --mount type=bind,src=${{ github.workspace }},dst=/work,readonly
+          --entrypoint python ghcr.io/home-assistant/home-assistant:2026.8.2
+          /work/tests/ha_dependency_smoke.py
+          --wheel /work/dependencies/pypdf-6.17.0-py3-none-any.whl --case smoke -- --case online-school
+
   copy-resume-restart:
     runs-on: ubuntu-latest
     timeout-minutes: 15

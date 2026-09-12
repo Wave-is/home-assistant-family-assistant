@@ -6,6 +6,11 @@ from ..domain.validation import DomainError, timestamp
 def current(event, state, now):
     """Keep legacy envelopes compatible, but never revive a pinned old identity."""
     data = event.get("data", {})
+    if "school_context" in data:
+        from ..online_school.messages import reply_current
+
+        if not reply_current(state, data):
+            return False
     if "admission_context" in data:
         from .admission import current as admission_current
 

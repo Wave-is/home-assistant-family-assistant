@@ -30,6 +30,7 @@ async def reconcile(hass, entry, runtime):
     from .runtime import (
         async_configure_assistant,
         async_configure_network,
+        async_configure_online_school,
         async_stop_articles,
         async_stop_chat,
     )
@@ -57,6 +58,8 @@ async def reconcile(hass, entry, runtime):
                             async_configure_assistant(hass, entry)
                         if "mikrotik" in changed:
                             await async_configure_network(hass, entry)
+                        if "school" in changed:
+                            await async_configure_online_school(hass, entry)
                         runtime.module_signature = desired
                         runtime.health.pop("module_settings", None)
                     break

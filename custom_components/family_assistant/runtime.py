@@ -44,6 +44,7 @@ class Runtime:
     media_unsub: Any = None
     media_task: Any = None
     price_watcher: Any = None
+    online_school: Any = None
     options_lock: Any = field(default_factory=asyncio.Lock)
     module_signature: Any = None
     module_task: Any = None
@@ -216,6 +217,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await async_configure_network(hass, entry)
         await async_configure_telegram(hass, entry)
         async_configure_recipes(hass, entry)
+        await async_configure_online_school(hass, entry)
         from .price_watch_fetcher import PriceWatchScheduler
 
         runtime.price_watcher = PriceWatchScheduler(hass, entry, runtime)
@@ -232,6 +234,8 @@ async def _async_setup_runtime(hass, entry) -> bool:
         # even when the scheduler has no domain change to announce.
         runtime.updated()
     except Exception:
+        if runtime.online_school:
+            await runtime.online_school.stop()
         await async_stop_chat(runtime)
         await async_stop_articles(runtime)
         await async_stop_media(runtime)
@@ -306,6 +310,8 @@ async def _async_unload_runtime(hass, entry) -> bool:
     if platforms and not await hass.config_entries.async_unload_platforms(entry, platforms):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    if runtime.online_school:
+        await runtime.online_school.stop()
     if runtime.module_task is not None:
         runtime.module_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -393,12 +399,41 @@ async def async_options_updated(hass, entry):
                     await async_configure_presence(hass, entry)
                     async_configure_assistant(hass, entry)
                     async_configure_recipes(hass, entry)
+                    await async_configure_online_school(hass, entry)
                     await async_configure_network(hass, entry)
                     await async_configure_telegram(hass, entry)
                     selected.module_signature = modules_before
                     selected.updated()
                 return
         await coordinator.released.wait()
+
+
+async def async_configure_online_school(hass, entry):
+    """Reconcile only reviewed bindings; provider cookies never use HA's shared session."""
+    from copy import deepcopy
+
+    from .domain.online_school import sync_bindings
+    from .online_school.manager import SchoolManager
+
+    runtime = entry.runtime_data
+    if runtime.engine.shadow_mode:
+        return
+    if runtime.online_school:
+        await runtime.online_school.stop()
+        runtime.online_school = None
+    if "school" not in runtime.engine.snapshot()["settings"]["modules"]:
+        return
+    frozen = deepcopy(dict(entry.options))
+
+    def reconcile(ctx):
+        if dict(entry.options) != frozen:
+            return
+        return sync_bindings(ctx, frozen)
+
+    if frozen.get("online_school"):
+        await runtime.engine.system_update("online_school_sources", dt_util.utcnow(), reconcile)
+        runtime.online_school = SchoolManager(hass, entry, runtime)
+        runtime.online_school.start()
 
 
 async def async_configure_presence(hass, entry):
