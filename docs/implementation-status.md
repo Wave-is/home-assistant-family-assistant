@@ -1768,8 +1768,11 @@ Respublika read-only sessions, bounded private facts, native three-language
 Options, a School dashboard section, deterministic private bot reads and opt-in
 preparation/change notices. It preserves the existing manual School module.
 Provider/domain normalization passed a separate counts-only authorized portal
-smoke. This does **not** establish nonempty real journal/file acceptance, native
-HA lifecycle readiness or household deployment. Those gates and subsequent
+smoke. Code checkpoint `4303dcdccc8caf002cc04e6f2c05c7a8dc06becb` then passed all
+nine CI jobs in run 34724950412, including a dedicated actual HA2026.8.2
+native Options/polling/private-view/module-toggle/Store-reload scenario. This
+does **not** establish nonempty real journal/file acceptance or household
+deployment. Those gates and subsequent
 subject/long-work/provider enhancements remain explicit in the connector document.
 
 The independent `codex/home-assistant-next` branch contains reviewed tab-local

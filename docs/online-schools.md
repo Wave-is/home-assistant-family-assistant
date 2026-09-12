@@ -138,11 +138,19 @@ tests passed, five skipped, 23 subtests passed. The full browser suite passed
 261 scenarios; a subsequent link-label-only improvement passed its focused
 eight-browser rerun. Primary inspection confirmed readable mobile layout.
 Ruff/format, translation generation, privacy and runtime import/ZIP checks pass.
-The new isolated `ha_online_school_smoke.py` is wired into CI; its actual HA
-result must be recorded separately rather than inferred from unit tests.
+Final full JavaScript checks passed 189 pretests plus 524 main tests.
+All nine GitHub checks passed on code checkpoint
+`4303dcdccc8caf002cc04e6f2c05c7a8dc06becb`,
+[run 34724950412](https://github.com/Wave-is/home-assistant-family-assistant/actions/runs/34724950412).
+This includes the new isolated `ha_online_school_smoke.py`: actual Core 2026.8.2
+native owner Options, two child bindings/private WebSocket views, real adapter
+polling with synthetic transport, module disable/re-enable and Store-preserving
+unload/setup. The school's external HTTP contract is independently verified by
+the primary's private read-only live smoke, not by that synthetic HA transport.
+HACS/install/upgrade and encrypted-restore checks also passed. This is software
+acceptance, not household deployment or permission to submit school work.
 
-Still open: authenticated HA lifecycle acceptance of this new connector; real
-nonempty journal/attachment records; subject-specific/long-work preparation;
+Still open: real nonempty journal/attachment records; subject-specific/long-work preparation;
 explicit tutoring consent; additional providers; longer historical journal
 retention, announcement contracts and attachment downloads. These are separate
 requirements, not implied by a green basic connector smoke test.
