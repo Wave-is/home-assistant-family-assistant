@@ -105,6 +105,7 @@ export const ALARM_EDITOR_COPY = {
   },
 };
 
+import {inMemberContext} from "./panel-member-context.js";
 const CLOCK = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ROLES = new Set(["owner", "parent"]);
@@ -135,7 +136,7 @@ function members(card) {
 
 function eligibleMembers(card) {
   return members(card).filter(
-    (item) => item && item.active === true && item.role !== "guest" && validRevision(item.revision),
+    (item) => item && item.active === true && item.role !== "guest" && validRevision(item.revision) && inMemberContext(card,item.id),
   ).sort((left, right) => left.id.localeCompare(right.id));
 }
 

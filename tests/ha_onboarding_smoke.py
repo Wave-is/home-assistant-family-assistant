@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from ha_options_menu import select_option
+
 
 async def _guide(hass, entry, owner):
     flow = await hass.config_entries.options.async_init(
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    assert "guided_onboarding" in flow["menu_options"], flow
-    result = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "guided_onboarding"}
-    )
+    assert "menu_family" in flow["menu_options"], flow
+    result = await select_option(hass, flow, "guided_onboarding")
     assert result["type"] == "menu" and result["step_id"] == "guided_onboarding", result
     return result
 
@@ -72,9 +72,7 @@ async def verify_onboarding(hass, entry, owner):
     assert entry.modified_at == before_modified
 
     resumed = await _guide(hass, entry, owner)
-    member = await hass.config_entries.options.async_configure(
-        resumed["flow_id"], {"next_step_id": "member"}
-    )
+    member = await select_option(hass, resumed, "member")
     assert member["type"] == "form" and member["step_id"] == "member", member
     assert runtime.engine.snapshot() == before_state
     assert dict(entry.options) == before_options

@@ -3,6 +3,7 @@
 import { wallTime, wallTimeCandidates } from "./local-time.js";
 import { SCHOOL_WORK_COPY } from "./school-work-copy.js";
 import { TASK_ITEM_COPY } from "./task-items.js";
+import {inMemberContext,memberContextId} from "./panel-member-context.js";
 
 const PARENTS = new Set(["owner", "parent"]);
 const ROLES = new Set(["owner", "parent", "child"]);
@@ -53,7 +54,7 @@ function member(card, id) {
 
 function child(card, id) {
   const item = member(card, id);
-  return item?.active === true && item.role === "child" && validRevision(item.revision)
+  return inMemberContext(card,id) && item?.active === true && item.role === "child" && validRevision(item.revision)
     ? item
     : null;
 }
@@ -88,23 +89,23 @@ function sameAccess(card, expected) {
 }
 
 function homework(card) {
-  return Array.isArray(card?._data?.school?.homework) ? card._data.school.homework : [];
+  return Array.isArray(card?._data?.school?.homework) ? card._data.school.homework.filter(item=>inMemberContext(card,item.assignee)) : [];
 }
 
 function preparations(card) {
   return Array.isArray(card?._data?.school?.preparations)
-    ? card._data.school.preparations
+    ? card._data.school.preparations.filter(item=>inMemberContext(card,item.member))
     : [];
 }
 
 function timetables(card) {
   return Array.isArray(card?._data?.school?.timetables)
-    ? card._data.school.timetables
+    ? card._data.school.timetables.filter(item=>inMemberContext(card,item.member))
     : [];
 }
 
 function upcoming(card) {
-  return Array.isArray(card?._data?.school?.upcoming) ? card._data.school.upcoming : [];
+  return Array.isArray(card?._data?.school?.upcoming) ? card._data.school.upcoming.filter(item=>inMemberContext(card,item.member)) : [];
 }
 
 function currentTask(card, id) {
@@ -536,7 +537,7 @@ async function send(card, body, draft) {
 function openHomework(card, item = null) {
   const scope = access(card);
   const isRevise = Boolean(item);
-  const memberId = isRevise ? item.assignee : scope.role === "child" ? scope.actor : members(card).find((value) => value.active && value.role === "child")?.id;
+  const memberId = isRevise ? item.assignee : memberContextId(card) || (scope.role === "child" ? scope.actor : members(card).find((value) => value.active && value.role === "child")?.id);
   const target = actorCanTarget(card, memberId);
   if (!scope || !target || !modules(card, "school", "tasks") || (isRevise && (!PARENTS.has(scope.role) || !REVISABLE.has(item.status)))) return;
   const zone = card._data.settings?.timezone || "UTC";
@@ -581,7 +582,7 @@ function renderEditor(section, card, draft, copy) {
     const label = node("label", copy.child);
     childSelect = node("select");
     childSelect.name = "member";
-    for (const item of members(card).filter((value) => value.active && value.role === "child" && validRevision(value.revision))) {
+    for (const item of members(card).filter((value) => inMemberContext(card,value.id) && value.active && value.role === "child" && validRevision(value.revision))) {
       const option = node("option", item.name || item.id);
       option.value = item.id;
       childSelect.append(option);

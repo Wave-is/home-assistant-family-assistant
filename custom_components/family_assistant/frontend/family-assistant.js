@@ -39,6 +39,8 @@ import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js
 import {renderArticle,reconcileArticleRefresh,disposeArticle} from "./article-view.js";
 import {renderConversation,reconcileConversationRefresh,disposeConversation} from "./conversation-view.js";
 import {appendProposalFeedback} from "./semantic-feedback-view.js";
+import {MEMBER_CONTEXT_VIEWS,memberContextId,inMemberContext,memberContextCommandAllowed,renderMemberContext} from "./panel-member-context.js";
+import "./family-panel.js";
 const COPY = {
   en: {
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
@@ -235,6 +237,8 @@ function el(tag, text, className) {
 export class FamilyCard extends HTMLElement {
   constructor() { super(); this.attachShadow({mode:"open"}); this._view = "today"; }
   setConfig(config) {
+    if(config.member_id!==undefined && (typeof config.member_id!=="string" || !config.member_id.trim() || !MEMBER_CONTEXT_VIEWS.includes(config.view || this.constructor.defaultView)))throw new Error("member_id requires a school, alarms or digests view");
+    if(config.school_section!==undefined && !["all","reminders"].includes(config.school_section))throw new Error("Unknown school section");
     disposeTaskForm(this);
     disposeTaskBatch(this);
     disposeShoppingEditor(this);
@@ -343,6 +347,7 @@ export class FamilyCard extends HTMLElement {
   }
   async command(action,payload,operationId) {
     if (this._writing) return;
+    if(!memberContextCommandAllowed(this,action,payload)){this._actionError="conflict";this.render();return;}
     const generation=this._generation;
     const fingerprint=JSON.stringify([this._entry,action,payload]);
     if(operationId || this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:operationId || crypto.randomUUID()};
@@ -405,8 +410,9 @@ export class FamilyCard extends HTMLElement {
     }
     if(this._error){body.append(this.button(this.t.retry,()=>this.refresh()));return;}
     if(this._data.read_only){renderShadow(this,body);return;}
+    if(!renderMemberContext(this,body))return;
     if(this._view==="today") {renderToday(this,body);return;}
-    this.renderProposals(body);
+    if(memberContextId(this)===null)this.renderProposals(body);
     if(this._view==="health") {renderHealth(this,body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
@@ -414,8 +420,10 @@ export class FamilyCard extends HTMLElement {
         this._schoolDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;return;
       }
       if(!this._schoolDraft && !this._schoolWorkDraft)renderSchoolReminders(this,body);
-      if(!this._schoolDraft && !this._schoolReminderDraft)renderSchoolWork(this,body);
-      if(!this._schoolWorkDraft && !this._schoolReminderDraft)renderSchool(this,body);
+      if(this._config?.school_section!=="reminders"){
+        if(!this._schoolDraft && !this._schoolReminderDraft)renderSchoolWork(this,body);
+        if(!this._schoolWorkDraft && !this._schoolReminderDraft)renderSchool(this,body);
+      }
       return;
     }
     if(this._view==="maintenance"){
@@ -455,7 +463,7 @@ export class FamilyCard extends HTMLElement {
       if(this._taskBatchDraft)return;
     }
     if(this._view==="shopping"){renderShoppingSeries(this,body);renderShoppingEditor(this,body);}
-    const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${this._data[this._view]?.length || 0} ${this.t.units}`,"sub"));
+    const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${(this._data[this._view]||[]).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member)).length} ${this.t.units}`,"sub"));
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
       toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
@@ -468,7 +476,7 @@ export class FamilyCard extends HTMLElement {
       body.append(this.form());
       if(this._view==="tasks")return;
     }
-    const items=this._data[this._view] || [];
+    const items=(this._data[this._view] || []).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member));
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):this._view==="tasks"?!["completed","cancelled","archived"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
@@ -571,6 +579,7 @@ export class FamilyCard extends HTMLElement {
   }
   renderAlarmRuns(body) {
     for(const run of this._data.alarm_runs || []){
+      if(!inMemberContext(this,run.member))continue;
       if(!["first","waiting_second","second"].includes(run.stage))continue;
       const item=el("div",null,"item"),member=this._data.members.find(m=>m.id===run.member);
       item.append(el("strong",`${member?.name || ""} · ${this.t[run.stage]}`));
@@ -658,11 +667,11 @@ class FamilyEditor extends HTMLElement {
     }
   }
 }
-customElements.define("family-assistant-card-editor",FamilyEditor);
+if(!customElements.get("family-assistant-card-editor"))customElements.define("family-assistant-card-editor",FamilyEditor);
 for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"],["family-network-card","mikrotik"],["family-calendar-card","calendar"],["family-routines-card","routines"],["family-pantry-card","pantry"],["family-meals-card","meals"],["family-school-card","school"],["family-maintenance-card","maintenance"],["family-polls-card","polls"],["family-presence-card","presence"],["family-digests-card","digests"]]){
   class Card extends FamilyCard {static defaultView=view;}
-  customElements.define(type,Card);
+  if(!customElements.get(type))customElements.define(type,Card);
   window.customCards=window.customCards || [];
-  window.customCards.push({type,name:`Family Assistant · ${COPY.en[view]}`,description:COPY.en[view],preview:true});
+  if(!window.customCards.some(card=>card.type===type))window.customCards.push({type,name:`Family Assistant · ${COPY.en[view]}`,description:COPY.en[view],preview:true});
 }
 export {COPY};

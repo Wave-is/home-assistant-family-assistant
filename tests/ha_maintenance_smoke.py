@@ -7,6 +7,7 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 
 @asynccontextmanager
@@ -56,9 +57,7 @@ async def _general(hass, entry, user, *, maintenance, tasks):
         entry.entry_id, context={"user_id": user.id}
     )
     assert flow["type"] == "menu", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    form = await select_option(hass, flow, "general")
     if form["type"] == "abort":
         return form
     assert form["type"] == "form" and form["step_id"] == "general", form

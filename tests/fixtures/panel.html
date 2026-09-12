@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthetic control center acceptance</title>
+<style>
+  body {margin:0;font-family:system-ui;background:#f4f6f9}
+  body.dark {--primary-background-color:#13222e;--card-background-color:#1d303f;--primary-text-color:#edf5fa;--secondary-text-color:#b6c9d8;--divider-color:#405563;--primary-color:#50b6ee;background:#13222e;color:#edf5fa;color-scheme:dark}
+</style>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-panel.js";
+import {PANEL_MODULES} from "../../custom_components/family_assistant/frontend/panel-copy.js";
+const query=new URLSearchParams(location.search),lang=query.get("lang")||"en";
+if(query.get("theme")==="dark")document.body.classList.add("dark");
+const members=[{id:"M1",name:"Morgan Example",role:"owner",active:true,language:"en",revision:1,aliases:["Morgan"],ha_user_id:"fixture-owner",telegram_linked:true,avatar:"adult"},{id:"M2",name:"Taylor Example",role:"parent",active:true,language:"uk",revision:2,aliases:[],telegram_linked:true,avatar:"flower"},{id:"M3",name:"Sam Example",role:"child",active:true,language:"ru",revision:3,aliases:[],telegram_linked:false,avatar:"star"}];
+const view={role:query.get("role")||"owner",actor:"M1",settings:{name:"Example Family",language:lang,timezone:"UTC",modules:["tasks","court","school","shopping"],automatic_penalties:false,daily_penalty_cap:0,school_preparation_reminders:false,school_preparation_days_before:0,school_preparation_time:"18:00"},members:structuredClone(members),tasks:[],shopping:[],court:[],alarms:[],alarm_runs:[],audit:[],proposals:[],deliveries:[]};
+const data={view,members,settings_revision:1,onboarding:JSON.parse(sessionStorage.getItem("synthetic-panel-onboarding")||"null")||{revision:1,step:1,completed:false,skipped:[]},connections:{telegram:{configured:true,bot_connected:true,bot_username:"example_test_bot",send_ok:null,commands_ok:null,text_ok:null,group_ok:false},conversation:{configured:false}},capabilities:PANEL_MODULES.map(([id])=>({id,enabled:view.settings.modules.includes(id),ready:["tasks","court","shopping"].includes(id),issues:id==="school"?["not_configured"]:[]}))};
+window.fixture={data,calls:[],failNext:false,readbackFail:false,enrollment:null};
+const control=document.createElement("family-assistant-panel");window.panel=control;
+control.hass={user:{id:"fixture-owner"},connection:{},language:lang,config:{time_zone:"UTC"},callWS:async message=>{
+  window.fixture.calls.push(structuredClone(message));
+  if(message.type==="family_assistant/households")return [{entry_id:"synthetic",title:"Example Family"}];
+  if(message.type==="family_assistant/panel")return structuredClone(data);
+  if(message.type==="family_assistant/view")return structuredClone(data.view);
+  if(message.type==="family_assistant/telegram_invite"){
+    const kind=message.kind||"member";window.fixture.enrollment={id:"synthetic-enrollment",kind,member:message.member_id,state:"issued",expires_at:"2030-01-01T12:15:00Z"};
+    data.enrollments=[window.fixture.enrollment];return {...window.fixture.enrollment,code:"SYNTHETIC-CODE",bot_username:"example_test_bot",...(kind==="member"?{url:"https://t.me/example_test_bot?start=SYNTHETIC-CODE"}:{instruction:"/family_setup@example_test_bot SYNTHETIC-CODE"})};
+  }
+  if(message.type==="family_assistant/telegram_enrollment")return structuredClone(window.fixture.enrollment);
+  if(message.type==="family_assistant/telegram_enrollment_confirm"){
+    const record=window.fixture.enrollment;
+    if(record.state!=="captured"||message.candidate.chat_id!==record.candidate.chat_id||message.candidate.user_id!==record.candidate.user_id)throw {code:"conflict"};
+    record.state="confirmed";if(record.kind==="member")data.members.find(member=>member.id===record.member).telegram_linked=true;else data.connections.telegram.group_ok=true;return {linked:true};
+  }
+  if(message.type==="family_assistant/ai_sandbox_test")return {recognized:true,simulated:true,intent:"court.award",payload:{assessments:[{member:"M3",points:1,reason:"Synthetic helpful action"}]}};
+  if(message.type==="family_assistant/execute"){
+    if(window.fixture.failNext){window.fixture.failNext=false;throw {code:"connection_lost"};}
+    if(message.action==="members.save"){
+      const payload=message.payload,index=data.members.findIndex(member=>member.id===payload.id);
+      if(index>=0){if(payload.revision!==data.members[index].revision)throw {code:"conflict"};data.members[index]={...data.members[index],...payload,revision:payload.revision+1};}
+      else data.members.push({...payload,id:`M${data.members.length+1}`,revision:1});
+      data.view.members=structuredClone(data.members);return index>=0?data.members[index]:data.members.at(-1);
+    }
+    if(message.action==="settings.patch"){
+      if(message.payload.revision!==data.settings_revision)throw {code:"conflict"};
+      Object.assign(data.view.settings,message.payload.changes);data.settings_revision++;return data.view.settings;
+    }
+    if(message.action==="settings.onboarding"){
+      if(message.payload.revision!==data.onboarding.revision)throw {code:"conflict"};
+      data.onboarding={...message.payload,revision:data.onboarding.revision+1};sessionStorage.setItem("synthetic-panel-onboarding",JSON.stringify(data.onboarding));return data.onboarding;
+    }
+    if(message.action==="school.preparation_reminder_access_set"){
+      const target=data.view.school.preparation_reminders.self_targets.find(item=>item.member===message.payload.member);
+      if(!target||target.member_revision!==message.payload.member_revision||target.recipient_revision!==message.payload.recipient_revision||target.subscription_revision!==message.payload.subscription_revision)throw {code:"conflict"};
+      target.enabled=message.payload.enabled;target.subscription_revision=(target.subscription_revision||0)+1;return structuredClone(target);
+    }
+    if(message.action==="alarms.save"){
+      const payload=message.payload,index=data.view.alarms.findIndex(item=>item.id===payload.id);
+      if(index>=0){if(payload.revision!==data.view.alarms[index].revision)throw {code:"conflict"};data.view.alarms[index]={...payload,revision:payload.revision+1};return structuredClone(data.view.alarms[index]);}
+      const record={...payload,id:`A${data.view.alarms.length+1}`,revision:1};data.view.alarms.push(record);return structuredClone(record);
+    }
+  }
+  throw {code:"unknown_command"};
+}};
+document.body.append(control);
+</script>
+</html>

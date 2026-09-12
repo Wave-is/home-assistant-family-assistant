@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 from ha_legacy_archive_smoke import synthetic_source
 from ha_media_smoke import _image, _token
+from ha_options_menu import select_option
 
 
 def _package(members, *, orphan_penalty=False):
@@ -88,9 +89,7 @@ async def _open(hass, prototype, user, flows):
         prototype.entry_id, context={"user_id": user.id}
     )
     flows.add(result["flow_id"])
-    return await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "legacy_copy"}
-    )
+    return await select_option(hass, result, "legacy_copy")
 
 
 async def verify_copy_wizard(hass, owner):

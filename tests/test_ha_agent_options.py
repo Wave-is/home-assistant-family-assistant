@@ -135,7 +135,7 @@ async def test_disable_removes_only_selection_and_preserves_other_options(setup,
         {"enabled": 1, "timeout": 15},
         {"enabled": True, "timeout": True},
         {"enabled": True, "timeout": "15"},
-        {"enabled": True, "timeout": 46},
+        {"enabled": True, "timeout": 61},
         {"enabled": True},
         {**INPUT, "unknown": "no"},
     ],
@@ -145,6 +145,14 @@ async def test_bad_editor_input_never_reaches_target(setup, values):
     result = await begin(flow, module, values)
     assert result["errors"]["base"] == "invalid_field"
     assert not flow.inspections and not flow.created
+
+
+async def test_editor_accepts_maximum_timeout(setup):
+    flow, module = setup
+    result = await begin(flow, module, {**INPUT, "timeout": 60})
+    assert result["step_id"] == "ha_agent_review"
+    result = await module.review_step(flow, {"confirmed": True})
+    assert result["data"]["conversation"]["ha_agent"]["timeout"] == 60
 
 
 async def test_module_off_disallows_enabling_agent(setup):

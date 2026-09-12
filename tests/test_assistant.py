@@ -120,8 +120,14 @@ async def test_model_inspection_and_structured_format():
     model = Ollama(session, {"url": "https://example.org/ollama", "model": "synthetic-model"})
     await model.inspect()
     assert (await model.generate([], plans.SCHEMA))["text"] == "Hello"
+    from custom_components.family_assistant.assistant.provider import _clean_schema_for_grammar
+
     body = session.calls[-1][2]["json"]
-    assert body["format"] == plans.SCHEMA and body["stream"] is False and body["think"] is False
+    assert (
+        body["format"] == _clean_schema_for_grammar(plans.SCHEMA)
+        and body["stream"] is False
+        and body["think"] is False
+    )
 
 
 @pytest.mark.asyncio
@@ -135,6 +141,35 @@ async def test_fallback_after_timeout_and_malformed_output_has_cooldown():
     assert len(primary.calls) == 1 and health["conversation"] == "fallback"
     invalid = Cascade([Provider({"kind": []}), Provider({"kind": "answer", "text": "Valid"})], {})
     assert (await invalid.generate([], plans.SCHEMA, plans.validate))["text"] == "Valid"
+
+
+@pytest.mark.asyncio
+async def test_single_provider_not_blocked_by_cooldown():
+    flaky = Provider(DomainError("provider_timeout"), {"kind": "answer", "text": "Recovered"})
+    health = {}
+    cascade = Cascade([flaky], health, clock=lambda: 10)
+    with pytest.raises(DomainError, match="provider_timeout"):
+        await cascade.generate([], plans.SCHEMA, plans.validate)
+    assert health["conversation"] == "provider_timeout"
+    # Second call within cooldown window should NOT be blocked by cooldown since single provider
+    res = await cascade.generate([], plans.SCHEMA, plans.validate)
+    assert res["text"] == "Recovered"
+    assert health["conversation"] == "connected"
+
+
+@pytest.mark.asyncio
+async def test_all_providers_in_cooldown_retries_primary():
+    p1 = Provider(DomainError("provider_timeout"), {"kind": "answer", "text": "P1 Recovered"})
+    p2 = Provider(DomainError("provider_unreachable"))
+    health = {}
+    cascade = Cascade([p1, p2], health, clock=lambda: 10)
+    with pytest.raises(DomainError, match="provider_unreachable"):
+        await cascade.generate([], plans.SCHEMA, plans.validate)
+    # Both providers are now in cooldown.
+    # When all providers cool down, one primary probe can detect transient recovery.
+    res = await cascade.generate([], plans.SCHEMA, plans.validate)
+    assert res["text"] == "P1 Recovered"
+    assert health["conversation"] == "connected"
 
 
 @pytest.mark.parametrize(
@@ -479,3 +514,64 @@ async def test_queue_survives_restart_without_blocking_ping_or_accepting_rebound
     )
     with pytest.raises(DomainError, match="forbidden"):
         jobs.authorize(job, now)
+
+
+def test_quote_messages_preserves_images(now):
+    from custom_components.family_assistant.assistant.plans import quote_messages
+
+    msgs = quote_messages("ru", "Опиши фото", "какой-то текст", now, images=["fake_b64_image"])
+    assert len(msgs) == 2
+    assert msgs[1].get("images") == ["fake_b64_image"]
+
+
+@pytest.mark.asyncio
+async def test_images_are_withheld_from_plans_and_cannot_authorize_mutations(engine, now):
+    await enable(engine, now)
+    image = "synthetic_encoded_injection"
+    provider = Provider(
+        {"kind": "answer", "text": "Inspecting image"},
+        {
+            "kind": "commands",
+            "operations": [
+                {
+                    "action": "shopping.add",
+                    "payload": {"name": "Injected product"},
+                }
+            ],
+        },
+    )
+    with pytest.raises(DomainError, match="provider_bad_response"):
+        await Assistant(engine, Cascade([provider], {})).respond(
+            "parent", "Describe this photo", "image-injection", now, images=[image]
+        )
+    assert image not in json.dumps(provider.calls[0])
+    assert json.loads(provider.calls[0][-1]["content"])["image_present"] is True
+    assert provider.calls[1][-1]["images"] == [image]
+    assert "view" not in json.loads(provider.calls[1][-1]["content"])
+    assert not engine.snapshot()["shopping"] and not engine.snapshot()["proposals"]
+
+
+@pytest.mark.asyncio
+async def test_quota_cooldown_is_respected_without_fabricating_recovery():
+    provider = Provider(
+        DomainError("provider_quota_exceeded"), {"kind": "answer", "text": "Recovered"}
+    )
+    clock = [10]
+    cascade = Cascade([provider], {}, clock=lambda: clock[0])
+    for _ in range(2):
+        with pytest.raises(DomainError, match="provider_quota_exceeded"):
+            await cascade.generate([], plans.SCHEMA, plans.validate)
+    assert len(provider.calls) == 1
+    clock[0] += 300
+    assert (await cascade.generate([], plans.SCHEMA, plans.validate))["text"] == "Recovered"
+
+
+@pytest.mark.asyncio
+async def test_model_answer_has_truthful_non_action_receipt(engine, now):
+    await enable(engine, now)
+    provider = Provider({"kind": "answer", "text": "Done, I bought the milk."})
+    reply = await Assistant(engine, Cascade([provider], {})).respond(
+        "parent", "Explain the shopping process", "model-answer", now
+    )
+    assert "Family data was not changed." in reply
+    assert not engine.snapshot()["shopping"] and not engine.snapshot()["proposals"]

@@ -392,6 +392,10 @@ class Engine:
         ]
         if not parent:
             data["settings"].pop("routines", None)
+            # Member-scoped rule labels are private. Only the authorized score
+            # summary projects thresholds to a non-parent caller.
+            if isinstance(data["settings"].get("court"), dict):
+                data["settings"]["court"].pop("thresholds", None)
         data["shopping"] = [
             {**item, "merge_name": shopping.normalized_name(item["name"])}
             for item in self._state["shopping"].values()

@@ -7,6 +7,8 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from ha_options_menu import select_option
+
 KID_CONTROL_PRIVATE_FIELDS = frozenset(
     {
         "active-mac-address",
@@ -61,9 +63,7 @@ async def run_network(hass, entry, owner, child_id):
         flow = await hass.config_entries.options.async_init(
             entry.entry_id, context={"user_id": owner.id}
         )
-        return await hass.config_entries.options.async_configure(
-            flow["flow_id"], {"next_step_id": "mikrotik"}
-        )
+        return await select_option(hass, flow, "mikrotik")
 
     tables = {
         "resource": [{"version": "7.20.1"}],
@@ -398,6 +398,13 @@ async def process_current(runtime, receiver, update):
         runtime.telegram = previous
 
 
+def next_synthetic_update_id(runtime, previous):
+    """Direct callback fixtures also consume IDs in Telegram's shared sequence."""
+    bot_id = str(runtime.telegram.bot["id"])
+    offset = runtime.engine.snapshot()["telegram"].get("offsets", {}).get(bot_id, -1)
+    return max(previous + 1, offset)
+
+
 class SyntheticTelegram:
     sent = []
 
@@ -419,6 +426,12 @@ class SyntheticTelegram:
             self.sent.append(payload)
             return {"message_id": len(self.sent)}
         return True
+
+    async def download_file(self, file_id):
+        from ha_media_smoke import _image
+
+        assert file_id == "synthetic-task-report"
+        return _image("PNG")
 
 
 async def flush_at(entry, moment):
@@ -450,9 +463,7 @@ async def run(hass, entry, owner_user, child_id):
             flow = await hass.config_entries.options.async_init(
                 entry.entry_id, context={"user_id": owner_user.id}
             )
-            return await hass.config_entries.options.async_configure(
-                flow["flow_id"], {"next_step_id": step}
-            )
+            return await select_option(hass, flow, step)
 
         async def submit(flow, data):
             return await hass.config_entries.options.async_configure(flow["flow_id"], data)
@@ -465,9 +476,9 @@ async def run(hass, entry, owner_user, child_id):
 
         update_id = 100
 
-        async def receive(text, *, user_id=1001, private=False, reply_to=None):
+        async def receive(text, *, user_id=1001, private=False, reply_to=None, photo=False):
             nonlocal update_id
-            update_id += 1
+            update_id = next_synthetic_update_id(entry.runtime_data, update_id)
             update = {
                 "update_id": update_id,
                 "message": {
@@ -488,6 +499,11 @@ async def run(hass, entry, owner_user, child_id):
                     "from": {"id": 1000},
                     "text": "Untrusted quote",
                 }
+            if photo:
+                update["message"].pop("text")
+                if text:
+                    update["message"]["caption"] = text
+                update["message"]["photo"] = [{"file_id": "synthetic-task-report"}]
             await entry.runtime_data.telegram.process(update)
             return update
 
@@ -547,6 +563,7 @@ async def run(hass, entry, owner_user, child_id):
         # A different bot's cursor must not suppress this bot's legitimate update.
         assert str(1000) in engine.snapshot()["telegram"]["offsets"]
         await run_assistant(hass, entry, owner_user, child_id, receive, options, submit)
+        await run_photo_reports(hass, entry, owner_user, child_id, receive)
         from ha_telegram_command_scope_smoke import verify_telegram_command_scope
 
         await verify_telegram_command_scope(hass, entry, owner_user)
@@ -559,6 +576,178 @@ async def run(hass, entry, owner_user, child_id):
             "PASS: real HA own-bot options, group/member enrollment, "
             "mention/reply context, command replay/roles"
         )
+
+
+async def run_photo_reports(hass, entry, owner_user, child_id, receive):
+    """Disable the optional model explicitly, preserving surrounding smoke state."""
+    runtime = entry.runtime_data
+    engine = runtime.engine
+    original_modules = list(engine.snapshot()["settings"]["modules"])
+    original_bot = runtime.telegram
+
+    async def modules(values, suffix):
+        await engine.execute(
+            "owner",
+            "settings.patch",
+            {
+                "revision": engine.snapshot()["settings_revision"],
+                "changes": {"modules": values},
+            },
+            "synthetic-photo-modules-" + suffix,
+            datetime.now(UTC),
+        )
+        await hass.async_block_till_done()
+        pending = runtime.module_task
+        if pending is not None:
+            await asyncio.wait_for(asyncio.shield(pending), 10)
+        assert entry.runtime_data is runtime and runtime.telegram is original_bot
+
+    try:
+        if "conversation" in original_modules:
+            await modules(
+                [module for module in original_modules if module != "conversation"], "off"
+            )
+        assert runtime.assistant is None
+        await _run_photo_report_scenarios(hass, entry, owner_user, child_id, receive)
+    finally:
+        if engine.snapshot()["settings"]["modules"] != original_modules:
+            await modules(original_modules, "restore")
+
+
+async def _run_photo_report_scenarios(hass, entry, owner_user, child_id, receive):
+    """Real Linux MediaStorage decoder/retention pipeline, with only Telegram faked."""
+    from ha_media_smoke import _image
+
+    runtime = entry.runtime_data
+    engine = runtime.engine
+    assert "conversation" not in engine.snapshot()["settings"]["modules"]
+    photos_before = len(engine.snapshot().get("media", {}))
+
+    async def create(suffix):
+        return await engine.execute(
+            "owner",
+            "tasks.create",
+            {
+                "title": "Synthetic Telegram photo " + suffix,
+                "assignee": child_id,
+                "report_type": "photo",
+            },
+            "synthetic-telegram-photo-" + suffix,
+            datetime.now(UTC),
+        )
+
+    def failure_snapshot(task_id):
+        # Synthetic state only, and still deliberately omit bytes, filenames,
+        # provider details, message contents and whole exceptions.
+        from custom_components.family_assistant.telegram.errors import ERRORS
+
+        state = engine.snapshot()
+        manager = runtime.telegram
+        codes = set()
+        for event in list(state["outbox"].values())[-20:]:
+            text = event.get("data", {}).get("text", "")
+            for messages in ERRORS.values():
+                codes.update(code for code, translated in messages.items() if translated in text)
+        workers = []
+        for worker in manager._tasks:
+            exception = worker.exception() if worker.done() and not worker.cancelled() else None
+            workers.append(
+                {
+                    "name": worker.get_name(),
+                    "done": worker.done(),
+                    "cancelled": worker.cancelled(),
+                    "exception_type": type(exception).__name__ if exception else None,
+                    "stack_lines": [frame.f_lineno for frame in worker.get_stack(limit=1)],
+                }
+            )
+        return {
+            "task_status": state["tasks"][task_id]["status"],
+            "jobs": [
+                {key: row.get(key) for key in ("task_id", "status")}
+                for row in state["telegram"].get("photo_jobs", {}).values()
+            ],
+            "media_statuses": [record["status"] for record in state.get("media", {}).values()],
+            "reply_error_codes": sorted(codes),
+            "workers": workers,
+            "manager_stopped": manager._stopped,
+            "health": {
+                key: runtime.health.get(key)
+                for key in (
+                    "telegram",
+                    "telegram_photo_storage",
+                    "module_settings",
+                )
+            },
+        }
+
+    async def completed(task_id):
+        try:
+            async with asyncio.timeout(15):
+                while True:
+                    state = engine.snapshot()
+                    rows = [
+                        row
+                        for row in state["telegram"].get("photo_jobs", {}).values()
+                        if row["task_id"] == task_id
+                    ]
+                    if rows and rows[0]["status"] != "pending":
+                        assert rows[0]["status"] == "complete", failure_snapshot(task_id)
+                        assert state["tasks"][task_id]["status"] == "submitted"
+                        return rows[0]
+                    await asyncio.sleep(0.05)
+        except TimeoutError:
+            raise AssertionError(failure_snapshot(task_id)) from None
+
+    task = await create("caption")
+    incoming = await receive(f"/report {task['id']}", user_id=1002, private=True, photo=True)
+    row = await completed(task["id"])
+    record = engine.snapshot()["media"][row["media_id"]]
+
+    async def guard():
+        assert hass.config_entries.async_get_entry(entry.entry_id) is entry
+        assert entry.runtime_data is runtime
+
+    metadata, content = await runtime.media.get(
+        owner_user.id,
+        record["id"],
+        record["revision"],
+        guard=guard,
+    )
+    assert metadata["status"] == "attached" and content == _image("PNG")
+    await runtime.telegram.process(incoming)
+    assert len(engine.snapshot()["media"]) == photos_before + 1
+
+    task = await create("reply")
+    # Materialize a genuine Telegram delivery receipt, not quoted IDs or a
+    # hand-written outbox row. Rate-limit test clock is explicit and bounded.
+    for seconds in range(20, 80, 2):
+        await flush_at(entry, datetime.now(UTC) + timedelta(seconds=seconds))
+        state = engine.snapshot()
+        event = next(
+            event
+            for event in state["outbox"].values()
+            if event["key"] == "task_assigned" and event["data"]["id"] == task["id"]
+        )
+        deliveries = [
+            delivery
+            for delivery in event["deliveries"].values()
+            if delivery["state"] == "sent" and delivery["target"]["id"] == 1002
+        ]
+        if deliveries:
+            break
+    assert len(deliveries) == 1
+    await receive(
+        "", user_id=1002, private=True, photo=True, reply_to=int(deliveries[0]["receipt"])
+    )
+    await completed(task["id"])
+    assert len(engine.snapshot()["media"]) == photos_before + 2
+    assert not any(
+        "synthetic-task-report" in str(job) for job in engine.snapshot()["assistant_jobs"].values()
+    )
+    print(
+        "PASS: real HA Telegram photo reports, receipted reply, "
+        "isolated decoder, private blob, replay"
+    )
 
 
 async def run_assistant(hass, entry, owner, child_id, receive, options, submit):

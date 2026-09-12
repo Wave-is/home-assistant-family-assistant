@@ -150,7 +150,7 @@ class HAConversationAgent:
             or len(config["entity_id"]) > 128
             or not re.fullmatch(r"conversation\.[a-z0-9_]+", config["entity_id"])
             or type(config.get("timeout")) is not int
-            or not 5 <= config["timeout"] <= 45
+            or not 5 <= config["timeout"] <= 60
         ):
             raise DomainError("invalid_field", "ha_agent")
         if "binding" in config:
@@ -293,6 +293,10 @@ class HAConversationAgent:
         return member
 
     async def generate_for_actor(self, messages, schema, request):
+        if any(isinstance(message, dict) and message.get("images") for message in messages):
+            # Core conversation.async_converse has no image input in this adapter.
+            # Do not silently answer a photo request using only its caption.
+            raise ActorProviderUnavailable("provider_images_unsupported")
         text, system = _input(messages, schema)
         member = self._member(request)
         proof = self._target()

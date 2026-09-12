@@ -21,6 +21,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ha_options_menu import select_option
 from homeassistant import bootstrap, config_entries, loader
 from homeassistant.auth.const import GROUP_ID_ADMIN
 from homeassistant.components.siren import DATA_COMPONENT, SirenEntity, SirenEntityFeature
@@ -125,10 +126,8 @@ async def _options_step(hass, entry, user_id: str, step: str):
     )
     if result.get("type") != "menu":
         raise AssertionError(f"Options did not open at its menu: {result.get('type')}")
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": step}
-    )
-    return result
+    # The same candidate helper prepares both the old baseline and new runtime.
+    return await select_option(hass, result, step, allow_flat=True)
 
 
 async def _create_child(hass, entry, owner_id: str) -> str:

@@ -45,11 +45,13 @@ async def request_json(session, method, url, *, timeout=15, limit=262144, **kwar
             method,
             url,
             allow_redirects=False,
-            timeout=aiohttp.ClientTimeout(total=timeout, connect=min(5, timeout)),
+            timeout=aiohttp.ClientTimeout(total=timeout, connect=min(15, timeout)),
             **kwargs,
         ) as response:
             if response.status in {401, 403}:
                 raise DomainError("provider_authentication")
+            if response.status == 429:
+                raise DomainError("provider_quota_exceeded")
             if not 200 <= response.status < 300:
                 raise DomainError("provider_unreachable")
             body = bytearray()

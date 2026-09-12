@@ -95,6 +95,7 @@
       "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
       "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
       "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_quota_exceeded": "The model quota is exhausted. Try later or configure an available fallback.",
       "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
       "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
       "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
@@ -269,27 +270,15 @@
         "description": "Entry: {entry_id}. Find it under Family Assistant integrations or select its name in a dashboard card. The existing family and source were not replaced. Do not remove its read-only seal to activate it."
       },
       "init": {
-        "title": "Family settings",
+        "title": "Family Settings",
+        "description": "Choose a section to configure:",
         "menu_options": {
-          "guided_onboarding": "Guided family setup",
-          "member": "Add or edit a family member",
-          "general": "Household preferences",
-          "alarm_device": "Wake-up siren",
-          "telegram": "Connect your own Telegram bot",
-          "telegram_group": "Link the family group",
-          "telegram_member": "Link a member's private chat",
-          "conversation": "Language model and fallback",
-          "search": "Internet search (SearXNG)",
-          "articles": "Public article reading",
-          "recipes": "Recipe source (Mealie)",
-          "presence_sources": "Presence sources",
-          "digests": "Digest schedule",
-          "developer_diagnostics": "Developer diagnostics",
-          "mikrotik": "MikroTik network",
-          "legacy_copy": "Legacy read-only copy",
-          "legacy_prepare": "Prepare a read-only copy from exports",
-          "legacy_resume": "Resume a saved read-only copy",
-          "ha_agent": "Existing Home Assistant agent"
+          "menu_family": "👨‍👩‍👧‍👦 Family & Members",
+          "menu_telegram": "💬 Telegram & Alerts",
+          "menu_ai": "🤖 AI & Assistant",
+          "menu_services": "🌐 Network & Integrations",
+          "menu_maintenance": "⚙️ Maintenance & Migration",
+          "all_options": "📋 All Settings (Flat List)"
         }
       },
       "guided_onboarding": {
@@ -524,6 +513,86 @@
         "data": {
           "confirmed": "Confirm this selection"
         }
+      },
+      "menu_family": {
+        "title": "Family & Members",
+        "description": "Household settings and member profiles:",
+        "menu_options": {
+          "general": "Family settings",
+          "member": "Add or edit member",
+          "guided_onboarding": "Guided onboarding",
+          "init": "← Back to main menu"
+        }
+      },
+      "menu_telegram": {
+        "title": "Telegram & Alerts",
+        "description": "Telegram bot, group, private chats and siren:",
+        "menu_options": {
+          "telegram": "Telegram bot",
+          "telegram_group": "Family group",
+          "telegram_member": "Member private chat",
+          "alarm_device": "Wake-up siren",
+          "init": "← Back to main menu"
+        }
+      },
+      "menu_ai": {
+        "title": "AI & Assistant",
+        "description": "Language model (LLM), HA agent, search and articles:",
+        "menu_options": {
+          "conversation": "Language model & fallback",
+          "ha_agent": "Ready Home Assistant agent",
+          "search": "Web search (SearXNG)",
+          "articles": "Public article reading",
+          "init": "← Back to main menu"
+        }
+      },
+      "menu_services": {
+        "title": "Network & Integrations",
+        "description": "External services: MikroTik router, Mealie recipes, presence and digests:",
+        "menu_options": {
+          "mikrotik": "MikroTik network",
+          "recipes": "Recipe source (Mealie)",
+          "presence_sources": "Presence sources",
+          "digests": "Digest schedule",
+          "init": "← Back to main menu"
+        }
+      },
+      "menu_maintenance": {
+        "title": "Maintenance & Migration",
+        "description": "Historical archive imports, review copies and developer diagnostics:",
+        "menu_options": {
+          "legacy_copy": "Review copy of legacy household",
+          "legacy_prepare": "Prepare review copy from exports",
+          "legacy_resume": "Resume review copy",
+          "developer_diagnostics": "Developer diagnostics",
+          "init": "← Back to main menu"
+        }
+      },
+      "all_options": {
+        "title": "All Settings",
+        "description": "Complete list of all configuration sections:",
+        "menu_options": {
+          "guided_onboarding": "Guided family setup",
+          "member": "Add or edit a family member",
+          "general": "Household preferences",
+          "alarm_device": "Wake-up siren",
+          "telegram": "Connect your own Telegram bot",
+          "telegram_group": "Link the family group",
+          "telegram_member": "Link a member's private chat",
+          "conversation": "Language model and fallback",
+          "search": "Internet search (SearXNG)",
+          "articles": "Public article reading",
+          "recipes": "Recipe source (Mealie)",
+          "presence_sources": "Presence sources",
+          "digests": "Digest schedule",
+          "developer_diagnostics": "Developer diagnostics",
+          "mikrotik": "MikroTik network",
+          "legacy_copy": "Legacy read-only copy",
+          "legacy_prepare": "Prepare a read-only copy from exports",
+          "legacy_resume": "Resume a saved read-only copy",
+          "ha_agent": "Existing Home Assistant agent",
+          "init": "← Back to main menu"
+        }
       }
     },
     "error": {
@@ -663,7 +732,15 @@
       "ha_agent_unsupported": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt.",
       "ha_agent_unavailable": "The selected Home Assistant conversation entity is not loaded or available.",
       "ha_agent_changed": "The selected agent or its configuration changed. Review the selection again.",
-      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
+      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback.",
+      "photo_caption_unsupported": "A photo report cannot also store a text note yet. Send one photo with only /report TASK_ID in its caption.",
+      "photo_report_expired": "This photo report expired or its task changed. Review the task and send the photo again.",
+      "photo_single_required": "Send one photo per task report, not an album.",
+      "photo_target_required": "Specify the task with /report TASK_ID or reply to its task message.",
+      "photo_unavailable": "The photo could not be downloaded. Send it again.",
+      "provider_images_unsupported": "This provider does not support photo input. Configure an image-capable provider.",
+      "telegram_unavailable": "Telegram is not connected. Check the bot connection before inviting members.",
+      "file_too_large": "The file exceeds the supported size."
     },
     "abort": {
       "developer_policy_saved": "Developer diagnostics consent saved.",
@@ -755,6 +832,21 @@
     }
   },
   "exceptions": {
+    "file_too_large": {
+      "message": "The file exceeds the supported size."
+    },
+    "provider_quota_exceeded": {
+      "message": "The model quota is exhausted. Try later or configure an available fallback."
+    },
+    "photo_unavailable": {
+      "message": "The photo could not be downloaded. Send it again."
+    },
+    "provider_images_unsupported": {
+      "message": "This provider does not support photo input. Configure an image-capable provider."
+    },
+    "telegram_unavailable": {
+      "message": "Telegram is not connected. Check the bot connection before inviting members."
+    },
     "ha_agent_unsupported": {
       "message": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt."
     },
@@ -1123,6 +1215,18 @@
     },
     "limit_exceeded": {
       "message": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one."
+    },
+    "photo_caption_unsupported": {
+      "message": "A photo report cannot also store a text note yet. Send one photo with only /report TASK_ID in its caption."
+    },
+    "photo_report_expired": {
+      "message": "This photo report expired or its task changed. Review the task and send the photo again."
+    },
+    "photo_single_required": {
+      "message": "Send one photo per task report, not an album."
+    },
+    "photo_target_required": {
+      "message": "Specify the task with /report TASK_ID or reply to its task message."
     }
   },
   "selector": {

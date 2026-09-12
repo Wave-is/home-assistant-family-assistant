@@ -277,12 +277,12 @@ class MediaStorage:
         if self._stopped or self._backup_token is not None or self._collecting:
             raise DomainError("media_unavailable")
 
-    def _record(self, user_id, media_id, revision, *, upload=False):
+    def _record(self, user_id, media_id, revision, *, upload=False, actor_resolver=None):
         if self._stopped:
             raise DomainError("media_unavailable")
         revision = strict_revision(revision)
-        actor_id = self.engine.actor_for_ha(user_id)
         state = self.engine.snapshot()
+        actor_id = actor_resolver(state) if actor_resolver else self.engine.actor_for_ha(user_id)
         record = media.authorize_blob(state, state["members"][actor_id], media_id, self.clock())
         if upload:
             expected = record["revision"] - (record["status"] == "available")
@@ -304,9 +304,68 @@ class MediaStorage:
         guard: Callable[[], Awaitable[None]],
     ) -> dict:
         """Stream, verify, publish and persist one exact authorized upload."""
+        return await self._put(user_id, media_id, revision, chunks, guard=guard)
+
+    async def put_for_actor(
+        self,
+        actor_id: str,
+        member_revision: int,
+        media_id: str,
+        revision: int,
+        chunks: AsyncIterable[bytes],
+        *,
+        guard: Callable[[], Awaitable[None]],
+        state_guard: Callable[[dict], None],
+    ) -> dict:
+        """Trusted channel upload; never exposed as an arbitrary-actor HTTP API.
+
+        The channel must supply its immutable authenticated identity guard. It
+        runs again against the locked candidate state before verification commits.
+        Blob authorization, decoder, quotas and retention remain shared with HTTP.
+        """
+        member_revision = strict_revision(member_revision)
+
+        def resolve(state):
+            state_guard(state)
+            member = state.get("members", {}).get(actor_id)
+            if (
+                not isinstance(member, dict)
+                or member.get("active") is not True
+                or member.get("revision") != member_revision
+            ):
+                raise DomainError("forbidden")
+            return actor_id
+
+        return await self._put(
+            None,
+            media_id,
+            revision,
+            chunks,
+            guard=guard,
+            actor_resolver=resolve,
+            state_guard=state_guard,
+        )
+
+    async def _put(
+        self,
+        user_id,
+        media_id,
+        revision,
+        chunks,
+        *,
+        guard,
+        actor_resolver=None,
+        state_guard=None,
+    ):
         await _guard(guard)
         self._new_io()
-        _, original = self._record(user_id, media_id, revision, upload=True)
+
+        def record():
+            return self._record(
+                user_id, media_id, revision, upload=True, actor_resolver=actor_resolver
+            )
+
+        _, original = record()
         if self._active >= MAX_IO or media_id in self._busy:
             raise DomainError("media_unavailable")
         self._active += 1
@@ -319,7 +378,7 @@ class MediaStorage:
             async with asyncio.timeout(45):
                 async for chunk in chunks:
                     await _guard(guard)
-                    self._record(user_id, media_id, revision, upload=True)
+                    record()
                     if not isinstance(chunk, bytes) or len(chunk) > MAX_CHUNK:
                         raise DomainError("media_invalid")
                     total += len(chunk)
@@ -341,12 +400,16 @@ class MediaStorage:
             if verified.get("mime_type") not in media.mimes_for(original.get("purpose")):
                 raise DomainError("media_invalid")
             await _guard(guard)
-            self._record(user_id, media_id, revision, upload=True)
+            record()
             await _io(_publish, self.root, temporary, original["blob_key"], verified)
             await _guard(guard)
 
             def finalize(ctx):
-                actor = self.engine.actor_for_ha(user_id)
+                actor = (
+                    actor_resolver(ctx.state)
+                    if actor_resolver
+                    else self.engine.actor_for_ha(user_id)
+                )
                 ctx.now = self.clock()
                 return media.finalize(
                     ctx,
@@ -358,9 +421,11 @@ class MediaStorage:
                     verified["sha256"],
                 )
 
-            receipt = await self.engine.system_update("media_verified", self.clock(), finalize)
+            receipt = await self.engine.system_update(
+                "media_verified", self.clock(), finalize, guard=state_guard
+            )
             await _guard(guard)
-            self._record(user_id, media_id, revision, upload=True)
+            record()
             return receipt
         except (OSError, TimeoutError):
             raise DomainError("media_unavailable") from None

@@ -141,6 +141,24 @@ def summary(item, view, language):
     return " · ".join(part for part in parts if part)
 
 
+def threshold_lines(report, members, language):
+    labels = {
+        "en": ("Current period thresholds", "reached", "remaining"),
+        "ru": ("Пороги текущего периода", "достигнут", "осталось"),
+        "uk": ("Пороги поточного періоду", "досягнуто", "залишилося"),
+    }
+    title, reached, remaining = labels.get(language, labels["en"])
+    thresholds = (report or {}).get("thresholds", [])
+    names = {member["id"]: member["name"] for member in members}
+    lines = []
+    for row in thresholds:
+        if row.get("member") not in names:
+            continue
+        status = reached if row.get("reached") else f"{remaining}: {row['remaining']}"
+        lines.append(f"{names[row['member']]} · {row['label']}: {status}")
+    return [title, *lines] if lines else []
+
+
 def court_stats(view, language, *, weekly=False):
     """Totals and bounded reasons come from the same authorized ledger projection."""
     labels = {
@@ -180,6 +198,7 @@ def court_stats(view, language, *, weekly=False):
         ids = set(period["events"])
         records = [record for record in records if record["id"] in ids]
     lines = ["⚖️ " + title]
+    lines.extend(threshold_lines(view.get("court_summary"), view["members"], language))
     if not records:
         return "\n".join(lines + [empty])
     totals = {}

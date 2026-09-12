@@ -248,6 +248,20 @@ ERRORS = {
         "ha_agent_account_required": "This provider requires your linked, active "
         "Home Assistant account. Ask the owner to link "
         "it or configure direct Ollama as a fallback.",
+        "photo_caption_unsupported": "A photo report cannot also store a text note "
+        "yet. Send one photo with only /report TASK_ID "
+        "in its caption.",
+        "photo_report_expired": "This photo report expired or its task changed. "
+        "Review the task and send the photo again.",
+        "photo_single_required": "Send one photo per task report, not an album.",
+        "photo_target_required": "Specify the task with /report TASK_ID or reply to "
+        "its task message.",
+        "photo_unavailable": "The photo could not be downloaded. Send it again.",
+        "provider_images_unsupported": "This provider does not support photo input. "
+        "Configure an image-capable provider.",
+        "telegram_unavailable": "Telegram is not connected. Check the bot "
+        "connection before inviting members.",
+        "file_too_large": "The file exceeds the supported size.",
     },
     "ru": {
         "migration_prepare_source_invalid": "Экспорты или дополнительные ID "
@@ -505,6 +519,20 @@ ERRORS = {
         "активная учётная запись Home Assistant. "
         "Владелец может связать её или настроить "
         "прямую Ollama как резерв.",
+        "photo_caption_unsupported": "Фотоотчёт пока не сохраняет текстовую "
+        "заметку. Отправьте одно фото только с "
+        "подписью /report ID_ЗАДАЧИ.",
+        "photo_report_expired": "Срок обработки фото истёк или задача изменилась. "
+        "Проверьте задачу и отправьте фото снова.",
+        "photo_single_required": "Отправьте одно фото для отчёта по задаче, а не альбом.",
+        "photo_target_required": "Укажите задачу: /report ID_ЗАДАЧИ — или ответьте "
+        "на сообщение о задаче.",
+        "photo_unavailable": "Не удалось загрузить фото. Отправьте его снова.",
+        "provider_images_unsupported": "Эта модель не поддерживает фотографии. "
+        "Настройте модель с поддержкой изображений.",
+        "telegram_unavailable": "Telegram не подключён. Проверьте подключение бота "
+        "перед приглашением участников.",
+        "file_too_large": "Файл превышает допустимый размер.",
     },
     "uk": {
         "migration_prepare_source_invalid": "Експорти чи додаткові ID некоректні, "
@@ -758,5 +786,19 @@ ERRORS = {
         "активний обліковий запис Home Assistant. "
         "Власник може пов'язати його або налаштувати "
         "пряму Ollama як резерв.",
+        "photo_caption_unsupported": "Фотозвіт поки не зберігає текстову нотатку. "
+        "Надішліть одне фото лише з підписом /report "
+        "ID_ЗАВДАННЯ.",
+        "photo_report_expired": "Строк обробки фото минув або завдання змінилося. "
+        "Перевірте завдання й надішліть фото знову.",
+        "photo_single_required": "Надішліть одне фото для звіту про завдання, а не альбом.",
+        "photo_target_required": "Укажіть завдання: /report ID_ЗАВДАННЯ — або дайте "
+        "відповідь на повідомлення про завдання.",
+        "photo_unavailable": "Не вдалося завантажити фото. Надішліть його знову.",
+        "provider_images_unsupported": "Ця модель не підтримує фотографії. "
+        "Налаштуйте модель із підтримкою зображень.",
+        "telegram_unavailable": "Telegram не підключено. Перевірте підключення бота "
+        "перед запрошенням учасників.",
+        "file_too_large": "Файл перевищує допустимий розмір.",
     },
 }

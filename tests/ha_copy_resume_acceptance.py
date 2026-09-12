@@ -30,6 +30,7 @@ from typing import Any
 from unittest.mock import patch
 
 from ha_copy_wizard_smoke import _open, _package, _review_token, _upload
+from ha_options_menu import select_option
 from ha_upgrade_acceptance import _runtime_version, _start
 from homeassistant.auth.const import GROUP_ID_ADMIN
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
@@ -116,9 +117,7 @@ async def _open_resume(
         prototype.entry_id, context={"user_id": user.id}
     )
     flows.add(opened["flow_id"])
-    return await hass.config_entries.options.async_configure(
-        opened["flow_id"], {"next_step_id": "legacy_resume"}
-    )
+    return await select_option(hass, opened, "legacy_resume")
 
 
 def _validate_contract(value: object) -> dict:

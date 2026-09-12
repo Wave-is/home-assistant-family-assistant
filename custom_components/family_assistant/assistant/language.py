@@ -14,7 +14,7 @@ COPY = {
         ),
         "model": "💬 {text}\n\nFamily data was not changed.",
         "sources": "Sources (search snippets, not full articles):",
-        "no_sources": "No suitable public sources were found. Family data was not changed.",
+        "no_sources": "No suitable public sources were found.",
         "confirmed": "✅ Applied:\n{result}",
         "rejected": "Cancelled. Nothing was changed.",
         "feedback_saved": (
@@ -41,7 +41,7 @@ COPY = {
         ),
         "model": "💬 {text}\n\nДанные семьи не изменены.",
         "sources": "Источники (поисковые выдержки, не полные статьи):",
-        "no_sources": "Подходящих открытых источников не найдено. Данные семьи не изменены.",
+        "no_sources": "Подходящих открытых источников не найдено.",
         "confirmed": "✅ Выполнено:\n{result}",
         "rejected": "Отменено. Ничего не изменено.",
         "feedback_saved": (

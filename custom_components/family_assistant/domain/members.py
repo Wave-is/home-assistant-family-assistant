@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from ..const import LANGUAGES, ROLES
 from .context import Context
 from .validation import DomainError, enum, fields, text
@@ -15,7 +17,18 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("unknown_action")
     fields(
         payload,
-        {"id", "revision", "name", "role", "language", "aliases", "ha_user_id", "active"},
+        {
+            "id",
+            "revision",
+            "name",
+            "role",
+            "language",
+            "aliases",
+            "ha_user_id",
+            "active",
+            "birth_date",
+            "avatar",
+        },
         {"name", "role"},
     )
     member_id = text(payload["id"], "id", 80) if "id" in payload else None
@@ -37,6 +50,26 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if not isinstance(aliases, list) or len(aliases) > 20:
         raise DomainError("invalid_field", "aliases")
     aliases = [text(alias, "aliases", 80) for alias in aliases]
+    profile = {}
+    if "birth_date" in payload:
+        value = payload["birth_date"]
+        if value is not None:
+            try:
+                parsed = date.fromisoformat(value)
+                if (
+                    parsed.isoformat() != value
+                    or not 1900 <= parsed.year
+                    or parsed > ctx.now.date()
+                ):
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise DomainError("invalid_field", "birth_date") from None
+        profile["birth_date"] = value
+    if "avatar" in payload:
+        value = payload["avatar"]
+        if value is not None:
+            enum(value, {"adult", "child", "cat", "dog", "robot", "flower", "star"}, "avatar")
+        profile["avatar"] = value
     user_id = payload.get("ha_user_id", existing.get("ha_user_id"))
     if user_id is not None:
         user_id = text(user_id, "ha_user_id", 128)
@@ -58,6 +91,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             raise DomainError("last_owner")
     member = {
         **existing,
+        **profile,
         "id": member_id,
         "name": text(payload["name"], "name", 80),
         "role": role,

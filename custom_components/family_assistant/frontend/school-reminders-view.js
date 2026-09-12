@@ -1,6 +1,7 @@
 /* Private, revision-bound school preparation reminder preferences. */
 
 import { SCHOOL_REMINDERS_COPY } from "./school-reminders-copy.js";
+import {inMemberContext,memberContextId} from "./panel-member-context.js";
 
 const ROLES = new Set(["owner", "parent", "child"]);
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -84,7 +85,7 @@ function targets(card) {
   return rows.filter((row) => {
     const target = member(card, row?.member);
     if (
-      !validTarget(row) ||
+      !inMemberContext(card,row?.member) || !validTarget(row) ||
       seen.has(row.member) ||
       actor?.revision !== row.recipient_revision ||
       target?.active !== true ||
@@ -288,6 +289,7 @@ export function renderSchoolReminders(card, body) {
 
   const section = node("section", null, "school-reminders");
   section.append(node("style", STYLE), node("h3", copy.title));
+  if(memberContextId(card)!==null)section.append(node("p",`${copy.recipient}: ${memberName(card,card._data.actor,copy)}`,"sub school-reminder-recipient"));
   const policy = reminderProjection(card).policy;
   section.append(node("p", policy.enabled ? copy.policy_on : copy.policy_off, "sub school-reminder-policy"));
   if (!card._data.settings.modules.includes("routines"))

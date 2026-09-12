@@ -7,7 +7,7 @@ import json
 import re
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 from ..const import LANGUAGES
 from ..domain import alarms
@@ -51,22 +51,58 @@ def _empty_target(target):
                 not _text(member.get("name"), 80)
                 or member.get("language") not in LANGUAGES
                 or set(member)
-                - {"id", "name", "role", "language", "active", "revision", "aliases", "ha_user_id"}
+                - {
+                    "id",
+                    "name",
+                    "role",
+                    "language",
+                    "active",
+                    "revision",
+                    "aliases",
+                    "ha_user_id",
+                    "telegram_id",
+                    "updated_at",
+                    "birth_date",
+                    "avatar",
+                }
                 or type(member.get("aliases")) is not list
                 or len(member["aliases"]) > 20
                 or not all(_text(alias, 80) for alias in member["aliases"])
                 or (member.get("ha_user_id") is not None and not _text(member["ha_user_id"], 128))
+                or (
+                    member.get("telegram_id") is not None and type(member["telegram_id"]) is not int
+                )
+                or (
+                    member.get("avatar") is not None
+                    and member["avatar"]
+                    not in {"adult", "child", "cat", "dog", "robot", "flower", "star"}
+                )
             ):
                 raise ShadowError("shadow_target_invalid")
+            if "updated_at" in member:
+                timestamp(member["updated_at"], "updated_at")
+            if member.get("birth_date") is not None:
+                birth_date = date.fromisoformat(member["birth_date"])
+                if birth_date.isoformat() != member["birth_date"] or birth_date.year < 1900:
+                    raise ShadowError("shadow_target_invalid")
         identities = [
             member["ha_user_id"] for member in members.values() if member.get("ha_user_id")
         ]
         if len(set(identities)) != len(identities):
             raise ShadowError("shadow_target_invalid")
+        telegram_ids = [
+            member["telegram_id"]
+            for member in members.values()
+            if member.get("telegram_id") is not None
+        ]
+        if len(set(telegram_ids)) != len(telegram_ids):
+            raise ShadowError("shadow_target_invalid")
         expected["members"] = members
         if _encode(expected) != _encode(target):
             raise ShadowError("shadow_empty_target_required")
-    except (KeyError, TypeError, AttributeError, DomainError, UnicodeError):
+    except ShadowError:
+        raise
+    except (KeyError, TypeError, AttributeError, DomainError, UnicodeError, ValueError):
         raise ShadowError("shadow_target_invalid") from None
 
 

@@ -8,6 +8,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 
 from aiohttp import ClientSession, TCPConnector, ThreadedResolver, web
+from ha_options_menu import select_option
 from voluptuous import UNDEFINED
 
 
@@ -110,9 +111,7 @@ async def _recipes_form(hass, entry, user):
         entry.entry_id, context={"user_id": user.id}
     )
     assert flow["type"] == "menu", flow
-    return await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "recipes"}
-    )
+    return await select_option(hass, flow, "recipes")
 
 
 async def _configure(hass, entry, user, values):

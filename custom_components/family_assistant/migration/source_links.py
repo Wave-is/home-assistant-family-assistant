@@ -130,7 +130,6 @@ def _inspect(review):
             if (
                 not _date(day)
                 or key != expected
-
                 or type(details.get("court_delta")) is not int
                 or details["court_delta"] != -1
                 or event.get("actor") != "system"

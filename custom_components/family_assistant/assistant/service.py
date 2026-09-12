@@ -36,6 +36,7 @@ class Assistant:
         refs=(),
         *,
         quoted_text="",
+        images=None,
         scope_check=None,
     ):
         await self._check_scope(scope_check)
@@ -61,12 +62,13 @@ class Assistant:
             return t["preview"].format(preview=existing["preview"], id=proposal_id)
         async with asyncio.timeout(100):
             value = await cascade.generate(
-                plans.messages(view, content, refs, now, quoted_text=quoted_text),
+                plans.messages(view, content, refs, now, quoted_text=quoted_text, images=images),
                 plans.request_schema(content),
                 plans.validate,
                 scope_check=scope_check,
             )
             await self._check_scope(scope_check)
+
             # A role or identity can be revoked while the provider was answering.
             current = self.engine.view(actor)
             if current["role"] != view["role"]:
@@ -106,9 +108,9 @@ class Assistant:
                     cascade=cascade,
                     scope_check=scope_check,
                 )
-            if quoted_text and value["kind"] == "answer":
+            if (quoted_text or images) and value["kind"] == "answer":
                 value = await cascade.generate(
-                    plans.quote_messages(language, content, quoted_text, now),
+                    plans.quote_messages(language, content, quoted_text, now, images=images),
                     plans.ARTICLE_SCHEMA,
                     self._answer_only,
                     scope_check=scope_check,

@@ -19,6 +19,7 @@ else:
 HELPER_FILES = (
     "tests/ha_copy_resume_acceptance.py",
     "tests/ha_upgrade_acceptance.py",
+    "tests/ha_options_menu.py",
     "tests/ha_copy_wizard_smoke.py",
     "tests/ha_legacy_archive_smoke.py",
     "tests/ha_media_smoke.py",

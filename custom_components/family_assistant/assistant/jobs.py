@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from ..domain import developer_diagnostics
-from ..domain.validation import DomainError, timestamp
+from ..domain.validation import DomainError, text, timestamp
 from ..telegram.context import result_refs
 from .language import COPY
 
@@ -99,6 +99,7 @@ class Jobs:
                 "language",
                 "content",
                 "quoted_text",
+                "image_file_id",
                 "refs",
                 "bot_id",
                 "chat_id",
@@ -111,8 +112,21 @@ class Jobs:
         )
 
     async def enqueue(
-        self, actor, content, operation_id, now, refs, *, bot_id, chat_id, reply_to, quoted_text=""
+        self,
+        actor,
+        content,
+        operation_id,
+        now,
+        refs,
+        *,
+        bot_id,
+        chat_id,
+        reply_to,
+        quoted_text="",
+        image_file_id=None,
     ):
+        if image_file_id is not None:
+            image_file_id = text(image_file_id, "image_file_id", 512)
         provider_marker = self._provider_marker()
         before = self.engine.snapshot()
         selected = before["members"].get(actor) if isinstance(actor, str) else None
@@ -143,11 +157,22 @@ class Jobs:
                     or prior.get("role") != role
                 ):
                     raise DomainError("forbidden")
-                if (prior["actor"], prior["content"], prior["chat_id"], prior["bot_id"]) != (
+                if (
+                    prior["actor"],
+                    prior["content"],
+                    prior["chat_id"],
+                    prior["bot_id"],
+                    prior.get("image_file_id"),
+                    prior.get("quoted_text", ""),
+                    prior.get("refs"),
+                ) != (
                     actor,
                     content,
                     chat_id,
                     bot_id,
+                    image_file_id,
+                    quoted_text[:2000] if isinstance(quoted_text, str) else "",
+                    list(refs),
                 ):
                     raise DomainError("idempotency_conflict")
                 return member["language"]
@@ -167,6 +192,7 @@ class Jobs:
                 "language": member["language"],
                 "content": content,
                 "quoted_text": quoted_text[:2000] if isinstance(quoted_text, str) else "",
+                "image_file_id": image_file_id,
                 "refs": list(refs),
                 "bot_id": bot_id,
                 "chat_id": chat_id,

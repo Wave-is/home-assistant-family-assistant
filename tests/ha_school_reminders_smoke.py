@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import voluptuous as vol
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 
 @asynccontextmanager
@@ -62,9 +63,7 @@ async def _general(hass, entry, user):
         entry.entry_id, context={"user_id": user.id}
     )
     assert flow["type"] == "menu", flow
-    return await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    return await select_option(hass, flow, "general")
 
 
 async def _save_general(hass, entry, user, **changes):

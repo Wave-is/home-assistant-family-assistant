@@ -15,6 +15,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 from homeassistant import bootstrap, config_entries, loader
 from homeassistant.auth.const import GROUP_ID_ADMIN
 from homeassistant.components.siren import DATA_COMPONENT, SirenEntity, SirenEntityFeature
@@ -79,6 +80,11 @@ async def main(*, case="all"):
             await hass.async_start()
             await hass.async_block_till_done()
             assert hass.state is CoreState.running
+            if case == "panel":
+                from ha_panel_smoke import verify_panel
+
+                await verify_panel(hass, user)
+                return
             if case == "voice":
                 from ha_voice_smoke import verify_voice_shopping
 
@@ -139,9 +145,7 @@ async def main(*, case="all"):
                 entry.entry_id, context={"user_id": user.id}
             )
             assert options["type"] == "menu", options
-            options = await hass.config_entries.options.async_configure(
-                options["flow_id"], {"next_step_id": "member"}
-            )
+            options = await select_option(hass, options, "member")
             assert options["type"] == "form", options
             options = await hass.config_entries.options.async_configure(
                 options["flow_id"], {"member_id": "_new"}
@@ -186,9 +190,7 @@ async def main(*, case="all"):
             options = await hass.config_entries.options.async_init(
                 entry.entry_id, context={"user_id": user.id}
             )
-            options = await hass.config_entries.options.async_configure(
-                options["flow_id"], {"next_step_id": "alarm_device"}
-            )
+            options = await select_option(hass, options, "alarm_device")
             options = await hass.config_entries.options.async_configure(
                 options["flow_id"],
                 {
@@ -995,9 +997,7 @@ async def verify_pantry_controls(hass, entry, owner, child, request):
     options = await hass.config_entries.options.async_init(
         entry.entry_id, context={"user_id": owner.id}
     )
-    options = await hass.config_entries.options.async_configure(
-        options["flow_id"], {"next_step_id": "general"}
-    )
+    options = await select_option(hass, options, "general")
     schema_fields = {key.schema for key in options["data_schema"].schema}
     assert {"routines", "pantry", "school", "maintenance"} <= schema_fields
     assert "polls" in schema_fields
@@ -1353,5 +1353,5 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=("all", "ha-agent", "voice"), default="all")
+    parser.add_argument("--case", choices=("all", "ha-agent", "voice", "panel"), default="all")
     asyncio.run(main(case=parser.parse_args().case))

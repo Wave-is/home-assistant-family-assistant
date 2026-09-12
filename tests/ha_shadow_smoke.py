@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from types import MappingProxyType
 
 from ha_legacy_archive_smoke import synthetic_source
+from ha_options_menu import select_option
 from ha_presence_smoke import _request
 
 
@@ -58,6 +59,10 @@ async def verify_shadow(hass, owner_user, *, photos=False):
                 language="en",
                 aliases=[],
                 ha_user_id=owner_user.id if member["role"] == "owner" else child.id,
+                telegram_id=990001 if member["role"] == "owner" else 990002,
+                birth_date="1985-02-03" if member["role"] == "owner" else None,
+                avatar="adult" if member["role"] == "owner" else "robot",
+                updated_at="2026-09-08T00:00:00+00:00",
             )
         target["members"] = members
         review = read_store_pair(assistant, court).review(mapping, members, mapping_revision=1)
@@ -304,9 +309,7 @@ async def verify_shadow(hass, owner_user, *, photos=False):
             options = await hass.config_entries.options.async_init(
                 entry.entry_id, context={"user_id": owner_user.id}
             )
-            options = await hass.config_entries.options.async_configure(
-                options["flow_id"], {"next_step_id": "telegram"}
-            )
+            options = await select_option(hass, options, "telegram")
             assert options["type"] == "abort" and options["reason"] == "migration_shadow_read_only"
             await async_options_updated(hass, entry)
             assert runtime.telegram is None and runtime.network is None and runtime.recipes is None

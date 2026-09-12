@@ -54,6 +54,19 @@ export const COURT_COPY = {
     time: "Summary time",
     second_adult_review: "Require independent second adult review for appeals",
     second_adult_review_help: "Requires at least 2 active parents or owners in the household.",
+    thresholds: "Score thresholds",
+    thresholds_help: "Show progress toward your own rules. Reaching a threshold does not apply a penalty or control devices.",
+    threshold_label: "Rule name",
+    threshold_direction: "Condition",
+    threshold_at_most: "Balance at or below",
+    threshold_at_least: "Balance at or above",
+    threshold_points: "Threshold points (-10000 to 10000)",
+    threshold_members: "Members (no selection means everyone)",
+    threshold_add: "Add threshold",
+    threshold_remove: "Remove threshold",
+    threshold_reached: "Threshold reached",
+    threshold_remaining: "Points to threshold",
+    threshold_invalid: "Enter a rule name and a whole-number threshold between -10000 and 10000.",
     opt_in_notice: "Weekly reports are immutable archives and never reset member point balances or issue automatic penalties.",
     unknown_member: "Unknown member",
     error_stale: "Data or permissions changed. Form closed.",
@@ -120,6 +133,19 @@ export const COURT_COPY = {
     time: "Время формирования",
     second_adult_review: "Требовать проверку независимым вторым родителем",
     second_adult_review_help: "Требуется минимум 2 активных родителя или владельца в семье.",
+    thresholds: "Пороги баллов",
+    thresholds_help: "Показывают прогресс по вашим правилам. Достижение порога не назначает штрафы и не управляет устройствами.",
+    threshold_label: "Название правила",
+    threshold_direction: "Условие",
+    threshold_at_most: "Баланс не выше",
+    threshold_at_least: "Баланс не ниже",
+    threshold_points: "Порог в баллах (от -10000 до 10000)",
+    threshold_members: "Участники (без выбора — все)",
+    threshold_add: "Добавить порог",
+    threshold_remove: "Убрать порог",
+    threshold_reached: "Порог достигнут",
+    threshold_remaining: "Баллов до порога",
+    threshold_invalid: "Укажите название и целый порог от -10000 до 10000.",
     opt_in_notice: "Еженедельные отчёты сохраняются в архив и никогда не сбрасывают балансы баллов и не назначают штрафов.",
     unknown_member: "Неизвестный участник",
     error_stale: "Данные или права изменились. Форма закрыта.",
@@ -186,6 +212,19 @@ export const COURT_COPY = {
     time: "Час формування",
     second_adult_review: "Вимагати перевірку незалежним другим дорослим",
     second_adult_review_help: "Потрібно щонайменше 2 активних батьків або власників у родині.",
+    thresholds: "Пороги балів",
+    thresholds_help: "Показують прогрес за вашими правилами. Досягнення порогу не призначає штрафів і не керує пристроями.",
+    threshold_label: "Назва правила",
+    threshold_direction: "Умова",
+    threshold_at_most: "Баланс не вище",
+    threshold_at_least: "Баланс не нижче",
+    threshold_points: "Поріг у балах (від -10000 до 10000)",
+    threshold_members: "Учасники (без вибору — усі)",
+    threshold_add: "Додати поріг",
+    threshold_remove: "Прибрати поріг",
+    threshold_reached: "Поріг досягнуто",
+    threshold_remaining: "Балів до порогу",
+    threshold_invalid: "Вкажіть назву й цілий поріг від -10000 до 10000.",
     opt_in_notice: "Щотижневі звіти зберігаються в архів і ніколи не скидають баланси балів та не призначають штрафів.",
     unknown_member: "Невідомий учасник",
     error_stale: "Дані або права змінилися. Форму закрито.",
@@ -250,6 +289,14 @@ function getSourceLabel(card, source) {
   return source || copy.source_manual;
 }
 
+function renderThresholds(target, thresholds, member, copy) {
+  for (const threshold of thresholds || []) {
+    if (threshold.member !== member) continue;
+    const status = threshold.reached ? copy.threshold_reached : `${copy.threshold_remaining}: ${threshold.remaining}`;
+    target.append(el("div", `${threshold.label}: ${status}`, "sub"));
+  }
+}
+
 export function renderCourt(card, body) {
   if (!card || !body || !card._data) return;
   const copy = getCopy(card), data = card._data, role = data.role;
@@ -287,6 +334,7 @@ export function renderCourt(card, body) {
         const li = el("li", null, "item");
         li.append(el("strong", getMemberName(card, r.member)));
         li.append(el("div", `${copy.positives}: +${r.active_positives} · ${copy.negatives}: ${r.active_negatives} · ${copy.total}: ${r.total > 0 ? "+" : ""}${r.total} · ${copy.reversed_count}: ${r.reversed_count}`, "sub"));
+        renderThresholds(li, summary.thresholds, r.member, copy);
         ul.append(li);
       }
       section.append(ul);
@@ -310,6 +358,7 @@ export function renderCourt(card, body) {
           const rLi = el("li", null, "item");
           rLi.append(el("strong", getMemberName(card, rr.member)));
           rLi.append(el("div", `${copy.positives}: +${rr.active_positives} · ${copy.negatives}: ${rr.active_negatives} · ${copy.total}: ${rr.total > 0 ? "+" : ""}${rr.total} · ${copy.reversed_count}: ${rr.reversed_count}`, "sub"));
+          renderThresholds(rLi, report.thresholds, rr.member, copy);
           rUl.append(rLi);
         }
         repItem.append(rUl);
@@ -338,7 +387,7 @@ export function renderCourt(card, body) {
       const cfg = data.court_config, form = el("form");
       const isFrozen = Boolean(card._courtDraft?.type === "config" && card._courtDraft?.frozenPayload);
       const draft = card._courtDraft?.type === "config" ? card._courtDraft : {
-        type: "config", revision: cfg.revision ?? 0, weekly_enabled: Boolean(cfg.weekly_enabled), weekday: cfg.weekday ?? 0, time: cfg.time || "00:00", second_adult_review: Boolean(cfg.second_adult_review)
+        type: "config", revision: cfg.revision ?? 0, weekly_enabled: Boolean(cfg.weekly_enabled), weekday: cfg.weekday ?? 0, time: cfg.time || "00:00", second_adult_review: Boolean(cfg.second_adult_review), thresholds: structuredClone(cfg.thresholds || []), thresholdsChanged: false
       };
       if (card._courtDraft?.type !== "config") card._courtDraft = draft;
       form.append(el("h3", copy.config_title), el("p", copy.opt_in_notice, "sub"));
@@ -362,6 +411,60 @@ export function renderCourt(card, body) {
       sarBox.type = "checkbox"; sarBox.name = "second_adult_review"; sarBox.checked = draft.second_adult_review; sarBox.disabled = isFrozen || Boolean(card._writing);
       sarLabel.prepend(sarBox); form.append(sarLabel, el("p", copy.second_adult_review_help, "sub"));
 
+      const thresholdsBox = el("fieldset"), thresholdError = el("div", "", "notice");
+      thresholdsBox.style.display = "block";
+      thresholdError.hidden = true;
+      thresholdsBox.append(el("legend", copy.thresholds), el("p", copy.thresholds_help, "sub"));
+      const editableThresholds = () => !isFrozen && !isStale() && !card._writing && card._courtDraft === draft;
+      for (const [index, rule] of (draft.thresholds || []).entries()) {
+        const ruleBox = el("fieldset"); ruleBox.dataset.courtThreshold = rule.id;
+        ruleBox.style.display = "block";
+        ruleBox.append(el("legend", `${copy.thresholds} ${index + 1}`));
+        const labelInput = card.input(ruleBox, `threshold_label_${index}`, copy.threshold_label, "text", rule.label);
+        labelInput.maxLength = 240;
+        const directionLabel = el("label", copy.threshold_direction), direction = el("select");
+        direction.name = `threshold_direction_${index}`;
+        direction.setAttribute("aria-label", copy.threshold_direction);
+        for (const value of ["at_most", "at_least"]) {
+          const option = el("option", copy[`threshold_${value}`]); option.value = value; direction.append(option);
+        }
+        direction.value = rule.direction; directionLabel.append(direction); ruleBox.append(directionLabel);
+        const pointsInput = card.input(ruleBox, `threshold_points_${index}`, copy.threshold_points, "number", rule.points);
+        pointsInput.min = "-10000"; pointsInput.max = "10000"; pointsInput.step = "1";
+        const membersLabel = el("label", copy.threshold_members), membersInput = el("select");
+        membersInput.name = `threshold_members_${index}`; membersInput.multiple = true;
+        membersInput.setAttribute("aria-label", copy.threshold_members);
+        for (const member of data.members || []) {
+          if (member.role === "guest") continue;
+          const option = el("option", member.name); option.value = member.id;
+          option.selected = (rule.members || []).includes(member.id); membersInput.append(option);
+        }
+        membersLabel.append(membersInput); ruleBox.append(membersLabel);
+        for (const input of [labelInput, direction, pointsInput, membersInput]) input.disabled = isFrozen || Boolean(card._writing);
+        const updateRule = () => {
+          if (!editableThresholds()) return;
+          rule.label = labelInput.value; rule.direction = direction.value; rule.points = pointsInput.value;
+          rule.members = [...membersInput.selectedOptions].map(option => option.value);
+          draft.thresholdsChanged = true;
+        };
+        labelInput.addEventListener("input", updateRule); pointsInput.addEventListener("input", updateRule);
+        direction.addEventListener("change", updateRule); membersInput.addEventListener("change", updateRule);
+        const remove = card.button(copy.threshold_remove, () => {
+          if (!editableThresholds()) return;
+          draft.thresholds.splice(index, 1); draft.thresholdsChanged = true; card.render();
+        });
+        remove.disabled = isFrozen || Boolean(card._writing); ruleBox.append(remove); thresholdsBox.append(ruleBox);
+      }
+      const addThreshold = card.button(copy.threshold_add, () => {
+        if (!editableThresholds() || (draft.thresholds || []).length >= 20) return;
+        draft.thresholds ||= [];
+        let sequence = 1; while (draft.thresholds.some(rule => rule.id === `rule-${sequence}`)) sequence++;
+        draft.thresholds.push({ id: `rule-${sequence}`, label: "", direction: "at_most", points: 0, members: [] });
+        draft.thresholdsChanged = true; card.render();
+      });
+      addThreshold.disabled = isFrozen || Boolean(card._writing) || (draft.thresholds || []).length >= 20;
+      thresholdsBox.append(addThreshold, thresholdError); form.append(thresholdsBox);
+
       const updateConfigDraft = () => {
         if (isFrozen || isStale() || card._writing) return;
         draft.weekly_enabled = enBox.checked; draft.weekday = Number(wdSelect.value); draft.time = tInput.value; draft.second_adult_review = sarBox.checked;
@@ -379,6 +482,13 @@ export function renderCourt(card, body) {
         if (isFrozen) { runCmd("court.configure", card._courtDraft.frozenPayload); return; }
         if (currentCfg.revision !== draft.revision) { card._actionError="conflict"; card.render(); return; }
         const payload = { revision: draft.revision, weekly_enabled: enBox.checked, weekday: Number(wdSelect.value), time: tInput.value, second_adult_review: sarBox.checked };
+        if (draft.thresholdsChanged) {
+          const thresholds = (draft.thresholds || []).map(rule => ({ ...rule, label: rule.label.trim(), points: Number(rule.points), members: [...rule.members] }));
+          if (thresholds.some((rule, index) => !rule.label || String(draft.thresholds[index].points).trim() === "" || !Number.isInteger(rule.points) || rule.points < -10000 || rule.points > 10000)) {
+            thresholdError.textContent = copy.threshold_invalid; thresholdError.hidden = false; return;
+          }
+          payload.thresholds = thresholds;
+        }
         card._courtDraft = { type: "config", frozenPayload: payload, ...payload };
         runCmd("court.configure", payload);
       });

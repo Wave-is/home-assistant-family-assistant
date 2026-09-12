@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from ha_options_menu import select_option
+
 
 async def verify_copy_resume(hass, owner, child, prototype, source_state, flows, created):
     from ha_copy_wizard_smoke import _open, _package, _review_token, _upload
@@ -58,9 +60,7 @@ async def verify_copy_resume(hass, owner, child, prototype, source_state, flows,
             prototype.entry_id, context={"user_id": user.id}
         )
         flows.add(opened["flow_id"])
-        return await hass.config_entries.options.async_configure(
-            opened["flow_id"], {"next_step_id": "legacy_resume"}
-        )
+        return await select_option(hass, opened, "legacy_resume")
 
     denied = await open_resume(child)
     assert denied["type"] == "abort" and denied["reason"] == "forbidden"

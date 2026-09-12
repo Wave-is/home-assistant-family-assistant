@@ -27,7 +27,9 @@ def _read_scope(flow):
         raise DomainError("conflict")
     state = runtime.engine.snapshot()
     member = state.get("members", {}).get(actor)
-    user_id = flow.context.get("user_id")
+    from ..flow_identity import user_id as flow_user_id
+
+    user_id = flow_user_id(flow)
     if (
         not isinstance(member, dict)
         or member.get("id") != actor
@@ -86,7 +88,7 @@ def _schema(options):
     schema = {
         vol.Required("enabled", default=bool(config) and conversation.get("enabled") is True): bool,
         vol.Required("timeout", default=config.get("timeout", 15)): vol.All(
-            int, vol.Range(min=5, max=45)
+            int, vol.Range(min=5, max=60)
         ),
     }
     entity_key = (
@@ -117,7 +119,7 @@ async def options_step(flow, user_input=None):
                 <= {"enabled", "timeout", "entity_id"}
                 or type(user_input["enabled"]) is not bool
                 or type(user_input["timeout"]) is not int
-                or not 5 <= user_input["timeout"] <= 45
+                or not 5 <= user_input["timeout"] <= 60
             ):
                 raise DomainError("invalid_field")
             options = deepcopy(current["options"])
@@ -149,7 +151,7 @@ async def options_step(flow, user_input=None):
                 conversation["enabled"] = True
             else:
                 conversation.pop("ha_agent", None)
-                if not conversation.get("primary"):
+                if not conversation.get("primary") and not conversation.get("agy"):
                     conversation["enabled"] = False
             if options == current["options"]:
                 raise DomainError("invalid_transition")

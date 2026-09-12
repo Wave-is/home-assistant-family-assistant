@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 
 @asynccontextmanager
@@ -57,9 +58,7 @@ async def _general_presence(hass, entry, owner, enabled):
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    form = await select_option(hass, flow, "general")
     assert form["type"] == "form" and form["step_id"] == "general", form
     values = dict(form["data_schema"]({}))
     values["presence"] = enabled
@@ -73,9 +72,7 @@ async def _presence_source(hass, entry, owner, member, enabled, entity_id=""):
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "presence_sources"}
-    )
+    form = await select_option(hass, flow, "presence_sources")
     assert form["type"] == "form" and form["step_id"] == "presence_sources", form
     review = await hass.config_entries.options.async_configure(
         form["flow_id"],

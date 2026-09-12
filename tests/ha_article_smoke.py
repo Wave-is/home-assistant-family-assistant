@@ -13,6 +13,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 URL = "https://public.example/article"
 FETCHED = {
@@ -117,9 +118,7 @@ async def _set_policy(hass, entry, owner, *, enabled, allow_children):
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "articles"}
-    )
+    form = await select_option(hass, flow, "articles")
     assert form["type"] == "form" and form["step_id"] == "articles", form
     review = await hass.config_entries.options.async_configure(
         form["flow_id"],

@@ -15,6 +15,16 @@ def async_register_api(hass):
     from .assistant.chat_api import chat
     from .developer_api import report as developer_report
     from .digest_api import preview as digest_preview
+    from .panel_api import (
+        ai_sandbox_test,
+        module_toggle,
+        panel,
+        settings_save,
+        telegram_enrollment,
+        telegram_enrollment_confirm,
+        telegram_invite,
+        telegram_verify,
+    )
     from .recipes.api import recipes
     from .school_import_api import preview as school_calendar_preview
 
@@ -29,6 +39,14 @@ def async_register_api(hass):
         digest_preview,
         school_calendar_preview,
         developer_report,
+        panel,
+        settings_save,
+        module_toggle,
+        telegram_enrollment,
+        telegram_enrollment_confirm,
+        telegram_invite,
+        telegram_verify,
+        ai_sandbox_test,
     ):
         websocket_api.async_register_command(hass, handler)
 

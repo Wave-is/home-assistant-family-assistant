@@ -5,24 +5,95 @@ from . import digest_settings
 from .context import Context
 from .household import timezone
 from .recurrence import clock
-from .validation import DomainError, enum, fields, text
+from .validation import DomainError, enum, fields, revision, text
+
+EDITABLE = {
+    "name",
+    "language",
+    "modules",
+    "automatic_penalties",
+    "daily_penalty_cap",
+    "timezone",
+    "pantry_expiry_reminders",
+    "pantry_expiry_days",
+    "school_preparation_reminders",
+    "school_preparation_days_before",
+    "school_preparation_time",
+    *digest_settings.DEFAULTS,
+}
+
+
+def current_revision(state):
+    return revision(state.get("settings_revision", 1))
+
+
+def onboarding(state):
+    return dict(
+        state.get("onboarding", {"revision": 1, "step": 1, "completed": False, "skipped": []})
+    )
+
+
+def _onboarding(ctx, payload):
+    fields(payload, {"revision", "step", "completed", "skipped"}, {"revision", "step"})
+    previous = onboarding(ctx.state)
+    if revision(payload["revision"]) != previous["revision"]:
+        raise DomainError("conflict")
+    if type(payload["step"]) is not int or payload["step"] not in {1, 2, 3, 4}:
+        raise DomainError("invalid_field", "step")
+    completed = payload.get("completed", previous["completed"])
+    if type(completed) is not bool or (completed and payload["step"] != 4):
+        raise DomainError("invalid_field", "completed")
+    skipped = payload.get("skipped", previous["skipped"])
+    if (
+        not isinstance(skipped, list)
+        or len(skipped) > 2
+        or any(not isinstance(step, str) or step not in {"telegram", "modules"} for step in skipped)
+    ):
+        raise DomainError("invalid_field", "skipped")
+    result = {
+        "revision": revision(previous["revision"] + 1),
+        "step": payload["step"],
+        "completed": completed,
+        "skipped": sorted(set(skipped)),
+    }
+    ctx.state["onboarding"] = result
+    return result
 
 
 def handle(ctx: Context, action: str, payload: dict) -> dict:
     if ctx.actor["role"] != "owner":
         raise DomainError("forbidden")
+    if action == "onboarding":
+        return _onboarding(ctx, payload)
+    if action == "patch":
+        fields(payload, {"revision", "changes"}, {"revision", "changes"})
+        if revision(payload["revision"]) != current_revision(ctx.state):
+            raise DomainError("conflict")
+        changes = payload["changes"]
+        if not isinstance(changes, dict) or not changes or changes.keys() - EDITABLE:
+            raise DomainError("invalid_field", "changes")
+        payload = {
+            **{key: ctx.state["settings"][key] for key in ("name", "language", "modules")},
+            **changes,
+        }
+        action = "save"
     if action == "digest_policy":
-        return digest_settings.handle(ctx, payload)
+        result = digest_settings.handle(ctx, payload)
+        ctx.state["settings_revision"] = revision(current_revision(ctx.state) + 1)
+        return result
     if action == "developer_policy":
         from .developer_diagnostics import configure
 
         return configure(ctx, payload)
     if action != "save":
         raise DomainError("unknown_action")
+    if "revision" in payload and revision(payload["revision"]) != current_revision(ctx.state):
+        raise DomainError("conflict")
     previous_digest_policy = digest_settings.fingerprint(ctx.state)
     fields(
         payload,
         {
+            "revision",
             "name",
             "language",
             "modules",
@@ -100,4 +171,5 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         ctx.state["settings"]["school_preparation_time"] = payload["school_preparation_time"]
     ctx.state["settings"].update(digest_values)
     digest_settings.advance(ctx.state, previous_digest_policy)
+    ctx.state["settings_revision"] = revision(current_revision(ctx.state) + 1)
     return ctx.state["settings"]

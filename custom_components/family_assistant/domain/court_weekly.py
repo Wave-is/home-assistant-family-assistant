@@ -1,7 +1,9 @@
 """Opt-in, immutable weekly court reports; never reset balances or issue a penalty."""
 
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
+from . import court_rules
 from .context import Context
 from .court_periods import period_bounds, summarize
 from .validation import DomainError, fields, timestamp
@@ -11,12 +13,13 @@ DEFAULTS = {
     "weekday": 0,
     "time": "00:00",
     "second_adult_review": False,
+    "thresholds": [],
     "revision": 0,
 }
 
 
 def configuration(state):
-    return {**DEFAULTS, **state["settings"].get("court", {})}
+    return deepcopy({**DEFAULTS, **state["settings"].get("court", {})})
 
 
 def configure(ctx, payload):
@@ -29,6 +32,8 @@ def configure(ctx, payload):
     if previous["revision"] != payload["revision"]:
         raise DomainError("conflict")
     value = {**previous, **payload}
+    if "thresholds" in payload:
+        value["thresholds"] = court_rules.validate(ctx, payload["thresholds"])
     for key in ("weekly_enabled", "second_adult_review"):
         if type(value[key]) is not bool:
             raise DomainError("invalid_field", key)
@@ -44,7 +49,7 @@ def configure(ctx, payload):
         < 2
     ):
         raise DomainError("invalid_field", "second_adult_review")
-    if any(value[k] != previous[k] for k in ("weekly_enabled", "weekday", "time")):
+    if any(value[k] != previous[k] for k in ("weekly_enabled", "weekday", "time", "thresholds")):
         value["effective_at"] = ctx.now.isoformat()
     value["revision"] += 1
     ctx.state["settings"]["court"] = value
@@ -55,11 +60,14 @@ def view(state, records, now=None):
     config = configuration(state)
     zone = state["settings"].get("timezone", "UTC")
     start, end = period_bounds(now or datetime.now(UTC), zone, config["weekday"], config["time"])
+    totals = summarize(records, start, end)
     return {
         "start": start.isoformat(),
         "end": end.isoformat(),
         "timezone": zone,
-        **summarize(records, start, end),
+        **totals,
+        "thresholds": court_rules.project(config["thresholds"], totals["rows"]),
+        "rule_revision": config["revision"],
     }
 
 
@@ -91,6 +99,8 @@ def tick(ctx):
         "created_at": ctx.now.isoformat(),
         **summarize(list(ctx.state["court"].values()), start, end),
     }
+    report["thresholds"] = court_rules.project(config["thresholds"], report["rows"])
+    report["rule_revision"] = config["revision"]
     reports[identifier] = report
     notifier = Context(ctx.state, ctx.actor, ctx.now, f"court-weekly:{identifier}")
     notifier.notify("family", "court_weekly", {"report_id": identifier})

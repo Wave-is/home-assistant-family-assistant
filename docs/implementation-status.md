@@ -4,9 +4,19 @@ The product vision remains the scope. Status is explicit: planned, implemented,
 unit-tested, HA-tested, hardware-tested, released. These are distinct gates.
 Nothing is production-ready solely because a mock test passes.
 
+## September 13 repair audit (supersedes earlier completeness labels)
+
+The previous stable/complete descriptions were too broad. An intervening panel
+contained demonstration household data, hard-coded statuses and unverified API
+calls; native HA options did not consistently resolve the authenticated caller.
+Legacy commands and court identity/period handling also regressed. The current
+[repair record](control-center-repair.md) separates implemented fixes, fresh
+acceptance evidence and remaining gaps. No household cutover or device activation
+is implied by the software tests below.
+
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
-| Clean public source and HACS structure | Production release 0.1.0 published | Stable production release with deterministic packaging, verified public contracts, trilingual docs, and isolated storage structure |
+| Clean public source and HACS structure | Releases published; repair acceptance in progress | Re-run exact source privacy, packaging and transport gates; historical release labels do not establish full product completion |
 | Atomic persistence, idempotency, roles | Implemented / unit-tested | Disk faults, concurrent replay, revoked identities, batch rollback |
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN/manual entry, recurring preservation and local camera scanning unit/browser-tested; authenticated barcode/history/Store reload passed. Native Assist PCM/STT/spoken review passed in alpha.35 candidate. Photo recognition and real speech/camera acceptance pending |

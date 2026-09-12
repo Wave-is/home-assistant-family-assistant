@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import json
 import re
@@ -95,14 +96,17 @@ class TelegramManager:
             clock=dt_util.utcnow,
             provider_scope=self._provider_scope,
         )
+        from .photo_reports import PhotoReports
 
-    def _manager_guard(self, _state=None):
+        self.photo_reports = PhotoReports(self)
+
+    def _manager_guard(self, _state=None, *, starting=False):
         entry = self.hass.config_entries.async_get_entry(self.entry.entry_id)
         entries = self.hass.data.get(DOMAIN, {}).get("entries", {})
         if (
             self._stopped
             or entry is not self.entry
-            or self.entry.state is not ConfigEntryState.LOADED
+            or (not starting and self.entry.state is not ConfigEntryState.LOADED)
             or entries.get(self.entry.entry_id) is not self.runtime
             or self.entry.runtime_data is not self.runtime
             or self.runtime.engine is not getattr(self.enrollment, "engine", None)
@@ -199,7 +203,16 @@ class TelegramManager:
         return [{**target, "bot_id": self.bot["id"]} for target in targets(event, state)]
 
     def start(self):
+        # Setup calls start before HA marks the entry LOADED. The complete
+        # instance/config checks still prevent an old manager changing health.
+        self._manager_guard(starting=True)
+        if self._tasks:
+            return
+        self.runtime.health.pop("telegram", None)
         self._tasks = [
+            self.hass.async_create_background_task(
+                self._install_menu(), "Family Assistant Telegram command menu"
+            ),
             self.hass.async_create_background_task(
                 self._poll(), "Family Assistant Telegram polling"
             ),
@@ -208,6 +221,9 @@ class TelegramManager:
             ),
             self.hass.async_create_background_task(
                 self._conversations(), "Family Assistant conversation inbox"
+            ),
+            self.hass.async_create_background_task(
+                self.photo_reports.run(), "Family Assistant photo report inbox"
             ),
         ]
 
@@ -229,6 +245,39 @@ class TelegramManager:
             severity=ir.IssueSeverity.WARNING,
             translation_key="telegram_attention",
         )
+
+    async def _install_menu(self):
+        from .menu import command_menu
+
+        try:
+            # An eagerly scheduled startup task may run before setup completes.
+            async with asyncio.timeout(30):
+                while self.entry.state is not ConfigEntryState.LOADED:
+                    self._manager_guard(starting=True)
+                    await asyncio.sleep(0.1)
+            for language in ("", "en", "ru", "uk"):
+                state = self.runtime.engine.snapshot()
+                self._manager_guard(state)
+                payload = {
+                    "scope": {"type": "default"},
+                    "language_code": language,
+                    "commands": command_menu(language or state["settings"]["language"]),
+                }
+                result = await self.client.call("setMyCommands", payload)
+                self._manager_guard(self.runtime.engine.snapshot())
+                if result is not True:
+                    raise DeliveryError("telegram_bad_response")
+            self.runtime.health.pop("telegram_menu", None)
+        except DeliveryError as error:
+            with suppress(DomainError):
+                self._manager_guard(self.runtime.engine.snapshot())
+                self.runtime.health["telegram_menu"] = error.code
+        except DomainError:
+            return
+        except TimeoutError:
+            with suppress(DomainError):
+                self._manager_guard(starting=True)
+                self.runtime.health["telegram_menu"] = "telegram_timeout"
 
     async def _poll(self):
         backoff = 5
@@ -296,6 +345,40 @@ class TelegramManager:
         )
         return str(result["message_id"])
 
+    async def _conversation_activity_call(self, job, guard, *, reaction=None):
+        """Optional UI hints share the job's current identity and short timeout."""
+        try:
+            guard(self.runtime.engine.snapshot())
+            if reaction is not None:
+                if not job.get("reply_to"):
+                    return
+                method = "setMessageReaction"
+                payload = {
+                    "chat_id": job["chat_id"],
+                    "message_id": job["reply_to"],
+                    "reaction": reaction,
+                }
+            else:
+                method = "sendChatAction"
+                payload = {"chat_id": job["chat_id"], "action": "typing"}
+            async with asyncio.timeout(2):
+                await self.client.call(method, payload)
+            guard(self.runtime.engine.snapshot())
+        except (DomainError, DeliveryError, TimeoutError):
+            return
+
+    async def _conversation_activity(self, job, guard):
+        await self._conversation_activity_call(
+            job, guard, reaction=[{"type": "emoji", "emoji": "🤔"}]
+        )
+        while True:
+            try:
+                guard(self.runtime.engine.snapshot())
+            except DomainError:
+                return
+            await self._conversation_activity_call(job, guard)
+            await asyncio.sleep(4)
+
     async def _conversations(self):
         # Keep an already computed answer through a transient Store failure.
         # This is process-local, not an exactly-once promise across a crash.
@@ -312,6 +395,7 @@ class TelegramManager:
                         clock=dt_util.utcnow,
                         provider_scope=self._provider_scope,
                     )
+                    typing_task = None
                     try:
                         actor = self.jobs.authorize(job, dt_util.utcnow())
                         assistant = self.runtime.assistant
@@ -327,6 +411,24 @@ class TelegramManager:
                             self.runtime.assistant_revision,
                         )
                         scoped_engine = _ScopedEngine(self.runtime.engine, guard)
+                        guard(self.runtime.engine.snapshot())
+                        typing_task = asyncio.create_task(self._conversation_activity(job, guard))
+                        images = None
+                        if job.get("image_file_id"):
+                            try:
+                                data = await self.client.download_file(job["image_file_id"])
+                            except (DeliveryError, DomainError) as error:
+                                guard(self.runtime.engine.snapshot())
+                                if (
+                                    isinstance(error, DomainError)
+                                    and error.code == "file_too_large"
+                                ):
+                                    raise
+                                raise DomainError("photo_unavailable") from None
+                            guard(self.runtime.engine.snapshot())
+                            if not data:
+                                raise DomainError("photo_unavailable")
+                            images = [base64.b64encode(data).decode("ascii")]
                         response = await Assistant(scoped_engine, cascade, search).respond(
                             actor,
                             job["content"],
@@ -334,8 +436,10 @@ class TelegramManager:
                             dt_util.parse_datetime(job["created_at"]),
                             job["refs"],
                             quoted_text=job.get("quoted_text", ""),
+                            images=images,
                             scope_check=lambda guard=guard: guard(self.runtime.engine.snapshot()),
                         )
+
                         guard(self.runtime.engine.snapshot())
                     except (DomainError, TimeoutError) as err:
                         code = err.code if isinstance(err, DomainError) else "provider_timeout"
@@ -346,6 +450,12 @@ class TelegramManager:
                         response = COPY[job["language"]]["error"].format(
                             error=ERRORS[job["language"]].get(code, code)
                         )
+                    finally:
+                        if typing_task is not None:
+                            typing_task.cancel()
+                            with suppress(asyncio.CancelledError):
+                                await typing_task
+                            await self._conversation_activity_call(job, guard, reaction=[])
                     completion = (job, response, cancelled, finish_jobs, diagnostic_code)
                 if completion is not None:
                     job, response, cancelled, finish_jobs, diagnostic_code = completion
@@ -388,6 +498,7 @@ class TelegramManager:
         )
         self._manager_guard(engine.snapshot())
         command_guard = None
+        observation_key = None
         if not captured and (message or callback):
             sender = (message or callback).get("from", {})
             envelope = message or callback.get("message", {})
@@ -484,19 +595,31 @@ class TelegramManager:
                                 if result["accepted"]
                                 else t["wrong"]
                             )
-                    elif (content := addressed(message, self.bot)) is not None:
+                    elif (content := addressed(message, self.bot, language=language)) is not None:
+                        if message.get("text") or message.get("caption"):
+                            observation_key = (
+                                "command_received_at"
+                                if content.startswith("/")
+                                else "text_received_at"
+                            )
 
                         async def slow(actor, content, operation_id, received, refs):
                             command_guard(engine.snapshot())
                             if not self.runtime.assistant:
                                 return t["unknown"]
                             from ..assistant.jobs import Jobs
+                            from .router import image_file_id
+
+                            # Persist only Telegram's bounded file reference. Fetching bytes
+                            # belongs to the worker so /ping and wake-up replies stay responsive.
+                            attachment = image_file_id(message)
 
                             scoped_jobs = Jobs(
                                 scoped_engine,
                                 clock=dt_util.utcnow,
                                 provider_scope=self._provider_scope,
                             )
+                            msg_id = envelope.get("message_id") or message.get("message_id")
                             result = await scoped_jobs.enqueue(
                                 actor,
                                 content,
@@ -505,22 +628,32 @@ class TelegramManager:
                                 refs,
                                 bot_id=bot_id,
                                 chat_id=chat["id"],
-                                reply_to=envelope.get("message_id"),
+                                reply_to=msg_id,
                                 quoted_text=reply_quote(
                                     scoped_engine.snapshot(), message, self.bot
                                 ),
+                                image_file_id=attachment,
                             )
                             command_guard(engine.snapshot())
                             return result
 
-                        response = await route_polls(
+                        response = await self.photo_reports.enqueue(
                             scoped_engine,
                             actor,
+                            message,
                             content,
                             f"tg:{bot_id}:{update_id}:action",
                             now,
-                            private=chat.get("type") == "private",
                         )
+                        if response is None:
+                            response = await route_polls(
+                                scoped_engine,
+                                actor,
+                                content,
+                                f"tg:{bot_id}:{update_id}:action",
+                                now,
+                                private=chat.get("type") == "private",
+                            )
                         if response is None:
                             response = await route(
                                 scoped_engine,
@@ -614,6 +747,17 @@ class TelegramManager:
         def advance(ctx):
             offsets = ctx.state["telegram"].setdefault("offsets", {})
             offsets[str(self.bot["id"])] = max(offsets.get(str(self.bot["id"]), -1), update_id + 1)
+            if observation_key is not None:
+                observations = ctx.state["telegram"].setdefault("observations", {})
+                observed = observations.setdefault(str(bot_id), {})
+                if observed.get("config_digest") != self._telegram_options_digest:
+                    observed.clear()
+                observed[observation_key] = now.isoformat()
+                observed["config_digest"] = self._telegram_options_digest
+                # Bot replacements must not grow this transport evidence forever.
+                while len(observations) > 16:
+                    oldest = next(key for key in observations if key != str(bot_id))
+                    observations.pop(oldest)
 
         offset_engine = _ScopedEngine(engine, command_guard or self._manager_guard)
         await offset_engine.background_update("telegram_offset", now, advance)

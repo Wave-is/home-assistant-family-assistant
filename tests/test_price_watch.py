@@ -401,7 +401,11 @@ async def test_duplicate_operation_id_is_idempotent(engine, now):
 @pytest.mark.asyncio
 async def test_price_watch_view_projection(engine, now):
     watcher = await engine.execute(
-        "parent", "price_watch.add", {"url": "https://example.com/proj", "name": "Projected"}, "pw-proj", now
+        "parent",
+        "price_watch.add",
+        {"url": "https://example.com/proj", "name": "Projected"},
+        "pw-proj",
+        now,
     )
     view = engine.view("parent", now=now)
     assert "price_watches" in view
@@ -413,7 +417,13 @@ async def test_telegram_watch_and_watchlist(engine, now):
     from custom_components.family_assistant.telegram.router import route
 
     # Test adding via /watch URL | Name
-    resp = await route(engine, "parent", "/watch https://example.com/watch1 | My Watch 1", "op-w1", now)
+    resp = await route(
+        engine,
+        "parent",
+        "/watch https://example.com/watch1 | My Watch 1",
+        "op-w1",
+        now,
+    )
     assert "PW" in resp
     assert "My Watch 1" in resp
 
@@ -427,7 +437,13 @@ async def test_telegram_watch_and_watchlist(engine, now):
     assert list_resp == prices_resp
 
     # Test direct URL input
-    direct_resp = await route(engine, "parent", "https://example.com/watch2 | My Watch 2", "op-w2", now)
+    direct_resp = await route(
+        engine,
+        "parent",
+        "https://example.com/watch2 | My Watch 2",
+        "op-w2",
+        now,
+    )
     assert "PW" in direct_resp
     assert "My Watch 2" in direct_resp
 

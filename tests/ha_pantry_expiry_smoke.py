@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 import voluptuous as vol
+from ha_options_menu import select_option
 from homeassistant.core import Context
 
 
@@ -11,9 +12,7 @@ async def _general(hass, entry, user):
     flow = await hass.config_entries.options.async_init(
         entry.entry_id, context={"user_id": user.id}
     )
-    return await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    return await select_option(hass, flow, "general")
 
 
 async def verify_pantry_expiry(hass, owner):

@@ -11,7 +11,14 @@ from ..domain.validation import DomainError
 from ..notifications import DeliveryError
 
 READ_METHODS = {"getMe", "getWebhookInfo", "getUpdates", "getChat", "getChatMember", "getFile"}
-WRITE_METHODS = {"sendMessage", "answerCallbackQuery", "editMessageReplyMarkup", "setMyCommands"}
+WRITE_METHODS = {
+    "sendMessage",
+    "answerCallbackQuery",
+    "editMessageReplyMarkup",
+    "setMyCommands",
+    "sendChatAction",
+    "setMessageReaction",
+}
 
 
 class TelegramClient:
@@ -109,3 +116,48 @@ class TelegramClient:
         if offset is not None:
             payload["offset"] = offset
         return await self.call("getUpdates", payload)
+
+    async def download_file(self, file_id: str, *, max_bytes: int = 6_000_000) -> bytes:
+        if not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 512:
+            raise DomainError("invalid_field", "file_id")
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 6_000_000:
+            raise DomainError("invalid_field", "max_bytes")
+        file_info = await self.call("getFile", {"file_id": file_id.strip()})
+        if not isinstance(file_info, dict):
+            raise DeliveryError("telegram_bad_response")
+        file_path = file_info.get("file_path")
+        if (
+            not isinstance(file_path, str)
+            or not re.fullmatch(r"[A-Za-z0-9_./-]+", file_path)
+            or file_path.startswith("/")
+            or any(part in {".", "..", ""} for part in file_path.split("/"))
+            or len(file_path) > 512
+        ):
+            raise DeliveryError("telegram_bad_response")
+        file_size = file_info.get("file_size", 0)
+        if type(file_size) is not int or file_size < 0:
+            raise DeliveryError("telegram_bad_response")
+        if file_size > max_bytes:
+            raise DomainError("file_too_large")
+        timeout = aiohttp.ClientTimeout(total=30, connect=5)
+        try:
+            async with self._session.get(
+                f"https://api.telegram.org/file/bot{self._token}/{file_path}",
+                timeout=timeout,
+                allow_redirects=False,
+            ) as response:
+                if response.status != 200:
+                    raise DeliveryError("telegram_bad_response")
+                chunks, size = [], 0
+                async for chunk in response.content.iter_chunked(65536):
+                    size += len(chunk)
+                    if size > max_bytes:
+                        raise DomainError("file_too_large")
+                    chunks.append(chunk)
+                if not size:
+                    raise DeliveryError("telegram_bad_response")
+                return b"".join(chunks)
+        except aiohttp.ClientConnectorError:
+            raise DeliveryError("telegram_unreachable", retryable=True) from None
+        except (aiohttp.ClientError, TimeoutError):
+            raise DeliveryError("telegram_timeout", retryable=True) from None

@@ -15,6 +15,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         return court_weekly.configure(ctx, payload)
     if ctx.actor["role"] == "guest":
         raise DomainError("forbidden")
+    if action == "reverse_source":
+        return _reverse_source(ctx, payload)
     if action == "award":
         ctx.require_parent()
         fields(payload, {"member", "points", "reason"}, {"member", "points", "reason"})
@@ -101,3 +103,42 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     else:
         raise DomainError("unknown_action")
     return ctx.touch(record)
+
+
+def _reverse_source(ctx: Context, payload: dict) -> dict:
+    """Correct one exact automatic event using the ordinary reversal review rules.
+
+    This does not certify task completion, alter an alarm or infer another source
+    from a member name. The original automatic event remains in the ledger.
+    """
+    ctx.require_parent()
+    required = {"source", "source_id", "member", "revision", "reason"}
+    fields(payload, required, required)
+    source = payload["source"]
+    if not isinstance(source, str) or source not in {"task", "alarm"}:
+        raise DomainError("invalid_field", "source")
+    source_id = text(payload["source_id"], "source_id", 70)
+    member = text(payload["member"], "member", 80)
+    record = ctx.record("court", f"{source}:{source_id}", strict_revision(payload["revision"]))
+    reference = "task_id" if source == "task" else "run_id"
+    if (
+        record.get("source") != source
+        or record.get("actor") != "system"
+        or record.get("member") != member
+        or type(record.get("points")) is not int
+        or record["points"] >= 0
+        or not isinstance(record.get("reason_data"), dict)
+        or record.get("reason_data", {}).get(reference) != source_id
+    ):
+        raise DomainError("invalid_field", "source_id")
+    result = handle(
+        ctx,
+        "reverse",
+        {
+            "id": record["id"],
+            "revision": record["revision"],
+            "reason": payload["reason"],
+        },
+    )
+    result["reversal"]["source_reference"] = {"source": source, "source_id": source_id}
+    return result

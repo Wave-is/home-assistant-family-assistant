@@ -20,7 +20,9 @@ class Enrollment:
     def __init__(self, engine):
         self.engine = engine
 
-    async def issue(self, actor: str, kind: str, now: datetime, member_id=None) -> dict:
+    async def issue(
+        self, actor: str, kind: str, now: datetime, member_id=None, *, guard=None
+    ) -> dict:
         code = secrets.token_urlsafe(12)
         digest = hashlib.sha256(code.encode()).hexdigest()
 
@@ -50,7 +52,9 @@ class Enrollment:
             ctx.state["enrollments"][record["id"]] = record
             return {"id": record["id"], "code": code, "expires_at": record["expires_at"]}
 
-        return await self.engine.system_update("telegram_enroll_issue", now, create)
+        if guard is None:
+            return await self.engine.system_update("telegram_enroll_issue", now, create)
+        return await self.engine.system_update("telegram_enroll_issue", now, create, guard=guard)
 
     async def capture(self, message: dict, username: str, now: datetime) -> bool:
         if message.get("forward_origin") or message.get("sender_chat"):
@@ -122,7 +126,7 @@ class Enrollment:
             key: record[key] for key in ("id", "state", "expires_at", "candidate") if key in record
         }
 
-    async def confirm(self, actor: str, enrollment_id: str, now: datetime) -> dict:
+    async def confirm(self, actor: str, enrollment_id: str, now: datetime, *, guard=None) -> dict:
         text(enrollment_id, "enrollment", 24)
 
         def confirm(ctx):
@@ -160,4 +164,6 @@ class Enrollment:
             )
             return {"linked": True, "kind": record["kind"]}
 
-        return await self.engine.system_update("telegram_enroll_confirm", now, confirm)
+        if guard is None:
+            return await self.engine.system_update("telegram_enroll_confirm", now, confirm)
+        return await self.engine.system_update("telegram_enroll_confirm", now, confirm, guard=guard)

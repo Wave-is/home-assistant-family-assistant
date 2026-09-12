@@ -14,14 +14,25 @@ from .domain.validation import DomainError
 from .domain.validation import revision as strict_revision
 
 
-def _strict_age(value):
-    if type(value) is not int or not 30 <= value <= 3600:
-        raise vol.Invalid("presence_max_age_seconds")
-    return value
+class _StrictAge(vol.All):
+    """Strict integer seconds validator serializable by voluptuous_serialize."""
+
+    def __init__(self):
+        super().__init__(int, vol.Range(min=30, max=3600))
+
+    def __call__(self, value):
+        if type(value) is not int or not 30 <= value <= 3600:
+            raise vol.Invalid("presence_max_age_seconds")
+        return value
+
+
+_strict_age = _StrictAge()
 
 
 async def _ha_user(flow):
-    user_id = flow.context.get("user_id")
+    from .flow_identity import user_id as flow_user_id
+
+    user_id = flow_user_id(flow)
     if not isinstance(user_id, str) or not user_id:
         raise DomainError("forbidden")
     getter = getattr(getattr(flow.hass, "auth", None), "async_get_user", None)

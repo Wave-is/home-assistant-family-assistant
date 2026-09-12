@@ -12,6 +12,7 @@ from hashlib import sha256
 from pathlib import Path, PurePath
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.setup import async_setup_component
@@ -56,9 +57,7 @@ async def _options_form(hass, entry, user, step):
         entry.entry_id, context={"user_id": user.id}
     )
     assert flow["type"] == "menu", flow
-    return await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": step}
-    )
+    return await select_option(hass, flow, step)
 
 
 def _digest_tree(root: Path) -> dict[str, tuple[int, str]]:

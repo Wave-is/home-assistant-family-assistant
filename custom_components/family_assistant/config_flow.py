@@ -31,26 +31,40 @@ CONFIGURABLE_MODULES = (
 )
 
 
-def school_preparation_days(value):
+class SchoolPreparationDays(vol.In):
     """Accept only the two supported integer lead days; bool is not an integer here."""
-    if type(value) is not int or value not in {0, 1}:
-        raise vol.Invalid("school_preparation_days_before")
-    return value
+
+    def __init__(self):
+        super().__init__([0, 1])
+
+    def __call__(self, value):
+        if type(value) is not int or value not in {0, 1}:
+            raise vol.Invalid("school_preparation_days_before")
+        return value
 
 
-def school_preparation_clock(value):
+class SchoolPreparationClock(vol.Coerce):
     """Validate a strict, zero-padded household-local HH:MM clock."""
-    from .domain.recurrence import clock
 
-    if not isinstance(value, str):
-        raise vol.Invalid("school_preparation_time")
-    try:
-        normalized = clock(value)
-    except DomainError:
-        raise vol.Invalid("school_preparation_time") from None
-    if normalized != value:
-        raise vol.Invalid("school_preparation_time")
-    return value
+    def __init__(self):
+        super().__init__(str)
+
+    def __call__(self, value):
+        from .domain.recurrence import clock
+
+        if not isinstance(value, str):
+            raise vol.Invalid("school_preparation_time")
+        try:
+            normalized = clock(value)
+        except DomainError:
+            raise vol.Invalid("school_preparation_time") from None
+        if normalized != value:
+            raise vol.Invalid("school_preparation_time")
+        return value
+
+
+school_preparation_days = SchoolPreparationDays()
+school_preparation_clock = SchoolPreparationClock()
 
 
 def select(options, translation_key=None):
@@ -75,14 +89,14 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            user_id = self.context.get("user_id")
-            user = await self.hass.auth.async_get_user(user_id) if user_id else None
-            if user is None:
-                users = await self.hass.auth.async_get_users()
-                admin_users = [u for u in users if u.is_active and u.is_admin]
-                if admin_users:
-                    user = next((u for u in admin_users if u.is_owner), admin_users[0])
-            if user is None or not user.is_admin:
+            from .flow_identity import user_id as flow_user_id
+
+            try:
+                user_id = flow_user_id(self)
+            except DomainError:
+                return self.async_abort(reason="admin_required")
+            user = await self.hass.auth.async_get_user(user_id)
+            if user is None or not user.is_active or not user.is_admin:
                 return self.async_abort(reason="admin_required")
             if not user_input["name"].strip() or not user_input["owner_name"].strip():
                 errors["base"] = "invalid_field"
@@ -120,6 +134,20 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_modules(self, user_input=None):
         if user_input is not None:
+            from .flow_identity import user_id as flow_user_id
+
+            try:
+                user_id = flow_user_id(self)
+            except DomainError:
+                return self.async_abort(reason="admin_required")
+            user = await self.hass.auth.async_get_user(user_id)
+            if (
+                user is None
+                or not user.is_active
+                or not user.is_admin
+                or user.id != self._household.get("owner_user_id")
+            ):
+                return self.async_abort(reason="admin_required")
             modules = [key for key in CONFIGURABLE_MODULES if user_input.get(key)]
             self._household["modules"] = modules
             return self.async_create_entry(title=self._household["name"], data=self._household)
@@ -152,6 +180,13 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             self.config_entry.options
         ):
             return self.async_abort(reason="backup_in_progress")
+        # Validation may yield while ownership is revoked. No-change finishes
+        # only acknowledge an already committed domain receipt (also during backup).
+        if dict(data) != dict(self.config_entry.options):
+            try:
+                self._authorized_runtime()
+            except DomainError as error:
+                return self.async_abort(reason=error.code)
         return super().async_create_entry(
             title=title,
             data=data,
@@ -164,6 +199,78 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             return await self.async_step_guided_onboarding()
         return self.async_show_menu(
             step_id="init",
+            menu_options=[
+                "menu_family",
+                "menu_telegram",
+                "menu_ai",
+                "menu_services",
+                "menu_maintenance",
+                "all_options",
+            ],
+        )
+
+    async def async_step_menu_family(self, user_input=None):
+        return self.async_show_menu(
+            step_id="menu_family",
+            menu_options=[
+                "general",
+                "member",
+                "guided_onboarding",
+                "init",
+            ],
+        )
+
+    async def async_step_menu_telegram(self, user_input=None):
+        return self.async_show_menu(
+            step_id="menu_telegram",
+            menu_options=[
+                "telegram",
+                "telegram_group",
+                "telegram_member",
+                "alarm_device",
+                "init",
+            ],
+        )
+
+    async def async_step_menu_ai(self, user_input=None):
+        return self.async_show_menu(
+            step_id="menu_ai",
+            menu_options=[
+                "conversation",
+                "ha_agent",
+                "search",
+                "articles",
+                "init",
+            ],
+        )
+
+    async def async_step_menu_services(self, user_input=None):
+        return self.async_show_menu(
+            step_id="menu_services",
+            menu_options=[
+                "mikrotik",
+                "recipes",
+                "presence_sources",
+                "digests",
+                "init",
+            ],
+        )
+
+    async def async_step_menu_maintenance(self, user_input=None):
+        return self.async_show_menu(
+            step_id="menu_maintenance",
+            menu_options=[
+                "legacy_copy",
+                "legacy_prepare",
+                "legacy_resume",
+                "developer_diagnostics",
+                "init",
+            ],
+        )
+
+    async def async_step_all_options(self, user_input=None):
+        return self.async_show_menu(
+            step_id="all_options",
             menu_options=[
                 "guided_onboarding",
                 "general",
@@ -184,14 +291,16 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "legacy_prepare",
                 "legacy_resume",
                 "developer_diagnostics",
+                "init",
             ],
         )
 
     def _authorized_runtime(self):
+        from .flow_identity import user_id as flow_user_id
         from .runtime import get_runtime
 
         runtime = get_runtime(self.hass, self.config_entry.entry_id)
-        actor = runtime.engine.actor_for_ha(self.context.get("user_id"))
+        actor = runtime.engine.actor_for_ha(flow_user_id(self))
         if runtime.engine.view(actor)["role"] != "owner":
             raise DomainError("forbidden")
         if runtime.engine.shadow_mode:
@@ -446,7 +555,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 ): bool,
                 vol.Required(
                     "timeout", default=current.get("primary", {}).get("timeout", 15)
-                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=45)),
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
             }
         )
         return self.async_show_form(
@@ -561,14 +670,18 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         )
 
     async def _begin_enrollment(self, kind, member_id=None):
+        from .command_scope import capture
+        from .flow_identity import user_id as flow_user_id
         from .telegram.enrollment import Enrollment
 
         try:
             runtime, actor = self._authorized_runtime()
             if not runtime.telegram:
                 return self.async_abort(reason="telegram_not_ready")
+            scope = await capture(self.hass, self.config_entry.entry_id, flow_user_id(self))
+            await scope.check()
             self._invite = await Enrollment(runtime.engine).issue(
-                actor, kind, dt_util.utcnow(), member_id
+                actor, kind, dt_util.utcnow(), member_id, guard=scope.guard
             )
             self._invite_kind = kind
         except DomainError as err:
@@ -629,6 +742,8 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         )
 
     async def async_step_telegram_confirm(self, user_input=None):
+        from .command_scope import capture
+        from .flow_identity import user_id as flow_user_id
         from .telegram.enrollment import Enrollment
 
         try:
@@ -638,7 +753,11 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             if user_input is not None:
                 if not user_input.get("confirmed"):
                     return self.async_abort(reason="telegram_not_confirmed")
-                await enrollment.confirm(actor, self._invite["id"], dt_util.utcnow())
+                scope = await capture(self.hass, self.config_entry.entry_id, flow_user_id(self))
+                await scope.check()
+                await enrollment.confirm(
+                    actor, self._invite["id"], dt_util.utcnow(), guard=scope.guard
+                )
                 runtime.updated()
                 return self.async_create_entry(title="", data=dict(self.config_entry.options))
         except DomainError as err:
@@ -665,12 +784,17 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         errors = {}
         current_settings = runtime.engine.snapshot()["settings"]
         current_modules = current_settings["modules"]
+        from .domain.settings import current_revision
+
         if user_input is not None:
             try:
                 result = await runtime.engine.execute(
                     actor,
                     "settings.save",
                     {
+                        "revision": getattr(
+                            self, "_settings_revision", current_revision(runtime.engine.snapshot())
+                        ),
                         "name": user_input["name"],
                         "language": user_input["language"],
                         "modules": [
@@ -683,8 +807,13 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                             )
                             if user_input.get(m, m in current_modules)
                         ],
-                        "automatic_penalties": user_input.get("automatic_penalties", False),
-                        "daily_penalty_cap": user_input.get("daily_penalty_cap", 1),
+                        "automatic_penalties": user_input.get(
+                            "automatic_penalties",
+                            current_settings.get("automatic_penalties", False),
+                        ),
+                        "daily_penalty_cap": user_input.get(
+                            "daily_penalty_cap", current_settings.get("daily_penalty_cap", 1)
+                        ),
                         "pantry_expiry_reminders": user_input.get(
                             "pantry_expiry_reminders",
                             current_settings.get("pantry_expiry_reminders", False),
@@ -719,6 +848,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             except DomainError as err:
                 errors["base"] = err.code
         settings = runtime.engine.snapshot()["settings"]
+        self._settings_revision = current_revision(runtime.engine.snapshot())
         return self.async_show_form(
             step_id="general",
             data_schema=vol.Schema(

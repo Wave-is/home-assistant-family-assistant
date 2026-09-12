@@ -2,6 +2,7 @@
 
 import { SCHOOL_COPY } from "./school-copy.js";
 import { renderSchoolImport } from "./school-import-view.js";
+import {inMemberContext} from "./panel-member-context.js";
 
 const PARENTS = new Set(["owner", "parent"]);
 const VISIBLE_ROLES = new Set(["owner", "parent", "child"]);
@@ -94,7 +95,7 @@ function sameAccess(card, expected) {
 
 function records(card) {
   return Array.isArray(card._data?.school?.timetables)
-    ? card._data.school.timetables
+    ? card._data.school.timetables.filter(record=>inMemberContext(card,record.member))
     : [];
 }
 
@@ -115,7 +116,7 @@ function sameRecord(left, right) {
 
 function childMember(card, memberId) {
   const member = memberById(card._data, memberId);
-  return member?.active === true &&
+  return inMemberContext(card,memberId) && member?.active === true &&
     member.role === "child" &&
     validRevision(member.revision)
     ? member
@@ -634,7 +635,7 @@ export function renderSchool(card, body) {
       Array.isArray(card._data.school.upcoming)
         ? card._data.school.upcoming
         : []
-    ).filter((item) => parent || item.member === access.actor);
+    ).filter((item) => inMemberContext(card,item.member) && (parent || item.member === access.actor));
     const agenda = node("section", null, "item school-group");
     agenda.append(node("h3", copy.upcoming));
     if (!upcoming.length) agenda.append(node("p", copy.no_upcoming, "sub"));

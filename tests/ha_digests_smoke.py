@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 
 @asynccontextmanager
@@ -81,9 +82,7 @@ async def _policy(hass, entry, user, **changes):
         entry.entry_id, context={"user_id": user.id}
     )
     assert flow["type"] == "menu", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "digests"}
-    )
+    form = await select_option(hass, flow, "digests")
     if form["type"] == "abort":
         return form
     assert form["type"] == "form" and form["step_id"] == "digests", form
@@ -103,9 +102,7 @@ async def _module(hass, entry, user, enabled):
     flow = await hass.config_entries.options.async_init(
         entry.entry_id, context={"user_id": user.id}
     )
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    form = await select_option(hass, flow, "general")
     assert form["type"] == "form" and form["step_id"] == "general", form
     state = entry.runtime_data.engine.snapshot()
     values = {

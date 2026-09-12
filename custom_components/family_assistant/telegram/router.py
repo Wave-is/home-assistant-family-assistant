@@ -6,9 +6,9 @@ import re
 from datetime import datetime
 
 from ..domain.validation import DomainError
-from . import calendar, commands, rewards, routines
+from . import alarm_commands, calendar, commands, rewards, routines, task_commands
 from .context import PersonalReply
-from .intents import find_member, parse
+from .intents import find_member, layout_trans, normalize, parse
 from .presentation import court_stats, summary
 
 COPY = {
@@ -18,7 +18,9 @@ COPY = {
             "Family Assistant\n/ping — check the bot\n/shopping — shopping list\n"
             "/buy item | quantity | unit\n/bought S000001 | optional purchased quantity\n"
             "/tasks — tasks\n/task "
-            "member | task title\n/done T000001 | report\n/approve T000001 — "
+            "member | task title\n/done T000001 | report\n"
+            "/report T000001 — photo caption, no note\n"
+            "/approve T000001 — "
             "parent confirmation\n/alarms — wake-up checks\n/stats — scores and "
             "reasons\n/internet member — Kid Control status\n/netpause member\n"
             "/netresume member\n/netgrant member | 30 — temporary access\n"
@@ -53,7 +55,8 @@ COPY = {
             "Family Assistant\n/ping — проверить бота\n/shopping — покупки\n/buy "
             "товар | количество | единица\n/bought S000001 | количество (необязательно) — куплено\n"
             "/tasks — "
-            "задачи\n/task участник | задача\n/done T000001 | отчёт\n/approve "
+            "задачи\n/task участник | задача\n/done T000001 | отчёт\n"
+            "/report T000001 — подпись к фото, без примечания\n/approve "
             "T000001 — подтверждение родителя\n/alarms — проверки подъёма\n"
             "/stats — баллы и причины\nПодтверждайте подъём свежими кнопками "
             "проверки.\n/internet участник — интернет ребёнка\n/netpause участник\n"
@@ -87,7 +90,8 @@ COPY = {
             "Family Assistant\n/ping — перевірити бота\n/shopping — покупки\n/buy "
             "товар | кількість | одиниця\n/bought S000001 | кількість (необов’язково) — куплено\n"
             "/tasks — "
-            "завдання\n/task учасник | завдання\n/done T000001 | звіт\n/approve "
+            "завдання\n/task учасник | завдання\n/done T000001 | звіт\n"
+            "/report T000001 — підпис до фото, без примітки\n/approve "
             "T000001 — підтвердження батьків\n/alarms — перевірки підйому\n"
             "/stats — бали та причини\nПідтверджуйте підйом свіжими кнопками "
             "перевірки.\n/internet участник — інтернет дитини\n/netpause учасник\n"
@@ -116,15 +120,68 @@ COPY = {
 }
 
 
-def addressed(message: dict, bot: dict) -> str | None:
+def image_file_id(message: dict) -> str | None:
+    """Select a bounded Telegram image reference; never download while polling."""
+    for source in (message, message.get("reply_to_message")):
+        if not isinstance(source, dict):
+            continue
+        photos = source.get("photo")
+        if isinstance(photos, list) and photos:
+            selected = photos[-1]
+        else:
+            selected = source.get("document")
+            if not isinstance(selected, dict) or not str(selected.get("mime_type", "")).startswith(
+                "image/"
+            ):
+                continue
+        if not isinstance(selected, dict):
+            raise DomainError("photo_unavailable")
+        file_id = selected.get("file_id")
+        size = selected.get("file_size")
+        if size is not None and (type(size) is not int or size < 0):
+            raise DomainError("photo_unavailable")
+        if size is not None and size > 6_000_000:
+            raise DomainError("file_too_large")
+        if not isinstance(file_id, str) or not file_id.strip() or len(file_id) > 512:
+            raise DomainError("photo_unavailable")
+        return file_id.strip()
+    return None
+
+
+def addressed(message: dict, bot: dict, *, language: str = "ru") -> str | None:
     if (
         message.get("sender_chat")
         or message.get("from", {}).get("is_bot")
         or message.get("forward_origin")
     ):
         return None
-    content = message.get("text", "")
-    if not isinstance(content, str) or not content.strip() or len(content) > 4096:
+    raw_content = message.get("text") or message.get("caption") or ""
+    if not isinstance(raw_content, str) or len(raw_content) > 4096:
+        return None
+    has_photo = bool(
+        message.get("photo")
+        or (
+            isinstance(message.get("document"), dict)
+            and str(message.get("document", {}).get("mime_type", "")).startswith("image/")
+        )
+    )
+    replied_msg = message.get("reply_to_message") or {}
+    reply_has_photo = bool(
+        replied_msg.get("photo")
+        or (
+            isinstance(replied_msg.get("document"), dict)
+            and str(replied_msg.get("document", {}).get("mime_type", "")).startswith("image/")
+        )
+    )
+    photo_prompt = {
+        "en": "Describe what is shown in the photo.",
+        "ru": "Опиши, что изображено на фото.",
+        "uk": "Опиши, що зображено на фото.",
+    }.get(language, "Describe what is shown in the photo.")
+    content = raw_content.strip()
+    if not content and (has_photo or reply_has_photo):
+        content = photo_prompt
+    if not content:
         return None
     username = re.escape(bot["username"])
     mention = re.compile(rf"(?<!\w)@{username}(?!\w)", re.I)
@@ -132,11 +189,152 @@ def addressed(message: dict, bot: dict) -> str | None:
     if command and command.group(1) and command.group(1).casefold() != bot["username"].casefold():
         return None
     direct = message.get("chat", {}).get("type") == "private"
-    reply = message.get("reply_to_message", {}).get("from", {}).get("id") == bot["id"]
+    reply = replied_msg.get("from", {}).get("id") == bot["id"]
     if not (direct or command or reply or mention.search(content)):
         return None
     content = re.sub(rf"(^/\w+)@{username}(?!\w)", r"\1", content, flags=re.I)
-    return mention.sub("", content).strip()
+    cleaned = mention.sub("", content).strip()
+    if not cleaned and (has_photo or reply_has_photo):
+        cleaned = photo_prompt
+    return cleaned or None
+
+
+COMMAND_ALIASES = {
+    "/commands": "/help",
+    "/команды": "/help",
+    "/команди": "/help",
+    "/помощник": "/help",
+    "/помічник": "/help",
+    "/мои": "/mine",
+    "/мої": "/mine",
+    "/архив": "/archive",
+    "/архів": "/archive",
+    "/изменитьзадачу": "/edit",
+    "/одобритьпокупку": "/approvebuy",
+    "/отклонитьпокупку": "/rejectbuy",
+    "/переделать": "/changes",
+    "/доопрацювати": "/changes",
+    "/отменитьзадачу": "/canceltask",
+    "/скасуватизавдання": "/canceltask",
+    "/начать": "/begin",
+    "/почати": "/begin",
+    "/спросить": "/ask",
+    "/запитати": "/ask",
+    # Tasks
+    "/дела": "/tasks",
+    "/задачи": "/tasks",
+    "/таски": "/tasks",
+    "/завдання": "/tasks",
+    "/справи": "/tasks",
+    "/todo": "/tasks",
+    # Shopping
+    "/покупки": "/shopping",
+    "/шопинг": "/shopping",
+    "/шоппинг": "/shopping",
+    "/шопінг": "/shopping",
+    "/список": "/shopping",
+    # Court / Stats
+    "/статистика": "/stats",
+    "/стата": "/stats",
+    "/суд": "/stats",
+    "/баллы": "/stats",
+    "/бали": "/stats",
+    "/штрафы": "/stats",
+    "/штрафи": "/stats",
+    "/очки": "/stats",
+    "/рейтинг": "/stats",
+    # Week
+    "/неделя": "/week",
+    "/тиждень": "/week",
+    # Alarms
+    "/будильники": "/alarms",
+    "/будильник": "/alarms",
+    "/подъем": "/alarms",
+    "/підйом": "/alarms",
+    # Calendar
+    "/календарь": "/calendar",
+    "/календар": "/calendar",
+    "/планы": "/calendar",
+    "/плани": "/calendar",
+    "/розклад": "/calendar",
+    # Routines
+    "/рутины": "/routines",
+    "/рутини": "/routines",
+    "/привычки": "/routines",
+    "/звички": "/routines",
+    # Rewards & Wallet
+    "/награды": "/rewards",
+    "/нагороди": "/rewards",
+    "/магазин": "/rewards",
+    "/кошелек": "/wallet",
+    "/кошелёк": "/wallet",
+    "/гаманець": "/wallet",
+    "/баланс": "/wallet",
+    # Watchlist / Prices
+    "/цены": "/prices",
+    "/ціни": "/prices",
+    "/вишлист": "/prices",
+    "/вішліст": "/prices",
+    # Help & Ping
+    "/помощь": "/help",
+    "/допомога": "/help",
+    "/хелп": "/help",
+    "/старт": "/help",
+    "/пинг": "/ping",
+    "/пінг": "/ping",
+    # Actions
+    "/купи": "/buy",
+    "/купить": "/buy",
+    "/придбай": "/buy",
+    "/придбати": "/buy",
+    "/куплено": "/bought",
+    "/купил": "/bought",
+    "/купила": "/bought",
+    "/купили": "/bought",
+    "/придбано": "/bought",
+    "/придбав": "/bought",
+    "/придбала": "/bought",
+    "/задача": "/task",
+    "/створити_завдання": "/task",
+    "/таск": "/task",
+    "/сдано": "/done",
+    "/сдал": "/done",
+    "/сдала": "/done",
+    "/здано": "/done",
+    "/здав": "/done",
+    "/здала": "/done",
+    "/готово": "/done",
+    "/принято": "/approve",
+    "/принять": "/accept",
+    "/одобрить": "/approve",
+    "/схвалити": "/approve",
+    "/прийняти": "/accept",
+    "/схвалено": "/approve",
+    "/штраф": "/award",
+    "/бонус": "/award",
+    "/наградить": "/award",
+    "/нагородити": "/award",
+    "/апелляция": "/appeal",
+    "/апеляція": "/appeal",
+    "/отмена": "/cancel",
+    "/скасувати": "/cancel",
+    "/скасування": "/cancel",
+    "/подтвердить": "/confirm",
+    "/підтвердити": "/confirm",
+}
+
+
+def canonical_command(cmd: str) -> str:
+    c = cmd.casefold()
+    if c.startswith("/."):
+        c = "/" + c[2:]
+    if c in COMMAND_ALIASES:
+        return COMMAND_ALIASES[c]
+    if c.startswith("/") and not re.search(r"[а-яіїєґ]", c, re.I):
+        trans_cmd = "/" + normalize(layout_trans(c[1:]))
+        if trans_cmd in COMMAND_ALIASES:
+            return COMMAND_ALIASES[trans_cmd]
+    return c
 
 
 def member_by_name(state: dict, value: str) -> str:
@@ -227,9 +425,13 @@ async def route(
         return saved(
             await engine.execute(actor, prior["action"], prior["payload"], operation_id, now)
         )
-    normalized = content.casefold().strip(" .?!🙂")
+    head, _, tail = content.partition(" ")
+    normalized = normalize(canonical_command(head) if not tail else content)
     if normalized in {
         "/ping",
+        "ping",
+        "пинг",
+        "пінг",
         "тут",
         "жив",
         "живой",
@@ -238,10 +440,67 @@ async def route(
         "ти тут",
         "here",
         "alive",
-        "ping",
-    }:
+        "status",
+        "healthcheck",
+        "на связи",
+        "на зв'язку",
+        "ты на связи",
+        "ти на зв'язку",
+        "работаешь",
+        "работает",
+        "працюєш",
+        "працює",
+        "бот ты тут",
+        "бот ти тут",
+        "ты жив",
+        "ты живой",
+        "ти живий",
+        "отзовись",
+        "відгукнись",
+        "ау",
+        "ты где",
+        "де ти",
+        "u there",
+        "are you there",
+        "are you alive",
+    } or (
+        not re.search(r"[а-яіїєґ]", normalized, re.I)
+        and normalize(layout_trans(normalized))
+        in {"пинг", "тут", "ты тут", "ти тут", "жив", "живой", "живий", "на связи"}
+    ):
         return t["alive"]
-    if normalized in {"/start", "/help", "help", "помощь", "допомога"}:
+    if normalized in {
+        "/start",
+        "/help",
+        "help",
+        "start",
+        "помощь",
+        "допомога",
+        "хелп",
+        "помоги",
+        "что ты умеешь",
+        "що ти вмієш",
+        "команды",
+        "команди",
+        "список команд",
+        "как пользоваться",
+        "як користуватися",
+        "инструкция",
+        "інструкція",
+        "справка",
+        "довідка",
+        "меню",
+        "/меню",
+        "/справка",
+        "/інструкція",
+        "/довідка",
+        "/помощь",
+        "/допомога",
+    } or (
+        not re.search(r"[а-яіїєґ]", normalized, re.I)
+        and normalize(layout_trans(normalized))
+        in {"помощь", "допомога", "хелп", "команды", "команди", "меню"}
+    ):
         from .admission import COPY as ADMISSION_COPY
         from .watch_messages import COMMAND_COPY
 
@@ -252,6 +511,7 @@ async def route(
             + routines.help_text(language)
             + ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["help"]
             + COMMAND_COPY.get(language, COMMAND_COPY["en"])["help"]
+            + task_commands.help_text(language)
         )
     from .proposal_reply import parse_reply
 
@@ -310,11 +570,43 @@ async def route(
         return saved(
             await commands.execute(engine, actor, content, refs, operation_id, now, action, payload)
         )
+    if "court" in view.get("settings", {}).get("modules", []):
+        from ..court import parse_message
+        from .court_router import route_court
+
+        court_parsed = parse_message(content, members=engine.snapshot()["members"].values())
+        if court_parsed.action != "ignore":
+            court_reply = await route_court(
+                engine, actor, content, operation_id, now, court_parsed, view, language, refs=refs
+            )
+            if court_reply is not None:
+                return court_reply
+
     from ..domain.learning import resolve
 
     original_content = content
     command, _, tail = content.partition(" ")
-    command = command.casefold()
+    command = canonical_command(command)
+    if command == "/ask":
+        if fallback is not None and tail.strip():
+            return await fallback(actor, tail.strip(), operation_id, now, refs)
+        return t["unknown"]
+    if command == "/alarm" and not tail.strip():
+        command = "/alarms"
+    alarm_intent = alarm_commands.parsed(engine.snapshot(), view, original_content)
+    if alarm_intent:
+        if len(alarm_intent) == 1:
+            operation = alarm_intent[0]
+            action, payload = operation["action"], operation["payload"]
+        else:
+            action, payload = "batch", {"commands": alarm_intent}
+        return saved(
+            await commands.execute(
+                engine, actor, original_content, refs, operation_id, now, action, payload
+            )
+        )
+    if original_content.partition(" ")[0].casefold() == "/завдання" and tail.strip():
+        command = "/task"
     parse_error = None
     try:
         intent = (
@@ -329,7 +621,7 @@ async def route(
         if canonical != content:
             content = canonical
             command, _, tail = content.partition(" ")
-            command = command.casefold()
+            command = canonical_command(command)
             parse_error = None
             try:
                 intent = (
@@ -349,11 +641,32 @@ async def route(
             return await fallback(actor, original_content, operation_id, now, refs)
         raise parse_error
     if intent and intent.action.startswith("read."):
-        command = {"read.court": "/stats", "read.tasks": "/tasks"}[intent.action]
-    if command in {"/shopping", "/tasks", "/stats", "/week", "/alarms", "/watchlist", "/prices"}:
+        command = {
+            "read.court": "/stats",
+            "read.tasks": "/tasks",
+            "read.mine": "/mine",
+            "read.shopping": "/shopping",
+            "read.alarms": "/alarms",
+            "read.calendar": "/calendar",
+            "read.routines": "/routines",
+            "read.watchlist": "/prices",
+            "read.rewards": "/rewards",
+            "read.wallet": "/wallet",
+        }[intent.action]
+    if command in {
+        "/shopping",
+        "/tasks",
+        "/mine",
+        "/stats",
+        "/week",
+        "/alarms",
+        "/watchlist",
+        "/prices",
+    }:
         bucket = {
             "/shopping": "shopping",
             "/tasks": "tasks",
+            "/mine": "tasks",
             "/stats": "court",
             "/week": "court",
             "/alarms": "alarms",
@@ -367,7 +680,11 @@ async def route(
             return court_stats(engine.view(actor, now=now), language, weekly=command == "/week")
         lines = []
         for item in view.get(bucket, []):
+            if command == "/mine" and item.get("assignee") != actor:
+                continue
             if item.get("status") in {"archived", "cancelled", "rejected", "merged"}:
+                continue
+            if bucket == "tasks" and item.get("status") == "completed":
                 continue
             if bucket == "shopping" and item.get("status") == "purchased":
                 continue
@@ -386,6 +703,13 @@ async def route(
     if command == "/routines":
         return routines.read(view, language, private)
     fields = [part.strip() for part in tail.split("|")]
+    task_intent = task_commands.parsed(engine.snapshot(), view, command, tail, now, refs)
+    if task_intent:
+        return saved(
+            await commands.execute(
+                engine, actor, original_content, refs, operation_id, now, *task_intent
+            )
+        )
     routine_intent = routines.parsed(engine.snapshot(), view, command, fields, private)
     if routine_intent:
         return saved(
@@ -414,7 +738,12 @@ async def route(
             {"name": fields[0], "quantity": quantity, "unit": fields[2] if len(fields) > 2 else ""},
         )
     elif command == "/bought" and len(fields) in {1, 2}:
-        action, payload = "shopping.purchase", {"id": fields[0]}
+        if len(fields) == 1 and (match := re.fullmatch(r"(S\d{6,})\s+(.+)", fields[0], re.I)):
+            fields = [match[1], match[2]]
+        action, payload = (
+            "shopping.purchase",
+            {"id": task_commands.shopping_target(view, fields[0])},
+        )
         if len(fields) == 2:
             try:
                 payload["quantity"] = float(fields[1].replace(",", "."))
@@ -425,8 +754,12 @@ async def route(
             "tasks.create",
             {"assignee": member_by_name(engine.snapshot(), fields[0]), "title": fields[1]},
         )
-    elif command == "/done" and len(fields) == 2:
-        action, payload = "tasks.submit", {"id": fields[0], "report": fields[1]}
+    elif command == "/done" and len(fields) in {1, 2}:
+        if len(fields) == 1 and (match := re.fullmatch(r"(T\d{6,})(?:\s+(.+))?", fields[0], re.I)):
+            fields = [match[1], match[2] or ""]
+        if len(fields) != 2:
+            raise DomainError("context_required")
+        action, payload = "tasks.submit", {"id": fields[0].upper(), "report": fields[1]}
     elif command == "/approve" and len(fields) == 1:
         action, payload = "tasks.complete", {"id": fields[0]}
     elif command in {"/appeal", "/reverse"} and len(fields) == 2:
@@ -463,8 +796,12 @@ async def route(
         )
     elif command in {"/confirm", "/cancel"} and len(fields) == 1:
         action, payload = (
-            "conversation." + ("confirm" if command == "/confirm" else "reject"),
-            {"id": fields[0]},
+            ("tasks.complete", {"id": fields[0].upper()})
+            if command == "/confirm" and re.fullmatch(r"T\d{6,}", fields[0], re.I)
+            else (
+                "conversation." + ("confirm" if command == "/confirm" else "reject"),
+                {"id": fields[0]},
+            )
         )
     elif command == "/feedback" and len(fields) == 3:
         from ..assistant.language import COPY as ASSISTANT_COPY
@@ -482,7 +819,11 @@ async def route(
         action, payload = "conversation.learn", {"source": fields[0], "canonical": fields[1]}
     elif command == "/forget" and len(fields) == 1:
         action, payload = "conversation.forget", {"id": fields[0]}
-    elif (command == "/watch" and 1 <= len(fields) <= 2) or command.startswith("http://") or command.startswith("https://"):
+    elif (
+        (command == "/watch" and 1 <= len(fields) <= 2)
+        or command.startswith("http://")
+        or command.startswith("https://")
+    ):
         if command == "/watch":
             url = fields[0]
             name = fields[1] if len(fields) == 2 and fields[1] else None
@@ -495,7 +836,8 @@ async def route(
             payload["name"] = name
     elif command == "/unwatch" and len(fields) == 1:
         target_id = fields[0].strip().upper()
-        record = next((r for r in view.get("price_watches", []) if r["id"].upper() == target_id), None)
+        watches = view.get("price_watches", [])
+        record = next((r for r in watches if r["id"].upper() == target_id), None)
         if not record:
             raise DomainError("not_found")
         action, payload = (

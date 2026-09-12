@@ -115,10 +115,7 @@ MESSAGES = {
         ),
         "court_appeal": "⚖️ Апелляция ждёт решения родителя: {id}",
         "court_appeal_resolved": "⚖️ Апелляция {id}: {decision}. Причина — в карточке суда.",
-        "court_weekly": (
-            "⚖️ Недельные итоги: {period}\n{summary}\n\nБаллы не обнулены. "
-            "Итог зафиксирован на момент публикации; последующие исправления остаются в журнале."
-        ),
+        "court_weekly": "{weekly_proclamation}",
     },
     "uk": {
         "routine_step": "🪜 {title} · Крок {step_number}: {step_title}",
@@ -177,10 +174,7 @@ MESSAGES = {
         ),
         "court_appeal": "⚖️ Апеляція чекає рішення батьків: {id}",
         "court_appeal_resolved": "⚖️ Апеляція {id}: {decision}. Причина — у картці суду.",
-        "court_weekly": (
-            "⚖️ Тижневі підсумки: {period}\n{summary}\n\nБали не обнулено. "
-            "Підсумок зафіксовано на час публікації; подальші виправлення залишаються в журналі."
-        ),
+        "court_weekly": "{weekly_proclamation}",
     },
 }
 
@@ -504,6 +498,25 @@ def render(event, target, state, *, now=None):
                 "ru": "За этот период начислений нет.",
                 "uk": "За цей період нарахувань немає.",
             }.get(language, "No score events in this period.")
+            from .presentation import threshold_lines
+
+            thresholds = threshold_lines(report, state["members"].values(), language)
+            if thresholds:
+                data["summary"] += "\n\n" + "\n".join(thresholds)
+            if language in {"ru", "uk"}:
+                template = (
+                    (
+                        "⚖️ Недельные итоги: {period}\n{summary}\n\nБаллы не обнулены. "
+                        "Итог зафиксирован на момент публикации; "
+                        "последующие исправления остаются в журнале."
+                    )
+                    if language == "ru"
+                    else (
+                        "⚖️ Тижневі підсумки: {period}\n{summary}\n\nБали не обнулено. "
+                        "Підсумок зафіксовано на час публікації; "
+                        "подальші виправлення залишаються в журналі."
+                    )
+                )
         if event["key"] == "network_plan_finished":
             labels = {
                 "en": {

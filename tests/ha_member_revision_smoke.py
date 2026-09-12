@@ -2,6 +2,8 @@
 
 from copy import deepcopy
 
+from ha_options_menu import select_option
+
 
 def _defaults(form):
     """Apply the real voluptuous form schema so selector defaults are exercised."""
@@ -13,9 +15,7 @@ async def _open_member_edit(hass, entry, owner, member_id):
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    flow = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "member"}
-    )
+    flow = await select_option(hass, flow, "member")
     assert flow["type"] == "form" and flow["step_id"] == "member", flow
     flow = await hass.config_entries.options.async_configure(
         flow["flow_id"], {"member_id": member_id}

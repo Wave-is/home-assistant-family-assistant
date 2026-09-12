@@ -92,6 +92,17 @@ def test_public_tree_has_no_private_files_or_credentials():
     assert check() == []
 
 
+def test_frontend_regressions_are_in_the_default_npm_command():
+    scripts = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["scripts"]
+    commands = scripts.get("pretest", "") + " " + scripts["test"]
+    missing = [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted((ROOT / "tests").glob("frontend*.test.js"))
+        if path.relative_to(ROOT).as_posix() not in commands.split()
+    ]
+    assert missing == [], f"Frontend regressions not run by npm test: {missing}"
+
+
 def test_scanner_prunes_excluded_test_output_before_traversal(tmp_path, monkeypatch):
     excluded = tmp_path / "test-results"
     excluded.mkdir()

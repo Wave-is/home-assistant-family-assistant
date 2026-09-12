@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -44,6 +45,8 @@ class Runtime:
     media_task: Any = None
     price_watcher: Any = None
     options_lock: Any = field(default_factory=asyncio.Lock)
+    module_signature: Any = None
+    module_task: Any = None
 
     @callback
     def updated(self) -> None:
@@ -221,6 +224,9 @@ async def _async_setup_runtime(hass, entry) -> bool:
 
         async_register(hass, entry)
         entry.async_on_unload(entry.add_update_listener(async_options_updated))
+        from .module_runtime import watch
+
+        watch(hass, entry, runtime)
         # Platforms are forwarded before optional managers are configured. In
         # particular the Assist entity must publish its now-ready chat state
         # even when the scheduler has no domain change to announce.
@@ -240,6 +246,9 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
         data["entries"].pop(entry.entry_id, None)
         await runtime.engine.async_close()
+        from .panel_registration import unregister_if_unused
+
+        unregister_if_unused(hass)
         raise
     return True
 
@@ -272,6 +281,11 @@ async def async_configure_frontend(hass, runtime):
     else:
         ir.async_delete_issue(hass, DOMAIN, "frontend_resource")
 
+    from .panel_registration import register
+
+    if not register(hass):
+        runtime.health["frontend"] = "frontend_resource_attention"
+
 
 async def async_unload_runtime(hass, entry) -> bool:
     data = hass.data.get(DOMAIN, {})
@@ -292,6 +306,11 @@ async def _async_unload_runtime(hass, entry) -> bool:
     if platforms and not await hass.config_entries.async_unload_platforms(entry, platforms):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    if runtime.module_task is not None:
+        runtime.module_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await runtime.module_task
+        runtime.module_task = None
     await async_stop_chat(runtime)
     await async_stop_articles(runtime)
     await async_stop_media(runtime)
@@ -307,6 +326,9 @@ async def _async_unload_runtime(hass, entry) -> bool:
     # Failed platform unload above deliberately leaves the live Engine open.
     await runtime.engine.async_close()
     runtime.listeners.clear()
+    from .panel_registration import unregister_if_unused
+
+    unregister_if_unused(hass)
     return True
 
 
@@ -363,6 +385,9 @@ async def async_options_updated(hass, entry):
                 if selected.engine.shadow_mode:
                     return
                 async with selected.options_lock:
+                    from .module_runtime import signature
+
+                    modules_before = signature(selected)
                     await async_stop_chat(selected)
                     await async_stop_articles(selected)
                     await async_configure_presence(hass, entry)
@@ -370,6 +395,7 @@ async def async_options_updated(hass, entry):
                     async_configure_recipes(hass, entry)
                     await async_configure_network(hass, entry)
                     await async_configure_telegram(hass, entry)
+                    selected.module_signature = modules_before
                     selected.updated()
                 return
         await coordinator.released.wait()
@@ -461,12 +487,16 @@ def async_configure_assistant(hass, entry):
         # Deterministic family commands do not require an enabled model.
         runtime.chat = ChatService()
     config = entry.options.get("conversation", {})
-    if config.get("enabled") and (config.get("primary") or config.get("ha_agent")):
+    if (
+        "conversation" in runtime.engine.snapshot()["settings"]["modules"]
+        and config.get("enabled")
+        and (config.get("primary") or config.get("ha_agent") or config.get("agy"))
+    ):
         # A native HA-only provider owns its transport. Do not create another
         # HTTP session (or initialize discovery/DNS) unless a direct source needs it.
         session = (
             async_get_clientsession(hass)
-            if any(config.get(key) for key in ("primary", "fallback", "search"))
+            if any(config.get(key) for key in ("agy", "primary", "fallback", "search"))
             else None
         )
         providers = []
@@ -474,6 +504,8 @@ def async_configure_assistant(hass, entry):
             from .assistant.ha_agent_provider import HAConversationAgent
 
             providers.append(HAConversationAgent(hass, entry, config["ha_agent"]))
+        if config.get("agy"):
+            providers.append(Ollama(session, config["agy"]))
         providers.extend(
             Ollama(session, config[key]) for key in ("primary", "fallback") if config.get(key)
         )

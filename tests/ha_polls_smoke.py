@@ -8,6 +8,7 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 from aiohttp import ClientSession
+from ha_options_menu import select_option
 
 
 def _assert_review_descriptor(descriptor):
@@ -65,9 +66,7 @@ async def _set_polls(hass, entry, user, enabled):
     if flow["type"] == "abort":
         return flow
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
-    form = await hass.config_entries.options.async_configure(
-        flow["flow_id"], {"next_step_id": "general"}
-    )
+    form = await select_option(hass, flow, "general")
     if form["type"] == "abort":
         return form
     assert form["type"] == "form" and form["step_id"] == "general", form

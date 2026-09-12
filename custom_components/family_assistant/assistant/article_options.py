@@ -71,8 +71,9 @@ def _entry_current(flow, runtime) -> bool:
 
 
 async def _ha_user(flow):
-    context = getattr(flow, "context", None)
-    user_id = context.get("user_id") if isinstance(context, dict) else None
+    from ..flow_identity import user_id as flow_user_id
+
+    user_id = flow_user_id(flow)
     getter = getattr(getattr(flow.hass, "auth", None), "async_get_user", None)
     if not isinstance(user_id, str) or not user_id or not callable(getter):
         raise DomainError("forbidden")

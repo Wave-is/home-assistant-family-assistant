@@ -5,6 +5,8 @@ from types import MappingProxyType
 from unittest.mock import patch
 from uuid import uuid4
 
+from ha_options_menu import select_option
+
 
 async def verify_existing_ha_agent(hass, owner):
     from homeassistant.auth.const import GROUP_ID_USER
@@ -130,9 +132,7 @@ async def verify_existing_ha_agent(hass, owner):
             flow = await hass.config_entries.options.async_init(
                 family.entry_id, context={"user_id": owner.id}
             )
-            form = await hass.config_entries.options.async_configure(
-                flow["flow_id"], {"next_step_id": "ha_agent"}
-            )
+            form = await select_option(hass, flow, "ha_agent")
             assert form["type"] == "form" and form["step_id"] == "ha_agent", form
             denied = await hass.config_entries.options.async_configure(
                 form["flow_id"], {"enabled": True, "entity_id": unsafe, "timeout": 15}
@@ -354,9 +354,7 @@ async def verify_existing_ha_agent(hass, owner):
             off = await hass.config_entries.options.async_init(
                 family.entry_id, context={"user_id": owner.id}
             )
-            await hass.config_entries.options.async_configure(
-                off["flow_id"], {"next_step_id": "ha_agent"}
-            )
+            await select_option(hass, off, "ha_agent")
             off_review = await hass.config_entries.options.async_configure(
                 off["flow_id"], {"enabled": False, "timeout": 15}
             )

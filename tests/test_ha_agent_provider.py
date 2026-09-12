@@ -726,8 +726,10 @@ def test_invalid_config_validation(ha_modules, engine):
         env.HAConversationAgent(
             env.hass,
             env.family_entry,
-            {"type": "ha_agent", "entity_id": "conversation.ollama", "timeout": 50},
+            {"type": "ha_agent", "entity_id": "conversation.ollama", "timeout": 61},
         )
+    adapter = env.HAConversationAgent(env.hass, env.family_entry, {**env.config, "timeout": 60})
+    assert adapter.timeout == 60
 
 
 @pytest.mark.asyncio
@@ -737,6 +739,17 @@ async def test_no_generate_fallback_inventing_identity(ha_modules, engine):
     with pytest.raises(DomainError, match="forbidden"):
         await adapter.generate(_messages(), _schema())
     assert len(env.mock_converse.calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_photo_input_never_silently_loses_image_in_native_converse(ha_modules, engine):
+    env = _setup_fixture(ha_modules, engine)
+    adapter = env.HAConversationAgent(env.hass, env.family_entry, env.config)
+    messages = _messages()
+    messages[-1]["images"] = ["synthetic_base64"]
+    with pytest.raises(ActorProviderUnavailable, match="provider_images_unsupported"):
+        await adapter.generate_for_actor(messages, _schema(), ActorRequest("parent", 1, "en"))
+    assert not env.mock_converse.calls
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@
 
 from ha_copy_wizard_smoke import _package, _review_token, _upload
 from ha_media_smoke import _image
+from ha_options_menu import select_option
 
 
 async def verify_copy_preparation(hass, owner, child, prototype, source_state, flows, created):
@@ -16,9 +17,7 @@ async def verify_copy_preparation(hass, owner, child, prototype, source_state, f
             prototype.entry_id, context={"user_id": user.id}
         )
         flows.add(result["flow_id"])
-        return await hass.config_entries.options.async_configure(
-            result["flow_id"], {"next_step_id": "legacy_prepare"}
-        )
+        return await select_option(hass, result, "legacy_prepare")
 
     async def source_files(result):
         source, _, _, _, _ = parse_copy_bundle(_package(source_state["members"])).private_inputs()

@@ -207,3 +207,187 @@ async def test_alive_never_needs_llm_and_commands_keep_authority(engine, now):
     with pytest.raises(DomainError, match="forbidden"):
         await route(engine, "child", "/approve T000001", "approve", now)
     assert engine.snapshot()["tasks"]["T000001"]["status"] == "assigned"
+
+
+@pytest.mark.asyncio
+async def test_expanded_liveness(engine, now):
+    for phrase in ["ты тут?", "ти тут", "на связи", "жив", "пинг", "ns nen"]:
+        res = await route(engine, "parent", phrase, f"op-{phrase}", now)
+        assert "here" in res.lower(), f"Failed for {phrase}: {res}"
+
+
+@pytest.mark.asyncio
+async def test_expanded_read_and_aliases(engine, now):
+    for phrase in [
+        "/дела",
+        "/задачи",
+        "/покупки",
+        "/будильники",
+        "какие задачи",
+        "список покупок",
+        "що купити",
+        "за что минусы",
+        "статистика",
+        "будильники",
+        "cnfnec pflfx",
+        "задааачи",
+        "покууупки",
+    ]:
+        res = await route(engine, "parent", phrase, f"op-{phrase}", now)
+        assert res is not None and len(res) > 0, f"Failed for {phrase}"
+
+
+@pytest.mark.asyncio
+async def test_expanded_actions(engine, now):
+    # 1. Natural shopping add
+    res_buy = await route(engine, "parent", "купить молоко", "buy-milk", now)
+    assert "S000001" in res_buy
+    assert engine.snapshot()["shopping"]["S000001"]["name"] == "молоко"
+
+    # 2. Natural shopping purchase
+    res_bought = await route(engine, "parent", "купил S000001", "bought-milk", now)
+    assert "S000001" in res_bought
+    assert engine.snapshot()["shopping"]["S000001"]["status"] == "purchased"
+
+    # 3. Natural task create
+    res_task = await route(engine, "parent", "задача для Child: Clean room", "task-clean", now)
+    assert "T000001" in res_task
+    assert engine.snapshot()["tasks"]["T000001"]["title"] == "Clean room"
+
+    # 4. Natural task complete by parent
+    res_done = await route(engine, "parent", "T000001 готово", "done-clean", now)
+    assert "T000001" in res_done
+    assert engine.snapshot()["tasks"]["T000001"]["status"] == "completed"
+
+
+def test_addressed_photo_handling():
+    bot = {"id": 12345, "username": "family_bot"}
+
+    # 1. Photo in private chat with no caption -> default prompt
+    msg_private_photo = {
+        "chat": {"type": "private"},
+        "photo": [{"file_id": "p1", "file_size": 100}],
+    }
+    assert addressed(msg_private_photo, bot) == "Опиши, что изображено на фото."
+
+    # 2. Photo in group with mention in caption -> stripped mention
+    msg_group_caption = {
+        "chat": {"type": "supergroup"},
+        "caption": "@family_bot что на этом фото?",
+        "photo": [{"file_id": "p1", "file_size": 100}],
+    }
+    assert addressed(msg_group_caption, bot) == "что на этом фото?"
+
+    # 3. Reply to photo in group with mention
+    msg_group_reply_photo = {
+        "chat": {"type": "supergroup"},
+        "text": "@family_bot опиши картинку",
+        "reply_to_message": {
+            "photo": [{"file_id": "p_old", "file_size": 200}],
+        },
+    }
+    assert addressed(msg_group_reply_photo, bot) == "опиши картинку"
+
+    # 4. Photo in group without mention or reply -> ignored for privacy
+    msg_group_unaddressed = {
+        "chat": {"type": "supergroup"},
+        "caption": "просто фото",
+        "photo": [{"file_id": "p1", "file_size": 100}],
+    }
+    assert addressed(msg_group_unaddressed, bot) is None
+
+    # 5. Reply to bot with a photo (no caption) -> default prompt
+    msg_reply_to_bot = {
+        "chat": {"type": "supergroup"},
+        "photo": [{"file_id": "p1", "file_size": 100}],
+        "reply_to_message": {"from": {"id": 12345}},
+    }
+    assert addressed(msg_reply_to_bot, bot) == "Опиши, что изображено на фото."
+
+
+@pytest.mark.asyncio
+async def test_client_download_file():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.family_assistant.domain.validation import DomainError
+    from custom_components.family_assistant.telegram.client import TelegramClient
+
+    session = MagicMock()
+    client = TelegramClient(session, "1" * 8 + ":" + "x" * 35)
+
+    # Mock getFile
+    client.call = AsyncMock(return_value={"file_path": "photos/test.jpg", "file_size": 1024})
+
+    # Mock response
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.content.iter_chunked = MagicMock(return_value=_async_iter([b"fake_image_bytes"]))
+    session.get.return_value.__aenter__.return_value = mock_resp
+
+    data = await client.download_file("file_id_123")
+    assert data == b"fake_image_bytes"
+
+    # Oversized file check
+    client.call = AsyncMock(return_value={"file_path": "photos/big.jpg", "file_size": 7_000_000})
+    with pytest.raises(DomainError):
+        await client.download_file("file_id_big")
+
+
+async def _async_iter(items):
+    for item in items:
+        yield item
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content", ["купить молоко | несколько", "buy milk | 2 | l | extra"])
+async def test_natural_shopping_never_silently_changes_bad_fields(engine, now, content):
+    with pytest.raises(DomainError, match="invalid_field"):
+        await route(engine, "parent", content, "bad-shopping", now)
+    assert not engine.snapshot()["shopping"]
+
+
+def test_declined_member_names_keep_ambiguity(engine):
+    from custom_components.family_assistant.telegram.intents import find_member
+
+    state = engine.snapshot()
+    state["members"]["child"]["name"] = "Саша"
+    state["members"]["sibling"]["name"] = "Саше"
+    assert find_member(state, "Саша") == "child"
+    with pytest.raises(DomainError, match="ambiguous_member"):
+        find_member(state, "Сашу")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command", ["/старт", "/хелп", "/помощь", "/допомога"])
+async def test_help_aliases_return_actual_help(engine, now, command):
+    assert "/buy" in await route(engine, "parent", command, command, now)
+
+
+@pytest.mark.asyncio
+async def test_ukrainian_tasks_alias_remains_read_command(engine, now):
+    assert await route(engine, "parent", "/завдання", "uk-tasks", now) == "No records yet."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../file.jpg",
+        "https://example.org/image",
+        "/abs.jpg",
+        "photos/test.jpg?token=x",
+        "photos//test.jpg",
+    ],
+)
+async def test_download_rejects_untrusted_file_paths(path):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.family_assistant.notifications import DeliveryError
+    from custom_components.family_assistant.telegram.client import TelegramClient
+
+    session = MagicMock()
+    client = TelegramClient(session, "1" * 8 + ":" + "x" * 35)
+    client.call = AsyncMock(return_value={"file_path": path})
+    with pytest.raises(DeliveryError):
+        await client.download_file("synthetic-photo")
+    session.get.assert_not_called()

@@ -12,7 +12,10 @@ from .domain.validation import DomainError
 
 async def options_step(flow, user_input=None):
     try:
-        scope = await capture(flow.hass, flow.config_entry.entry_id, flow.context.get("user_id"))
+        from .flow_identity import user_id as flow_user_id
+
+        user_id = flow_user_id(flow)
+        scope = await capture(flow.hass, flow.config_entry.entry_id, user_id)
         if scope.role != "owner" or scope.engine.shadow_mode:
             raise DomainError("forbidden")
         current = configuration(scope.engine.snapshot())

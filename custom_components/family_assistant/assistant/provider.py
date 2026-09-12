@@ -48,13 +48,26 @@ class _ActorCascade:
         )
 
 
+def _clean_schema_for_grammar(schema):
+    """Strip large maxLength constraints that break llama.cpp GBNF grammar parser."""
+    if isinstance(schema, dict):
+        return {
+            k: _clean_schema_for_grammar(v)
+            for k, v in schema.items()
+            if not (k == "maxLength" and isinstance(v, int) and v > 1000)
+        }
+    if isinstance(schema, list):
+        return [_clean_schema_for_grammar(item) for item in schema]
+    return schema
+
+
 class Ollama:
     def __init__(self, session, config):
         self.session = session
         self.url = endpoint(config["url"], allow_http=config.get("allow_http", False))
         self.model = text(config.get("model", ""), "model", 128)
         self.timeout = config.get("timeout", 15)
-        if type(self.timeout) is not int or not 5 <= self.timeout <= 45:
+        if type(self.timeout) is not int or not 5 <= self.timeout <= 60:
             raise DomainError("invalid_field", "timeout")
         self.headers = (
             {"Authorization": f"Bearer {config['api_key']}"} if config.get("api_key") else {}
@@ -78,6 +91,7 @@ class Ollama:
             raise DomainError("provider_model_missing")
 
     async def generate(self, messages, schema):
+        cleaned_schema = _clean_schema_for_grammar(schema) if schema else schema
         data = await request_json(
             self.session,
             "POST",
@@ -88,10 +102,10 @@ class Ollama:
                 "model": self.model,
                 "messages": messages,
                 "stream": False,
-                "format": schema,
+                "format": cleaned_schema,
                 "think": False,
                 "options": {"temperature": 0, "num_predict": 1500, "num_ctx": 8192},
-                "keep_alive": "5m",
+                "keep_alive": "24h",
             },
         )
         content = data.get("message", {})
@@ -111,6 +125,7 @@ class Cascade:
     def __init__(self, providers, health, *, clock=time.monotonic):
         self.providers, self.health, self.clock = providers, health, clock
         self.cooldown = {}
+        self.failures = {}
         self.lock = asyncio.Lock()
 
     @staticmethod
@@ -126,10 +141,27 @@ class Cascade:
         async with self.lock:
             await self.check_scope(scope_check)
             last = "provider_unreachable"
-            for index, provider in enumerate(self.providers):
+            current = self.clock()
+            candidates = [
+                index
+                for index in range(len(self.providers))
+                if current >= self.cooldown.get(index, 0)
+            ]
+            if not candidates:
+                # Probe one transiently failed provider when all are cooling down.
+                # A quota response still honors its longer cooldown.
+                candidates = next(
+                    (
+                        [index]
+                        for index in range(len(self.providers))
+                        if self.failures.get(index) != "provider_quota_exceeded"
+                    ),
+                    [],
+                )
+                last = self.failures.get(0, last)
+            for index in candidates:
+                provider = self.providers[index]
                 await self.check_scope(scope_check)
-                if self.clock() < self.cooldown.get(index, 0):
-                    continue
                 try:
                     scoped_generate = getattr(provider, "generate_for_actor", None)
                     if scoped_generate is not None:
@@ -147,7 +179,9 @@ class Cascade:
                     if err.code in {"forbidden", "conflict", "ha_agent_changed"}:
                         raise
                     last = err.code
-                    self.cooldown[index] = self.clock() + 30
+                    cooldown_sec = 300 if err.code == "provider_quota_exceeded" else 30
+                    self.cooldown[index] = self.clock() + cooldown_sec
+                    self.failures[index] = err.code
                     continue
                 await self.check_scope(scope_check)
                 try:
@@ -156,9 +190,11 @@ class Cascade:
                     await self.check_scope(scope_check)
                     last = err.code
                     self.cooldown[index] = self.clock() + 30
+                    self.failures[index] = err.code
                     continue
                 self.health["conversation"] = "fallback" if index else "connected"
                 self.cooldown.pop(index, None)
+                self.failures.pop(index, None)
                 return result
             await self.check_scope(scope_check)
             self.health["conversation"] = last

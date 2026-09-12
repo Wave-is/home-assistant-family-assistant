@@ -5,6 +5,8 @@ import json
 from contextlib import suppress
 from datetime import UTC, datetime
 
+from ha_options_menu import select_option
+
 
 async def verify_developer_diagnostics(hass, owner):
     from ha_digests_smoke import _execute, _message, _view
@@ -44,9 +46,7 @@ async def verify_developer_diagnostics(hass, owner):
         options = await hass.config_entries.options.async_init(
             entry.entry_id, context={"user_id": owner.id}
         )
-        form = await hass.config_entries.options.async_configure(
-            options["flow_id"], {"next_step_id": "developer_diagnostics"}
-        )
+        form = await select_option(hass, options, "developer_diagnostics", technical=True)
         assert form["type"] == "form" and form["data_schema"]({}) == {"enabled": False}, form
         result = await hass.config_entries.options.async_configure(
             form["flow_id"], {"enabled": True}
