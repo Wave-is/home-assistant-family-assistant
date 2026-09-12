@@ -7,7 +7,6 @@ from homeassistant.components import websocket_api
 from homeassistant.util import dt as dt_util
 
 from .command_scope import capture
-from .const import MODULES
 from .domain import settings
 from .domain.validation import DomainError, text, timestamp
 from .panel_readiness import capabilities, member_readiness
@@ -222,15 +221,19 @@ async def settings_save(hass, connection, msg):
 async def module_toggle(hass, connection, msg):
     try:
         scope = await _scope(hass, connection, msg, owner=True)
-        if msg["module"] not in MODULES:
-            raise DomainError("invalid_field", "module")
-        modules = set(scope.engine.snapshot()["settings"]["modules"])
-        if msg["enabled"]:
-            modules.add(msg["module"])
-        else:
-            modules.discard(msg["module"])
-        await _patch(hass, connection, msg, {"modules": sorted(modules)})
-    except DomainError as error:
+        payload = {key: msg[key] for key in ("revision", "module", "enabled")}
+        result = await scope.engine.execute(
+            scope.actor,
+            "settings.module_toggle",
+            payload,
+            msg["operation_id"],
+            dt_util.utcnow(),
+            guard=scope.guard,
+        )
+        await scope.after_execute("settings.module_toggle", payload, msg["operation_id"], result)
+        scope.notify()
+        connection.send_result(msg["id"], {"settings": result, "success": True})
+    except (DomainError, OSError) as error:
         _error(connection, msg, error)
 
 

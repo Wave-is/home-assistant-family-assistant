@@ -59,6 +59,42 @@ async def test_native_save_invalidates_panel_revision(engine, now):
         )
 
 
+async def test_module_toggle_retry_after_other_window_change_and_reload(engine, now, store):
+    payload = {"revision": 1, "module": "school", "enabled": True}
+    receipt = await engine.execute("owner", "settings.module_toggle", payload, "school-on", now)
+    await engine.execute(
+        "owner", "settings.patch", {"revision": 2, "changes": {"name": "Other edit"}}, "other", now
+    )
+    reloaded = Engine(store.value, store.save)
+    before = reloaded.snapshot()
+    assert (
+        await reloaded.execute("owner", "settings.module_toggle", payload, "school-on", now)
+        == receipt
+    )
+    assert reloaded.snapshot() == before
+    with pytest.raises(DomainError, match="conflict"):
+        await reloaded.execute("owner", "settings.module_toggle", payload, "stale-new-id", now)
+    with pytest.raises(DomainError, match="idempotency_conflict"):
+        await reloaded.execute(
+            "owner", "settings.module_toggle", {**payload, "enabled": False}, "school-on", now
+        )
+    assert reloaded.snapshot() == before
+
+
+@pytest.mark.parametrize("value", [{"module": "invented"}, {"enabled": 1}, {"revision": True}])
+async def test_module_toggle_invalid_fields_are_atomic(engine, now, value):
+    before = engine.snapshot()
+    with pytest.raises(DomainError):
+        await engine.execute(
+            "owner",
+            "settings.module_toggle",
+            {"revision": 1, "module": "school", "enabled": True, **value},
+            "invalid-toggle",
+            now,
+        )
+    assert engine.snapshot() == before
+
+
 async def test_digest_policy_also_invalidates_old_general_settings_form(engine, now):
     from custom_components.family_assistant.domain import digest_settings
 
@@ -110,6 +146,7 @@ async def test_setup_and_settings_require_owner(engine, now, actor):
     for action, payload in [
         ("settings.patch", {"revision": 1, "changes": {"name": "Unapproved"}}),
         ("settings.onboarding", {"revision": 1, "step": 2}),
+        ("settings.module_toggle", {"revision": 1, "module": "school", "enabled": True}),
     ]:
         with pytest.raises(DomainError, match="forbidden"):
             await engine.execute(actor, action, payload, action, now)

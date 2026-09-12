@@ -65,6 +65,17 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         raise DomainError("forbidden")
     if action == "onboarding":
         return _onboarding(ctx, payload)
+    if action == "module_toggle":
+        fields(payload, {"revision", "module", "enabled"}, {"revision", "module", "enabled"})
+        module = enum(payload["module"], MODULES, "module")
+        if type(payload["enabled"]) is not bool:
+            raise DomainError("invalid_field", "enabled")
+        # Derive the merged list inside the transaction, AFTER replay lookup.
+        # Hash only the caller's stable intent, never a fresh snapshot on retry.
+        modules = set(ctx.state["settings"]["modules"])
+        modules.add(module) if payload["enabled"] else modules.discard(module)
+        payload = {"revision": payload["revision"], "changes": {"modules": sorted(modules)}}
+        action = "patch"
     if action == "patch":
         fields(payload, {"revision", "changes"}, {"revision", "changes"})
         if revision(payload["revision"]) != current_revision(ctx.state):

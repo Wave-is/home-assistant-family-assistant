@@ -73,9 +73,17 @@ menus; synthetic update IDs cannot reuse directly processed callback IDs.
 
 The separate two-process update test passed from the exact published 0.1.1 code
 to 0.2.0-rc.1, preserving synthetic Config Entry, Options, identities and domain
-records. Runtime package: 295 files, 1,082,990 archive bytes; SHA-256
-`05a7a5974dea6ef2a5cf15f6a91f7c31c6d7d02bfb96cf552ff2ceeb1bf2a5fe`.
-Repository CI and actual household/device acceptance are independent gates.
+records. All nine CI jobs passed at the initial repair commit `0f462d3`, including
+real HACS installation, encrypted restore and copy-resume across processes.
+Final review also repaired the compatibility module-toggle endpoint: its stable
+caller intent is now hashed before deriving a merged module list under the Engine
+lock. A response-loss retry after another window's edit returns the original
+receipt without reverting the other edit. Fresh real-HA panel acceptance passed.
+The follow-up candidate still requires its own CI run.
+
+Current runtime package: 295 files, 1,083,155 archive bytes; SHA-256
+`f2812b5b2581d17722f42e1538ff70198c7d02727dc203658e426912dd7e07ef`.
+Actual household/device acceptance is an independent gate.
 
 Implemented repair areas include the real five-section control center, member
 profiles and immutable retry requests, Telegram enrollment, generic court parser

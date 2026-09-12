@@ -207,6 +207,31 @@ async def verify_panel(hass, user):
             assert runtime.telegram is previous_telegram
             assert entry.runtime_data is runtime
 
+        # Compatibility endpoint must replay the original receipt even after
+        # another window changes a different module, without reverting its edit.
+        current = (await ws_call("panel"))["result"]
+        toggle = {
+            "revision": current["settings_revision"],
+            "module": "school",
+            "enabled": True,
+            "operation_id": "compat-school-toggle",
+        }
+        first = await ws_call("module_toggle", **toggle)
+        assert first["success"], first
+        current = (await ws_call("panel"))["result"]
+        other = await ws_call(
+            "module_toggle",
+            revision=current["settings_revision"],
+            module="polls",
+            enabled=True,
+            operation_id="compat-other-toggle",
+        )
+        assert other["success"], other
+        snapshot = runtime.engine.snapshot()
+        retry = await ws_call("module_toggle", **toggle)
+        assert retry["success"] and retry["result"] == first["result"], retry
+        assert runtime.engine.snapshot() == snapshot
+
         # Read the native options through HTTP and keep the actual caller identity.
         options = await post("/api/config/config_entries/options/flow", {"handler": entry_id})
         options_path = "/api/config/config_entries/options/flow/" + options["flow_id"]
