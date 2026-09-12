@@ -8,6 +8,7 @@ for(const key of ["window","document","Element","HTMLElement","customElements","
 await import("../custom_components/family_assistant/frontend/family-panel.js");
 const {PANEL_COPY,PANEL_MODULES}=await import("../custom_components/family_assistant/frontend/panel-copy.js");
 const {searchSettings}=await import("../custom_components/family_assistant/frontend/panel-search.js");
+const {DRAFT_TTL,draftKey,createDraft,decodeDraft}=await import("../custom_components/family_assistant/frontend/panel-drafts.js");
 const clone=value=>structuredClone(value);
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 const deferred=()=>{let resolve,reject;const promise=new Promise((res,rej)=>{resolve=res;reject=rej;});return {promise,resolve,reject};};
@@ -34,7 +35,7 @@ async function panel({data=projection(),entries=[{entry_id:"example",title:"Exam
   }};
   control.hass=hass;document.body.append(control);await tick();return {control,calls,hass,state,replace:data=>{state=clone(data);}};
 }
-afterEach(()=>{document.body.replaceChildren();window.confirm=()=>true;});
+afterEach(()=>{document.body.replaceChildren();window.confirm=()=>true;window.sessionStorage.clear();});
 function input(control,name,value) {const node=control.shadowRoot.querySelector(`[name="${name}"]`);assert.ok(node,`Missing ${name}`);if(node.type==="checkbox")node.checked=value;else node.value=value;node.dispatchEvent(new Event(node.tagName==="SELECT"||node.type==="checkbox"?"change":"input",{bubbles:true}));return node;}
 function action(control,id){const button=control.shadowRoot.querySelector(`#${id}`);assert.ok(button,`Missing ${id}`);button.click();}
 
@@ -191,4 +192,113 @@ test("member workspace config retains selected ID and reminder section, global n
   const data=projection();const {control}=await panel({data,handler:message=>message.type==="family_assistant/view"?{...clone(data.view),school:{timetables:[],homework:[],upcoming:[],preparations:[]}}:undefined});
   control.openMemberWorkspace(control.members[1],"school","reminders");await tick();const card=control.shadowRoot.querySelector("family-assistant-card");assert.equal(card._config.member_id,"M2");assert.equal(card._config.school_section,"reminders");assert.match(control.shadowRoot.textContent,/Settings for: Example Child/);assert.equal(control.shadowRoot.querySelector("#save-settings"),null);
   control.openModuleView("school",true);await tick();assert.equal(control.shadowRoot.querySelector("family-assistant-card")._config.member_id,undefined);assert.equal(control._workspaceMember,null);
+});
+
+test("draft schema allowlists non-secret fields and rejects corrupt, expired and cross-account records",()=>{
+  const now=Date.now(),draft={id:"M2",revision:3,name:"Synthetic Child",role:"child",language:"en",aliasesText:"Sun",ha_user_id:"",birth_date:"",avatar:"star",active:true,telegram_id:123456789,token:"synthetic-sensitive",invite_code:"synthetic-code",provider:{password:"synthetic"}};
+  const record=createDraft({user:"fixture-owner",entry:"example",kind:"member",draft},now),raw=JSON.stringify(record);
+  assert.ok(record);assert.doesNotMatch(raw,/synthetic-sensitive|synthetic-code|password|telegram_id|provider/);
+  assert.equal(decodeDraft(raw,"someone-else","example",now),null);assert.equal(decodeDraft(raw,"fixture-owner","other",now),null);
+  for(const timestamp of [now+DRAFT_TTL,now-1])assert.equal(decodeDraft(raw,"fixture-owner","example",timestamp),null);
+  for(const corrupt of ["{",JSON.stringify({...record,version:99}),JSON.stringify({...record,revision:true}),JSON.stringify({...record,values:{...record.values,token:"synthetic"}}),JSON.stringify({...record,values:{...record.values,active:"true"}}),JSON.stringify({...record,operation_id:"never-replayed"})])assert.equal(decodeDraft(corrupt,"fixture-owner","example",now),null);
+  assert.equal(draftKey(null,"example"),null);assert.notEqual(draftKey("a:b","c"),draftKey("a","b:c"));
+});
+
+test("profile draft survives element recreation and needs explicit resume before a canonical save",async()=>{
+  const first=await panel();first.control.openMemberView(first.control.members[1]);input(first.control,"name","Unfinished Child");input(first.control,"aliasesText","Sunny, Sunshine");
+  first.control._memberTab="advanced";first.control.render();input(first.control,"birth_date","2013-04-08");input(first.control,"avatar","robot");first.control.remove();
+  const {control,calls}=await panel();assert.ok(control.shadowRoot.querySelector("#resume-draft"));assert.doesNotMatch(control.shadowRoot.textContent,/Unfinished Child/);
+  await control.resumeDraft();assert.equal(control._draft.aliasesText,"Sunny, Sunshine");assert.equal(control._draft.birth_date,"2013-04-08");assert.equal(control._draft.revision,3);
+  assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,0);await control.saveMember();
+  const write=calls.find(m=>m.action==="members.save");assert.deepEqual(write.payload.aliases,["Sunny","Sunshine"]);assert.equal(write.payload.avatar,"robot");assert.equal(window.sessionStorage.length,0);
+});
+
+test("wizard family draft can be kept for later and resumed without advancing or applying it",async()=>{
+  const first=await panel();action(first.control,"setup-guide");input(first.control,"name","Unfinished Family");input(first.control,"timezone","Europe/Kyiv");action(first.control,"keep-draft");
+  assert.equal(first.control._wizardOpen,false);assert.equal(first.control.hasDraft,false);assert.equal(first.calls.filter(m=>m.type==="family_assistant/execute").length,0);first.control.remove();
+  const {control,calls}=await panel();await control.resumeDraft();assert.equal(control._wizardOpen,true);assert.equal(control._draft.name,"Unfinished Family");assert.equal(control._data.onboarding.step,1);
+  action(control,"save-settings");await tick();assert.deepEqual(calls.find(m=>m.action==="settings.patch").payload,{revision:1,changes:{name:"Unfinished Family",language:"en",timezone:"Europe/Kyiv"}});assert.equal(window.sessionStorage.length,0);
+});
+
+test("stale and missing member drafts are inspectable but cannot be written or silently rebased",async()=>{
+  for(const missing of [false,true]){
+    const first=await panel();first.control.openMemberView(first.control.members[1]);input(first.control,"name","Local draft text");first.control.remove();
+    const data=projection();if(missing)data.members.pop();else{data.members[1].name="Remote change";data.members[1].revision++;}data.view.members=clone(data.members);
+    const {control,calls}=await panel({data});assert.match(control.shadowRoot.querySelector("#saved-draft").textContent,/conflicts/);await control.resumeDraft();
+    assert.equal(control._draft.name,"Local draft text");assert.equal(control.shadowRoot.querySelector("#save-member").disabled,true);assert.equal(control.shadowRoot.querySelector('[name="name"]').disabled,true);
+    await control.saveMember();assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,0);window.confirm=()=>true;control.discardStoredDraft();assert.equal(window.sessionStorage.length,0);assert.equal(control._draft,null);control.remove();
+  }
+});
+
+test("a saved wizard draft conflicts with a changed onboarding revision even if settings did not change",async()=>{
+  const first=await panel();action(first.control,"setup-guide");input(first.control,"name","Old setup draft");first.control.remove();
+  const data=projection({onboarding:{revision:2,step:2,completed:false,skipped:[]}}),{control,calls}=await panel({data});await control.resumeDraft();
+  assert.equal(control._wizardOpen,false);assert.equal(control._data.onboarding.step,2);assert.equal(control.shadowRoot.querySelector("#save-settings").disabled,true);
+  action(control,"save-settings");await tick();assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,0);
+});
+
+test("attempted new-member save is read-only after reload and cannot duplicate a possibly applied creation",async()=>{
+  let wrote=false;const first=await panel({handler:message=>{if(message.type==="family_assistant/execute")wrote=true;if(message.type==="family_assistant/panel"&&wrote)throw {code:"connection_lost"};}});
+  first.control.openMemberView(null);input(first.control,"name","Possibly saved adult");input(first.control,"role","adult");await first.control.saveMember();assert.ok(first.control._pending);
+  assert.equal(JSON.parse(window.sessionStorage.getItem(draftKey("fixture-owner","example"))).status,"submitted");first.control.remove();
+  const {control,calls}=await panel({data:first.state});assert.match(control.shadowRoot.textContent,/may already have been applied/);await control.resumeDraft();assert.equal(control._pending,null);assert.equal(control._draft.name,"Possibly saved adult");
+  await control.saveMember();assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,0);assert.equal(control.members.filter(m=>m.name==="Possibly saved adult").length,1);
+});
+
+test("a refreshed revoked owner purges the tab draft and cannot resume it",async()=>{
+  const {control,replace}=await panel();control.openMemberView(control.members[1]);input(control,"name","Private local child");assert.equal(window.sessionStorage.length,1);
+  const data=projection();data.view.role="parent";replace(data);await control.loadData();assert.equal(window.sessionStorage.length,0);await control.resumeDraft();assert.equal(control._draft,null);assert.equal(control.shadowRoot.querySelector("#resume-draft"),null);
+});
+
+test("same-user reconnect keeps the draft but identity change purges that user's drafts",async()=>{
+  const {control,hass}=await panel();control.openMemberView(control.members[1]);input(control,"name","Private reconnect draft");control.hass={...hass,connection:{}};await tick();assert.ok(control.shadowRoot.querySelector("#resume-draft"));
+  control.hass={...hass,user:{id:"different-owner"},connection:{}};await tick();assert.equal(window.sessionStorage.length,0);assert.equal(control.shadowRoot.querySelector("#resume-draft"),null);assert.doesNotMatch(control.shadowRoot.textContent,/Private reconnect draft/);
+});
+
+test("a kept draft is isolated by household and blocks another profile from replacing it",async()=>{
+  const {control}=await panel({entries:[{entry_id:"first",title:"First"},{entry_id:"second",title:"Second"}]});await control.selectFamily("first");control.openMemberView(control.members[1]);input(control,"name","First household draft");control.keepDraft();
+  control.openMemberView(control.members[0]);assert.equal(control.shadowRoot.querySelector('[name="name"]').disabled,true);assert.equal(control.shadowRoot.querySelector("#save-member").disabled,true);
+  await control.selectFamily("second");assert.equal(control.shadowRoot.querySelector("#saved-draft"),null);await control.selectFamily("first");await control.resumeDraft();assert.equal(control._draft.name,"First household draft");
+});
+
+test("blocked session storage retains edits in memory and cannot pretend keep-for-later succeeded",async()=>{
+  const {control}=await panel();control.openMemberView(control.members[1]);const descriptor=Object.getOwnPropertyDescriptor(window,"sessionStorage");
+  try {
+    Object.defineProperty(window,"sessionStorage",{configurable:true,get(){throw new Error("storage blocked");}});input(control,"name","Keep me in memory");control.keepDraft();
+    assert.equal(control._draft.name,"Keep me in memory");assert.equal(control.hasDraft,true);assert.match(control.shadowRoot.querySelector("#draft-storage-status").textContent,/could not keep/);
+  }finally{Object.defineProperty(window,"sessionStorage",descriptor);}
+});
+
+test("failure to mark a persisted draft as submitted prevents an unsafe network write",async()=>{
+  const {control,calls}=await panel();control.openMemberView(null);input(control,"name","New local member");const descriptor=Object.getOwnPropertyDescriptor(window,"sessionStorage");
+  try {
+    Object.defineProperty(window,"sessionStorage",{configurable:true,get(){throw new Error("storage blocked");}});await control.saveMember();assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,0);assert.equal(control._draft.name,"New local member");assert.equal(control._writing,false);
+  }finally{Object.defineProperty(window,"sessionStorage",descriptor);}
+});
+
+test("explicit discard navigation removes the active stored draft and cancelled discard keeps it",async()=>{
+  const {control}=await panel();control.openMemberView(control.members[1]);input(control,"name","Local only");window.confirm=()=>false;control.setTab("modules");assert.equal(window.sessionStorage.length,1);window.confirm=()=>true;control.setTab("modules");assert.equal(window.sessionStorage.length,0);
+});
+
+test("discard failure stays visible and cannot claim the browser draft was removed",async()=>{
+  const {control}=await panel();control.openMemberView(control.members[1]);input(control,"name","Still locally stored");control.keepDraft();const descriptor=Object.getOwnPropertyDescriptor(window,"sessionStorage");
+  try {
+    window.confirm=()=>true;Object.defineProperty(window,"sessionStorage",{configurable:true,get(){throw new Error("storage blocked");}});control.discardStoredDraft();
+    assert.ok(control._draftRecord);assert.match(control.shadowRoot.querySelector('[role="alert"]').textContent,/could not remove/);assert.ok(control.shadowRoot.querySelector("#discard-draft"));
+  }finally{Object.defineProperty(window,"sessionStorage",descriptor);}
+});
+
+test("storage failure during uncertain retry never replaces the frozen operation ID",async()=>{
+  let failed=false;const {control,calls}=await panel({handler:m=>{if(m.type==="family_assistant/execute"&&!failed){failed=true;throw {code:"connection_lost"};}}});control.openMemberView(null);input(control,"name","Exact retry creation");await control.saveMember();const operation=control._pending.id;
+  const descriptor=Object.getOwnPropertyDescriptor(window,"sessionStorage");
+  try {
+    Object.defineProperty(window,"sessionStorage",{configurable:true,get(){throw new Error("storage blocked");}});await control.saveMember();assert.equal(control._pending.id,operation);assert.equal(calls.filter(m=>m.type==="family_assistant/execute").length,1);
+  }finally{Object.defineProperty(window,"sessionStorage",descriptor);}
+  await control.saveMember();const writes=calls.filter(m=>m.type==="family_assistant/execute");assert.equal(writes.length,2);assert.deepEqual(writes[0],writes[1]);
+});
+
+test("a delayed resume read cannot replace a newly opened module form",async()=>{
+  const pending=deferred();let hold=false;const {control}=await panel({handler:m=>hold&&m.type==="family_assistant/panel"?pending.promise:undefined});control.openMemberView(control.members[1]);input(control,"name","Saved profile draft");control.keepDraft();
+  hold=true;const resume=control.resumeDraft();control.openModuleView("school");input(control,"school_preparation_time","17:15");pending.resolve(projection());await resume;
+  assert.equal(control._module,"school");assert.equal(control._draft.school_preparation_time,"17:15");assert.equal(control._member,null);assert.equal(control._draftRecord.values.name,"Saved profile draft");
 });

@@ -4,6 +4,7 @@ import {PANEL_STYLES} from "./panel-styles.js";
 import {PANEL_COPY, PANEL_LANGUAGES, PANEL_MODULES, moduleCopy} from "./panel-copy.js";
 import {searchSettings} from "./panel-search.js";
 import {ERRORS} from "./errors.js";
+import {DRAFT_PREFIX, draftKey, createDraft, decodeDraft, draftConflict} from "./panel-drafts.js";
 
 const AVATARS = {adult:"🧑", child:"🧒", cat:"🐱", dog:"🐶", robot:"🤖", flower:"🌼", star:"⭐"};
 const TABS = [["overview","🏠"],["members","👥"],["modules","⚙️"],["connections","🔌"],["advanced","🛠️"]];
@@ -18,7 +19,7 @@ const el = (tag, text, className) => {
 export class FamilyAssistantPanel extends HTMLElement {
   constructor() {
     super(); this.attachShadow({mode:"open"});
-    this._tab="overview"; this._search=""; this._generation=0;
+    this._tab="overview"; this._search=""; this._generation=0;this._navigation=0;
     this._onUnload = event => {if(this.hasDraft){event.preventDefault();event.returnValue="";}};
   }
   get lang() {const lang=this._hass?.language?.split("-")[0];return PANEL_COPY[lang]?lang:"en";}
@@ -30,6 +31,7 @@ export class FamilyAssistantPanel extends HTMLElement {
   set hass(value) {
     const changed = this._hass?.user?.id !== value?.user?.id || this._hass?.connection !== value?.connection;
     const languageChanged = this._hass?.language !== value?.language;
+    if(this._hass?.user?.id && this._hass.user.id!==value?.user?.id)this.clearUserDrafts(this._hass.user.id);
     this._hass=value;
     if(changed || !this._initialized) {
       this._initialized=true; this.reset();
@@ -55,6 +57,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     this._generation++; this._entries=null; this._entry=null; this._data=null;
     this._loading=false;this._writing=false;this._error=null;this._notice=null;
     this._member=null;this._draft=null;this._dirty=false;this._pending=null;
+    this._draftRecord=null;this._draftActive=false;this._draftKind=null;this._draftStorageError=false;this._draftBlocked=false;
     this._wizardOpen=false;this._module=null;this._workspace=null;this._workspaceMember=null;this._workspaceSchoolSection=null;this._embedded=null;
     this._invite=null;this._enrollmentConsent=null;this._preview=null;this._tab="overview";this._search="";this._workspaceDirty=false;this._testing=false;this._phrase="";
     this.render();
@@ -79,12 +82,15 @@ export class FamilyAssistantPanel extends HTMLElement {
       this._data=data;this._error=null;this._observedAt=new Date();
       if(oldRole && oldRole!==data.view.role){this._member=null;this._draft=null;this._pending=null;this._dirty=false;this._invite=null;}
       if(data.view.read_only){this._draft=null;this._pending=null;this._dirty=false;this._wizardOpen=false;}
+      if(!this.owner)this.removeStoredDraft({force:true});
+      else if(!this._dirty)this.readStoredDraft();
       return true;
     } catch(error) {
       if(generation!==this._generation)return false;
       this._error=this.errorText(error);
       // Never keep a private projection after authorization is lost.
       if(["forbidden","not_found","not_ready","unauthorized"].includes(error?.code)){
+        this.removeStoredDraft({force:true});
         this._data=null;this._entries=null;this._entry=null;this._draft=null;
         this._member=null;this._dirty=false;this._invite=null;this._embedded=null;
       }
@@ -107,9 +113,90 @@ export class FamilyAssistantPanel extends HTMLElement {
     node.setAttribute("role",error?"alert":"status");return node;
   }
   section(title) {const section=el("section",null,"card");section.append(el("h3",title,"card-title"));return section;}
+  clearUserDrafts(user) {
+    try {
+      const storage=window.sessionStorage,prefix=`${DRAFT_PREFIX}${encodeURIComponent(user)}:`;
+      for(const key of Object.keys(storage))if(key.startsWith(prefix))storage.removeItem(key);
+    } catch { /* Access may be disabled by the browser. */ }
+  }
+  readStoredDraft() {
+    this._draftRecord=null;
+    const key=draftKey(this._hass?.user?.id,this._entry);if(!key||!this.owner)return;
+    try {
+      const raw=window.sessionStorage.getItem(key);
+      this._draftRecord=decodeDraft(raw,this._hass.user.id,this._entry);
+      if(raw&&!this._draftRecord)window.sessionStorage.removeItem(key);
+    } catch {this._draftStorageError=true;}
+  }
+  removeStoredDraft({force=false}={}) {
+    const key=draftKey(this._hass?.user?.id,this._entry);
+    try {if(key)window.sessionStorage.removeItem(key);}
+    catch {this._draftStorageError=true;if(!force)return false;}
+    this._draftRecord=null;this._draftActive=false;this._draftBlocked=false;
+    return true;
+  }
+  persistDraft(status="editing") {
+    if(!this.owner||!this._dirty||!this._draftKind||!this._draft||this._draftBlocked)return false;
+    const record=createDraft({user:this._hass.user?.id,entry:this._entry,kind:this._draftKind,draft:this._draft,
+      wizard:this._draftKind==="family"&&this._wizardOpen,onboardingRevision:this._data.onboarding?.revision});
+    if(!record)return false;
+    record.status=status;
+    try {
+      window.sessionStorage.setItem(draftKey(record.user,record.entry),JSON.stringify(record));
+      this._draftRecord=record;this._draftActive=true;this._draftStorageError=false;
+    } catch {this._draftStorageError=true;}
+    const hint=this.shadowRoot.querySelector("#draft-storage-status");
+    if(hint)hint.textContent=this._draftStorageError?this.t.draftStorageFailed:this.t.draftStored;
+    return !this._draftStorageError;
+  }
+  async resumeDraft() {
+    if(this._writing||this.hasDraft||!this.owner)return;
+    const generation=this._generation,navigation=this._navigation;
+    if(!await this.loadData()||generation!==this._generation||navigation!==this._navigation||this.hasDraft||!this.owner||!this._draftRecord)return;
+    const record=this._draftRecord;
+    this._draftBlocked=!!draftConflict(record,this._data);
+    this._draftActive=true;this._dirty=true;this._draftKind=record.kind;
+    this._workspace=null;this._embedded=null;this._module=null;this._search="";
+    this._draft={...clone(record.values),...(record.revision!==null?{revision:record.revision}:{}),...(record.memberId?{id:record.memberId}:{})};
+    this._wizardOpen=record.wizard;
+    if(record.kind==="member"){
+      this._tab="members";this._member=clone(this.members.find(item=>item.id===record.memberId)||this._draft);this._memberTab="main";
+    }else {this._tab=record.wizard?"overview":"advanced";this._member=null;}
+    // The server controls the wizard step. An outdated step is reviewed as a family form.
+    if(this._draftBlocked&&record.kind==="family"){this._wizardOpen=false;this._tab="advanced";}
+    this.render();
+  }
+  keepDraft() {
+    if(this._pending||this._writing||this._draftBlocked||!this.persistDraft())return;
+    this._navigation++;
+    this._dirty=false;this._draft=null;this._draftActive=false;this._draftKind=null;
+    this._member=null;this._wizardOpen=false;this._tab="overview";this._module=null;this.render();
+  }
+  discardStoredDraft() {
+    if(this._writing||!window.confirm(this.t.discard))return;
+    if(!this.removeStoredDraft()){this._error=this.t.draftRemoveFailed;this.render();return;}
+    this._navigation++;
+    this._draft=null;this._draftKind=null;this._dirty=false;this._pending=null;
+    this._member=null;this._wizardOpen=false;this._tab="overview";this._module=null;this._notice=null;this._error=null;this.render();
+  }
+  draftControls(form) {
+    const hint=el("p",this._draftStorageError?this.t.draftStorageFailed:this.t.draftStorageHint,"panel-muted");hint.id="draft-storage-status";
+    const actions=el("div",null,"panel-actions");actions.append(this.button(this.t.keepDraft,()=>this.keepDraft(),{id:"keep-draft",disabled:!!this._pending||this._draftBlocked}));
+    form.append(hint,actions);
+  }
+  renderStoredDraft() {
+    const record=this._draftRecord,box=this.section(this.t.savedDraft),conflict=draftConflict(record,this._data);
+    box.id="saved-draft";box.append(el("p",conflict?this.t[conflict==="submitted"?"draftSubmitted":"draftStale"]:this.t.draftAvailable));
+    const actions=el("div",null,"panel-actions");
+    if(!this._draftActive)actions.append(this.button(conflict?this.t.reviewDraft:this.t.resumeDraft,()=>this.resumeDraft(),{id:"resume-draft",disabled:this.hasDraft||this._loading}));
+    actions.append(this.button(this.t.discardDraft,()=>this.discardStoredDraft(),{id:"discard-draft"}));box.append(actions);return box;
+  }
   navigate(action) {
     if(this._writing)return false;
     if(this.hasDraft&&!window.confirm(this.t.discard))return false;
+    if(this._draftActive&&!this.removeStoredDraft()){this._error=this.t.draftRemoveFailed;this.render();return false;}
+    this._navigation++;
+    this._draftKind=null;this._draftBlocked=false;
     this._dirty=false;this._draft=null;this._pending=null;this._notice=null;this._error=null;
     this._member=null;this._module=null;this._workspace=null;this._workspaceMember=null;this._workspaceSchoolSection=null;this._embedded=null;
     this._search="";this._preview=null;this._workspaceDirty=false;action();this.render();return true;
@@ -128,16 +215,23 @@ export class FamilyAssistantPanel extends HTMLElement {
   async selectFamily(entryId) {
     if(!this.navigate(()=>{}))return;
     this._generation++;this._entry=entryId||null;this._data=null;this._loading=false;
+    this._draftRecord=null;this._draftActive=false;
     this._invite=null;this._tab="overview";this._wizardOpen=false;
     await this.loadData();
   }
   async command(action,payload,{onSuccess}={}) {
     if(this._writing||!this._entry||!this._hass||!this.owner)return false;
-    const generation=this._generation,entry=this._entry;
+    if(this._draftBlocked)return false;
+    const generation=this._generation,entry=this._entry,previousPending=this._pending;
     const fingerprint=JSON.stringify([entry,action,payload]);
     if(this._pending && this._pending.fingerprint!==fingerprint){this._error=this.t.conflict;this.render();return false;}
     if(!this._pending)this._pending={fingerprint,action,payload:clone(payload),id:crypto.randomUUID()};
     const pending=this._pending;this._writing=true;this._error=null;this._notice=null;this.render();
+    // Never replay a possibly accepted creation with a fresh operation ID after reload.
+    const storedMutation=this._draftActive&&((this._draftKind==="member"&&action==="members.save")||(this._draftKind==="family"&&action==="settings.patch"));
+    if(storedMutation&&!this.persistDraft("submitted")){
+      this._writing=false;this._pending=previousPending;this._error=this.t.draftStorageFailed;this.render();return false;
+    }
     let accepted=false;
     try {
       const result=await this._hass.callWS({type:"family_assistant/execute",entry_id:entry,action:pending.action,payload:pending.payload,operation_id:pending.id});
@@ -153,6 +247,7 @@ export class FamilyAssistantPanel extends HTMLElement {
       }
       if(action==="settings.onboarding" && ["step","completed"].some(key=>data.onboarding?.[key]!==pending.payload[key]))throw new Error("readback_mismatch");
       this._data=data;this._observedAt=new Date();this._dirty=false;this._draft=null;this._pending=null;
+      if(storedMutation)this.removeStoredDraft({force:true});
       this._notice=this.t.saved;if(onSuccess)onSuccess(data);return true;
     } catch(error) {
       if(generation===this._generation){this._error=accepted?this.t.unverified:this.errorText(error);}
@@ -167,7 +262,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     return this.saveSettings({modules:[...modules].sort()});
   }
   async saveMember() {
-    if(!this._draft)return;
+    if(!this._draft||this._draftBlocked||(this._draftRecord&&!this._draftActive))return;
     const d=this._draft;
     const payload={name:d.name.trim(),role:d.role,language:d.language,aliases:d.aliasesText.split(",").map(v=>v.trim()).filter(Boolean),active:d.active,ha_user_id:d.ha_user_id.trim()||null,birth_date:d.birth_date||null,avatar:d.avatar||null};
     if(d.id){payload.id=d.id;payload.revision=d.revision;}
@@ -181,10 +276,11 @@ export class FamilyAssistantPanel extends HTMLElement {
     if(type==="checkbox")input.checked=!!draft[key];else input.value=draft[key]??"";
     input.required=required;if(min!==undefined)input.min=String(min);if(max!==undefined)input.max=String(max);
     if(type==="text")input.maxLength=key==="aliasesText"?1620:128;
-    input.disabled=this._writing||!!this._pending||!this.owner;
+    input.disabled=this._writing||!!this._pending||!this.owner||this._draftBlocked||!!(this._draftKind&&this._draftRecord&&!this._draftActive);
     input.addEventListener(type==="checkbox"||options?"change":"input",()=>{
-      if(this._writing||this._pending||!this.owner)return;
+      if(input.disabled||this._writing||this._pending||!this.owner)return;
       draft[key]=type==="checkbox"?input.checked:type==="number"?Number(input.value):input.value;this._dirty=true;
+      this.persistDraft();
     });wrap.append(input);if(hint)wrap.append(el("small",hint,"panel-muted"));form.append(wrap);return input;
   }
   render() {
@@ -200,6 +296,7 @@ export class FamilyAssistantPanel extends HTMLElement {
       if(!this._loading)box.append(this.button(this.t.retry,()=>this.loadData()));root.append(box);return;
     }
     if(this._data.view.read_only)root.append(this.notice(this.t.readOnly));
+    if(this.owner&&this._draftRecord&&(!this._draftActive||this._draftBlocked))root.append(this.renderStoredDraft());
     root.append(this.renderTabs());
     if(this._search.trim())root.append(this.renderSearch());
     else if(this._wizardOpen)root.append(this.renderWizard());
@@ -305,6 +402,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     if(!results.length)section.append(el("p",this.t.noResults));return section;
   }
   memberDraft() {
+    this._draftKind="member";
     if(!this._draft){const m=this._member;this._draft={...clone(m),aliasesText:(m.aliases||[]).join(", "),ha_user_id:m.ha_user_id||"",birth_date:m.birth_date||"",avatar:m.avatar||"",active:m.active!==false};}
     return this._draft;
   }
@@ -341,7 +439,7 @@ export class FamilyAssistantPanel extends HTMLElement {
       form.append(el("p",this.t.personalHint,"panel-muted"));
       for(const id of this._memberTab==="school"?["school"]:["digests",...(m.role==="child"?["school"]:[]),"alarms"]){const info=moduleCopy(id,this.lang);form.append(this.button(`${info.icon} ${info.title}`,()=>this.openMemberWorkspace(m,id,this._memberTab==="notifications"?"reminders":"all")));}
     }
-    if(this.owner){const footer=el("div",null,"panel-actions");const save=this.button(this._writing?this.t.saving:this.t.save,()=>{if(form.reportValidity())void this.saveMember();},{primary:true,id:"save-member"});footer.append(save,this.button(this.t.cancel,()=>this.navigate(()=>{})));form.append(footer);}
+    if(this.owner){const footer=el("div",null,"panel-actions");const save=this.button(this._writing?this.t.saving:this.t.save,()=>{if(form.reportValidity())void this.saveMember();},{primary:true,id:"save-member",disabled:this._draftBlocked||!!(this._draftRecord&&!this._draftActive)});footer.append(save,this.button(this.t.cancel,()=>this.navigate(()=>{})));form.append(footer);this.draftControls(form);}
     wrap.append(form);return wrap;
   }
   renderMemberReadiness(member) {
@@ -355,6 +453,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     }return box;
   }
   renderSettingsForm(kind="family") {
+    this._draftKind=kind==="family"?"family":null;
     const source=this.settings;
     if(!this._draft)this._draft={revision:this._data.settings_revision,...(kind==="family"?{name:source.name,language:source.language,timezone:source.timezone||this._hass.config?.time_zone||"UTC"}:kind==="school"?{school_preparation_reminders:!!source.school_preparation_reminders,school_preparation_days_before:source.school_preparation_days_before??1,school_preparation_time:source.school_preparation_time||"19:00"}:kind==="court"?{automatic_penalties:!!source.automatic_penalties,daily_penalty_cap:source.daily_penalty_cap??0}:{pantry_expiry_reminders:!!source.pantry_expiry_reminders,pantry_expiry_days:source.pantry_expiry_days??3})};
     const d=this._draft,form=el("form",null,"card"),fields=el("div",null,"grid grid-cols-2");
@@ -370,13 +469,14 @@ export class FamilyAssistantPanel extends HTMLElement {
       this.field(fields,d,"pantry_expiry_reminders",this.t.expiryReminders,{type:"checkbox"});this.field(fields,d,"pantry_expiry_days",this.t.expiryDays,{type:"number",min:0,max:30,required:true});
     }
     const submit=async()=>{
+      if(this._draftBlocked||(kind==="family"&&this._draftRecord&&!this._draftActive))return;
       if(!form.reportValidity())return;
       const {revision,...changes}=d;
       if(kind==="school")changes.school_preparation_days_before=Number(changes.school_preparation_days_before);
       await this.saveSettings(changes,revision);
     };
     form.addEventListener("submit",event=>{event.preventDefault();void submit();});form.append(fields);
-    if(this.owner)form.append(this.button(this.t.save,submit,{primary:true,id:"save-settings"}));
+    if(this.owner){form.append(this.button(this.t.save,submit,{primary:true,id:"save-settings",disabled:this._draftBlocked||!!(kind==="family"&&this._draftRecord&&!this._draftActive)}));if(kind==="family")this.draftControls(form);}
     return form;
   }
   renderModule() {

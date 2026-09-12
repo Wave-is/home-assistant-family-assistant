@@ -265,3 +265,51 @@ async def test_invalid_profile_does_not_change_member(engine, now, profile):
             now,
         )
     assert engine.snapshot() == before
+
+
+async def test_resumed_profile_draft_is_rejected_after_remote_edit_and_store_reload(
+    engine, now, store
+):
+    """A browser's retained revision cannot rebase aliases or account links on a newer member."""
+    member = engine.snapshot()["members"]["child"]
+    draft = {
+        "id": "child",
+        "revision": member["revision"],
+        "name": "Unfinished profile",
+        "role": "child",
+        "language": "uk",
+        "aliases": ["Sunny"],
+        "active": True,
+        "ha_user_id": member["ha_user_id"],
+        "birth_date": None,
+        "avatar": "star",
+    }
+    await engine.execute(
+        "owner", "members.save", {**draft, "name": "Other window"}, "remote-profile", now
+    )
+    reloaded = Engine(store.value, store.save)
+    before = reloaded.snapshot()
+    with pytest.raises(DomainError, match="conflict"):
+        await reloaded.execute("owner", "members.save", draft, "resumed-draft", now)
+    assert reloaded.snapshot() == before
+
+
+async def test_resumed_profile_creation_requires_current_owner_after_store_reload(
+    engine, now, store
+):
+    """Even a well-formed locally retained creation cannot restore revoked authority."""
+    snapshot = engine.snapshot()
+    snapshot["members"]["parent"]["role"] = "owner"
+    snapshot["members"]["owner"]["role"] = "parent"
+    await store.save(snapshot)
+    reloaded = Engine(store.value, store.save)
+    before = reloaded.snapshot()
+    with pytest.raises(DomainError, match="forbidden"):
+        await reloaded.execute(
+            "owner",
+            "members.save",
+            {"name": "Local new member", "role": "child", "language": "en"},
+            "resumed-creation",
+            now,
+        )
+    assert reloaded.snapshot() == before

@@ -100,3 +100,32 @@ test("Ukrainian focused alarm creation targets selected child and digest cannot 
   await page.evaluate(()=>{window.panel._workspaceDirty=false;});await panel.getByRole("button",{name:"← Sam Example",exact:true}).click();await panel.locator(".panel-subtabs").getByRole("button",{name:"Сповіщення",exact:true}).click();await panel.getByRole("button",{name:"📨 Особисті дайджести",exact:true}).click();
   await expect(card).toContainText("лише їхній одержувач");await expect(card.locator(".digests,form")).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+test("Russian mobile family setup draft survives reload without applying or advancing it",async({page},testInfo)=>{
+  await page.setViewportSize({width:390,height:844});await page.goto("/tests/fixtures/panel.html?lang=ru");const panel=page.locator("family-assistant-panel");
+  await panel.locator("#setup-guide").click();await panel.locator('[name="name"]').fill("Synthetic unfinished family");await panel.locator('[name="timezone"]').fill("Europe/Kyiv");await panel.locator("#keep-draft").click();
+  await expect(panel.locator("#resume-draft")).toBeVisible();await page.reload();await panel.locator("#resume-draft").click();
+  await expect(panel.locator('[name="name"]')).toHaveValue("Synthetic unfinished family");await expect(panel.locator('[aria-current="step"]')).toContainText("1. Участники");
+  expect(await page.evaluate(()=>window.fixture.calls.filter(item=>item.type==="family_assistant/execute"))).toHaveLength(0);
+  await page.screenshot({path:testInfo.outputPath("family-draft-ru-mobile.png"),fullPage:true});await panel.locator("#save-settings").click();await expect(panel).toContainText("Сохранено и проверено");
+  const write=await page.evaluate(()=>window.fixture.calls.find(item=>item.action==="settings.patch"));expect(write.payload).toEqual({revision:1,changes:{name:"Synthetic unfinished family",language:"ru",timezone:"Europe/Kyiv"}});
+  expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith("family-assistant:panel-draft:")))).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("Ukrainian dark profile draft rejects a newer server revision and supports reviewed discard",async({page},testInfo)=>{
+  await page.setViewportSize({width:390,height:844});await page.goto("/tests/fixtures/panel.html?lang=uk&theme=dark");const panel=page.locator("family-assistant-panel");
+  await panel.getByRole("button",{name:"Sam Example",exact:false}).click();await panel.locator('[name="name"]').fill("Synthetic local profile");await panel.locator('[name="aliasesText"]').fill("Sunny, Sunshine");await panel.locator("#keep-draft").click();await page.reload();
+  await page.evaluate(()=>{const member=window.fixture.data.members.find(item=>item.id==="M3");member.name="Synthetic remote update";member.revision++;window.fixture.data.view.members=structuredClone(window.fixture.data.members);});
+  await panel.locator("#resume-draft").click();await expect(panel.locator("#saved-draft")).toContainText("конфліктує");await expect(panel.locator('[name="name"]')).toHaveValue("Synthetic local profile");await expect(panel.locator("#save-member")).toBeDisabled();
+  await panel.locator(".panel-subtabs").getByRole("button",{name:"Додатково",exact:true}).click();await expect(panel.locator('[name="ha_user_id"]')).toBeDisabled();
+  await page.screenshot({path:testInfo.outputPath("profile-draft-stale-uk-dark-mobile.png"),fullPage:true});expect(await page.evaluate(()=>window.fixture.calls.filter(item=>item.type==="family_assistant/execute"))).toHaveLength(0);
+  page.once("dialog",dialog=>dialog.accept());await panel.locator("#discard-draft").click();await expect(panel.locator("#saved-draft")).toHaveCount(0);await expect(panel).toContainText("Synthetic remote update");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test("English attempted creation draft cannot be resubmitted after reload",async({page})=>{
+  await page.goto("/tests/fixtures/panel.html?lang=en");const panel=page.locator("family-assistant-panel");await panel.locator("#add-member").click();await panel.locator('[name="name"]').fill("Synthetic new member");
+  await page.evaluate(()=>{const original=window.panel._hass.callWS;window.panel._hass.callWS=async message=>{if(message.type==="family_assistant/execute"){await original(message);throw {code:"connection_lost"};}return original(message);};});
+  await panel.locator("#save-member").click();await expect(panel.locator('[role="alert"]')).toBeVisible();await page.reload();await expect(panel.locator("#saved-draft")).toContainText("may already have been applied");await panel.locator("#resume-draft").click();
+  await expect(panel.locator('[name="name"]')).toHaveValue("Synthetic new member");await expect(panel.locator("#save-member")).toBeDisabled();expect(await page.evaluate(()=>window.fixture.calls.filter(item=>item.type==="family_assistant/execute"))).toHaveLength(0);
+});

@@ -33,6 +33,18 @@ not in `custom_components`. Updating code must not erase them. Include HA data
 in your private backups. Never publish `.storage`, tokens or diagnostic logs
 without reviewing them. Do not manually edit Store files.
 
+## Pause a setup or profile edit
+
+Before connecting services, you can pause a family/profile edit in the control
+center with **Keep for later**. Its unfinished fields survive a reload in the
+same browser tab; choose **Resume draft** to review and continue. One draft is
+kept per account and household, and expires when read after 24 hours without an
+edit. Personal profile details may be included; use **Discard draft** on shared
+devices. Browser session recovery can retain a tab's data. Connection secrets
+are excluded. A newer server revision or a previously attempted save opens a
+read-only review; check current family data and discard that draft before editing
+again. Drafts do not apply settings or activate any services.
+
 ## Your own Telegram bot
 
 1. Open the verified `@BotFather` in Telegram and send `/newbot`. Choose a name

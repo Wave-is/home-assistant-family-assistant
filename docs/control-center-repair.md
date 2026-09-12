@@ -120,6 +120,11 @@ Remaining work must not be disguised as completed migration:
 
 ### Additional closed paths
 
+- Family setup/profile forms now have bounded tab-local drafts with explicit
+  resume/discard, fresh owner/revision checks and review-only recovery after a
+  possibly accepted save. Provider credentials and invitation codes are excluded.
+  [Draft scope, lifecycle and acceptance](panel-drafts.md) describe the new
+  increment; persisted wizard progress continues to use the existing HA Store.
 - Module switches now reconcile configured conversation/network services without
   restarting HA or the Telegram poller. Unknown external health is not displayed
   as verified success.
