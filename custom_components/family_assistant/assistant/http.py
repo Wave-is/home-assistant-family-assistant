@@ -39,7 +39,9 @@ def endpoint(value, *, allow_http=False, allow_query=False):
     return value.rstrip("/")
 
 
-async def request_json(session, method, url, *, timeout=15, limit=262144, **kwargs):
+async def request_json(
+    session, method, url, *, timeout=15, limit=262144, unsupported_statuses=(), **kwargs
+):
     try:
         async with session.request(
             method,
@@ -52,6 +54,8 @@ async def request_json(session, method, url, *, timeout=15, limit=262144, **kwar
                 raise DomainError("provider_authentication")
             if response.status == 429:
                 raise DomainError("provider_quota_exceeded")
+            if response.status in unsupported_statuses:
+                raise DomainError("provider_search_unsupported")
             if not 200 <= response.status < 300:
                 raise DomainError("provider_unreachable")
             body = bytearray()

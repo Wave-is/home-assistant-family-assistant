@@ -3,7 +3,14 @@
 GROUPS = {
     "menu_family": {"general", "member", "guided_onboarding"},
     "menu_telegram": {"telegram", "telegram_group", "telegram_member", "alarm_device"},
-    "menu_ai": {"conversation", "ha_agent", "search", "articles"},
+    "menu_ai": {
+        "provider_chain",
+        "image_generation",
+        "conversation",
+        "ha_agent",
+        "search",
+        "articles",
+    },
     "menu_services": {"mikrotik", "recipes", "presence_sources", "digests"},
     "menu_maintenance": {"legacy_copy", "legacy_prepare", "legacy_resume", "developer_diagnostics"},
 }

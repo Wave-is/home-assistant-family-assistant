@@ -257,7 +257,7 @@ def test_guided_translation_keys_and_placeholders_match_in_all_languages():
         "telegram",
         "telegram_member",
         "telegram_group",
-        "conversation",
+        "provider_chain",
         "ha_agent",
         "search",
         "alarm_device",

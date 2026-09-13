@@ -1,5 +1,47 @@
 # Implementation and acceptance matrix
 
+## Optional provider chains and image gateway — 13 September 2026
+
+Prepared candidate `0.2.0-rc.4` adds owner-configurable ordered lists of zero to
+eight text providers (AGY Ollama-compatible HTTP, direct Ollama/Qwen and separately
+reviewed HA agent references), plus a separate optional AGY image gateway/ComfyUI
+chain. Legacy slots remain compatible until an explicit list is saved; an empty
+list does not silently restore them. Native RU/UK/EN settings have explicit
+draft/save/discard, ordering, removal, metadata-only model discovery and guarded
+credential clearing. No inference, model installation or device wake is needed
+to save valid offline settings. [Setup and scope](provider-chains.md).
+
+Private Telegram image requests persist identity/configuration-bound intent,
+verify actual image bytes and expose truthful job/delivery states. Proven quota
+or rejection without output can use the next provider; uncertain execution or
+delivery cannot. Local 24-hour cache cleanup retains bounded replay receipts;
+external service/Telegram/AGY history retention is separate. Optional image health
+now shares one key across settings, cleanup and worker reporting without treating
+adapter initialization as reachability. [Image contract](image-generation.md).
+
+The separately installed [public AGY CLI gateway](../services/agy_gateway/README.md)
+now bridges authenticated CLI inference and fresh image output to the documented
+HTTP contracts. Hooks enforce narrowly permitted tools; ordinary profiles alone
+are not a security boundary. JSON schema is prompted in full and independently
+validated. Request-ID-bound image persistence fails closed on corruption and
+restart uncertainty. AGY search accepts only actual search-tool evidence; missing
+evidence can fall back to configured SearXNG. Its unverified child safe-search
+capability is not enabled. The gateway is optional source, not an integration
+runtime dependency or an automatic HACS-installed service.
+
+Acceptance so far: actual isolated HA **2026.9.2 native provider settings** passed
+with synthetic metadata/inference, including ordered fallback, secret clearing,
+explicit empty chains, ComfyUI preset fields and reload
+(`tests/ha_provider_chain_smoke.py`). Focused image/runtime/Telegram: **84 passed**;
+gateway/public contracts: **99 passed, one Windows symlink skip**; separate
+privacy/release contracts: **34 passed, one platform skip**. These overlapping
+runs are not a full-suite total. Ruff and format checks passed over the whole
+public tree. Full Python/frontend/browser/HA runs and exact-commit CI are still
+release gates until their final results are recorded. The HA CI matrix retains
+both **2026.8.2 and 2026.9.2**. Live provider validation and deployment are
+separate; this checkpoint does not claim household or physical acceptance.
+[Candidate release notes](releases/0.2.0-rc.4.md).
+
 ## Command-learning increment — 13 September 2026
 
 Candidate `0.2.0-rc.3` adds independently proven task-recipient typo correction,
@@ -10,10 +52,11 @@ epochs are covered by new regressions. Conversation cards expose name-rule kind
 and effective binding status in all three languages. Full vision/legacy parity
 is still incomplete; see [command-learning.md](command-learning.md).
 
-Provider precedence is corrected to optional AGY-compatible HTTP, reviewed HA
-agent, primary and enabled fallback. **Native AGY CLI integration is not yet
-implemented**; the existing named slot only speaks Ollama HTTP. Do not conflate
-development-time AGY use with an installed household inference provider.
+At the rc.3 checkpoint, provider precedence was optional AGY-compatible HTTP,
+reviewed HA agent, primary and enabled fallback; the named AGY slot only spoke
+Ollama HTTP and no native CLI bridge shipped. The rc.4 increment above adds an
+optional standalone bridge, not an AGY process inside Home Assistant. Development
+agent use is still distinct from an installed household inference provider.
 
 Local acceptance: 5,470 Python tests, 23 subtests (five platform skips), 392
 Chromium scenarios and 730 Node checks passed. Isolated HA 2026.8.2 full smoke and
@@ -59,6 +102,9 @@ and the repair order; generic task/court support must not hide these omissions.
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real Qwen evaluation identified schema/day/quote fixes, broader model acceptance remains; explicitly bounded existing official HA Ollama agent/native identity gate passed in the alpha.34 candidate |
+| Optional ordered text providers | Implemented / unit- and native-HA-settings-tested | Zero to eight ordered AGY/Ollama/reviewed-HA rows, explicit empty-chain semantics, legacy compatibility, finite fallback budget, actor/configuration guards and metadata-only setup; actual HA 2026.9.2 settings passed with synthetic endpoints. Live endpoint/model accuracy and exact-commit CI remain separate |
+| Optional private image generation | Implemented / unit- and native-HA-settings-tested | Separate AGY gateway/ComfyUI chain, private Telegram admission/status, verified image bytes, durable no-duplicate submission/delivery and bounded cleanup; preset configuration/reload passed HA 2026.9.2. Real GPU output and Telegram delivery are separate from synthetic transport acceptance; [limits](image-generation.md) |
+| Optional standalone AGY CLI gateway | Implemented / synthetic protocol- and client-tested | Authenticated APIs, exact tool hooks, independent schema validation, actual nested event parsing, request-ID persistence/corruption/restart safeguards and proven-quota-only fallback; separately installed/authenticated, not a HACS runtime dependency. Live CLI/provider acceptance and external artifact retention require separate evidence |
 | RU / UK / EN | Implemented / unit- and contract-tested | Existing forms/cards/errors translated; current strings.json and translations/*.json key parity is checked automatically, including added native settings; Telegram message catalog parity across EN/RU/UK; strict precondition reason selectors added. Legacy Russian varied reply banks do not imply equivalent varied EN/UK banks |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; ownership-safe Lovelace registration, module-graph versioning and offline HACS install/upgrade tested; richer overview and live provider acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |

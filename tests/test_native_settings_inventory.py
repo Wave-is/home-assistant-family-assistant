@@ -12,7 +12,7 @@ def test_every_native_step_is_named_in_inventory():
     document = (ROOT / "docs/native-settings-audit.md").read_text(encoding="utf-8")
     steps = {
         node.name.removeprefix("async_step_")
-        for file in ("config_flow.py", "onboarding_options.py")
+        for file in ("config_flow.py", "onboarding_options.py", "provider_chain_options.py")
         for node in ast.walk(ast.parse((PACKAGE / file).read_text(encoding="utf-8")))
         if isinstance(node, ast.AsyncFunctionDef) and node.name.startswith("async_step_")
     }
@@ -22,6 +22,48 @@ def test_every_native_step_is_named_in_inventory():
 
 def test_new_native_controls_are_localized_in_all_catalogs():
     expected = {
+        "provider_chain": {"enabled", "provider", "action"},
+        "provider_chain_kind": {"kind", "action"},
+        "provider_chain_edit": {
+            "name",
+            "enabled",
+            "url",
+            "model",
+            "api_key",
+            "clear_key",
+            "allow_http",
+            "timeout",
+            "search_enabled",
+            "action",
+        },
+        "provider_chain_remove": {"confirmed", "action"},
+        "provider_chain_test": {"action"},
+        "image_generation": {"enabled", "provider", "action"},
+        "image_provider_kind": {"kind", "action"},
+        "image_provider_edit": {
+            "name",
+            "enabled",
+            "url",
+            "model",
+            "api_key",
+            "clear_key",
+            "allow_http",
+            "timeout",
+            "workflow",
+            "encoder",
+            "vae",
+            "action",
+        },
+        "image_provider_remove": {"confirmed", "action"},
+        "image_provider_test": {"action"},
+        "image_generation_settings": {
+            "width",
+            "height",
+            "steps",
+            "cfg",
+            "negative_prompt",
+            "action",
+        },
         "telegram": {"clear_token"},
         "mikrotik": {"clear_password"},
         "alarm_device": {"member"},

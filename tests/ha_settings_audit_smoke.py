@@ -170,6 +170,9 @@ async def verify_settings_audit(hass, user):
                     await async_get_config_entry_diagnostics(hass, entry)
                 )
                 await _alarm_controls(hass, entry, form, post, device_registry, entity_registry)
+                from ha_provider_chain_smoke import verify_provider_chain_options
+
+                await verify_provider_chain_options(hass, entry, form, post)
     finally:
         if gate:
             gate["release"].set()

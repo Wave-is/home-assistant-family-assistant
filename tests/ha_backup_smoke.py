@@ -162,7 +162,10 @@ async def verify_backup(hass, entry, owner, media_expected) -> None:
     assert runtimes and runtimes[entry.entry_id] is entry.runtime_data
     runtime = entry.runtime_data
     initial = runtime.engine.snapshot()
-    initial_view = runtime.engine.view("owner")
+    # A backup freezes durable state, not wall time. Countdown/staleness and
+    # calendar projections must use the same instant on both sides of the lease.
+    view_at = datetime.now(UTC)
+    initial_view = runtime.engine.view("owner", now=view_at)
     processed = initial["processed"]["smoke-add"]
     assert set(processed) == {"fingerprint", "result", "role"}
     replay_message = {
@@ -211,7 +214,14 @@ async def verify_backup(hass, entry, owner, media_expected) -> None:
             coordinator = data["backup"]
             frozen_state = runtime.engine.snapshot()
             assert frozen_state == initial
-            assert runtime.engine.view("owner") == initial_view
+            frozen_view = runtime.engine.view("owner", now=view_at)
+            assert frozen_view == initial_view, {
+                "changed_view_sections": sorted(
+                    key
+                    for key in set(initial_view) | set(frozen_view)
+                    if initial_view.get(key) != frozen_view.get(key)
+                )
+            }
 
             try:
                 await family_backup.async_pre_backup(hass)

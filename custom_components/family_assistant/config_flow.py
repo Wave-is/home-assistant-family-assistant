@@ -15,6 +15,7 @@ from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
 from .onboarding_handoff import async_post_create_handoff, is_guided_handoff
 from .onboarding_options import GuidedOnboardingMixin
+from .provider_chain_options import ProviderChainOptionsMixin
 from .provider_options import guarded_provider_step
 
 CONFIGURABLE_MODULES = (
@@ -175,7 +176,9 @@ class FamilyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
+class FamilyOptionsFlow(
+    ProviderChainOptionsMixin, GuidedOnboardingMixin, config_entries.OptionsFlow
+):
     @callback
     def async_create_entry(
         self,
@@ -249,6 +252,8 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="menu_ai",
             menu_options=[
+                "provider_chain",
+                "image_generation",
                 "conversation",
                 "ha_agent",
                 "search",
@@ -292,6 +297,8 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                 "telegram",
                 "telegram_group",
                 "telegram_member",
+                "provider_chain",
+                "image_generation",
                 "conversation",
                 "ha_agent",
                 "search",
@@ -569,6 +576,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                     required = active and (
                         key == "fallback"
                         or config["enabled"]
+                        and "providers" not in config
                         and not (config.get("ha_agent") or config.get("agy"))
                     )
                     if not configured and not required:

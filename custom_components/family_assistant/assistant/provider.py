@@ -62,19 +62,33 @@ def _clean_schema_for_grammar(schema):
 
 
 class Ollama:
-    def __init__(self, session, config):
+    kind = "ollama"
+
+    def __init__(self, session, config, *, require_model=True):
         self.session = session
-        self.url = endpoint(config["url"], allow_http=config.get("allow_http", False))
-        self.model = text(config.get("model", ""), "model", 128)
+        if type(config.get("allow_http", False)) is not bool:
+            raise DomainError("invalid_field", "allow_http")
+        self.url = endpoint(config.get("url"), allow_http=config.get("allow_http", False))
+        selected = config.get("model", "")
+        self.model = "" if not require_model and selected == "" else text(selected, "model", 128)
         self.timeout = config.get("timeout", 15)
         if type(self.timeout) is not int or not 5 <= self.timeout <= 60:
             raise DomainError("invalid_field", "timeout")
+        key = config.get("api_key", "")
+        if (
+            not isinstance(key, str)
+            or len(key) > 2048
+            or any(ord(c) < 32 or ord(c) == 127 for c in key)
+        ):
+            raise DomainError("invalid_field", "api_key")
         self.headers = (
             {"Authorization": f"Bearer {config['api_key']}"} if config.get("api_key") else {}
         )
 
     async def models(self):
-        data = await request_json(self.session, "GET", self.url + "/api/tags", headers=self.headers)
+        data = await request_json(
+            self.session, "GET", self.url + "/api/tags", timeout=self.timeout, headers=self.headers
+        )
         models = data.get("models")
         if not isinstance(models, list):
             raise DomainError("provider_bad_response")
@@ -90,8 +104,12 @@ class Ollama:
         if self.model not in await self.models():
             raise DomainError("provider_model_missing")
 
+    def request_schema(self, schema):
+        return _clean_schema_for_grammar(schema) if schema else schema
+
     async def generate(self, messages, schema):
-        cleaned_schema = _clean_schema_for_grammar(schema) if schema else schema
+        if not self.model:
+            raise DomainError("provider_model_missing")
         data = await request_json(
             self.session,
             "POST",
@@ -102,7 +120,7 @@ class Ollama:
                 "model": self.model,
                 "messages": messages,
                 "stream": False,
-                "format": cleaned_schema,
+                "format": self.request_schema(schema),
                 "think": False,
                 "options": {"temperature": 0, "num_predict": 1500, "num_ctx": 8192},
                 "keep_alive": "24h",
@@ -121,9 +139,24 @@ class Ollama:
         return result
 
 
+class AGY(Ollama):
+    """Explicit optional AGY gateway using its observed Ollama-compatible API.
+
+    This adapter neither launches a CLI nor grants Home Assistant tools. Search
+    is a separate opt-in evidence request, never inferred from model prose.
+    """
+
+    kind = "agy"
+
+    def request_schema(self, schema):
+        # The gateway is not llama.cpp: preserve its complete validation schema.
+        return schema
+
+
 class Cascade:
-    def __init__(self, providers, health, *, clock=time.monotonic):
+    def __init__(self, providers, health, *, clock=time.monotonic, budget=None):
         self.providers, self.health, self.clock = providers, health, clock
+        self.budget = budget
         self.cooldown = {}
         self.failures = {}
         self.lock = asyncio.Lock()
@@ -142,6 +175,7 @@ class Cascade:
             await self.check_scope(scope_check)
             last = "provider_unreachable"
             current = self.clock()
+            deadline = current + self.budget if self.budget is not None else None
             candidates = [
                 index
                 for index in range(len(self.providers))
@@ -159,15 +193,29 @@ class Cascade:
                     [],
                 )
                 last = self.failures.get(0, last)
-            for index in candidates:
+            for position, index in enumerate(candidates):
                 provider = self.providers[index]
                 await self.check_scope(scope_check)
                 try:
                     scoped_generate = getattr(provider, "generate_for_actor", None)
-                    if scoped_generate is not None:
-                        value = await scoped_generate(messages, schema, actor_request)
-                    else:
-                        value = await provider.generate(messages, schema)
+                    attempt = None
+                    if deadline is not None:
+                        remaining = max(0, deadline - self.clock())
+                        count = len(candidates) - position
+                        attempt = remaining / count
+                        if getattr(provider, "kind", "") == "agy":
+                            attempt = max(attempt, min(30, remaining - 5 * (count - 1)))
+                        attempt = min(attempt, getattr(provider, "timeout", 60))
+                        if attempt <= 0:
+                            raise DomainError("provider_timeout")
+                    try:
+                        async with asyncio.timeout(attempt):
+                            if scoped_generate is not None:
+                                value = await scoped_generate(messages, schema, actor_request)
+                            else:
+                                value = await provider.generate(messages, schema)
+                    except TimeoutError:
+                        raise DomainError("provider_timeout") from None
                 except ActorProviderUnavailable as err:
                     await self.check_scope(scope_check)
                     last = err.code

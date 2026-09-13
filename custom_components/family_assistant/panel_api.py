@@ -9,7 +9,12 @@ from homeassistant.util import dt as dt_util
 from .command_scope import capture
 from .domain import settings
 from .domain.validation import DomainError, text, timestamp
-from .panel_readiness import capabilities, member_readiness
+from .panel_readiness import (
+    capabilities,
+    conversation_configuration,
+    image_connection,
+    member_readiness,
+)
 
 
 def enrollment_view(record, now):
@@ -71,6 +76,12 @@ def project(runtime, entry, actor, now):
     """Expose editable member fields only to the owner; never return tokens."""
     view = runtime.engine.view(actor, now=now)
     state = runtime.engine.snapshot()
+    conversation = conversation_configuration(dict(entry.options).get("conversation"))
+    conversation_available = (
+        conversation["configured"]
+        and "conversation" in state["settings"]["modules"]
+        and runtime.assistant is not None
+    )
     privileged = view["role"] in {"owner", "parent"}
     result = {
         "view": view,
@@ -111,14 +122,19 @@ def project(runtime, entry, actor, now):
     if privileged:
         view["health"] = dict(runtime.health)
         options = dict(entry.options)
-        conversation = options.get("conversation", {}) or {}
         result["connections"] = {
             "telegram": telegram_status(runtime, options, state),
             "conversation": {
-                "configured": conversation.get("enabled") is True,
-                "available": runtime.assistant is not None,
+                "configured": conversation["configured"],
+                "available": conversation_available,
                 "health": runtime.health.get("conversation"),
             },
+            "image_generation": image_connection(
+                state,
+                options.get("image_generation"),
+                getattr(runtime, "image_generation", None),
+                runtime.health.get("images"),
+            ),
             "mikrotik": {
                 "configured": bool(options.get("mikrotik")),
                 "available": runtime.network is not None,
@@ -138,7 +154,7 @@ def project(runtime, entry, actor, now):
         result["member_readiness"] = checks
     result["capabilities"] = capabilities(
         state,
-        {"conversation": runtime.assistant is not None, "mikrotik": runtime.network is not None},
+        {"conversation": conversation_available, "mikrotik": runtime.network is not None},
         runtime.health,
         checks,
     )

@@ -35,6 +35,8 @@ class Runtime:
     chat: Any = None
     assistant_revision: str = ""
     assistant_config_digest: str = ""
+    image_generation: Any = None
+    image_generation_digest: str = ""
     articles: Any = None
     article_revision: str = ""
     network: Any = None
@@ -205,6 +207,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
                         runtime.health.pop("media", None)
                 except (DomainError, OSError, TimeoutError):
                     runtime.health["media"] = "media_unavailable"
+                await async_collect_images(runtime)
 
             runtime.media_task = hass.async_create_task(
                 collect(), "Family Assistant private media cleanup"
@@ -232,6 +235,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         # even when the scheduler has no domain change to announce.
         runtime.updated()
     except Exception:
+        stop_images(runtime)
         await async_stop_chat(runtime)
         await async_stop_articles(runtime)
         await async_stop_media(runtime)
@@ -306,6 +310,7 @@ async def _async_unload_runtime(hass, entry) -> bool:
     if platforms and not await hass.config_entries.async_unload_platforms(entry, platforms):
         return False
     runtime = hass.data[DOMAIN]["entries"].pop(entry.entry_id)
+    stop_images(runtime)
     if runtime.module_task is not None:
         runtime.module_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -464,11 +469,13 @@ async def async_stop_chat(runtime):
 def async_configure_assistant(hass, entry):
     if entry.runtime_data.engine.shadow_mode:
         return
+    async_configure_images(hass, entry)
     from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
     from .assistant.article_service import ArticleService
     from .assistant.chat_service import ChatService, conversation_digest
-    from .assistant.provider import Cascade, Ollama
+    from .assistant.provider import Cascade
+    from .assistant.provider_registry import http_provider, provider_rows
     from .assistant.search import Search
     from .assistant.service import Assistant
 
@@ -489,31 +496,58 @@ def async_configure_assistant(hass, entry):
     config = entry.options.get("conversation", {})
     if (
         "conversation" in runtime.engine.snapshot()["settings"]["modules"]
-        and config.get("enabled")
-        and (config.get("primary") or config.get("ha_agent") or config.get("agy"))
+        and isinstance(config, dict)
+        and config.get("enabled") is True
     ):
         # A native HA-only provider owns its transport. Do not create another
         # HTTP session (or initialize discovery/DNS) unless a direct source needs it.
-        search_config = config.get("search", {})
-        search_enabled = bool(search_config) and search_config.get("enabled", True)
-        direct = [
-            config[key]
-            for key in ("agy", "primary", "fallback")
-            if config.get(key) and (key != "fallback" or config[key].get("enabled", True))
-        ]
-        session = async_get_clientsession(hass) if direct or search_enabled else None
-        # The optional agy slot uses the existing Ollama HTTP contract, not
-        # a developer-PC CLI. Keep it first; native HA precedes other direct slots.
-        providers = [Ollama(session, provider) for provider in direct]
-        if config.get("ha_agent"):
-            from .assistant.ha_agent_provider import HAConversationAgent
+        try:
+            rows = [row for row in provider_rows(config) if row["enabled"]]
+            if not rows:
+                runtime.health.pop("conversation", None)
+                return
+            search_config = config.get("search", {})
+            if (
+                not isinstance(search_config, dict)
+                or type(search_config.get("enabled", True)) is not bool
+            ):
+                raise DomainError("invalid_field", "search")
+            search_enabled = bool(search_config) and search_config.get("enabled", True)
+            if search_enabled:
+                # Reuse the HTTP boundary checks without inventing a model or
+                # making a discovery call to the separately configured search.
+                http_provider(
+                    None,
+                    {**search_config, "kind": "ollama", "model": ""},
+                    require_model=False,
+                )
+            direct = any(row["kind"] != "ha_agent" for row in rows)
+            session = async_get_clientsession(hass) if direct or search_enabled else None
+            providers = []
+            for row in rows:
+                if row["kind"] == "ha_agent":
+                    from .assistant.ha_agent_provider import HAConversationAgent
 
-            providers.insert(
-                1 if config.get("agy") else 0,
-                HAConversationAgent(hass, entry, config["ha_agent"]),
+                    providers.append(HAConversationAgent(hass, entry, config.get("ha_agent")))
+                else:
+                    providers.append(http_provider(session, row))
+            search = Search(session, search_config) if search_enabled else None
+            agy_search = [row for row in rows if row.get("search_enabled")]
+            if agy_search:
+                from .assistant.agy_search import AGYSearch, SearchCascade
+
+                search = SearchCascade(
+                    [AGYSearch(session, row) for row in agy_search] + ([search] if search else [])
+                )
+            runtime.assistant = Assistant(
+                runtime.engine,
+                Cascade(providers, runtime.health, budget=90 if "providers" in config else None),
+                search,
             )
-        search = Search(session, search_config) if search_enabled else None
-        runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
+        except DomainError as err:
+            # Invalid optional provider data must not disable deterministic commands.
+            runtime.health["conversation"] = err.code
+            return
         article_policy = entry.options.get("articles", {})
         if (
             isinstance(article_policy, dict)
@@ -528,6 +562,86 @@ def async_configure_assistant(hass, entry):
             runtime.articles = ArticleService(runtime.assistant.cascade)
     else:
         runtime.health.pop("conversation", None)
+
+
+def stop_images(runtime):
+    if getattr(runtime, "image_generation", None) is not None:
+        runtime.image_generation.close()
+        runtime.image_generation = None
+    runtime.image_generation_digest = ""
+    runtime.health.pop("images", None)
+    runtime.health.pop("image_generation", None)
+
+
+async def async_collect_images(runtime):
+    images = runtime.image_generation
+    if images is None:
+        return
+    try:
+        await images.collect()
+    except (DomainError, OSError, TimeoutError):
+        if runtime.image_generation is images:
+            runtime.health["images"] = "media_unavailable"
+    else:
+        if (
+            runtime.image_generation is images
+            and runtime.health.get("images") == "media_unavailable"
+        ):
+            # Cleanup success does not establish provider/Telegram availability.
+            runtime.health.pop("images", None)
+
+
+def async_configure_images(hass, entry):
+    """Optional private jobs; never construct them for a read-only shadow entry."""
+    runtime = entry.runtime_data
+    stop_images(runtime)
+    if runtime.engine.shadow_mode:
+        return
+    config = dict(entry.options).get("image_generation", {})
+    if not config and not runtime.engine.snapshot().get("image_jobs"):
+        return
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+    from .assistant.image_files import ImageFiles
+    from .assistant.image_jobs import ImageJobs, digest
+
+    try:
+        marker = digest(config)
+
+        def check_scope():
+            if (
+                hass.data.get(DOMAIN, {}).get("entries", {}).get(entry.entry_id) is not runtime
+                or entry.runtime_data is not runtime
+                or runtime.image_generation is not service
+            ):
+                raise DomainError("forbidden")
+            try:
+                current = digest(dict(entry.options).get("image_generation", {}))
+            except (TypeError, ValueError, RecursionError):
+                raise DomainError("conflict") from None
+            if current != marker:
+                raise DomainError("conflict")
+            runtime.engine._require_writable()
+
+        enabled = isinstance(config, dict) and config.get("enabled") is True
+        active = enabled and "conversation" in runtime.engine.snapshot()["settings"]["modules"]
+        service = ImageJobs(
+            runtime.engine,
+            async_get_clientsession(hass) if active else None,
+            ImageFiles(
+                Path(hass.config.path("family_assistant", entry.entry_id, "generated_images"))
+            ),
+            config,
+            clock=dt_util.utcnow,
+            scope_id=entry.entry_id,
+            scope_check=check_scope,
+        )
+        runtime.image_generation = service
+        runtime.image_generation_digest = marker
+    except DomainError as err:
+        runtime.health["images"] = err.code
+    except (TypeError, ValueError):
+        runtime.health["images"] = "invalid_field"
 
 
 async def async_configure_network(hass, entry):

@@ -754,14 +754,14 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
     from homeassistant.components import conversation
     from homeassistant.core import Context
 
+    from custom_components.family_assistant.assistant.provider import Ollama
     from custom_components.family_assistant.domain.validation import DomainError
 
     gate, started = asyncio.Event(), asyncio.Event()
 
-    class SyntheticOllama:
-        def __init__(self, session, config):
-            self.model = config["model"]
-
+    class SyntheticOllama(Ollama):
+        # Preserve the real constructor and metadata normalization contract;
+        # only external metadata/inference is replaced by the synthetic server.
         async def inspect(self):
             if self.model not in {"synthetic-primary", "synthetic-fallback"}:
                 raise DomainError("provider_model_missing")
@@ -782,7 +782,13 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
             }
 
     engine = entry.runtime_data.engine
-    with patch("custom_components.family_assistant.assistant.provider.Ollama", SyntheticOllama):
+    with (
+        patch("custom_components.family_assistant.assistant.provider.Ollama", SyntheticOllama),
+        patch(
+            "custom_components.family_assistant.assistant.provider_registry.Ollama",
+            SyntheticOllama,
+        ),
+    ):
         settings = engine.snapshot()["settings"]
         flow = await options("general")
         flow = await submit(
@@ -817,6 +823,8 @@ async def run_assistant(hass, entry, owner, child_id, receive, options, submit):
         assert flow["type"] == "create_entry"
         await hass.async_block_till_done()
         assert entry.runtime_data.assistant is not None
+        providers = entry.runtime_data.assistant.cascade.providers
+        assert len(providers) == 2 and all(isinstance(row, SyntheticOllama) for row in providers)
         update = await receive("@synthetic_family_bot Please interpret this request")
         await asyncio.wait_for(started.wait(), 4)
         # Slow fallback inference must not hold the Telegram polling path.

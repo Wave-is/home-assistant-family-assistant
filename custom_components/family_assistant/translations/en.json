@@ -94,11 +94,11 @@
       "provider_unreachable": "The configured provider could not be reached.",
       "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
       "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
-      "provider_model_missing": "The selected model is not installed on this Ollama server.",
-      "provider_quota_exceeded": "The model quota is exhausted. Try later or configure an available fallback.",
+      "provider_model_missing": "The selected model is not available from this provider.",
+      "provider_quota_exceeded": "The provider quota is exhausted. Try later or configure an available fallback.",
       "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
       "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
-      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_not_configured": "Internet search is not configured. Enable a supported AGY search provider or SearXNG with JSON output.",
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
@@ -143,7 +143,16 @@
       "media_unavailable": "Could not confirm the photo operation. Retry the same reviewed action.",
       "capacity_reached": "The local inventory capacity is reached. Existing records and history are preserved; new changes are stopped.",
       "quota_exceeded": "The private photo quota is full. Unattached uploads expire automatically.",
-      "limit_exceeded": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one."
+      "limit_exceeded": "The maximum number of tracked items has been reached. Remove an existing entry before adding a new one.",
+      "image_busy": "Another image request is already in progress. Try again later; no second generation was started.",
+      "image_invalid": "The image result could not be verified. No successful image result is available.",
+      "image_rejected": "The image provider rejected this request. Review its supported model and parameters.",
+      "image_submission_uncertain": "The image server may have accepted this request. Check its current status before starting another generation.",
+      "image_model_unavailable": "The selected image model or required workflow component is unavailable. Choose installed models and a supported preset.",
+      "provider_search_unsupported": "This AGY gateway has not provided supported search evidence. Enable and configure its search capability or use another search source.",
+      "image_too_large": "The generated image exceeds the supported file or image-size limit.",
+      "image_delivery_uncertain": "Telegram may already have received this image. It will not be resent automatically.",
+      "image_unavailable": "This image service, configuration or cached result is no longer available. Review its current status."
     },
     "abort": {
       "backup_in_progress": "A Home Assistant backup is being prepared. Try the same action after it finishes.",
@@ -155,10 +164,10 @@
       "provider_unreachable": "The configured provider could not be reached.",
       "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
       "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
-      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_model_missing": "The selected model is not available from this provider.",
       "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
       "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
-      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_not_configured": "Internet search is not configured. Enable a supported AGY search provider or SearXNG with JSON output.",
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
@@ -290,11 +299,11 @@
           "telegram": "Own Telegram bot",
           "telegram_member": "Link a private Telegram chat",
           "telegram_group": "Link the family Telegram group",
-          "conversation": "Language model",
           "search": "Internet search",
           "alarm_device": "Dedicated wake-up siren",
           "guided_finish": "Finish for now",
-          "ha_agent": "Existing Home Assistant agent"
+          "ha_agent": "Existing Home Assistant agent",
+          "provider_chain": "Language provider chain (optional)"
         }
       },
       "member": {
@@ -397,7 +406,7 @@
       },
       "conversation": {
         "title": "Language model and fallback",
-        "description": "Optional: messages and a limited role-filtered family context go to the servers you configure. First enable Conversation under Household preferences. Enter the Ollama base URL and exact installed model name (see /api/tags or ollama list). Enabled servers are checked before saving. Disabled edits receive local validation only; connection and fallback settings are retained. Changing a server URL requires re-entering or clearing its key. A model has no internet without Search. HTTP is unencrypted; use it only on a trusted LAN/VPN, never expose Ollama directly. Leave keys blank to preserve them. Model-generated mutations require confirmation.",
+        "description": "Optional: messages and a limited role-filtered family context go to the servers you configure. First enable Conversation under Household preferences. Enter the Ollama base URL and exact installed model name (see /api/tags or ollama list). Enabled servers are checked before saving. Disabled edits receive local validation only; connection and fallback settings are retained. Changing a server URL requires re-entering or clearing its key. A model has no internet without Search. HTTP is unencrypted; use it only on a trusted LAN/VPN, never expose Ollama directly. Leave keys blank to preserve them. Model-generated mutations require confirmation. An explicitly saved provider chain takes precedence over these old slots.",
         "data": {
           "enabled": "Enable model requests",
           "primary_url": "Primary Ollama base URL",
@@ -559,11 +568,13 @@
         "title": "AI & Assistant",
         "description": "Language model (LLM), HA agent, search and articles:",
         "menu_options": {
-          "conversation": "Language model & fallback",
+          "conversation": "Legacy two-slot Ollama settings",
           "ha_agent": "Ready Home Assistant agent",
           "search": "Web search (SearXNG)",
           "articles": "Public article reading",
-          "init": "← Back to main menu"
+          "init": "← Back to main menu",
+          "provider_chain": "Language provider chain (optional)",
+          "image_generation": "Image generation (optional)"
         }
       },
       "menu_services": {
@@ -599,7 +610,7 @@
           "telegram": "Connect your own Telegram bot",
           "telegram_group": "Link the family group",
           "telegram_member": "Link a member's private chat",
-          "conversation": "Language model and fallback",
+          "conversation": "Legacy two-slot Ollama settings",
           "search": "Internet search (SearXNG)",
           "articles": "Public article reading",
           "recipes": "Recipe source (Mealie)",
@@ -611,7 +622,119 @@
           "legacy_prepare": "Prepare a read-only copy from exports",
           "legacy_resume": "Resume a saved read-only copy",
           "ha_agent": "Existing Home Assistant agent",
-          "init": "← Back to main menu"
+          "init": "← Back to main menu",
+          "provider_chain": "Language provider chain (optional)",
+          "image_generation": "Image generation (optional)"
+        }
+      },
+      "provider_chain": {
+        "title": "Ordered language providers",
+        "description": "Optional: ordinary bot commands work without any language model. {enabled_count}/{count} providers are enabled. Order:\n{order}\nChoose a provider and action, then Continue. ● enabled / ○ disabled. Row edits and reordering are drafts until Save chain. An empty saved list overrides legacy slots. Saving does not contact providers or prove availability.",
+        "data": {
+          "enabled": "Enable",
+          "provider": "Selected provider",
+          "action": "Action"
+        }
+      },
+      "image_generation": {
+        "title": "Optional image generation",
+        "description": "Optional and off by default. {enabled_count}/{count} image providers are enabled. Order:\n{order}\n● enabled / ○ disabled. Save chain applies this draft; Cancel discards it. Save never generates an image or starts an offline PC. A server can be saved while offline. Use Test connection to inspect installed models.",
+        "data": {
+          "enabled": "Enable",
+          "provider": "Selected provider",
+          "action": "Action"
+        }
+      },
+      "provider_chain_kind": {
+        "title": "Add a provider",
+        "description": "Choose the protocol implemented by your server. No provider or cloud account is mandatory. Home Assistant agent references the separately reviewed agent configuration.",
+        "data": {
+          "kind": "Provider protocol",
+          "action": "Action"
+        }
+      },
+      "provider_chain_edit": {
+        "title": "Provider settings",
+        "description": "Protocol: {kind}. Blank key keeps the saved key; Clear key removes it. Changing the URL requires a new key or explicit clearing. Save stages this row only. Leave disabled to save a model-discovery draft, then Test connection from the list. AGY search is separate opt-in; a text reply is not proof of web search.",
+        "data": {
+          "name": "Display name",
+          "enabled": "Enable",
+          "url": "Base URL",
+          "model": "Installed model / checkpoint",
+          "api_key": "API key (blank keeps saved key)",
+          "clear_key": "Clear saved API key",
+          "allow_http": "Allow unencrypted HTTP to this configured server",
+          "timeout": "Request timeout (seconds)",
+          "search_enabled": "Allow explicit adult web searches through this AGY gateway",
+          "action": "Action"
+        }
+      },
+      "provider_chain_remove": {
+        "title": "Remove a provider from this draft",
+        "description": "Remove {name}? Its connection and key are removed only when the chain is saved. Back keeps the row; Cancel chain discards this whole draft.",
+        "data": {
+          "confirmed": "I confirm removing this provider when the chain is saved",
+          "action": "Action"
+        }
+      },
+      "provider_chain_test": {
+        "title": "Read-only connection test",
+        "description": "Provider: {name}. Any error is shown above. This check reads metadata only; it does not run inference or prove future requests will succeed. Models:\n{models}\nEncoders:\n{encoders}\nVAEs:\n{vaes}\nAfter a successful check, Back then Edit offers these suggestions. An empty list is not an installed model.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "image_provider_kind": {
+        "title": "Add a provider",
+        "description": "Choose the protocol implemented by your server. No provider or cloud account is mandatory. Home Assistant agent references the separately reviewed agent configuration.",
+        "data": {
+          "kind": "Provider protocol",
+          "action": "Action"
+        }
+      },
+      "image_provider_edit": {
+        "title": "Provider settings",
+        "description": "Protocol: {kind}. Blank key keeps it; Clear key removes it. Changed URLs require a new key or clearing. Disabled rows may be saved before models are known. Test lists installed models; it never downloads models or generates images. ComfyUI supports only the built-in checkpoint and Z-Image Turbo presets; Turbo also needs its encoder and VAE. Arbitrary workflow JSON/custom nodes are not accepted. For Z-Image Turbo, choose 8 steps and CFG 1 in Image defaults; this preset ignores the negative prompt.",
+        "data": {
+          "name": "Display name",
+          "enabled": "Enable",
+          "url": "Base URL",
+          "model": "Installed model / checkpoint",
+          "api_key": "API key (blank keeps saved key)",
+          "clear_key": "Clear saved API key",
+          "allow_http": "Allow unencrypted HTTP to this configured server",
+          "timeout": "Request timeout (seconds)",
+          "workflow": "Built-in ComfyUI preset",
+          "encoder": "Installed text encoder (Turbo)",
+          "vae": "Installed VAE (Turbo)",
+          "action": "Action"
+        }
+      },
+      "image_provider_remove": {
+        "title": "Remove a provider from this draft",
+        "description": "Remove {name}? Its connection and key are removed only when the chain is saved. Back keeps the row; Cancel chain discards this whole draft.",
+        "data": {
+          "confirmed": "I confirm removing this provider when the chain is saved",
+          "action": "Action"
+        }
+      },
+      "image_provider_test": {
+        "title": "Read-only connection test",
+        "description": "Provider: {name}. Any error is shown above. This check reads metadata only; it does not run inference or prove future requests will succeed. Models:\n{models}\nEncoders:\n{encoders}\nVAEs:\n{vaes}\nAfter a successful check, Back then Edit offers these suggestions. An empty list is not an installed model.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "image_generation_settings": {
+        "title": "Image defaults",
+        "description": "These values configure the built-in image presets; saving does not generate anything. The selected server must already have the required models. Settings remain a draft until Save chain. For Z-Image Turbo, choose 8 steps and CFG 1 in Image defaults; this preset ignores the negative prompt.",
+        "data": {
+          "width": "Width",
+          "height": "Height",
+          "steps": "Sampling steps",
+          "cfg": "CFG guidance",
+          "negative_prompt": "Default negative prompt",
+          "action": "Action"
         }
       }
     },
@@ -701,10 +824,10 @@
       "provider_unreachable": "The configured provider could not be reached.",
       "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
       "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
-      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_model_missing": "The selected model is not available from this provider.",
       "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
       "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
-      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_not_configured": "Internet search is not configured. Enable a supported AGY search provider or SearXNG with JSON output.",
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
@@ -760,7 +883,17 @@
       "photo_unavailable": "The photo could not be downloaded. Send it again.",
       "provider_images_unsupported": "This provider does not support photo input. Configure an image-capable provider.",
       "telegram_unavailable": "Telegram is not connected. Check the bot connection before inviting members.",
-      "file_too_large": "The file exceeds the supported size."
+      "file_too_large": "The file exceeds the supported size.",
+      "image_busy": "Another image request is already in progress. Try again later; no second generation was started.",
+      "image_invalid": "The image result could not be verified. No successful image result is available.",
+      "image_rejected": "The image provider rejected this request. Review its supported model and parameters.",
+      "image_submission_uncertain": "The image server may have accepted this request. Check its current status before starting another generation.",
+      "image_model_unavailable": "The selected image model or required workflow component is unavailable. Choose installed models and a supported preset.",
+      "provider_search_unsupported": "This AGY gateway has not provided supported search evidence. Enable and configure its search capability or use another search source.",
+      "image_too_large": "The generated image exceeds the supported file or image-size limit.",
+      "image_delivery_uncertain": "Telegram may already have received this image. It will not be resent automatically.",
+      "image_unavailable": "This image service, configuration or cached result is no longer available. Review its current status.",
+      "provider_quota_exceeded": "The provider quota is exhausted. Try later or configure an available fallback."
     },
     "abort": {
       "developer_policy_saved": "Developer diagnostics consent saved.",
@@ -798,10 +931,10 @@
       "provider_unreachable": "The configured provider could not be reached.",
       "provider_timeout": "The model did not respond in time. Ordinary commands still work.",
       "provider_bad_response": "The model or search provider returned an invalid response. Nothing was executed.",
-      "provider_model_missing": "The selected model is not installed on this Ollama server.",
+      "provider_model_missing": "The selected model is not available from this provider.",
       "provider_not_configured": "Configure and enable a language provider in Family Assistant settings.",
       "provider_key_scope": "The server URL changed. Enter a new key or explicitly clear the old key.",
-      "search_not_configured": "Internet search is not configured. Connect SearXNG with JSON output enabled.",
+      "search_not_configured": "Internet search is not configured. Enable a supported AGY search provider or SearXNG with JSON output.",
       "search_query_not_grounded": "I could not form a public search query without sending private context. Specify a public search phrase.",
       "proposal_expired": "This proposal expired or was already handled. Send the request again.",
       "assistant_busy": "Several requests are already queued. Ordinary commands still work.",
@@ -811,7 +944,8 @@
       "ha_agent_unsupported": "This agent is not supported: use the official Ollama conversation agent on Core 2026.8.2, without Home Assistant control or a custom prompt.",
       "ha_agent_unavailable": "The selected Home Assistant conversation entity is not loaded or available.",
       "ha_agent_changed": "The selected agent or its configuration changed. Review the selection again.",
-      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback."
+      "ha_agent_account_required": "This provider requires your linked, active Home Assistant account. Ask the owner to link it or configure direct Ollama as a fallback.",
+      "provider_chain_cancelled": "Provider draft discarded. Saved settings were not changed."
     }
   },
   "entity": {
@@ -856,7 +990,7 @@
       "message": "The file exceeds the supported size."
     },
     "provider_quota_exceeded": {
-      "message": "The model quota is exhausted. Try later or configure an available fallback."
+      "message": "The provider quota is exhausted. Try later or configure an available fallback."
     },
     "photo_unavailable": {
       "message": "The photo could not be downloaded. Send it again."
@@ -1090,7 +1224,7 @@
       "message": "The model or search provider returned an invalid response. Nothing was executed."
     },
     "provider_model_missing": {
-      "message": "The selected model is not installed on this Ollama server."
+      "message": "The selected model is not available from this provider."
     },
     "provider_not_configured": {
       "message": "Configure and enable a language provider in Family Assistant settings."
@@ -1099,7 +1233,7 @@
       "message": "The server URL changed. Enter a new key or explicitly clear the old key."
     },
     "search_not_configured": {
-      "message": "Internet search is not configured. Connect SearXNG with JSON output enabled."
+      "message": "Internet search is not configured. Enable a supported AGY search provider or SearXNG with JSON output."
     },
     "search_query_not_grounded": {
       "message": "I could not form a public search query without sending private context. Specify a public search phrase."
@@ -1247,6 +1381,33 @@
     },
     "photo_target_required": {
       "message": "Specify the task with /report TASK_ID or reply to its task message."
+    },
+    "image_busy": {
+      "message": "Another image request is already in progress. Try again later; no second generation was started."
+    },
+    "image_invalid": {
+      "message": "The image result could not be verified. No successful image result is available."
+    },
+    "image_rejected": {
+      "message": "The image provider rejected this request. Review its supported model and parameters."
+    },
+    "image_submission_uncertain": {
+      "message": "The image server may have accepted this request. Check its current status before starting another generation."
+    },
+    "image_model_unavailable": {
+      "message": "The selected image model or required workflow component is unavailable. Choose installed models and a supported preset."
+    },
+    "provider_search_unsupported": {
+      "message": "This AGY gateway has not provided supported search evidence. Enable and configure its search capability or use another search source."
+    },
+    "image_too_large": {
+      "message": "The generated image exceeds the supported file or image-size limit."
+    },
+    "image_delivery_uncertain": {
+      "message": "Telegram may already have received this image. It will not be resent automatically."
+    },
+    "image_unavailable": {
+      "message": "This image service, configuration or cached result is no longer available. Review its current status."
     }
   },
   "selector": {
@@ -1300,6 +1461,36 @@
         "fasttrack_bypass_unaccounted": "FastTrack bypass rules not accounted for",
         "management_hosts_not_excluded": "Management hosts not excluded from strict rules",
         "restart_recovery_unverified": "Router restart recovery procedure not verified"
+      }
+    },
+    "provider_chain_action": {
+      "options": {
+        "add": "Add provider",
+        "edit": "Edit selected provider",
+        "test": "Test connection / list models",
+        "move_up": "Move selected provider earlier",
+        "move_down": "Move selected provider later",
+        "remove": "Remove selected provider",
+        "settings": "Image defaults",
+        "save": "Save",
+        "cancel": "Cancel chain draft",
+        "back": "Back without applying this form",
+        "continue": "Continue"
+      }
+    },
+    "provider_kind": {
+      "options": {
+        "agy": "AGY (Ollama API)",
+        "ollama": "Ollama / Qwen",
+        "ha_agent": "Home Assistant",
+        "agy_gateway": "AGY Images API v1",
+        "comfyui": "ComfyUI"
+      }
+    },
+    "image_workflow": {
+      "options": {
+        "checkpoint": "Checkpoint (basic txt2img)",
+        "z_image_turbo": "Z-Image Turbo"
       }
     }
   },

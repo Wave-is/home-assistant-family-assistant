@@ -539,7 +539,18 @@ export class FamilyAssistantPanel extends HTMLElement {
       }wrap.append(pending);
     }
     const assistant=this.section(moduleCopy("conversation",this.lang).title);assistant.append(el("p",this.t.localReady,"panel-muted"),this.integrationLink(this.t.configureAssistant));
-    if(this.owner)assistant.append(this.renderRecognition());wrap.append(assistant);return wrap;
+    if(this.owner)assistant.append(this.renderRecognition());wrap.append(assistant);
+    const image=this._data.connections?.image_generation;
+    if(image){
+      const images=this.section(this.t.optionalImages);images.dataset.connection="image_generation";
+      images.append(this.statusRow(this.t.settings,image.enabled!==true?this.t.disabled:image.configured!==true?this.t.reason_not_configured:this.t.configured));
+      if(image.enabled===true&&image.configured===true){
+        images.append(this.statusRow(this.t.imageRuntime,image.available===true?this.t.imageInitialized:this.t.unavailable));
+      }
+      if(image.enabled===true&&image.health)images.append(el("p",this.errorText({code:image.health}),"panel-muted"));
+      images.append(el("p",this.t.optionalImagesHint,"panel-muted"),this.integrationLink(this.t.configureImages));wrap.append(images);
+    }
+    return wrap;
   }
   integrationLink(label=this.t.integration) {
     const link=el("a",label,"btn btn-secondary");link.href="/config/integrations/integration/family_assistant";

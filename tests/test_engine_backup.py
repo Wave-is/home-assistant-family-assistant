@@ -2,9 +2,10 @@
 
 import asyncio
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from test_kids import prepare_engine
 
 from custom_components.family_assistant.domain.engine import Engine, new_state
 from custom_components.family_assistant.domain.validation import DomainError
@@ -92,6 +93,24 @@ async def test_active_backup_rejects_every_mutation_before_validation_without_wr
     receipt = await add(engine)
     assert receipt["status"] == "approved"
     assert store.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_backup_keeps_full_projection_exact_at_one_clock_instant(engine, now):
+    await prepare_engine(engine, now)
+    initial = engine.snapshot()
+    initial_view = engine.view("owner", now=now)
+    token = await engine.async_begin_backup()
+    try:
+        later_view = engine.view("owner", now=now + timedelta(minutes=1))
+        first = initial_view["kid_control"]["profiles"][0]["status"]["remaining_minutes"]
+        later = later_view["kid_control"]["profiles"][0]["status"]["remaining_minutes"]
+        assert later == first - 1
+        assert later_view != initial_view  # Wall time is not part of the backup lease.
+        assert engine.snapshot() == initial
+        assert engine.view("owner", now=now) == initial_view
+    finally:
+        await engine.async_end_backup(token)
 
 
 @pytest.mark.asyncio

@@ -124,9 +124,9 @@ inventory remains available for review.
 
 ## Limits
 
-Final bounded audit snapshot: **392/392 Chromium scenarios passed** (56 suites,
-3.0 minutes). The manifest contains 81 files and 1,196 conservative source sites;
-557 registered handler groups, of which 465 were invoked and 427 received trusted
+Final bounded audit snapshot: **396/396 Chromium scenarios passed** (57 suites,
+3.1 minutes). The manifest contains 81 files and 1,196 conservative source sites;
+558 registered handler groups, of which 466 were invoked and 428 received trusted
 events. The 92 uninvoked groups remain explicit: one click, zero submit, 51 input,
 39 change and one keydown. Another 644 source lines have no registered handler
 frame, considering all five collected frames; many are field/helper declarations,
@@ -135,13 +135,21 @@ synthetic responses; 60 also have rejected-response cases, leaving 56 without th
 failure evidence. These counts do not establish
 that every possible button, field combination, role or backend path passed.
 
-The one unrecorded click is the Connections → Configure Telegram native-link
-alias (`family-panel.js:546`, caller 531). Its named `control-final-actions`
-scenario passed and verified the locally intercepted native destination, but
+The one unrecorded click is the Connections → Configure image providers native-link
+alias (`family-panel.js:557`, caller 551). Its three-language
+`control-provider-connections` scenarios passed and verified the locally intercepted native destination, but
 this full run did not retain that listener's invocation before navigation.
 The browser assertion is retained as separate evidence, not converted into a
 fabricated invocation or trusted-event count. The language-assistant alias and
-Advanced native-link paths have recorded invocation evidence.
+Advanced and Telegram native-link paths have recorded invocation evidence.
+
+The optional image connection cases also exercise disabled, incomplete,
+initialized-but-unverified and reported-offline states in EN/RU/UK mobile dark
+mode. The connection is absent when its privileged projection is omitted, and
+no image/Options mutation or required readiness change occurs. Native ordered
+provider forms have their own real-HA/synthetic-I/O acceptance in
+[native-settings-audit.md](../docs/native-settings-audit.md); those checks are not
+included in the 396 browser scenarios.
 
 The exact remaining file/line/column identities are `handlers` with an empty
 `invoked` list (or the `--summary` output). Unregistered source sites are not

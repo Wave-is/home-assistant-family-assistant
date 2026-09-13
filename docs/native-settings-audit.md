@@ -19,16 +19,27 @@ ConfigEntry Options are server-side private storage, never browser drafts.
 | `init` | next_step_id | grouped navigation only | test_ha_options_menu |
 | `menu_family` | general, member, guided_onboarding, init | navigation only | test_ha_options_menu |
 | `menu_telegram` | telegram, telegram_group, telegram_member, alarm_device, init | navigation only | test_ha_options_menu |
-| `menu_ai` | conversation, ha_agent, search, articles, init | navigation only | test_ha_options_menu |
+| `menu_ai` | provider_chain, image_generation, conversation, ha_agent, search, articles, init | navigation only | test_ha_options_menu |
 | `menu_services` | mikrotik, recipes, presence_sources, digests, init | navigation only | test_ha_options_menu |
 | `menu_maintenance` | copy/prepare/resume, developer diagnostics, init | navigation only | test_ha_options_menu |
 | `all_options` | flattened leaf navigation | no duplicate settings implementation | test_ha_options_menu |
 | `general` | name, language, timezone, modules, automatic_penalties, daily_penalty_cap, pantry_expiry_reminders/days, school_preparation_reminders/days_before/time | Engine settings.save → Store; scheduler/domain court/pantry/school; module_runtime.watch handles unchanged Options | test_school_reminder_options, test_panel_settings, test_module_runtime, ha_smoke |
 | `member` | member_id or _new | chooses profile, no write | ha_smoke, ha_member_revision_smoke |
 | `edit_member` | name, role, language, ha_user_id/_none, active, aliases lines | Engine members.save; actor_for_ha, role/profile guards; omitted fields preserved | ha_member_revision_smoke; displayed revision fence |
-| `guided_onboarding` | readiness links | read-only onboarding.readiness; no Options overwrite | test_onboarding_options, ha_onboarding_smoke |
+| `guided_onboarding` | readiness links; provider_chain for language models | read-only onboarding.readiness; no Options overwrite | test_onboarding_options, ha_onboarding_smoke |
 | `guided_finish` | finish | read-only abort receipt | test_onboarding_options |
 | `conversation` | enabled; primary/fallback URL, model, key, clear_key; fallback_enabled; allow_http; timeout | Options.conversation → runtime.async_configure_assistant → Ollama/Cascade; fallback.enabled false excludes it without deletion | test_provider_options, ha_settings_audit_smoke; fixed stale overwrite, disabled edits and fallback preservation |
+| `provider_chain` | enabled, selected provider, action | Draft ordered 0..8 rows → explicit Save writes Options.conversation.providers; empty list overrides retained legacy slots | test_provider_chain_options; actual HA 2026.9.2 ha_provider_chain_smoke passed with synthetic metadata/inference |
+| `provider_chain_kind` | kind, continue/back | Chooses AGY/Ollama/HA-reference protocol; no write | test_provider_chain_options |
+| `provider_chain_edit` | name, enabled, URL, model, key/clear, HTTP consent, timeout, AGY search opt-in | Stages one validated row; preserves key only for unchanged endpoint | test_provider_chain_options |
+| `provider_chain_remove` | confirmed, remove/back | Removes row only from draft until Save chain | test_provider_chain_options |
+| `provider_chain_test` | repeat test/back | Read-only model metadata or existing reviewed HA-agent inspection; no inference/save | test_provider_chain_options; successful and failed awaits recheck full owner/Options scope |
+| `image_generation` | enabled, selected provider, action | Draft ordered image list; separate Options.image_generation, disabled by default | test_provider_chain_options; actual HA 2026.9.2 ha_provider_chain_smoke passed, not real GPU acceptance |
+| `image_provider_kind` | kind, continue/back | AGY Images gateway or ComfyUI; no required provider | test_provider_chain_options |
+| `image_provider_edit` | connection/key/clear, model, timeout, preset, encoder, VAE | Staged provider row; no model download or generation | test_provider_chain_options |
+| `image_provider_remove` | confirmed, remove/back | Draft removal with explicit confirmation; Cancel chain preserves saved connection | test_provider_chain_options |
+| `image_provider_test` | repeat test/back | Read-only installed model/encoder/VAE metadata; typed choices remain available offline | test_provider_chain_options |
+| `image_generation_settings` | width, height, steps, CFG, negative prompt, save/back | Draft built-in preset parameters; global Save commits; no image is started | test_provider_chain_options |
 | `search` | enabled, URL, api_key, clear_key, allow_http | Options.conversation.search → runtime Search; disabled config retained, legacy missing enabled means enabled | test_provider_options, ha_settings_audit_smoke; fixed destructive disable |
 | `ha_agent` | enabled, entity_id, timeout | staged reviewed Options.conversation.ha_agent; supported existing HA agent only | test_ha_agent_options, ha_ha_agent_smoke |
 | `ha_agent_review` | confirmed | current HA entity/binding proof then Options commit; disable removes reviewed binding, direct providers preserved | test_ha_agent_options |
@@ -126,3 +137,13 @@ settings and authenticated panel cases passed on actual HA 2026.8.2. The final
 full native smoke also passed, including companion number/select/siren sequencing
 and projection-scoped presence reads. It uses synthetic states and services,
 not the household's hardware.
+
+The optional ordered-provider increment adds 35 dedicated native-draft tests and
+`ha_provider_chain_smoke.py` to this same settings acceptance hook. The isolated
+HA **2026.9.2** settings case passed with authenticated forms, installed-model
+selector serialization, row reorder/removal, key replacement/clearing, synthetic
+AGY-to-Qwen fallback order, empty-chain opt-out and ConfigEntry reload. ComfyUI's
+built-in Z-Image preset and model/encoder/VAE selectors were exercised through
+those real forms with synthetic metadata, not a GPU generation. Three-language
+optional-image panel status/navigation coverage is separate from this native
+Options evidence; see [provider-chains.md](provider-chains.md).

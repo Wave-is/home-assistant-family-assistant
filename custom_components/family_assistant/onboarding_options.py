@@ -116,7 +116,7 @@ class GuidedOnboardingMixin:
         menu = ["general", "member", "telegram"]
         if item(scope["report"], "telegram")["status"] == "ready":
             menu.extend(("telegram_member", "telegram_group"))
-        menu.extend(("conversation", "ha_agent", "search"))
+        menu.extend(("provider_chain", "ha_agent", "search"))
         if item(scope["report"], "siren")["status"] != "off":
             menu.append("alarm_device")
         menu.append("guided_finish")

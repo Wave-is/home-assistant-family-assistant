@@ -49,6 +49,23 @@ function issuedInvitation(control){
   control._invite=record;control.render();return record;
 }
 
+for(const language of ["en","ru","uk"])for(const state of ["disabled","incomplete","initialized","offline"])test(`optional image status is truthful and nonblocking: ${language} ${state}`,async()=>{
+  const data=projection();data.connections.image_generation={optional:true,enabled:state!=="disabled",configured:state!=="incomplete",available:state==="initialized",health:state==="offline"?"provider_unreachable":null};
+  const {control,calls}=await panel({data,language});control.setTab("connections");
+  const section=control.shadowRoot.querySelector('[data-connection="image_generation"]');assert.ok(section);
+  assert.ok(section.textContent.includes(control.t.optionalImages));assert.ok(section.textContent.includes(control.t.optionalImagesHint));
+  assert.ok(section.textContent.includes(state==="disabled"?control.t.disabled:state==="incomplete"?control.t.reason_not_configured:control.t.configured));
+  if(state==="initialized")assert.ok(section.textContent.includes(control.t.imageInitialized));
+  if(state==="offline")assert.ok(section.textContent.includes(control.errorText({code:"provider_unreachable"})));
+  assert.equal(section.querySelector('[role="alert"]'),null);assert.equal(section.querySelector("button"),null);
+  assert.equal(section.querySelector("a").getAttribute("href"),"/config/integrations/integration/family_assistant");
+  assert.deepEqual(control._data.capabilities,data.capabilities);assert.equal(calls.filter(call=>call.type.endsWith("/execute")).length,0);
+});
+
+test("image connection is absent when the authorized projection omits it",async()=>{
+  const {control}=await panel();control.setTab("connections");assert.equal(control.shadowRoot.querySelector('[data-connection="image_generation"]'),null);
+});
+
 test("clipboard retry clears its own error without clearing an unrelated operation error",async context=>{
   const {control,calls}=await panel(),record=issuedInvitation(control);let fail=true;
   syntheticClipboard(context,async()=>{if(fail)throw Error("Synthetic clipboard denial");});

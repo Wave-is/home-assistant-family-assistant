@@ -146,7 +146,18 @@ class Assistant:
         if re.search(r"(?:[TSACP]\d{4,}|https?://|@|\b\d{1,3}(?:\.\d{1,3}){3}\b)", query, re.I):
             raise DomainError("search_query_not_grounded")
         await self._check_scope(scope_check)
-        results = await self.search.query(query, language, child=view["role"] in {"child", "guest"})
+        scoped_query = getattr(self.search, "query_for_scope", None)
+        if scoped_query is None:
+            results = await self.search.query(
+                query, language, child=view["role"] in {"child", "guest"}
+            )
+        else:
+            results = await scoped_query(
+                query,
+                language,
+                child=view["role"] in {"child", "guest"},
+                scope_check=scope_check,
+            )
         await self._check_scope(scope_check)
         if not results:
             return t["no_sources"]

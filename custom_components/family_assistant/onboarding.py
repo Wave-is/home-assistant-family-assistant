@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from .const import LANGUAGES, MODULES
 from .domain.household import timezone
 from .domain.validation import DomainError
+from .panel_readiness import conversation_configuration
 
 SCHEMA = 1
 STATUSES = frozenset({"ready", "attention", "optional", "off"})
@@ -161,12 +162,8 @@ def _telegram(
 
 def _models(options: Mapping, enabled: set[str], runtime_status: Mapping) -> dict:
     config = options.get("conversation")
-    search_enabled = int(
-        isinstance(config, Mapping)
-        and isinstance(config.get("search"), Mapping)
-        and bool(config["search"])
-        and config["search"].get("enabled", True) is True
-    )
+    facts = conversation_configuration(config)
+    search_enabled = int("conversation" in enabled and facts["search_enabled"])
     if "conversation" not in enabled:
         status = "off"
     elif config is None:
@@ -176,22 +173,12 @@ def _models(options: Mapping, enabled: set[str], runtime_status: Mapping) -> dic
     elif config["enabled"] is False:
         status = "off"
     else:
-        primary = config.get("primary")
-        ha_agent = config.get("ha_agent")
-        configured = (
-            isinstance(primary, Mapping)
-            and _text(primary.get("url"), 2048)
-            and _text(primary.get("model"), 128)
-        ) or (
-            isinstance(ha_agent, Mapping)
-            and ha_agent.get("type") == "ha_agent"
-            and _text(ha_agent.get("entity_id"), 128)
-            and ha_agent["entity_id"].startswith("conversation.")
-        )
         status = (
-            "ready" if configured and runtime_status.get("assistant_ready") is True else "attention"
+            "ready"
+            if facts["configured"] and runtime_status.get("assistant_ready") is True
+            else "attention"
         )
-    return _item("models", status, "conversation", search_enabled=search_enabled)
+    return _item("models", status, "provider_chain", search_enabled=search_enabled)
 
 
 def _siren(options: Mapping, enabled: set[str], members: list[dict]) -> dict:

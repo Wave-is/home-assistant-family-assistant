@@ -203,6 +203,8 @@ class TelegramManager:
         return [{**target, "bot_id": self.bot["id"]} for target in targets(event, state)]
 
     def start(self):
+        from .image_generation import run as image_generation_run
+
         # Setup calls start before HA marks the entry LOADED. The complete
         # instance/config checks still prevent an old manager changing health.
         self._manager_guard(starting=True)
@@ -226,6 +228,13 @@ class TelegramManager:
                 self.photo_reports.run(), "Family Assistant photo report inbox"
             ),
         ]
+        images = getattr(self.runtime, "image_generation", None)
+        if images is not None and images.config["enabled"]:
+            self._tasks.append(
+                self.hass.async_create_background_task(
+                    image_generation_run(self), "Family Assistant image generation inbox"
+                )
+            )
 
     async def stop(self):
         self._stopped = True
@@ -339,6 +348,19 @@ class TelegramManager:
             await asyncio.sleep(1)
 
     async def _send_notification(self, event, target):
+        if "image_job_id" in event.get("data", {}):
+            try:
+                self._manager_guard()
+                service = getattr(self.runtime, "image_generation", None)
+                if (
+                    service is None
+                    or not service.config["enabled"]
+                    or service.marker != event["data"].get("image_provider_scope")
+                ):
+                    raise DomainError("forbidden")
+                service.scope_check()
+            except DomainError:
+                raise DeliveryError("image_unavailable") from None
         result = await self.client.call(
             "sendMessage",
             render(event, target, self.runtime.engine.snapshot(), now=dt_util.utcnow()),
@@ -637,14 +659,25 @@ class TelegramManager:
                             command_guard(engine.snapshot())
                             return result
 
-                        response = await self.photo_reports.enqueue(
-                            scoped_engine,
+                        from .image_generation import enqueue as enqueue_image
+
+                        response = await enqueue_image(
+                            self,
                             actor,
                             message,
                             content,
                             f"tg:{bot_id}:{update_id}:action",
-                            now,
+                            command_guard,
                         )
+                        if response is None:
+                            response = await self.photo_reports.enqueue(
+                                scoped_engine,
+                                actor,
+                                message,
+                                content,
+                                f"tg:{bot_id}:{update_id}:action",
+                                now,
+                            )
                         if response is None:
                             response = await route_polls(
                                 scoped_engine,

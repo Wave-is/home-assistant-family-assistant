@@ -13,6 +13,7 @@ from ..notifications import DeliveryError
 READ_METHODS = {"getMe", "getWebhookInfo", "getUpdates", "getChat", "getChatMember", "getFile"}
 WRITE_METHODS = {
     "sendMessage",
+    "sendPhoto",
     "answerCallbackQuery",
     "editMessageReplyMarkup",
     "setMyCommands",
@@ -30,7 +31,7 @@ class TelegramClient:
     def __repr__(self):
         return "TelegramClient(<redacted>)"
 
-    async def call(self, method: str, data: dict | None = None):
+    async def call(self, method: str, data: dict | None = None, *, _multipart=False):
         if method not in READ_METHODS | WRITE_METHODS:
             raise DomainError("unknown_action")
         data = data or {}
@@ -38,7 +39,7 @@ class TelegramClient:
         try:
             async with self._session.post(
                 f"https://api.telegram.org/bot{self._token}/{method}",
-                json=data,
+                **({"data": data} if _multipart else {"json": data}),
                 timeout=timeout,
                 allow_redirects=False,
             ) as response:
@@ -95,6 +96,38 @@ class TelegramClient:
                 retryable=method in READ_METHODS,
                 uncertain=method in WRITE_METHODS,
             ) from None
+
+    async def send_photo(self, chat_id, content, mime, caption):
+        """Upload verified private bytes, never ask Telegram to fetch a URL."""
+        if (
+            type(chat_id) is not int
+            or chat_id <= 0
+            or not isinstance(content, bytes)
+            or not 0 < len(content) <= 6_000_000
+            or mime not in {"image/png", "image/jpeg", "image/webp"}
+            or not isinstance(caption, str)
+            or len(caption) > 1024
+        ):
+            raise DomainError("invalid_field", "photo")
+        form = aiohttp.FormData()
+        form.add_field("chat_id", str(chat_id))
+        form.add_field("caption", caption)
+        form.add_field("protect_content", "true")
+        form.add_field(
+            "photo",
+            content,
+            filename="generated."
+            + {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}[mime],
+            content_type=mime,
+        )
+        result = await self.call("sendPhoto", form, _multipart=True)
+        if (
+            not isinstance(result, dict)
+            or type(result.get("message_id")) is not int
+            or result["message_id"] <= 0
+        ):
+            raise DeliveryError("telegram_bad_response", uncertain=True)
+        return str(result["message_id"])
 
     async def inspect(self) -> dict:
         me = await self.call("getMe")

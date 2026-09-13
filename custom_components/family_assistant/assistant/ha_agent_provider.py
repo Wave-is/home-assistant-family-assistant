@@ -1,4 +1,4 @@
-"""Verified Core 2026.8.2 Ollama adapter; no native Home Assistant control tools."""
+"""Version-reviewed Ollama adapter; no native Home Assistant control tools."""
 
 from __future__ import annotations
 
@@ -175,7 +175,7 @@ class HAConversationAgent:
     def _target(self):
         from homeassistant.const import __version__
 
-        if __version__ != "2026.8.2":
+        if __version__ not in {"2026.8.2", "2026.9.2"}:
             raise DomainError("ha_agent_unsupported")
         try:
             from homeassistant.components.ollama.conversation import OllamaConversationEntity
