@@ -1,5 +1,15 @@
 # Implementation and acceptance matrix
 
+## Periodic callback regression guard
+
+`tests/test_ha_interval_contract.py` examines every production registration of
+HA's periodic timer helper. A callback must resolve to an `async def` or an
+explicit HA `@callback`; plain synchronous and unresolved callables fail the
+test. Six guard tests pass, including aliases, bound methods and nested lexical
+blocks. It also rejected an actual pre-fix development callback. This static
+guard supplements, not replaces, the native HA interval/HassJob/thread/lifecycle
+tests: direct startup calls alone do not prove periodic execution.
+
 ## Typed home-status follow-up — development after rc.8
 
 Home-status now preserves up to 32 named groups in both native Options and the
