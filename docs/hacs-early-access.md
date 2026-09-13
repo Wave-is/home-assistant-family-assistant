@@ -37,16 +37,17 @@ runtime ZIP is not selected by a `zip_release` setting in this repository's
 
 ## Release candidate versus default catalog
 
-At the 13 September 2026 audit, `0.2.0-rc.2` was a published GitHub **prerelease**;
+At the latest 13 September 2026 audit, `0.2.0-rc.3` was a published GitHub **prerelease**;
 `0.1.1` remained the latest stable release. Check the current release page rather
 than assuming that the newest candidate is the stable default. In particular,
 “published on GitHub”, “installable as a HACS custom repository” and “included in
 the default HACS catalog” are three different states.
 
 At that audit, the repository was absent from the
-[default integration list](https://github.com/hacs/default/blob/master/integration),
-and a public search for the exact repository name found no catalog-submission
-pull request. Inclusion is therefore not claimed. A submission is not acceptance:
+[default integration list](https://github.com/hacs/default/blob/master/integration).
+[Catalog submission #10942](https://github.com/hacs/default/pull/10942) is open
+and awaiting maintainer review; do not create a duplicate. Inclusion is not claimed.
+A submission is not acceptance:
 HACS review can take time, and catalog visibility follows acceptance and scanning.
 
 The official [catalog-inclusion requirements](https://www.hacs.xyz/docs/publish/include/)
