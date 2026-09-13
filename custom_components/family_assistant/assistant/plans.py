@@ -105,10 +105,14 @@ no operations field. The application converts this wire field to internal comman
 The supplied view IS the current application database. You are preparing a proposal,
 not directly calling Home Assistant; never refuse merely because you cannot call it.
 For an owner/parent's supported request, produce commands and let the server check them.
-For a misspelled family name in a clear task assignment, compare active members in the view.
+For a misspelled family name in a clear task or purchase assignment, compare active
+members in the view.
 Use the uniquely intended member ID and preserve the requested task title and deadline exactly.
 If more than one member could fit, return clarify; never guess from a numeric confidence alone.
 The server may remember a narrowly verified name spelling locally after successful execution.
+For 'ask MEMBER to buy ITEM' use shopping.add with buyer, name, quantity and unit,
+not tasks.create. Explicit task wording still creates an ordinary task. Shopping
+is shared: buyer is responsible, but other family members may help buy it.
 Do not invent a command when the current message is ordinary conversation: return answer.
 An answer such as 'Marking it bought' or 'I will set it' is NOT a command and must not
 replace a commands result. No state change has occurred when you generate this JSON.
@@ -225,7 +229,7 @@ def projection(view):
         {k: m[k] for k in ("id", "name", "role")} for m in view["members"] if m["active"]
     ]
     keys = {
-        "shopping": ("id", "name", "quantity", "purchased", "unit", "status"),
+        "shopping": ("id", "name", "quantity", "purchased", "unit", "status", "buyer"),
         "tasks": ("id", "title", "assignee", "status", "due_at", "report_type"),
         "court": ("id", "member", "points", "reason", "reason_key", "reason_data", "status"),
         "alarms": ("id", "member", "time", "days", "timezone", "enabled"),
@@ -363,10 +367,23 @@ def article_messages(language, article, now):
 
 
 def materialize(value, view, content, now):
+    from ..telegram.shopping_commands import assignment_match
+
     commands = deepcopy(value["commands"])
+    if assignment_match(content) and (
+        len(commands) != 1
+        or commands[0]["action"] != "shopping.add"
+        or not commands[0]["payload"].get("buyer")
+    ):
+        raise DomainError("ambiguous_command")
     for command in commands:
         payload = command["payload"]
         action = command["action"]
+        if action == "shopping.add" and payload.get("buyer") is not None:
+            buyer = next((m for m in view["members"] if m["id"] == payload["buyer"]), None)
+            if buyer is None or not buyer["active"] or buyer["role"] == "guest":
+                raise DomainError("unknown_member")
+            payload["buyer_revision"] = buyer["revision"]
         if action == "tasks.create":
             assignee = next(
                 (m for m in view["members"] if m["id"] == payload.get("assignee")), None

@@ -81,7 +81,8 @@ def test_shopping_projection_uses_real_partial_purchase_field():
     projected = plans.projection(view)["shopping"][0]
     assert projected["quantity"] == 5 and projected["purchased"] == 2
     assert "purchased_quantity" not in projected
-    assert set(projected) == {"id", "name", "quantity", "purchased", "unit", "status"}
+    assert set(projected) == {"id", "name", "quantity", "purchased", "unit", "status", "buyer"}
+    assert projected["buyer"] is None  # Shared metadata, never a channel/user identity.
 
 
 def test_dynamic_payload_is_explicit_for_llama_grammar_not_implicit_json_schema_default():

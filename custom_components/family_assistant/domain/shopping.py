@@ -48,6 +48,10 @@ def _metadata(ctx: Context, payload: dict, *, existing=None) -> dict:
         result[field] = _optional_text(value, field, maximum)
     value = payload["buyer"] if "buyer" in payload else (existing or {}).get("buyer")
     result["buyer"] = _buyer(ctx, value)
+    if "buyer_revision" in payload:
+        expected = revision(payload["buyer_revision"])
+        if result["buyer"] is None or ctx.member(result["buyer"])["revision"] != expected:
+            raise DomainError("conflict", "buyer_revision")
     if "barcode" in payload or "barcode" in (existing or {}):
         code = normalize_gtin(payload.get("barcode", (existing or {}).get("barcode", "")))
         if code or "barcode" in (existing or {}):
@@ -65,7 +69,17 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if action == "add":
         fields(
             payload,
-            {"name", "quantity", "unit", "category", "store", "note", "buyer", "barcode"},
+            {
+                "name",
+                "quantity",
+                "unit",
+                "category",
+                "store",
+                "note",
+                "buyer",
+                "buyer_revision",
+                "barcode",
+            },
             {"name"},
         )
         metadata = _metadata(ctx, payload)
@@ -101,7 +115,17 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
     if action == "edit":
         fields(
             payload,
-            {"id", "revision", "name", "category", "store", "note", "buyer", "barcode"},
+            {
+                "id",
+                "revision",
+                "name",
+                "category",
+                "store",
+                "note",
+                "buyer",
+                "buyer_revision",
+                "barcode",
+            },
             {"id", "revision", "name", "category", "store", "note", "buyer"},
         )
         item = ctx.record("shopping", payload["id"], revision(payload["revision"]))

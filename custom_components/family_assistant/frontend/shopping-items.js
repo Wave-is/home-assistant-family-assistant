@@ -33,6 +33,11 @@ export const SHOPPING_ITEM_COPY = {
     editor_edit_title: "Edit shopping item",
     label_no_buyer: "No assigned buyer",
     note_shared: "The note is visible to every active household member. It is not private.",
+    buyer_shared: "The buyer is responsible; other family members can also mark purchases.",
+    filter_label: "Shopping list filter",
+    filter_all: "Family list",
+    filter_mine: "Assigned to me",
+    filter_unassigned: "No assigned buyer",
     child_pending: "This child proposal will wait for parent approval.",
     occurrence_only: "This changes only this generated occurrence, not its recurring template.",
     uncertainty: "The request may already have succeeded. Check the list before starting a different edit.",
@@ -102,6 +107,11 @@ export const SHOPPING_ITEM_COPY = {
     editor_edit_title: "Изменить покупку",
     label_no_buyer: "Покупатель не назначен",
     note_shared: "Заметку видят все активные участники семьи. Она не является личной.",
+    buyer_shared: "Покупатель отвечает за позицию; другие участники семьи тоже могут отметить покупку.",
+    filter_label: "Фильтр списка покупок",
+    filter_all: "Семейный список",
+    filter_mine: "Поручено мне",
+    filter_unassigned: "Покупатель не назначен",
     child_pending: "Предложение ребёнка будет ждать подтверждения родителя.",
     occurrence_only: "Изменится только эта созданная позиция, а не её регулярный шаблон.",
     uncertainty: "Запрос уже мог выполниться. Проверьте список перед новым изменением.",
@@ -171,6 +181,11 @@ export const SHOPPING_ITEM_COPY = {
     editor_edit_title: "Змінити покупку",
     label_no_buyer: "Покупця не призначено",
     note_shared: "Примітку бачать усі активні учасники родини. Вона не є приватною.",
+    buyer_shared: "Покупець відповідає за позицію; інші учасники родини теж можуть відмітити покупку.",
+    filter_label: "Фільтр списку покупок",
+    filter_all: "Сімейний список",
+    filter_mine: "Доручено мені",
+    filter_unassigned: "Покупця не призначено",
     child_pending: "Пропозиція дитини чекатиме на схвалення батьків.",
     occurrence_only: "Зміниться лише ця створена позиція, а не її регулярний шаблон.",
     uncertainty: "Запит уже міг виконатися. Перевірте список перед новим редагуванням.",
@@ -329,6 +344,46 @@ function sameEditorScope(card, source) {
   return Boolean(current && source && Object.keys(current).every(key => current[key] === source[key]));
 }
 
+export function shoppingFilterItems(card, items) {
+  const filter = card._shoppingBuyerFilter;
+  if (!filter || !sameEditorScope(card, filter.source)) {
+    card._shoppingBuyerFilter = null;
+    return items;
+  }
+  if (filter.value === "mine") return items.filter(item => item.buyer === card._data.actor);
+  if (filter.value === "unassigned") return items.filter(item => !item.buyer);
+  if (filter.value.startsWith("buyer:")) return items.filter(item => item.buyer === filter.value.slice(6));
+  return items;
+}
+
+export function renderShoppingFilter(card, body) {
+  const source = editorScope(card);
+  if (!source) return;
+  shoppingFilterItems(card, []); // Drop a previous identity/household's selection.
+  const copy = getCopy(card);
+  const host = el("div", null, "shopping-filter");
+  const label = el("label", copy.filter_label);
+  const select = el("select");
+  select.setAttribute("aria-label", copy.filter_label);
+  const choices = [["all", copy.filter_all], ["mine", copy.filter_mine], ["unassigned", copy.filter_unassigned],
+    ...(card._data.members || []).filter(member => member.active && member.role !== "guest")
+      .map(member => [`buyer:${member.id}`, `${copy.label_buyer}: ${member.name}`])];
+  for (const [value, text] of choices) {
+    const option = el("option", text);
+    option.value = value;
+    select.append(option);
+  }
+  select.value = card._shoppingBuyerFilter?.value || "all";
+  select.addEventListener("change", () => {
+    if (!select.isConnected || !sameEditorScope(card, source) || !choices.some(([value]) => value === select.value)) return;
+    card._shoppingBuyerFilter = {source, value: select.value};
+    card.render();
+  });
+  label.append(select);
+  host.append(label, el("p", copy.buyer_shared, "sub"));
+  body.append(host);
+}
+
 function priceCopy(card) {
   const language = card._config?.language || card._hass?.language?.split("-")[0] || "en";
   return PRICE_COPY[language] || PRICE_COPY.en;
@@ -462,7 +517,7 @@ function validDecimal(value) {
   return Number.isFinite(parsed) && parsed >= 0.001 && parsed <= 1000000 ? parsed : null;
 }
 
-function payloadFor(draft) {
+function payloadFor(card, draft) {
   const values = draft.values;
   const common = {
     name: values.name.trim(),
@@ -471,6 +526,7 @@ function payloadFor(draft) {
     note: values.note.trim(),
     buyer: values.buyer || null
   };
+  if (values.buyer) common.buyer_revision = currentMember(card, values.buyer).revision;
   if (values.barcode || draft.original?.barcode) common.barcode = normalizeGtin(values.barcode);
   if (draft.mode === "edit") {
     return Object.freeze({id: draft.itemId, revision: draft.itemRevision, ...common});
@@ -526,7 +582,7 @@ async function submitShoppingDraft(card, draft) {
   if (!draft.pending) {
     draft.pending = {
       action: draft.mode === "edit" ? "shopping.edit" : "shopping.add",
-      payload: payloadFor(draft),
+      payload: payloadFor(card, draft),
       operationId: crypto.randomUUID()
     };
   }
@@ -573,6 +629,7 @@ export function renderShoppingEditor(card, body) {
   host.append(el("strong", draft.mode === "edit" ? copy.editor_edit_title : copy.editor_add_title));
   if (draft.generated) host.append(el("p", copy.occurrence_only, "notice"));
   host.append(el("p", copy.note_shared, "sub"));
+  host.append(el("p", copy.buyer_shared, "sub"));
   if (draft.source.role === "child") host.append(el("p", copy.child_pending, "notice"));
 
   if (draft.step === "form" && !draft.pending) {
@@ -1234,7 +1291,7 @@ export function renderShoppingArchive(card, body) {
   const summary = el("summary", copy.archive_title);
   details.append(summary);
 
-  const allItems = card._data?.shopping || [];
+  const allItems = shoppingFilterItems(card, card._data?.shopping || []);
   const archivedItems = allItems.filter(item =>
     item && ["purchased", "rejected", "archived", "merged"].includes(item.status)
   );

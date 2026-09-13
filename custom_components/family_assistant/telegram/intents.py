@@ -256,7 +256,9 @@ def assignment_recipient(content: str) -> tuple[int, int] | None:
         if not 1 <= end - start <= 80:
             return None
         return offset + start, offset + end
-    return None
+    from .shopping_commands import assignment_recipient as shopping_recipient
+
+    return shopping_recipient(content)
 
 
 def _task_member_prefix(state, content):
@@ -310,9 +312,14 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
     n = normalize(value)
     timezone = state["settings"].get("timezone", "UTC")
 
+    from .shopping_commands import parse as parse_shopping
+
     for intent_name, pat in READ_PATTERNS:
         if pat.search(n):
             return Intent(intent_name, {})
+
+    if shopping_intent := parse_shopping(state, view, value):
+        return Intent(*shopping_intent)
 
     if scoped := SCOPED_TASKS_RE.fullmatch(value.strip(" .?!")):
         return Intent("read.tasks", {"assignee": task_list_member(state, view, scoped[1])})

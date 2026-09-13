@@ -217,7 +217,8 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
     }
    if(["shopping.add","shopping.edit"].includes(message.action)){
      if(window.shoppingOperations.has(message.operation_id))return structuredClone(window.shoppingOperations.get(message.operation_id));
-     const p=message.payload;let item;
+     const p={...message.payload};let item;
+     if("buyer_revision" in p){const buyer=data.members.find(member=>member.id===p.buyer&&member.active&&member.role!=="guest");if(!Number.isSafeInteger(p.buyer_revision)||p.buyer_revision<1||buyer?.revision!==p.buyer_revision)throw {code:"conflict"};delete p.buyer_revision;}
      if(message.action==="shopping.add"){
        item={id:`S${String(data.shopping.length+1).padStart(6,"0")}`,...p,creator:data.actor,purchased:0,status:data.role==="child"?"pending":"approved",revision:1};data.shopping.push(item);
      }else{

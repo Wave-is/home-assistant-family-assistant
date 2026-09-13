@@ -17,6 +17,8 @@ COPY = {
         "help": (
             "Family Assistant\n/ping — check the bot\n/shopping — shopping list\n"
             "/buy item | quantity | unit\n/bought S000001 | optional purchased quantity\n"
+            "/shopping mine or MEMBER — buyer filter (shopping stays shared)\n"
+            "ask MEMBER to buy ITEM\n/assignbuy S000001 | MEMBER\n/unassignbuy S000001\n"
             "/tasks — tasks\n/task "
             "member | task title\n/done T000001 | report\n"
             "/report T000001 — photo caption, no note\n"
@@ -69,6 +71,8 @@ COPY = {
         "help": (
             "Family Assistant\n/ping — проверить бота\n/shopping — покупки\n/buy "
             "товар | количество | единица\n/bought S000001 | количество (необязательно) — куплено\n"
+            "/shopping mine или УЧАСТНИК — фильтр покупателя (список общий)\n"
+            "поручи УЧАСТНИКУ купить ТОВАР\n/assignbuy S000001 | УЧАСТНИК\n/unassignbuy S000001\n"
             "/tasks — "
             "задачи\n/task участник | задача\n/done T000001 | отчёт\n"
             "/report T000001 — подпись к фото, без примечания\n/approve "
@@ -119,6 +123,8 @@ COPY = {
         "help": (
             "Family Assistant\n/ping — перевірити бота\n/shopping — покупки\n/buy "
             "товар | кількість | одиниця\n/bought S000001 | кількість (необов’язково) — куплено\n"
+            "/shopping mine або УЧАСНИК — фільтр покупця (список спільний)\n"
+            "доручи УЧАСНИКУ купити ТОВАР\n/assignbuy S000001 | УЧАСНИК\n/unassignbuy S000001\n"
             "/tasks — "
             "завдання\n/task учасник | завдання\n/done T000001 | звіт\n"
             "/report T000001 — підпис до фото, без примітки\n/approve "
@@ -725,6 +731,10 @@ async def route(
             except DomainError as err:
                 parse_error = err
     if parse_error:
+        from .shopping_commands import CLEAR_BUYER, SET_BUYER
+
+        if SET_BUYER.fullmatch(content.strip()) or CLEAR_BUYER.fullmatch(content.strip()):
+            raise parse_error  # An unresolved S-ID edit must not become a new item/task.
         if fallback is not None and parse_error.code in {
             "unknown_member",
             "ambiguous_command",
@@ -773,6 +783,14 @@ async def route(
         if bucket == "court":
             return court_stats(engine.view(actor, now=now), language, weekly=command == "/week")
         task_member = None
+        shopping_buyer = None
+        if command == "/shopping":
+            if intent and intent.action == "read.shopping":
+                shopping_buyer = intent.payload.get("buyer")
+            elif tail:
+                from .shopping_commands import buyer_member
+
+                shopping_buyer = buyer_member(engine.snapshot(), view, tail)
         if command == "/tasks":
             if intent and intent.action == "read.tasks":
                 task_member = intent.payload.get("assignee")
@@ -780,6 +798,8 @@ async def route(
                 task_member = task_list_member(engine.snapshot(), view, tail)
         lines = []
         for item in view.get(bucket, []):
+            if shopping_buyer is not None and item.get("buyer") != shopping_buyer:
+                continue
             if command == "/mine" and item.get("assignee") != actor:
                 continue
             if task_member is not None and item.get("assignee") != task_member:
@@ -830,7 +850,20 @@ async def route(
             await commands.execute(engine, actor, content, refs, operation_id, now, *reward_intent)
         )
     action, payload = (intent.action, intent.payload) if intent else (None, None)
-    if command == "/buy" and 1 <= len(fields) <= 3:
+    if command in {"/assignbuy", "/unassignbuy"}:
+        from .shopping_commands import edit_buyer
+
+        if len(fields) != (2 if command == "/assignbuy" else 1) or not re.fullmatch(
+            r"S\d{6,}", fields[0], re.I
+        ):
+            raise DomainError("context_required")
+        action, payload = (
+            "shopping.edit",
+            edit_buyer(
+                engine.snapshot(), view, fields[0], fields[1] if command == "/assignbuy" else None
+            ),
+        )
+    elif command == "/buy" and 1 <= len(fields) <= 3:
         try:
             quantity = float(fields[1].replace(",", ".")) if len(fields) > 1 else 1
         except ValueError:
@@ -957,10 +990,14 @@ async def route(
         # Persist the note and rejection once, without another raw-text copy in
         # Telegram's plan cache (the channel's own message history is separate).
         return saved(await engine.execute(actor, action, payload, operation_id, now))
-    if learned_name and action == "tasks.create":
-        # Recheck the rule under the same Engine transaction as task creation.
+    if learned_name and action in {"tasks.create", "shopping.add"}:
+        # Recheck the rule under the same Engine transaction as record creation.
         # A concurrent forget/identity edit while persisting the plan cancels it.
-        selected = next(m for m in view["members"] if m["id"] == payload["assignee"])
+        selected = next(
+            m
+            for m in view["members"]
+            if m["id"] == payload["buyer" if action == "shopping.add" else "assignee"]
+        )
         payload = {
             "source": original_content,
             "commands": [{"action": action, "payload": payload}],

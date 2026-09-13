@@ -6,6 +6,7 @@ from ..domain.validation import timestamp
 
 WORDS = {
     "en": {
+        "buyer": "Responsible buyer",
         "assigned": "assigned",
         "accepted": "accepted",
         "in_progress": "in progress",
@@ -34,6 +35,7 @@ WORDS = {
         "days": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
     },
     "ru": {
+        "buyer": "Покупатель",
         "assigned": "назначена",
         "accepted": "принята",
         "in_progress": "в работе",
@@ -62,6 +64,7 @@ WORDS = {
         "days": ("пн", "вт", "ср", "чт", "пт", "сб", "вс"),
     },
     "uk": {
+        "buyer": "Покупець",
         "assigned": "призначено",
         "accepted": "прийнято",
         "in_progress": "у роботі",
@@ -113,6 +116,9 @@ def summary(item, view, language):
     parts = [item.get("title", item.get("name", "")), name]
     if "quantity" in item:
         parts.append(f"{item['quantity'] - item['purchased']:g} {item['unit']}")
+        buyer = next((m["name"] for m in view["members"] if m["id"] == item.get("buyer")), "")
+        if buyer:
+            parts.append(f"{words['buyer']}: {buyer}")
     if "points" in item:
         parts += [
             f"{item['points']:+d}",

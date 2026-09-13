@@ -20,7 +20,7 @@ test("Ukrainian reviewed metadata edit keeps quantities and exact operation afte
   await expect(card.getByRole("alert")).toBeVisible();
   const first = await page.evaluate(()=>structuredClone(window.calls[0]));
   expect(first.action).toBe("shopping.edit");
-  expect(first.payload).toEqual({id:"S000001",revision:1,name:"Яблука",category:"Фрукти",store:"Ринок",note:"Для всієї родини",buyer:"owner"});
+  expect(first.payload).toEqual({id:"S000001",revision:1,name:"Яблука",category:"Фрукти",store:"Ринок",note:"Для всієї родини",buyer:"owner",buyer_revision:1});
   await page.evaluate(()=>{window.card._pending={id:"unrelated-operation",fingerprint:"unrelated"};});
   await editor.getByRole("button",{name:"Повторити",exact:true}).click();
   await expect(editor).toHaveCount(0);

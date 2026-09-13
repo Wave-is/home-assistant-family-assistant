@@ -107,14 +107,23 @@ def prove(state, view, content, now, commands):
     command = commands[0]
     if not isinstance(command, dict) or set(command) != {"action", "payload"}:
         return None
-    if command.get("action") != "tasks.create" or not isinstance(command.get("payload"), dict):
+    action = command.get("action")
+    if action not in {"tasks.create", "shopping.add"} or not isinstance(
+        command.get("payload"), dict
+    ):
         return None
+    if action == "shopping.add":
+        from ..telegram.shopping_commands import assignment_match
+
+        if assignment_match(content) is None:
+            return None
     span = assignment_recipient(content)
     if span is None:
         return None
     source = content[span[0] : span[1]]
     member_id = candidate(state, source)
-    if member_id is None or member_id != command["payload"].get("assignee"):
+    member_field = "buyer" if action == "shopping.add" else "assignee"
+    if member_id is None or member_id != command["payload"].get(member_field):
         return None
     member = state["members"][member_id]
     visible = next((m for m in view["members"] if m["id"] == member_id), None)
@@ -154,11 +163,16 @@ def prove(state, view, content, now, commands):
     except DomainError:
         return None
     payload = {**command["payload"]}
-    if "assignee_revision" in payload:
-        if strict_revision(payload.pop("assignee_revision")) != member["revision"]:
+    pin = member_field + "_revision"
+    if pin in payload:
+        if strict_revision(payload[pin]) != member["revision"]:
             return None
-    payload.setdefault("due_at", None)
-    if intent is None or intent.action != "tasks.create" or intent.payload != payload:
+    if action == "tasks.create":
+        payload.pop(pin, None)
+        payload.setdefault("due_at", None)
+    else:
+        payload.setdefault(pin, member["revision"])
+    if intent is None or intent.action != action or intent.payload != payload:
         return None
     return {
         "source": source,
@@ -172,7 +186,7 @@ def prove(state, view, content, now, commands):
 
 
 def handle(ctx, payload):
-    """Task, rule and receipt commit together; failed writes teach nothing."""
+    """Command, rule and receipt commit together; failed writes teach nothing."""
     from .engine import Engine
 
     ctx.require_parent()
@@ -242,10 +256,13 @@ def authorize_replay(ctx, payload, result):
         or result.get("member_revision") != member["revision"]
     ):
         raise DomainError("conflict")
-    if "tasks" not in ctx.state["settings"]["modules"]:
+    action = payload["commands"][0]["action"]
+    module = action.split(".", 1)[0]
+    if module not in ctx.state["settings"]["modules"]:
         raise DomainError("module_disabled")
-    for item in result["items"]:
-        task_access.authorize_replay(ctx.state, ctx.actor, item)
+    if module == "tasks":
+        for item in result["items"]:
+            task_access.authorize_replay(ctx.state, ctx.actor, item)
 
 
 def reply(result, view, language):

@@ -4,7 +4,7 @@ import {cardView,registerCards} from "./card-registry.js";
 import {renderShadow} from "./shadow-view.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
-import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor} from "./shopping-items.js";
+import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor,renderShoppingFilter,shoppingFilterItems} from "./shopping-items.js";
 import {stopBarcodeCamera} from "./shopping-barcode.js";
 import {renderTaskItem,renderTaskArchive} from "./task-items.js";
 import {renderTaskForm,reconcileTaskFormRefresh,disposeTaskForm} from "./task-form.js";
@@ -471,7 +471,7 @@ export class FamilyCard extends HTMLElement {
       renderTaskBatch(this,body);
       if(this._taskBatchDraft)return;
     }
-    if(this._view==="shopping"){renderShoppingSeries(this,body);renderShoppingEditor(this,body);}
+    if(this._view==="shopping"){renderShoppingSeries(this,body);renderShoppingEditor(this,body);renderShoppingFilter(this,body);}
     const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${(this._data[this._view]||[]).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member)).length} ${this.t.units}`,"sub"));
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
@@ -485,7 +485,8 @@ export class FamilyCard extends HTMLElement {
       body.append(this.form());
       if(this._view==="tasks")return;
     }
-    const items=(this._data[this._view] || []).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member));
+    let items=(this._data[this._view] || []).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member));
+    if(this._view==="shopping")items=shoppingFilterItems(this,items);
     const list=el("ul",null,"list");body.append(list);
     for(const item of items.filter(i=>this._view==="shopping"?["approved","pending"].includes(i.status):this._view==="tasks"?!["completed","cancelled","archived"].includes(i.status):i.status!=="archived").slice().reverse())this.renderItem(list,item);
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));

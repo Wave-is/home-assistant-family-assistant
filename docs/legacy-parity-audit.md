@@ -7,6 +7,17 @@ real Telegram delivery, or proof that every possible user expression works.
 
 ## Inventory and reproducibility
 
+### Shared buyer increment — separate local branch after rc.6
+
+The bounded assigned-purchase gap now has an implementation on
+`codex/shopping-assignments`: strict RU/UK/EN creation, exact S-ID buyer edits,
+self/named filters and verified-shape name correction. Shopping stays a shared
+family model and other members may still help buy it. The prior missing row below
+is historical for these exact forms only; fresh-request duplicate disambiguation,
+arbitrary/multiple-purchase prose and complete legacy parity remain open.
+See [scope, evidence and remaining gates](shopping-assignments.md). No release or
+household acceptance is implied by this local branch.
+
 ### Completion increment — candidate after rc.5
 
 This paragraph supersedes the affected historical "missing" rows below. Bounded

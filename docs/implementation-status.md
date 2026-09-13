@@ -1,5 +1,18 @@
 # Implementation and acceptance matrix
 
+## Shared-shopping buyer increment — local branch, 13 September 2026
+
+`codex/shopping-assignments` adds bounded RU/UK/EN buyer commands, S-ID
+reassignment/unassignment, presentation-only buyer filters, transaction-checked
+optional member pins and independently proven purchase-recipient typo repair.
+The family list/history and helping-purchase permissions remain shared and
+unchanged. It does not convert shopping to tasks, add private inventory, or
+provide semantic deduplication of distinct new requests. Focused Chromium passed
+22 cases; Python reached 6307 passes plus an independently corrected generated-report
+scanner failure. Final combined full-suite/native/release gates remain separate.
+Exact scope and current evidence:
+[shared shopping assignments](shopping-assignments.md).
+
 ## Combined early-release candidate rc.6 — 13 September 2026
 
 The online-school branch is now combined with the current optional text/image/

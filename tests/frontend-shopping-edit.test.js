@@ -115,7 +115,7 @@ test("reviewed add sends strict metadata and explains child approval and shared 
   assert.match(calls[0].operationId, /^[0-9a-f-]{36}$/);
   assert.deepEqual(calls[0].payload, {
     name: "Apples", category: "Fruit", store: "Market",
-    note: "Household-visible <img src=x>", buyer: "c1", quantity: 1.25, unit: "kg"
+    note: "Household-visible <img src=x>", buyer: "c1", buyer_revision: 8, quantity: 1.25, unit: "kg"
   });
 });
 
@@ -141,7 +141,7 @@ test("edit preserves quantity provenance and freezes exact retry after a newer p
   const frozen = calls[0];
   assert.deepEqual(frozen.payload, {
     id: "S1", revision: 6, name: "Milk", category: "Dairy", store: "Two",
-    note: "New visible note", buyer: "a1"
+    note: "New visible note", buyer: "a1", buyer_revision: 1
   });
   assert.equal("quantity" in frozen.payload, false);
   assert.equal("series_id" in frozen.payload, false);

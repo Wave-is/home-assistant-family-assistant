@@ -13,6 +13,7 @@ REVISION_ACTIONS = {
     "shopping.reject",
     "shopping.archive",
     "shopping.purchase",
+    "shopping.edit",
     "court.appeal",
     "court.reverse",
     "court.resolve_appeal",
