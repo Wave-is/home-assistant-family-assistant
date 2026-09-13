@@ -137,9 +137,25 @@ class ChatService:
         ):
             raise DomainError("chat_busy" if not self._closed else "not_ready")
         # No await occurs before admission is reserved, so concurrent callers
-        # cannot accumulate unbounded authority checks or provider workers.
+        # cannot accumulate unbounded authority checks. The reservation is
+        # released before an optional model worker is awaited, so saturated
+        # providers cannot occupy the deterministic command lane.
         self._active += 1
         self._actor_active[actor] = self._actor_active.get(actor, 0) + 1
+        admitted = True
+
+        def release_admission() -> None:
+            nonlocal admitted
+            if not admitted:
+                return
+            admitted = False
+            self._active -= 1
+            remaining = self._actor_active.get(actor, 1) - 1
+            if remaining:
+                self._actor_active[actor] = remaining
+            else:
+                self._actor_active.pop(actor, None)
+
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
                 return await self._admitted_answer(
@@ -153,14 +169,10 @@ class ChatService:
                     guard=guard,
                     scope_check=scope_check,
                     on_commit=on_commit,
+                    release_admission=release_admission,
                 )
         finally:
-            self._active -= 1
-            remaining = self._actor_active.get(actor, 1) - 1
-            if remaining:
-                self._actor_active[actor] = remaining
-            else:
-                self._actor_active.pop(actor, None)
+            release_admission()
 
     async def _admitted_answer(
         self,
@@ -175,49 +187,29 @@ class ChatService:
         guard,
         scope_check,
         on_commit,
+        release_admission,
     ):
         await self._check(scope_check)
         input_hash = _hash(content)
         session_hash = _hash(actor, str(actor_revision), session_id)
         request_key = _hash(actor, str(actor_revision), session_hash, operation_id, input_hash)
-        cached = None
-        async with self._lock:
-            if self._closed:
-                raise DomainError("not_ready")
-            cached = self._completed.get(request_key)
-            task = self._tasks.get(request_key)
-            if not (cached and cached[0] >= self._clock()) and task is None:
-                actor_workers = sum(value == actor for value in self._task_actors.values())
-                if len(self._tasks) >= MAX_ACTIVE or actor_workers >= MAX_ACTIVE_PER_ACTOR:
-                    raise DomainError("chat_busy")
-                assistant = getattr(runtime, "assistant", None)
-                task = asyncio.create_task(
-                    self._answer(
-                        runtime,
-                        assistant,
-                        actor,
-                        actor_revision,
-                        content,
-                        operation_id,
-                        session_hash,
-                        input_hash,
-                        now,
-                        guard,
-                        scope_check,
-                        on_commit,
-                    )
-                )
-                self._tasks[request_key] = task
-                self._task_actors[request_key] = actor
-                task.add_done_callback(
-                    lambda completed, key=request_key: self._task_done(key, completed)
-                )
-        if cached and cached[0] >= self._clock():
-            await self._check(scope_check)
-            return cached[1]
-        reply = await asyncio.shield(task)
-        await self._check(scope_check)
-        return reply
+        assistant = getattr(runtime, "assistant", None)
+        return await self._answer(
+            runtime,
+            assistant,
+            actor,
+            actor_revision,
+            content,
+            operation_id,
+            session_hash,
+            input_hash,
+            request_key,
+            now,
+            guard,
+            scope_check,
+            on_commit,
+            release_admission,
+        )
 
     async def _answer(
         self,
@@ -229,10 +221,12 @@ class ChatService:
         operation_id,
         session_hash,
         input_hash,
+        request_key,
         now,
         guard,
         scope_check,
         on_commit,
+        release_admission,
     ) -> str:
         engine = ScopedEngine(runtime.engine, guard, on_commit)
         context_free = self._context_free(content)
@@ -256,17 +250,26 @@ class ChatService:
             selected_now,
             selected_refs,
         ):
+            # The deterministic router has now exhausted its local paths.
+            # Release its bounded admission before joining or creating model
+            # work; model jobs have their own global and per-actor limits.
+            release_admission()
             cascade = getattr(assistant, "cascade", None)
             if assistant is None or cascade is None:
                 raise DomainError("provider_not_configured")
             scoped = Assistant(engine, cascade, getattr(assistant, "search", None))
-            return await scoped.respond(
-                selected_actor,
-                selected_content,
-                selected_operation,
-                selected_now,
-                selected_refs,
-                scope_check=scope_check,
+            return await self._model_reply(
+                request_key,
+                actor,
+                scope_check,
+                lambda: scoped.respond(
+                    selected_actor,
+                    selected_content,
+                    selected_operation,
+                    selected_now,
+                    selected_refs,
+                    scope_check=scope_check,
+                ),
             )
 
         reply = await route(
@@ -281,6 +284,31 @@ class ChatService:
         await self._check(scope_check)
         if not context_free:
             await self._save_refs(engine, actor, actor_revision, session_hash, operation_id, now)
+        await self._check(scope_check)
+        return reply
+
+    async def _model_reply(self, request_key, actor, scope_check, generate) -> str:
+        """Join or create one bounded provider-backed operation."""
+        cached = None
+        async with self._lock:
+            if self._closed:
+                raise DomainError("not_ready")
+            cached = self._completed.get(request_key)
+            task = self._tasks.get(request_key)
+            if not (cached and cached[0] >= self._clock()) and task is None:
+                actor_workers = sum(value == actor for value in self._task_actors.values())
+                if len(self._tasks) >= MAX_ACTIVE or actor_workers >= MAX_ACTIVE_PER_ACTOR:
+                    raise DomainError("chat_busy")
+                task = asyncio.create_task(generate())
+                self._tasks[request_key] = task
+                self._task_actors[request_key] = actor
+                task.add_done_callback(
+                    lambda completed, key=request_key: self._task_done(key, completed)
+                )
+        if cached and cached[0] >= self._clock():
+            await self._check(scope_check)
+            return cached[1]
+        reply = await asyncio.shield(task)
         await self._check(scope_check)
         return reply
 

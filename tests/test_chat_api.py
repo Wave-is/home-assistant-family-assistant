@@ -12,7 +12,13 @@ from types import ModuleType, SimpleNamespace
 import pytest
 import voluptuous as vol
 
-from custom_components.family_assistant.assistant.chat_service import conversation_digest
+from custom_components.family_assistant.assistant.chat_service import (
+    MAX_ACTIVE_PER_ACTOR,
+    ChatService,
+    conversation_digest,
+)
+from custom_components.family_assistant.assistant.provider import Cascade
+from custom_components.family_assistant.assistant.service import Assistant
 from custom_components.family_assistant.const import DOMAIN
 from custom_components.family_assistant.domain.validation import DomainError
 
@@ -420,3 +426,100 @@ async def test_cancelled_authority_lookup_releases_endpoint_admission(chat_api):
     assert chat_api._active == 0
     assert chat_api._active_users == {}
     assert env.connection.results == [] and env.connection.errors == []
+
+
+class _BlockingProvider:
+    def __init__(self):
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def generate(self, _messages, _schema):
+        self.started.set()
+        await self.release.wait()
+        return {"kind": "answer", "text": "bounded answer"}
+
+
+@pytest.mark.asyncio
+async def test_websocket_static_command_bypasses_saturated_model_lane(chat_api, engine, now):
+    settings = engine.snapshot()["settings"]
+    await engine.execute(
+        "owner",
+        "settings.save",
+        {**settings, "modules": [*settings["modules"], "conversation"]},
+        "enable-websocket-static-lane",
+        now,
+    )
+    provider = _BlockingProvider()
+    service = ChatService()
+    options = {
+        "conversation": {
+            "enabled": True,
+            "primary": {"model": "synthetic", "url": "https://provider.invalid"},
+        }
+    }
+    assistant = Assistant(engine, Cascade([provider], {}))
+    runtime = SimpleNamespace(
+        engine=engine,
+        chat=service,
+        assistant=assistant,
+        assistant_revision=SOURCE,
+        assistant_config_digest=conversation_digest(options["conversation"]),
+        updated=lambda: None,
+    )
+    entry = SimpleNamespace(
+        entry_id=ENTRY_ID,
+        domain=DOMAIN,
+        state=_ConfigEntryState.LOADED,
+        runtime_data=runtime,
+        options=options,
+    )
+    user = SimpleNamespace(id="synthetic-parent", is_active=True, is_admin=False)
+
+    async def get_user(user_id):
+        return user if user_id == user.id else None
+
+    hass = SimpleNamespace(
+        auth=SimpleNamespace(async_get_user=get_user),
+        config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
+        data={DOMAIN: {"entries": {ENTRY_ID: runtime}}},
+    )
+    revision = engine.snapshot()["members"]["parent"]["revision"]
+
+    def message(index, content):
+        return _message(
+            id=index,
+            text=content,
+            operation_id=f"websocket-saturation-{index}",
+            session_id=f"websocket-session-{index}",
+            actor_revision=revision,
+        )
+
+    requests = []
+    try:
+        for index in range(MAX_ACTIVE_PER_ACTOR):
+            connection = _Connection(user)
+            requests.append(
+                asyncio.create_task(
+                    chat_api.chat(hass, connection, message(40 + index, f"Question {index}"))
+                )
+            )
+        await provider.started.wait()
+        for _ in range(30):
+            if len(service._tasks) == MAX_ACTIVE_PER_ACTOR:
+                break
+            await asyncio.sleep(0)
+        assert len(service._tasks) == MAX_ACTIVE_PER_ACTOR
+        assert chat_api._active == 0 and chat_api._active_users == {}
+
+        static_connection = _Connection(user)
+        await chat_api.chat(hass, static_connection, message(50, "/ping"))
+        assert not static_connection.errors
+        assert "here" in static_connection.results[0][1]["reply"]
+
+        busy_connection = _Connection(user)
+        await chat_api.chat(hass, busy_connection, message(51, "Another question"))
+        assert busy_connection.errors == [(51, "chat_busy", "chat_busy")]
+    finally:
+        provider.release.set()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await service.async_stop()

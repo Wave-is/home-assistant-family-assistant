@@ -285,6 +285,17 @@ async def chat(hass: Any, connection: Any, msg: dict) -> None:
         if requested_revision != scope.actor_revision or requested_source != scope.source_revision:
             raise DomainError("conflict")
 
+        # Bound only the initial authenticated scope capture. Provider work is
+        # bounded inside ChatService and must not keep this lane occupied while
+        # a deterministic command is waiting to enter.
+        _active -= 1
+        remaining = _active_users[admitted_user] - 1
+        if remaining:
+            _active_users[admitted_user] = remaining
+        else:
+            _active_users.pop(admitted_user, None)
+        admitted = False
+
         async def scope_check():
             await _async_guard(hass, connection, msg["entry_id"], scope)
 

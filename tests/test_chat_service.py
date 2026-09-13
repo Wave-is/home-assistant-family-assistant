@@ -7,7 +7,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.family_assistant.assistant.chat_service import MAX_CONTEXTS, ChatService
+from custom_components.family_assistant.assistant.chat_service import (
+    MAX_ACTIVE,
+    MAX_ACTIVE_PER_ACTOR,
+    MAX_CONTEXTS,
+    ChatService,
+)
 from custom_components.family_assistant.assistant.language import COPY as ASSISTANT_COPY
 from custom_components.family_assistant.assistant.provider import Cascade
 from custom_components.family_assistant.assistant.service import Assistant
@@ -52,11 +57,12 @@ async def ask(
     operation,
     session="session",
     on_commit=None,
+    actor="parent",
 ):
-    revision, guard, check = scope(engine)
+    revision, guard, check = scope(engine, actor)
     return await service.answer(
         runtime=runtime,
-        actor="parent",
+        actor=actor,
         actor_revision=revision,
         content=content,
         operation_id=operation,
@@ -187,6 +193,126 @@ class BlockingProvider:
             self.cancelled = True
             raise
         return self.value
+
+
+@pytest.mark.asyncio
+async def test_deterministic_lane_survives_saturated_actor_model_workers(engine, now):
+    await enable(engine, now)
+    provider = BlockingProvider({"kind": "answer", "text": "bounded answer"})
+    runtime = SimpleNamespace(
+        engine=engine,
+        assistant=Assistant(engine, Cascade([provider], {})),
+    )
+    service = ChatService()
+    requests = [
+        asyncio.create_task(
+            ask(
+                service,
+                runtime,
+                engine,
+                now,
+                f"Unknown model question {index}",
+                f"model-saturation-{index}",
+                session=f"model-session-{index}",
+            )
+        )
+        for index in range(MAX_ACTIVE_PER_ACTOR)
+    ]
+    try:
+        await provider.started.wait()
+        for _ in range(30):
+            if len(service._tasks) == MAX_ACTIVE_PER_ACTOR:
+                break
+            await asyncio.sleep(0)
+        assert len(service._tasks) == MAX_ACTIVE_PER_ACTOR
+        assert service._active == 0 and service._actor_active == {}
+
+        assert "here" in await ask(
+            service, runtime, engine, now, "/ping", "static-ping", session="static-session"
+        )
+        await ask(
+            service,
+            runtime,
+            engine,
+            now,
+            "/buy Static milk",
+            "static-shopping",
+            session="static-session",
+        )
+        assert [row["name"] for row in engine.snapshot()["shopping"].values()] == ["Static milk"]
+        with pytest.raises(DomainError, match="chat_busy"):
+            await ask(
+                service,
+                runtime,
+                engine,
+                now,
+                "One more model question",
+                "model-saturation-rejected",
+                session="rejected-session",
+            )
+    finally:
+        provider.release.set()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await service.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_model_lane_preserves_global_limit_across_actor_fairness(engine, now):
+    await enable(engine, now)
+    provider = BlockingProvider({"kind": "answer", "text": "bounded answer"})
+    runtime = SimpleNamespace(
+        engine=engine,
+        assistant=Assistant(engine, Cascade([provider], {})),
+    )
+    service = ChatService()
+    actors = ["owner", "owner", "parent", "parent", "adult", "adult", "child", "sibling"]
+    requests = [
+        asyncio.create_task(
+            ask(
+                service,
+                runtime,
+                engine,
+                now,
+                f"Unknown global question {index}",
+                f"global-saturation-{index}",
+                session=f"global-session-{index}",
+                actor=actor,
+            )
+        )
+        for index, actor in enumerate(actors)
+    ]
+    try:
+        await provider.started.wait()
+        for _ in range(50):
+            if len(service._tasks) == MAX_ACTIVE:
+                break
+            await asyncio.sleep(0)
+        assert len(service._tasks) == MAX_ACTIVE
+        with pytest.raises(DomainError, match="chat_busy"):
+            await ask(
+                service,
+                runtime,
+                engine,
+                now,
+                "Ninth global model question",
+                "global-saturation-rejected",
+                session="global-rejected-session",
+                actor="child",
+            )
+        assert "here" in await ask(
+            service,
+            runtime,
+            engine,
+            now,
+            "/ping",
+            "global-static-ping",
+            session="global-static-session",
+            actor="child",
+        )
+    finally:
+        provider.release.set()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await service.async_stop()
 
 
 @pytest.mark.asyncio

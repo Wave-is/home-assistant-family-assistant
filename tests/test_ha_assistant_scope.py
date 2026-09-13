@@ -14,6 +14,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from custom_components.family_assistant.assistant.chat_service import (
+    MAX_ACTIVE_PER_ACTOR,
     ChatService,
     conversation_digest,
 )
@@ -291,6 +292,42 @@ class _BlockedProvider:
         self.started.set()
         await self.release.wait()
         return {"kind": "answer", "text": "stale private response"}
+
+
+@pytest.mark.asyncio
+async def test_native_assist_static_command_bypasses_saturated_model_lane(modules, engine, now):
+    await _enable(engine, now)
+    env = _environment(engine)
+    provider = _BlockedProvider()
+    env.runtime.assistant = Assistant(engine, Cascade([provider], {}))
+    entity = modules.conversation.FamilyConversation(env.entry)
+    entity.hass = env.hass
+    requests = [
+        asyncio.create_task(
+            entity._async_handle_message(
+                _user_input(f"Unknown model question {index}", f"model-context-{index}"),
+                _ChatLog(f"model-conversation-{index}"),
+            )
+        )
+        for index in range(MAX_ACTIVE_PER_ACTOR)
+    ]
+    try:
+        await provider.started.wait()
+        for _ in range(30):
+            if len(env.runtime.chat._tasks) == MAX_ACTIVE_PER_ACTOR:
+                break
+            await asyncio.sleep(0)
+        assert len(env.runtime.chat._tasks) == MAX_ACTIVE_PER_ACTOR
+
+        result = await entity._async_handle_message(
+            _user_input("/ping", "static-context"), _ChatLog("static-conversation")
+        )
+        assert result.response.error is None
+        assert "here" in result.response.speech
+    finally:
+        provider.release.set()
+        await asyncio.gather(*requests, return_exceptions=True)
+        await env.runtime.chat.async_stop()
 
 
 @pytest.mark.asyncio
