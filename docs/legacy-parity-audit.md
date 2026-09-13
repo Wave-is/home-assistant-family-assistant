@@ -57,9 +57,10 @@ remains unsupported; assigned shopping and numbered batches have separate scope.
 New namespaced card types coexist with previously loaded legacy task/alarm
 elements without replacing them. Seven actual Chromium collision cases passed;
 existing aliases remain compatibility-only and are not advertised as new cards.
-The rc.7 combined release/browser gates are recorded above. Remaining gaps:
-daily rollover/correction policy,
-scoped memory/media, household mappings and the other explicitly open rows.
+The rc.7 combined release/browser gates are recorded above. Daily rollover and
+exact correction are implemented in the separate rc.8 candidate, with their own
+default-off contract. Remaining gaps include scoped memory/media, household
+control mappings and the other explicitly open rows.
 
 ### Numbered-task increment — included in rc.7
 
@@ -172,8 +173,8 @@ module/function names; no private settings or source files are shipped here.
 
 | Legacy workflow / source contract | Public behavior and open gate |
 | --- | --- |
-| Evening unfinished-child-task settlement: `controller._async_settle_missed_child_tasks`; old task/controller runtime tests | Old logic skipped submitted work, applied an exact-source Court penalty, then rolled the due date forward one day; unavailable Court retained a retry. Public `domain/task_events.py` uses due time plus grace, and `domain/penalties.py` deliberately permits one automatic penalty per task. `test_task_events.py` verifies rescheduling does not repeat it. **Changed penalty policy; missing daily rollover.** Do not silently introduce repeated penalties during import. |
-| Same-day parent correction: `controller._same_day_court_correction_source`, `_async_reconcile_court_corrections`, `_handle_contextual_task_penalty_correction` | Generic `court.reverse_source` exists and is tested, but automatic same-day completion reconciliation and its contextual Telegram expression are **missing**. Reversal must target the original penalty and date, retain a retry receipt, and never reverse an unrelated score. |
+| Evening unfinished-child-task settlement: `controller._async_settle_missed_child_tasks`; old task/controller runtime tests | **Optional replacement in rc.8 candidate.** Explicit parent policy rolls ordinary one-off child tasks; repeat penalties require separate consent. Submitted tasks are exempt. Exact dated receipts are atomic with score/date/notice, disabled/capped days are explicit skips, and downtime does not create a penalty backlog. No old external Court retry bridge or automatic import activation. [Contract and acceptance](task-settlements.md). |
+| Same-day parent correction: `controller._same_day_court_correction_source`, `_async_reconcile_court_corrections`, `_handle_contextual_task_penalty_correction` | **Optional replacement in rc.8 candidate.** Parent completion corrects only the exact recorded task/date/child-epoch penalty; independent appeal rules still apply. Verified single-task Telegram reply or exact T-ID command freezes the correction receipt. Cancellation/archive/later-day completion do not reverse it. Full skipped-receipt history browsing remains deferred. [Contract](task-settlements.md). |
 | Creation report qualifiers: `task_parser._extract_report_requirement` | **Bounded grammar repaired in rc.6.** Natural report/deadline qualifiers produce structured `text/photo/none` and deadlines; contradictory requirements reject before mutation. RU/UK/EN parser and native command-completion cases cover the repaired forms. Arbitrary sentence structure is not claimed. |
 | Natural shopping quantities / assigned purchase tasks: `task_parser.split_shopping_quantity` and assigned-purchase parser | **Bounded grammar repaired in rc.6; shared assignments added in rc.7.** Natural quantities and explicit assigned-purchase forms create one separate S-record, not an ordinary task. Exact buyer edits/filters preserve metadata and helping-purchase permissions. See [forms and exclusions](shopping-assignments.md); arbitrary multi-purchase prose and fresh-request semantic duplicate detection remain open. |
 | Explicit multi-task message and scoped task-list parser: old `task_parser` / atomic controller creation | **Bounded grammar repaired; acceptance scoped above.** Explicit 2–5 numbered messages validate declared counts, shared/per-item deadlines and reports/assignees before all-or-nothing Engine creation. Named scoped queries were repaired in the preceding increment. Arbitrary/inline multi-task prose remains unsupported; existing dashboard batches and model proposals remain separate entry points. |
@@ -192,8 +193,8 @@ pattern family was identified in this bounded second review.
 
 1. Continue exact regression coverage for the released deterministic report,
    quantity, assignment, scoped-list, numbered-task and reviewer workflows.
-2. Implement explicit rollover/correction policy and evaluate day-only cadence:
-   restart/outage tests, exact source/date correction, no retroactive or repeated
+2. Complete combined release gates for the implemented opt-in rollover/correction
+   policy. Evaluate day-only cadence separately; no retroactive or repeated
    penalties unless separately reviewed and explicitly enabled.
 3. Scoped memory/web policy, home/energy/forecast mappings and remaining provider
    capabilities: separate privacy, effect-authorization and household gates.

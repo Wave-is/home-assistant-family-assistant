@@ -1,5 +1,23 @@
 # Implementation and acceptance matrix
 
+## Combined rc.8 — candidate under verification
+
+Home-status, opt-in dated task settlement/correction and independent static chat
+admission are merged. Task focused acceptance passed 314 Python, 41 Node and
+13 Chromium scenarios; root's actual isolated HA2026.9.2 proved immutable receipt
+history, Store/reload, exact correction, DST/outage and revoked authority.
+The static-lane change includes the independently reviewed bounded-waiter/cache
+correction. Final combined local acceptance passed **6623 Python, six skips,
+23 subtests; 810 Node; 457 Chromium**. Real school timer/Options/Store acceptance
+passed on HA2026.8.2 and HA2026.9.2 after correcting executor-dispatched sync
+callbacks; direct startup-only tests had not established periodic operation.
+An exact published rc.7-to-candidate two-process upgrade passed on HA2026.9.2.
+Exact-commit CI and publication are subsequent gates, not asserted by this source
+checkpoint. The 18-card inventory comes from the complete passing browser run.
+See [candidate scope](releases/0.2.0-rc.8.md) and
+[task contract](task-settlements.md). Neither new household mappings nor task
+policies are enabled by updating.
+
 ## Combined rc.7 acceptance — 13 September 2026
 
 Atomic numbered tasks, shared buyer commands/filters/name repair and cache-

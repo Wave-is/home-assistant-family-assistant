@@ -3,8 +3,10 @@ import {readFile, readdir} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 
+import {CARD_VIEWS} from "../../custom_components/family_assistant/frontend/card-registry.js";
+
 export const frontendRoot = "custom_components/family_assistant/frontend";
-export const cards = ["today", "shopping", "tasks", "court", "alarms", "health", "conversation", "mikrotik", "calendar", "routines", "pantry", "meals", "school", "maintenance", "polls", "presence", "digests"];
+export const cards = CARD_VIEWS.map(([view]) => view);
 export const moduleForFile = file => {
   if (file.startsWith("online-school-")) return "school";
   if (file.startsWith("panel-") || file === "family-panel.js") return "panel";
@@ -17,7 +19,7 @@ export const moduleForFile = file => {
   if (file.startsWith("fault-photo") || file.startsWith("asset-document")) return "maintenance";
   if (file.startsWith("article") || file.startsWith("semantic-feedback")) return "conversation";
   if (file.startsWith("developer")) return "health";
-  return cards.find(module => file.startsWith(`${module}-`)) || "shared";
+  return cards.find(module => file.startsWith(`${module.replaceAll("_", "-")}-`)) || "shared";
 };
 const patterns = {
   listener: /\.addEventListener\s*\(|\.(?:onclick|onsubmit|oninput|onchange|onkeydown)\s*=/,
@@ -101,21 +103,21 @@ export async function buildInventory(root, evidence = null) {
     {file:"asset-document-view.js",lines:[92],classification:"conditional_control_scenario",detail:"Removed-document archive beyond the initial 20 rows: local pagination only.",related_cases:relatedCases("removed document pagination")},
     {file:"task-batch-view.js",lines:[492],classification:"conditional_control_scenario",detail:"More than 100 eligible tasks: load the next page without clearing selection or sending a batch.",related_cases:relatedCases("task batch pagination reveals")},
     {file:"task-series-view.js",lines:[567],classification:"conditional_control_scenario",detail:"Inactive assignee in retained series: remove only the unsaved row and cancel without changing the series.",related_cases:relatedCases("unavailable recurring assignee")},
-    {file:"family-assistant.js",lines:[677],classification:"conditional_control_scenario",detail:"Lovelace editor household/title/view changes emit exact local config-changed events; they are not integration settings writes.",related_cases:relatedCases("Lovelace editor emits")},
+    {file:"family-assistant.js",lines:[688],classification:"conditional_control_scenario",detail:"Lovelace editor household/title/view changes emit exact local config-changed events; they are not integration settings writes.",related_cases:relatedCases("Lovelace editor emits")},
     {file:"family-panel.js",lines:[328],classification:"conditional_control_scenario",detail:"Multiple authorized households: selecting each entry reloads only that entry's panel and sends no mutation.",related_cases:relatedCases("panel household selector replaces")},
-    {file:"family-assistant.js",lines:[605,608],classification:"conditional_control_scenario",detail:"Parent Stop for an active alarm run validates reason and retries the same cancellation after a pre-effect failure; no device is present in this fixture.",related_cases:relatedCases("parent alarm Stop validates")},
-    {file:"task-form.js",lines:[912],classification:"conditional_control_scenario",detail:"Single create after committed response loss: Close without rollback preserves the committed task and sends no second command.",related_cases:relatedCases("single-task Close without rollback")},
+    {file:"family-assistant.js",lines:[616,619],classification:"conditional_control_scenario",detail:"Parent Stop for an active alarm run validates reason and retries the same cancellation after a pre-effect failure; no device is present in this fixture.",related_cases:relatedCases("parent alarm Stop validates")},
+    {file:"task-form.js",lines:[918],classification:"conditional_control_scenario",detail:"Single create after committed response loss: Close without rollback preserves the committed task and sends no second command.",related_cases:relatedCases("single-task Close without rollback")},
     {file:"task-media-view.js",lines:[865],classification:"conditional_control_scenario",detail:"Image decoder rejects a selected synthetic file: Cancel clears the failed preview without media reservation or upload.",related_cases:relatedCases("failed photo preview Cancel")},
     {file:"pantry-view.js",lines:[771],classification:"conditional_control_scenario",detail:"Archive validates reason, preserves original stock/history during failure and retries the exact id/revision payload.",related_cases:relatedCases("pantry archive reason is validated")},
     {file:"maintenance-view.js",lines:[1055],classification:"conditional_control_scenario",detail:"Manual service log consumable row Remove is distinct from the equipment editor; no saved stock or log is changed before submission.",related_cases:relatedCases("manual maintenance log consumable Remove")},
     {file:"network-kids.js",lines:[108,111],classification:"conditional_control_scenario",detail:"Owner-only adoption and adult delegation use their real local Store API shapes, with consent, target changes and failure cases. This is not router/device acceptance.",related_cases:cases.filter(item=>item.file==="tests/browser/control-network-adoption.spec.js").map(item=>item.id)},
     {file:"routines-view.js",lines:[775,1469,1623,1713],classification:"conditional_control_scenario",detail:"Household modes, member-targeted start, parent step override and run cancellation have dedicated named consent, role and failure scenarios.",related_cases:cases.filter(item=>item.file==="tests/browser/control-routine-actions.spec.js").map(item=>item.id)},
-    {file:"availability-shell.js",lines:[91],classification:"not_reachable_through_published_card_router",detail:"FamilyCard.render returns its common Retry at family-assistant.js:420 when _error is set, before every availability-shell call. The helper's error Retry is therefore not another reachable published-card button; module/role shells remain covered.",related_cases:cases.filter(item=>item.file==="tests/browser/availability-shell.spec.js").map(item=>item.id)},
-    {file:"family-assistant.js",lines:[397,637,639],classification:"obsolete_generic_routes_not_reachable",detail:"The generic form has no reachable published use: tasks form returns its specialized editor at 384, shopping uses its editor, court/calendar return specialized renderers at 461-462, and alarms use their dedicated editor. Generic court reversal in renderItem is bypassed by renderCourt. Retained source is not removed or counted as clicked.",related_cases:cases.filter(item=>["tests/browser/court-browser.spec.js","tests/browser/alarm-editor.spec.js"].includes(item.file)).map(item=>item.id)},
+    {file:"availability-shell.js",lines:[91],classification:"not_reachable_through_published_card_router",detail:"FamilyCard.render returns its common Retry at family-assistant.js:430 when _error is set, before every availability-shell call. The helper's error Retry is therefore not another reachable published-card button; module/role shells remain covered.",related_cases:cases.filter(item=>item.file==="tests/browser/availability-shell.spec.js").map(item=>item.id)},
+    {file:"family-assistant.js",lines:[407,648,650],classification:"obsolete_generic_routes_not_reachable",detail:"The generic form has no reachable published use: tasks form returns its specialized editor at 394, shopping uses its editor, court/calendar return specialized renderers at 472-473, and alarms use their dedicated editor. Generic court reversal in renderItem is bypassed by renderCourt. Retained source is not removed or counted as clicked.",related_cases:cases.filter(item=>["tests/browser/court-browser.spec.js","tests/browser/alarm-editor.spec.js"].includes(item.file)).map(item=>item.id)},
     ...[["network-admission-view.js",363],["network-watch-view.js",196],["presence-notifications-view.js",382],["shopping-items.js",812],["task-media-view.js",428]].map(([file,line])=>({file,lines:[line],classification:"non_card_helper_fallback",detail:"Fallback listener is used only when a caller supplies no card.button. Every published card inherits FamilyCard.button; browser evidence for the shared-button branch does not claim this alternate helper implementation ran.",related_cases:[]})),
   ];
   return {schema_version: 1,
-    scope: "All 17 published cards, shared Lovelace editor, and control panel. Public source and synthetic fixtures only.",
+    scope: `All ${cards.length} published cards, shared Lovelace editor, and control panel. Public source and synthetic fixtures only.`,
     interpretation: {
       source_sites: "Conservative line inventory of control factories, listeners, form fields, commands and links. Shared factories and dynamic loops are explicit sites, not proof of every possible record/value combination. Full source excerpt retained for review.",
       handlers: "Registered = a fixture rendered/bound that source handler; invoked = listener actually ran; trusted = at least one native browser event. Source frames identify helpers and the caller. Runtime variants/roles not used in listed tests remain untested.",

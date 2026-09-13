@@ -52,7 +52,7 @@ for(const [id,label]of [["tasks","Tasks"],["shopping","Shopping"],["school","Sch
   expect(await card.evaluate(node=>node._config)).toMatchObject({entry_id:"synthetic",view:id});
   expect(await card.evaluate(node=>node._config.member_id)).toBeUndefined();
   await panel.getByRole("button",{name:"← Capabilities",exact:true}).click();
-  await expect(card).toHaveCount(0);await expect(panel.locator(".panel-module-card")).toHaveCount(15);
+  await expect(card).toHaveCount(0);await expect(panel.locator(".panel-module-card")).toHaveCount(16);
   expect(await panelState(page)).toEqual(before);expect(await mutations(page)).toEqual([]);
 });
 

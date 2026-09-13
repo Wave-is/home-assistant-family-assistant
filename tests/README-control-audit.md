@@ -1,7 +1,7 @@
 # Frontend action coverage
 
 `frontend-control-inventory.json` is the durable source/action inventory for all
-17 published cards, the shared Lovelace editor, and the control panel. It is not
+18 published cards, the shared Lovelace editor, and the control panel. It is not
 a declaration that every control or every product requirement is complete.
 
 The inventory retains every frontend file hash and conservative source sites

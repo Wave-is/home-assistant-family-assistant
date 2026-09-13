@@ -79,6 +79,24 @@ ConfigEntry Options are server-side private storage, never browser drafts.
 
 ## Semantics and verified fixes
 
+### Optional household status routes
+
+These owner-only routes require a current bound HA user and reviewed registry
+identity. Editing does not read states or execute services. The final review
+revalidates authority and preserves exact Options on cancel/no-op.
+
+| Native step | Controls | Persisted consumer | Evidence |
+| --- | --- | --- | --- |
+| `home_status` | settings, group, source, back | navigation only | test_home_status_options; ha_home_status_smoke |
+| `home_status_settings` | max_age_seconds | staged freshness policy, 30–86400 seconds | test_home_status_options; native no-op/cancel |
+| `home_status_group` | record | selects exact existing key or new group | test_home_status_options |
+| `home_status_group_edit` | key, title, roles, remove | reviewed named source group | test_home_status_options; native group edit |
+| `home_status_source` | record | selects exact existing source or new binding | test_home_status_options |
+| `home_status_source_edit` | label, entity_id, mode, roles, active_states, remove | typed registered source and explicit activity mapping | test_home_status_options; source ACL/registry tests |
+| `home_status_review` | confirmed | Config Entry Options.home_status revision; API/card/private late Telegram reader | ha_home_status_smoke actual HA2026.9.2 Options/Store/reload |
+
+### Previously reviewed settings
+
 - Provider Options guard covers the actual active HA user, pinned HTTP caller,
   owner member epoch, loaded entry/runtime/Engine, full Options snapshot and
   canonical settings revision. Successful and failed inspection paths are fenced.
@@ -124,6 +142,11 @@ ConfigEntry Options are server-side private storage, never browser drafts.
    intentional to allow catch-up after an Options update yields.
 
 ## Verification
+
+The rc.8 combined run covers all seven new home-status routes. Real school
+interval dispatch additionally runs on HA2026.8.2/2026.9.2 through the actual
+timer and HassJob machinery: startup fetch alone does not prove subsequent
+polling or scheduled notifications. See `ha_online_school_interval_smoke.py`.
 
 Local provider Options/identity, alarm Options and native inventory tests passed,
 including disabled endpoint/credential edits, fallback preservation, static
