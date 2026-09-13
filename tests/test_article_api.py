@@ -542,6 +542,55 @@ def test_source_view_is_bounded_and_fail_closed(article_api):
     }
 
 
+@pytest.mark.parametrize("kind", ["agy", "ha_agent", "legacy_agy", "legacy_ha", "fallback"])
+async def test_single_provider_article_projection_and_scoped_request(article_api, kind):
+    env = _environment()
+    http = {"url": "https://single.invalid", "model": "one", "api_key": "CANARY-KEY"}
+    selection = {"type": "ha_agent", "entity_id": "conversation.synthetic", "timeout": 15}
+    config = {"enabled": True}
+    if kind in {"agy", "ha_agent"}:
+        config["providers"] = [{"id": "single", "kind": kind, **(http if kind == "agy" else {})}]
+    else:
+        config[{"legacy_agy": "agy", "legacy_ha": "ha_agent", "fallback": "fallback"}[kind]] = (
+            selection if kind == "legacy_ha" else http
+        )
+    if kind == "ha_agent":
+        config["ha_agent"] = selection
+    env.entry.options["conversation"] = config
+    env.runtime.assistant_config_digest = conversation_digest(config)
+    source = article_api.source_view(env.entry, env.runtime, "member")
+    assert source == {
+        "enabled": True,
+        "configured": True,
+        "allowed": True,
+        "revision": ARTICLE_REVISION,
+    }
+    await article_api.article(env.hass, env.connection, _message())
+    assert len(env.service.calls) == 1 and not env.connection.errors
+    assert "CANARY" not in repr(source)
+
+
+@pytest.mark.parametrize("change", ["empty", "disabled", "row_disabled", "stale"])
+async def test_article_chain_rejects_empty_disabled_or_stale_runtime_before_io(article_api, change):
+    env = _environment()
+    config = env.entry.options["conversation"]
+    config["providers"] = [
+        {"id": "single", "kind": "agy", "url": "https://single.invalid", "model": "one"}
+    ]
+    if change == "empty":
+        config["providers"] = []
+    elif change == "disabled":
+        config["enabled"] = False
+    elif change == "row_disabled":
+        config["providers"][0]["enabled"] = False
+    if change != "stale":
+        env.runtime.assistant_config_digest = conversation_digest(config)
+    assert article_api.source_view(env.entry, env.runtime, "member")["allowed"] is False
+    await article_api.article(env.hass, env.connection, _message())
+    assert env.service.calls == [] and env.connection.results == []
+    assert env.connection.errors[-1][1] in {"provider_not_configured", "article_unavailable"}
+
+
 @pytest.mark.parametrize("field", ["url", "model", "enabled"])
 @pytest.mark.asyncio
 async def test_options_before_listener_cannot_use_old_article_provider(article_api, field):

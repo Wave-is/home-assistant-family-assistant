@@ -16,6 +16,7 @@ from ..domain.validation import DomainError
 from ..domain.validation import revision as strict_revision
 from .article_options import _conversation_ready, _digest, _policy
 from .chat_service import conversation_digest as provider_digest
+from .provider_registry import has_enabled_provider
 
 _LANGUAGES = {"en", "ru", "uk"}
 _ROLES = {"owner", "parent", "adult", "child"}
@@ -216,15 +217,7 @@ def source_view(entry: Any, runtime: Any, actor: str) -> dict[str, Any]:
         enabled = bool(valid_policy and policy.get("enabled") is True)
         options = dict(entry.options)
         conversation = options.get("conversation")
-        primary = conversation.get("primary") if isinstance(conversation, dict) else None
-        configured = bool(
-            valid_policy
-            and isinstance(conversation, dict)
-            and conversation.get("enabled") is True
-            and isinstance(primary, dict)
-            and isinstance(primary.get("model"), str)
-            and bool(primary["model"].strip())
-        )
+        configured = bool(valid_policy and has_enabled_provider(conversation))
         assistant = runtime.assistant
         service = runtime.articles
         marker = runtime.article_revision

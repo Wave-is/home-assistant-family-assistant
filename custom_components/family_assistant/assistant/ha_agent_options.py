@@ -1,6 +1,7 @@
 """Owner-reviewed selection of a bounded existing Home Assistant agent."""
 
 from copy import deepcopy
+from uuid import uuid4
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntryState
@@ -11,6 +12,7 @@ from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..domain.validation import revision as strict_revision
 from .chat_service import conversation_digest
+from .provider_registry import MAX_PROVIDERS, has_enabled_provider, provider_rows
 
 _PREFIX = "component.family_assistant.selector.ha_agent_state.options."
 
@@ -85,8 +87,13 @@ async def _scope(flow):
 def _schema(options):
     conversation = options.get("conversation", {})
     config = conversation.get("ha_agent", {})
+    active = (
+        bool(config)
+        and has_enabled_provider(conversation)
+        and any(row["kind"] == "ha_agent" and row["enabled"] for row in provider_rows(conversation))
+    )
     schema = {
-        vol.Required("enabled", default=bool(config) and conversation.get("enabled") is True): bool,
+        vol.Required("enabled", default=active): bool,
         vol.Required("timeout", default=config.get("timeout", 15)): vol.All(
             int, vol.Range(min=5, max=60)
         ),
@@ -124,10 +131,14 @@ async def options_step(flow, user_input=None):
                 raise DomainError("invalid_field")
             options = deepcopy(current["options"])
             conversation = options.setdefault("conversation", {})
+            rows = provider_rows(conversation)
+            native = next((row for row in rows if row["kind"] == "ha_agent"), None)
             provider = proof = None
             if user_input["enabled"]:
                 if not current["module"]:
                     raise DomainError("module_disabled")
+                if "providers" in conversation and native is None and len(rows) >= MAX_PROVIDERS:
+                    raise DomainError("invalid_field", "providers")
                 from .ha_agent_provider import HAConversationAgent
 
                 selected = {
@@ -149,9 +160,26 @@ async def options_step(flow, user_input=None):
                 provider.validate_review(proof)
                 conversation["ha_agent"] = {**selected, "binding": proof.binding}
                 conversation["enabled"] = True
+                if "providers" in conversation:
+                    if native is None:
+                        conversation["providers"].append(
+                            {
+                                "id": "ha-agent-" + uuid4().hex[:24],
+                                "kind": "ha_agent",
+                                "enabled": True,
+                            }
+                        )
+                    else:
+                        next(row for row in conversation["providers"] if row["id"] == native["id"])[
+                            "enabled"
+                        ] = True
             else:
                 conversation.pop("ha_agent", None)
-                if not conversation.get("primary") and not conversation.get("agy"):
+                if "providers" in conversation and native is not None:
+                    next(row for row in conversation["providers"] if row["id"] == native["id"])[
+                        "enabled"
+                    ] = False
+                if not has_enabled_provider(conversation):
                     conversation["enabled"] = False
             if options == current["options"]:
                 raise DomainError("invalid_transition")

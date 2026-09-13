@@ -317,6 +317,55 @@ def test_guest_and_removed_module_source_fail_closed(chat_api):
     }
 
 
+@pytest.mark.parametrize("kind", ["agy", "ha_agent", "legacy_agy", "legacy_ha", "fallback"])
+async def test_single_provider_projection_and_chat_do_not_require_primary(chat_api, kind):
+    env = _env()
+    http = {"url": "https://single.invalid", "model": "one", "api_key": "CANARY-KEY"}
+    selection = {"type": "ha_agent", "entity_id": "conversation.synthetic", "timeout": 15}
+    config = {"enabled": True}
+    if kind in {"agy", "ha_agent"}:
+        config["providers"] = [{"id": "single", "kind": kind, **(http if kind == "agy" else {})}]
+    else:
+        config[{"legacy_agy": "agy", "legacy_ha": "ha_agent", "fallback": "fallback"}[kind]] = (
+            selection if kind == "legacy_ha" else http
+        )
+    if kind == "ha_agent":
+        config["ha_agent"] = selection
+    env.entry.options["conversation"] = config
+    env.runtime.assistant_config_digest = conversation_digest(config)
+    assert chat_api.source_view(env.entry, env.runtime, "member") == {
+        "enabled": True,
+        "configured": True,
+        "allowed": True,
+        "revision": SOURCE,
+    }
+    await chat_api.chat(env.hass, env.connection, _message())
+    assert len(env.service.calls) == 1 and not env.connection.errors
+    assert "CANARY" not in repr(chat_api.source_view(env.entry, env.runtime, "member"))
+
+
+@pytest.mark.parametrize("change", ["empty", "disabled", "row_disabled", "stale"])
+def test_single_provider_projection_never_revives_empty_disabled_or_stale_provider(
+    chat_api, change
+):
+    env = _env()
+    config = env.entry.options["conversation"]
+    config["providers"] = [
+        {"id": "single", "kind": "agy", "url": "https://single.invalid", "model": "one"}
+    ]
+    if change == "empty":
+        config["providers"] = []
+    elif change == "disabled":
+        config["enabled"] = False
+    elif change == "row_disabled":
+        config["providers"][0]["enabled"] = False
+    if change != "stale":
+        env.runtime.assistant_config_digest = conversation_digest(config)
+    source = chat_api.source_view(env.entry, env.runtime, "member")
+    assert source["configured"] is False
+    assert source["allowed"] is (change != "stale")
+
+
 @pytest.mark.asyncio
 async def test_endpoint_admission_precedes_blocked_ha_authority_await(chat_api):
     env = _env()

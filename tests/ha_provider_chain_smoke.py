@@ -193,6 +193,46 @@ async def verify_provider_chain_options(hass, entry, form, post):
             assert entry.options["conversation"]["providers"] == []
             assert entry.runtime_data.assistant is None
             assert entry.options["conversation"]["primary"] == initial["conversation"]["primary"]
+            # Exercise the actual native/runtime contracts without any legacy
+            # primary slot: a single AGY is sufficient for chat and articles.
+            from ha_backup_smoke import _websocket
+
+            actor = entry.runtime_data.engine.snapshot()["members"]["owner"]
+            user = await hass.auth.async_get_user(actor["ha_user_id"])
+            assert user is not None and user.is_active
+
+            async def sources():
+                response = await _websocket(
+                    hass,
+                    user,
+                    {"id": 1976, "type": "family_assistant/view", "entry_id": entry.entry_id},
+                )
+                assert response["success"]
+                view = response["result"]
+                return view["conversation_source"], view["article_source"]
+
+            single = deepcopy(dict(entry.options))
+            single["conversation"] = {"enabled": True, "providers": [deepcopy(rows[0])]}
+            single.pop("articles", None)
+            hass.config_entries.async_update_entry(entry, options=single)
+            await hass.async_block_till_done()
+            await entry.runtime_data.scheduler.stop()
+            assert "primary" not in entry.options["conversation"]
+            assert [
+                provider.kind for provider in entry.runtime_data.assistant.cascade.providers
+            ] == ["agy"]
+            chat, source = await sources()
+            assert chat["configured"] and chat["allowed"] and chat["revision"]
+            assert source["configured"] and not source["enabled"] and not source["allowed"]
+            editor, article_path = await form("articles")
+            assert editor["step_id"] == "articles"
+            review = await post(article_path, {"enabled": True, "allow_children": False})
+            assert review["step_id"] == "article_policy_review" and not review["errors"]
+            assert (await post(article_path, {"confirmed": True}))["type"] == "create_entry"
+            await hass.async_block_till_done()
+            chat, source = await sources()
+            assert source["configured"] and source["allowed"] and source["revision"]
+            assert "synthetic-native-chain-key" not in repr((source, chat))
     finally:
         hass.config_entries.async_update_entry(entry, options=initial)
         await hass.async_block_till_done()

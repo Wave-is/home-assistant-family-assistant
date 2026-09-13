@@ -92,6 +92,16 @@ def provider_rows(config):
 configured_providers = provider_rows
 
 
+def has_enabled_provider(config):
+    """A saved active chain, not proof of reachability or caller authorization."""
+    if not isinstance(config, dict) or config.get("enabled") is not True:
+        return False
+    try:
+        return any(row["enabled"] for row in provider_rows(config))
+    except DomainError:
+        return False
+
+
 def http_provider(session, row, *, require_model=True):
     """Construct a configured HTTP adapter; HA agents require reviewed HA scope."""
     if row.get("kind") == "agy":

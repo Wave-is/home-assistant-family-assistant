@@ -98,6 +98,47 @@ async def test_article_policy_accepts_configured_ha_agent_without_direct_ollama(
     assert result["step_id"] == "article_policy_review"
 
 
+@pytest.mark.parametrize("kind", ["agy", "ha_agent"])
+async def test_article_policy_accepts_single_authoritative_provider(kind):
+    options = configured_options()
+    options["conversation"] = {"enabled": True, "providers": [{"id": "single", "kind": kind}]}
+    if kind == "agy":
+        options["conversation"]["providers"][0].update(url="https://single.invalid", model="one")
+    else:
+        options["conversation"]["ha_agent"] = {
+            "type": "ha_agent",
+            "entity_id": "conversation.synthetic",
+            "timeout": 15,
+        }
+    flow = Flow(options)
+    result = await begin(flow, {"enabled": True, "allow_children": False})
+    assert result["step_id"] == "article_policy_review"
+    saved = await review_step(flow, {"confirmed": True})
+    assert saved["data"]["articles"]["enabled"] is True
+    assert saved["data"]["conversation"] == options["conversation"]
+
+
+@pytest.mark.parametrize("change", ["empty", "disabled", "row_disabled", "stale"])
+async def test_article_policy_requires_current_enabled_authoritative_provider(change):
+    options = configured_options()
+    config = options["conversation"]
+    config["providers"] = [
+        {"id": "single", "kind": "agy", "url": "https://single.invalid", "model": "one"}
+    ]
+    if change == "empty":
+        config["providers"] = []
+    elif change == "disabled":
+        config["enabled"] = False
+    elif change == "row_disabled":
+        config["providers"][0]["enabled"] = False
+    flow = Flow(options)
+    if change == "stale":
+        flow.runtime.assistant_config_digest = "outdated-runtime"
+    result = await begin(flow, {"enabled": True, "allow_children": False})
+    assert result["errors"] == {"base": "provider_model_missing"}
+    assert not flow.created
+
+
 class Engine:
     def __init__(self):
         self.state = state()
@@ -109,13 +150,20 @@ class Engine:
 class Flow:
     def __init__(self, options=None):
         self.engine = Engine()
-        self.runtime = SimpleNamespace(engine=self.engine, assistant=object())
+        self.runtime = SimpleNamespace(
+            engine=self.engine, assistant=SimpleNamespace(cascade=object())
+        )
         self.config_entry = SimpleNamespace(
             entry_id="entry",
             domain=DOMAIN,
             state=ConfigEntryState.LOADED,
             options=deepcopy(options if options is not None else configured_options()),
             runtime_data=self.runtime,
+        )
+        from custom_components.family_assistant.assistant.chat_service import conversation_digest
+
+        self.runtime.assistant_config_digest = conversation_digest(
+            self.config_entry.options.get("conversation")
         )
         self.user = SimpleNamespace(id="ha-owner", is_admin=True, is_active=True)
         self.context = {"user_id": self.user.id}

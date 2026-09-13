@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-rc.5 — independent provider readiness and grounded search
+
+- Chat and article readiness honor the authoritative provider chain, including a
+  single AGY or reviewed HA agent, with no dormant legacy primary required.
+- Native HA-agent enable/disable updates its corresponding ordered row while
+  preserving other providers and explicit empty-list semantics.
+- Search accepts harmless source-word reordering and punctuation changes, not
+  invented or translated concepts. One bounded, current-request-only correction
+  may repair a model-generated query before independent privacy/grounding checks.
+  An unproven correction never triggers external search.
+
+See [release notes](docs/releases/0.2.0-rc.5.md). This remains early access.
+
 ## 0.2.0-rc.4 — optional text and image providers
 
 Prepared prerelease; publication and exact-commit CI are separate gates.

@@ -129,6 +129,118 @@ async def test_disable_removes_only_selection_and_preserves_other_options(setup,
     assert flow.inspections == inspections
 
 
+async def test_disable_native_preserves_active_explicit_agy_and_reenable_preserves_order(setup):
+    flow, module = setup
+    direct = {
+        "id": "only-agy",
+        "kind": "agy",
+        "name": "Saved AGY",
+        "enabled": True,
+        "url": "https://single.invalid",
+        "model": "one",
+        "api_key": "CANARY-KEY",
+    }
+    native = {"id": "saved-native", "kind": "ha_agent", "name": "Saved HA", "enabled": True}
+    flow.config_entry.options["conversation"] = {
+        "enabled": True,
+        "providers": [direct, native],
+        "ha_agent": {"type": "ha_agent", "entity_id": "conversation.synthetic", "timeout": 15},
+    }
+    original = deepcopy(flow.config_entry.options)
+    await begin(flow, module, {"enabled": False, "timeout": 15})
+    assert flow.config_entry.options == original  # Separate review remains mandatory.
+    result = await module.review_step(flow, {"confirmed": True})
+    config = result["data"]["conversation"]
+    assert config["enabled"] is True and "ha_agent" not in config
+    assert config["providers"] == [direct, {**native, "enabled": False}]
+    assert flow.inspections == 0
+    await begin(flow, module)
+    result = await module.review_step(flow, {"confirmed": True})
+    assert result["data"]["conversation"]["providers"] == [direct, native]
+    assert flow.inspections == 1
+
+
+async def test_disabling_only_native_row_never_revives_dormant_legacy_primary(setup):
+    flow, module = setup
+    flow.config_entry.options["conversation"].update(
+        providers=[{"id": "native", "kind": "ha_agent", "enabled": True}],
+        ha_agent={"type": "ha_agent", "entity_id": "conversation.synthetic", "timeout": 15},
+    )
+    await begin(flow, module, {"enabled": False, "timeout": 15})
+    result = await module.review_step(flow, {"confirmed": True})
+    assert result["data"]["conversation"]["enabled"] is False
+    assert result["data"]["conversation"]["primary"]
+    assert result["data"]["conversation"]["providers"] == [
+        {"id": "native", "kind": "ha_agent", "enabled": False}
+    ]
+
+
+@pytest.mark.parametrize("master_enabled", [False, True])
+async def test_explicit_enable_adds_native_row_to_empty_chain_only_after_review(
+    setup, master_enabled
+):
+    flow, module = setup
+    flow.config_entry.options["conversation"] = {"enabled": master_enabled, "providers": []}
+    result = await begin(flow, module)
+    assert result["step_id"] == "ha_agent_review"
+    assert flow.config_entry.options["conversation"]["providers"] == []
+    result = await module.review_step(flow, {"confirmed": True})
+    (row,) = result["data"]["conversation"]["providers"]
+    assert row["kind"] == "ha_agent" and row["enabled"] is True
+    assert result["data"]["conversation"]["enabled"] is True
+    assert result["data"]["conversation"]["ha_agent"]["binding"]
+
+
+async def test_dormant_selection_is_not_shown_enabled_and_full_chain_cannot_silently_ignore_enable(
+    setup,
+):
+    flow, module = setup
+    flow.config_entry.options["conversation"] = {
+        "enabled": True,
+        "providers": [
+            {"id": f"source-{i}", "kind": "ollama", "url": "https://single.invalid", "model": "one"}
+            for i in range(8)
+        ],
+        "ha_agent": {"type": "ha_agent", "entity_id": "conversation.synthetic", "timeout": 15},
+    }
+    form = await module.options_step(flow)
+    assert form["data_schema"]({})["enabled"] is False
+    result = await module.options_step(flow, INPUT)
+    assert result["errors"] == {"base": "invalid_field"}
+    assert flow.inspections == 0 and not flow.created
+
+
+async def test_full_chain_reenables_existing_native_in_place_without_capacity_error(setup):
+    flow, module = setup
+    rows = [
+        {"id": f"source-{i}", "kind": "ollama", "url": "https://single.invalid", "model": "one"}
+        for i in range(7)
+    ]
+    rows.insert(3, {"id": "native", "name": "Reviewed HA", "kind": "ha_agent", "enabled": False})
+    flow.config_entry.options["conversation"] = {"enabled": False, "providers": deepcopy(rows)}
+    result = await begin(flow, module)
+    assert result["step_id"] == "ha_agent_review"
+    saved = await module.review_step(flow, {"confirmed": True})
+    rows[3]["enabled"] = True
+    assert saved["data"]["conversation"]["providers"] == rows
+    assert saved["data"]["conversation"]["enabled"] is True
+
+
+async def test_disable_selection_preserves_legacy_fallback_without_primary(setup):
+    flow, module = setup
+    conversation = flow.config_entry.options["conversation"]
+    conversation["fallback"] = conversation.pop("primary")
+    conversation["ha_agent"] = {
+        "type": "ha_agent",
+        "entity_id": "conversation.synthetic",
+        "timeout": 15,
+    }
+    await begin(flow, module, {"enabled": False, "timeout": 15})
+    result = await module.review_step(flow, {"confirmed": True})
+    assert result["data"]["conversation"]["enabled"] is True
+    assert result["data"]["conversation"]["fallback"] == conversation["fallback"]
+
+
 @pytest.mark.parametrize(
     "values",
     [

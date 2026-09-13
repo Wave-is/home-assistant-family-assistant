@@ -13,6 +13,8 @@ import voluptuous as vol
 from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..domain.validation import revision as strict_revision
+from .chat_service import conversation_digest as provider_digest
+from .provider_registry import has_enabled_provider
 
 DEFAULT_POLICY = {"enabled": False, "allow_children": False}
 _STATE_PREFIX = "component.family_assistant.selector.article_policy_state.options."
@@ -93,24 +95,12 @@ async def _ha_user(flow):
 def _conversation_ready(runtime, state, options) -> bool:
     modules = state.get("settings", {}).get("modules", [])
     conversation = options.get("conversation")
-    primary = conversation.get("primary") if isinstance(conversation, dict) else None
-    ha_agent = conversation.get("ha_agent") if isinstance(conversation, dict) else None
-    configured = (
-        isinstance(primary, dict)
-        and isinstance(primary.get("model"), str)
-        and bool(primary["model"].strip())
-    ) or (
-        isinstance(ha_agent, dict)
-        and ha_agent.get("type") == "ha_agent"
-        and isinstance(ha_agent.get("entity_id"), str)
-        and ha_agent["entity_id"].startswith("conversation.")
-    )
     return bool(
         "conversation" in modules
-        and isinstance(conversation, dict)
-        and conversation.get("enabled") is True
-        and configured
+        and has_enabled_provider(conversation)
         and runtime.assistant is not None
+        and getattr(runtime.assistant, "cascade", None) is not None
+        and getattr(runtime, "assistant_config_digest", None) == provider_digest(conversation)
     )
 
 

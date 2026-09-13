@@ -14,6 +14,7 @@ from ..telegram.presentation import summary
 from . import plans
 from .language import COPY
 from .provider import bind_actor
+from .search_grounding import grounded_query
 
 
 class Assistant:
@@ -136,15 +137,23 @@ class Assistant:
     async def _search(self, view, content, value, language, now, t, *, cascade, scope_check=None):
         if self.search is None:
             raise DomainError("search_not_configured")
-        query = value["query"]
-        # The model may not exfiltrate anything from its family context into a query.
-        if query.casefold() not in content.casefold():
-            raise DomainError("search_query_not_grounded")
-        for member in view["members"]:
-            if re.search(rf"(?<!\w){re.escape(member['name'])}(?!\w)", query, re.I):
-                raise DomainError("search_query_not_grounded")
-        if re.search(r"(?:[TSACP]\d{4,}|https?://|@|\b\d{1,3}(?:\.\d{1,3}){3}\b)", query, re.I):
-            raise DomainError("search_query_not_grounded")
+        try:
+            query = grounded_query(value["query"], content, view["members"])
+        except DomainError as err:
+            if err.code != "search_query_not_grounded":
+                raise
+            # One bounded correction. Neither family context nor the rejected
+            # model text crosses into this pass; it cannot authorize any action.
+            await self._check_scope(scope_check)
+            async with asyncio.timeout(30):
+                repaired = await cascade.generate(
+                    plans.search_repair_messages(content),
+                    plans.SCHEMA["oneOf"][2],
+                    self._search_only,
+                    scope_check=scope_check,
+                )
+            await self._check_scope(scope_check)
+            query = grounded_query(repaired["query"], content, view["members"])
         await self._check_scope(scope_check)
         scoped_query = getattr(self.search, "query_for_scope", None)
         if scoped_query is None:
@@ -180,6 +189,13 @@ class Assistant:
             f"{index}. {r['title']}\n{r['url']}" for index, r in enumerate(results, 1)
         )
         return f"{reply[:2200]}\n\n{t['sources']}\n{sources}"[:3900]
+
+    @staticmethod
+    def _search_only(value):
+        result = plans.validate(value)
+        if result["kind"] != "search":
+            raise DomainError("provider_bad_response")
+        return result
 
     @staticmethod
     def _answer_only(value):

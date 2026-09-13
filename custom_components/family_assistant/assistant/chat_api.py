@@ -15,6 +15,7 @@ from ..const import DOMAIN
 from ..domain.validation import DomainError, text
 from ..domain.validation import revision as strict_revision
 from .chat_service import conversation_digest
+from .provider_registry import has_enabled_provider
 
 _HEX = set("0123456789abcdef")
 _LANGUAGES = {"en", "ru", "uk"}
@@ -217,13 +218,9 @@ def source_view(entry: Any, runtime: Any, actor: str) -> dict[str, Any]:
         assistant = runtime.assistant
         conversation = dict(entry.options).get("conversation")
         options_digest = conversation_digest(conversation)
-        primary = conversation.get("primary") if isinstance(conversation, dict) else None
         configured = bool(
-            isinstance(conversation, dict)
-            and conversation.get("enabled") is True
-            and isinstance(primary, dict)
-            and isinstance(primary.get("model"), str)
-            and primary["model"].strip()
+            has_enabled_provider(conversation)
+            and runtime.assistant_config_digest == options_digest
             and assistant is not None
             and getattr(assistant, "cascade", None) is not None
         )

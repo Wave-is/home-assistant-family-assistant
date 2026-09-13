@@ -51,6 +51,11 @@ endpoint is not interchangeable with it.
 
 The existing HA agent is configured and reviewed separately. Adding its reference
 to the chain does not grant new HA tools or copy that agent's credentials.
+Enabling that reviewed selection re-enables its existing chain row in place, or
+appends one if absent and the chain has space. Disabling it disables only that
+row; another enabled provider keeps the chain usable. Existing names and order
+are preserved. A single AGY or supported HA agent is sufficient for dashboard
+conversation and, after its separate owner consent, public article reading.
 
 The legacy two-slot Ollama form remains available for compatibility. Until a
 chain is explicitly saved, legacy AGY, HA-agent, primary and fallback settings
