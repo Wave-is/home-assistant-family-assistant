@@ -1112,6 +1112,9 @@
     }
   },
   "exceptions": {
+    "observation_revoked": {
+      "message": "This price observation is no longer current. Refresh the product before trying again."
+    },
     "home_status_group_in_use": {
       "message": "Remove or move the group's sources before removing the group."
     },
