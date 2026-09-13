@@ -3,6 +3,9 @@
 A local-first family workspace for Home Assistant. Shopping, tasks, wake-up
 checks, rewards, routines and family networking, using your own Telegram bot.
 
+**Early version / Ранняя версия / Рання версія — use a test installation first.**
+See [HACS early access](docs/hacs-early-access.md) for installation and catalog status.
+
 **Control-center and legacy-parity repairs are in progress.**
 Published version numbers are not evidence that the full vision or every household
 migration has been accepted. See the current [repair scope](docs/control-center-repair.md)
@@ -64,6 +67,9 @@ with no automatic telemetry or code changes.
 Private proposal correction notes: [English](docs/semantic-feedback.md) ·
 [Русский](docs/ru/semantic-feedback.md) · [Українська](docs/uk/semantic-feedback.md).
 These are private local notes, not anonymized bug reports or automatic fixes.
+
+[Command understanding and local name learning](docs/command-learning.md) explains
+automatic corrections, rule revocation, provider order and the AGY CLI limitation.
 
 Python 3.14.2+ is the Home Assistant test target. Pure domain tests also run on
 Python 3.11 without Home Assistant. Create a virtual environment, install

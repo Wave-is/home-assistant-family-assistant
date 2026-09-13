@@ -1,5 +1,26 @@
 # Implementation and acceptance matrix
 
+## Command-learning increment — 13 September 2026
+
+Candidate `0.2.0-rc.3` adds independently proven task-recipient typo correction,
+atomic task/rule persistence, actor-private reusable spellings, explicit disable
+and same-transaction checks against concurrent revocation. Unknown-member parse
+errors reach inference; RU/UK/EN assignment variants and typed model recipient
+epochs are covered by new regressions. Conversation cards expose name-rule kind
+and effective binding status in all three languages. Full vision/legacy parity
+is still incomplete; see [command-learning.md](command-learning.md).
+
+Provider precedence is corrected to optional AGY-compatible HTTP, reviewed HA
+agent, primary and enabled fallback. **Native AGY CLI integration is not yet
+implemented**; the existing named slot only speaks Ollama HTTP. Do not conflate
+development-time AGY use with an installed household inference provider.
+
+Local acceptance: 5,470 Python tests, 23 subtests (five platform skips), 392
+Chromium scenarios and 730 Node checks passed. Isolated HA 2026.8.2 full smoke and
+the final targeted real-Store/reload/name-learning case passed. Exact-commit CI
+evidence belongs to this candidate's release checkpoint. HACS custom installation and default catalog
+submission are distinct; [status and installation](hacs-early-access.md).
+
 The product vision remains the scope. Status is explicit: planned, implemented,
 unit-tested, HA-tested, hardware-tested, released. These are distinct gates.
 Nothing is production-ready solely because a mock test passes.

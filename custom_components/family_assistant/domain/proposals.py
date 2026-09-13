@@ -55,6 +55,11 @@ def _receipt(proposal: dict) -> dict:
 def handle(ctx, action, payload):
     from .engine import Engine
 
+    if action == "apply_name_repair":
+        from .name_learning import handle as repair_name
+
+        return repair_name(ctx, payload)
+
     if action in {"learn", "forget"}:
         from .learning import handle as learning
 

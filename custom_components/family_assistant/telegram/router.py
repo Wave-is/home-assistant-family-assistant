@@ -426,6 +426,11 @@ async def route(
         return t["forget_scope"]
 
     def saved(result):
+        if result.get("status") == "repaired":
+            from ..domain.name_learning import reply as name_repair_reply
+
+            return name_repair_reply(result, engine.view(actor), language)
+
         if "watch_revision" in result and type(result.get("enabled")) is bool:
             from .watch_messages import COMMAND_COPY
 
@@ -675,6 +680,7 @@ async def route(
     if command_parts(original_content)[0].casefold() == "/завдання" and tail.strip():
         command = "/task"
     parse_error = None
+    learned_name = False
     try:
         intent = (
             parse(engine.snapshot(), view, content, now, refs)
@@ -686,6 +692,9 @@ async def route(
     if intent is None and not command.startswith("/"):
         canonical = resolve(engine.snapshot(), actor, content)
         if canonical != content:
+            from ..domain.name_learning import resolve as resolve_name
+
+            learned_name = resolve_name(engine.snapshot(), actor, content) == canonical
             content = canonical
             command, tail = command_parts(content)
             command = canonical_command(command)
@@ -700,6 +709,7 @@ async def route(
                 parse_error = err
     if parse_error:
         if fallback is not None and parse_error.code in {
+            "unknown_member",
             "ambiguous_command",
             "ambiguous_member",
             "context_required",
@@ -922,6 +932,17 @@ async def route(
         # Persist the note and rejection once, without another raw-text copy in
         # Telegram's plan cache (the channel's own message history is separate).
         return saved(await engine.execute(actor, action, payload, operation_id, now))
+    if learned_name and action == "tasks.create":
+        # Recheck the rule under the same Engine transaction as task creation.
+        # A concurrent forget/identity edit while persisting the plan cancels it.
+        selected = next(m for m in view["members"] if m["id"] == payload["assignee"])
+        payload = {
+            "source": original_content,
+            "commands": [{"action": action, "payload": payload}],
+            "actor_revision": next(m["revision"] for m in view["members"] if m["id"] == actor),
+            "member_revision": selected["revision"],
+        }
+        action = "conversation.apply_name_repair"
     result = await commands.execute(
         engine, actor, original_content, refs, operation_id, now, action, payload
     )

@@ -464,6 +464,16 @@ class Engine:
             for record in self._state["memory"].get("phrases", {}).values()
             if record["actor"] == actor_id
         ]
+        from .name_learning import effective as effective_name_rule
+
+        for row in data["learned_phrases"]:
+            record = self._state["memory"]["phrases"][row["id"]]
+            if record.get("kind") == "member_alias":
+                row.update(
+                    kind="member_alias",
+                    provenance="model_name_repair",
+                    effective=effective_name_rule(self._state, actor, record),
+                )
         if "conversation" in self._state["settings"]["modules"]:
             from .semantic_feedback import project as feedback_view
 
@@ -658,6 +668,14 @@ class Engine:
         elif action == "settings.digest_policy":
             digest_settings.authorize_replay(
                 Context(self._state, self._actor(actor_id), now, "digest-policy-replay"),
+                payload,
+                result,
+            )
+        elif action == "conversation.apply_name_repair":
+            from .name_learning import authorize_replay
+
+            authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "name-repair-replay"),
                 payload,
                 result,
             )

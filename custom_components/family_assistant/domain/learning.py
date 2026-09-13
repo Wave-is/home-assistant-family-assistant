@@ -20,9 +20,16 @@ def resolve(state, actor, value):
         return value
     source = normalized(value)
     for record in state["memory"].get("phrases", {}).values():
-        if record["actor"] == actor and record["active"] and record["normalized"] == source:
+        if (
+            record.get("kind") != "member_alias"
+            and record["actor"] == actor
+            and record["active"]
+            and record["normalized"] == source
+        ):
             return record["canonical"]
-    return value
+    from .name_learning import resolve as resolve_name
+
+    return resolve_name(state, actor, value)
 
 
 def handle(ctx, action, payload):
@@ -79,7 +86,9 @@ def handle(ctx, action, payload):
         (
             p
             for p in phrases.values()
-            if p["actor"] == ctx.actor_id and p["normalized"] == normalized(source)
+            if p.get("kind") != "member_alias"
+            and p["actor"] == ctx.actor_id
+            and p["normalized"] == normalized(source)
         ),
         None,
     )

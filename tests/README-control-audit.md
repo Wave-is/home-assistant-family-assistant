@@ -124,14 +124,14 @@ inventory remains available for review.
 
 ## Limits
 
-Final bounded audit snapshot: **385/385 Chromium scenarios passed** (55 suites,
+Final bounded audit snapshot: **392/392 Chromium scenarios passed** (56 suites,
 3.0 minutes). The manifest contains 81 files and 1,196 conservative source sites;
-557 registered handler groups, of which 465 were invoked and 426 received trusted
+557 registered handler groups, of which 465 were invoked and 427 received trusted
 events. The 92 uninvoked groups remain explicit: one click, zero submit, 51 input,
 39 change and one keydown. Another 644 source lines have no registered handler
 frame, considering all five collected frames; many are field/helper declarations,
-not individual clickable controls. All 115 observed WS action names have resolved
-synthetic responses; 59 also have rejected-response cases, leaving 56 without that
+not individual clickable controls. All 116 observed WS action names have resolved
+synthetic responses; 60 also have rejected-response cases, leaving 56 without that
 failure evidence. These counts do not establish
 that every possible button, field combination, role or backend path passed.
 
@@ -165,6 +165,14 @@ recorded separately. The semantic sweeps also check all 15 panel capability
 switches, family/profile failed saves, onboarding packs/back/completion,
 native-link discard refusal, read-only recognition, task/reward/calendar/court
 transitions, and draft Cancel/Back/hide/close-without-rollback controls.
+
+The seven `conversation-learning-alias` scenarios additionally cover projected
+learned name spellings in English, Russian and Ukrainian, mobile/inert text,
+active versus effective status, explicit Disable with exact failed-operation
+retry, preservation of unrelated phrases, the original phrase-save contract,
+and stale actor/module controls. These use synthetic projected alias records;
+they do not establish how a model proposed a repair or how the backend proved
+and stored it. The name-learning and provider tests cover those separate layers.
 
 An intermediate 353-case run had one school-work scenario time out before any
 card mounted (the snapshot contained only `main`). No console/network evidence

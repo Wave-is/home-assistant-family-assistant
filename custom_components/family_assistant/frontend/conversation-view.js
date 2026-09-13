@@ -396,7 +396,17 @@ export function renderConversation(card, body) {
     )
       continue;
     const item = node("div", null, "item");
-    item.append(node("strong", phrase.source), node("p", phrase.canonical, "sub"));
+    if (phrase.kind === "member_alias") {
+      item.append(
+        node("strong", copy.learned_name),
+        node("p", `${phrase.source} → ${phrase.canonical}`),
+        node("p", copy.learned_name_hint, "sub"),
+      );
+      if (phrase.effective !== true)
+        item.append(node("p", copy.learned_name_inactive, "sub"));
+    } else {
+      item.append(node("strong", phrase.source), node("p", phrase.canonical, "sub"));
+    }
     const forget = node("button", copy.forget);
     forget.type = "button";
     forget.disabled = Boolean(card._writing);

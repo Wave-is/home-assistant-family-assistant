@@ -2,6 +2,10 @@
 
 COPY = {
     "en": {
+        "name_repaired": (
+            "✅ {result}\n📖 Understood {source} as {canonical}. Remembered this task-recipient "
+            "spelling for your account. /forgetphrase {id} disables the rule."
+        ),
         "learned": (
             "📖 Remembered for your account: {id}. It grants no new permissions; "
             "deadlines and targets are resolved anew. /forgetphrase {id} disables it."
@@ -27,6 +31,10 @@ COPY = {
         ),
     },
     "ru": {
+        "name_repaired": (
+            "✅ {result}\n📖 Понял «{source}» как «{canonical}». Запомнил это написание "
+            "адресата задач для вашего аккаунта. /forgetphrase {id} отключит правило."
+        ),
         "learned": (
             "📖 Запомнил для вашего аккаунта: {id}. Новых прав это не даёт; "
             "сроки и объекты определяются заново. /forgetphrase {id} отключит правило."
@@ -54,6 +62,10 @@ COPY = {
         ),
     },
     "uk": {
+        "name_repaired": (
+            "✅ {result}\n📖 Зрозумів «{source}» як «{canonical}». Запам’ятав це написання "
+            "адресата завдань для вашого акаунта. /forgetphrase {id} вимкне правило."
+        ),
         "learned": (
             "📖 Запам’ятав для вашого акаунта: {id}. Нових прав це не дає; "
             "терміни й об’єкти визначаються заново. /forgetphrase {id} вимкне правило."

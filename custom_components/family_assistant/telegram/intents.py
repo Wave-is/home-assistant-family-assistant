@@ -189,24 +189,71 @@ SHOPPING_PURCHASE_RE = re.compile(
 
 TASK_CREATE_PATTERNS = [
     re.compile(
-        r"^(?:назначь(?:те)?|назначить|признач(?:те)?|призначити|задай(?:те)?|задати|дай(?:те)?|дати|assign)\s+"
+        r"^(?:назначь(?:те)?|назначить|постав(?:ь(?:те)?|ить|те|ити)?|признач(?:те)?|призначити|"
+        r"задай(?:те)?|задати|дай(?:те)?|дати|assign)\s+"
         r"(.{1,80}?)\s+(?:задач[ауе]|завдання|task)\s*[:.]?\s+(.+)$",
         re.I,
     ),
     re.compile(
-        r"^(?:(?:создай(?:те)?|создать|добавь(?:те)?|добавить|дай(?:те)?|дать|"
+        r"^(?:(?:постав(?:ь(?:те)?|ить|те|ити)?|назначь(?:те)?|назначить|"
+        r"создай(?:те)?|создать|добавь(?:те)?|добавить|дай(?:те)?|дать|"
         r"створи(?:ть)?|додай(?:те)?|додати|признач(?:те)?|призначити|"
-        r"add|create|give)\s+)?"
+        r"add|create|give|assign)\s+)?"
         r"(?:задач[ауе]|завдання|task)\s+"
-        r"(?:(?:для|кому|for)\s+)?([^\s:.]+)\s*[:.]?\s+(.+)$",
+        r"(?:(?:для|кому|for)\s+)?(.+)$",
         re.I,
     ),
     re.compile(r"^(.{1,80}?)\s+(?:задача|завдання|task)\s*[:.]?\s+(.+)$", re.I),
 ]
 
 
+# A minus before a number can belong to an invalid deadline ("in - 2 days").
+# Do not move that validation failure into the recipient slot.
+_ASSIGNMENT_SEPARATOR = re.compile(r":(?!\d)|\.(?=\s|$)|(?<=\s)-(?=\s+(?!\d)\S|$)|[–—]")
+
+
+def assignment_recipient(content: str) -> tuple[int, int] | None:
+    """Locate an explicit full recipient slot, without resolving or guessing a name.
+
+    Offsets refer to the unchanged input. Without a separator after a task-first
+    header, an unknown multiword name cannot be distinguished from the title.
+    The strict parser may still resolve a configured name in that form; a model
+    repair must not treat its first word as proof of the complete recipient.
+    """
+    value = content.strip()
+    if re.match(r"^(?:не\b|not\b|do\s+not\b|don't\b)", value, re.I):
+        return None
+    offset = len(content) - len(content.lstrip())
+    for index, pattern in enumerate(TASK_CREATE_PATTERNS):
+        match = pattern.fullmatch(value)
+        if match is None:
+            continue
+        start, end = match.span(1)
+        if index == 1:
+            separator = _ASSIGNMENT_SEPARATOR.search(match[1])
+            if separator is None or not match[1][separator.end() :].strip():
+                return None
+            end = start + separator.start()
+        candidate = value[start:end]
+        start += len(candidate) - len(candidate.lstrip())
+        end -= len(candidate) - len(candidate.rstrip())
+        if not 1 <= end - start <= 80:
+            return None
+        return offset + start, offset + end
+    return None
+
+
 def _task_member_prefix(state, content):
     """Prefer a complete configured recipient over a matching first-word ID."""
+    separator = _ASSIGNMENT_SEPARATOR.search(content)
+    if separator is not None:
+        candidate = content[: separator.start()].strip()
+        title = content[separator.end() :].strip()
+        if not candidate or not title:
+            raise DomainError("ambiguous_command")
+        # An explicit delimiter bounds the whole name. Never rescue an unknown
+        # full slot by interpreting its trailing name words as the task title.
+        return find_member(state, candidate), title
     boundaries = [match for match in re.finditer(r"\s+", content) if match.start() <= 80]
     for boundary in reversed(boundaries):
         candidate = content[: boundary.start()].rstrip(" .:")
@@ -332,11 +379,12 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
         create = pat.match(value)
         if create:
             if index == 1:
-                member, task_text = _task_member_prefix(
-                    state, create.group(1) + " " + create.group(2)
-                )
+                member, task_text = _task_member_prefix(state, create.group(1))
             else:
                 member, task_text = find_member(state, create.group(1)), create.group(2)
+                task_text = re.sub(r"^(?:[:.]\s*|[–—]\s*|-\s+)", "", task_text)
+                if not task_text.strip():
+                    raise DomainError("ambiguous_command")
             title, due = extract_due(task_text, now, timezone)
             return Intent("tasks.create", {"assignee": member, "title": title, "due_at": due})
 

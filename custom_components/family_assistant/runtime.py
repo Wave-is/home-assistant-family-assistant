@@ -502,12 +502,16 @@ def async_configure_assistant(hass, entry):
             if config.get(key) and (key != "fallback" or config[key].get("enabled", True))
         ]
         session = async_get_clientsession(hass) if direct or search_enabled else None
-        providers = []
+        # The optional agy slot uses the existing Ollama HTTP contract, not
+        # a developer-PC CLI. Keep it first; native HA precedes other direct slots.
+        providers = [Ollama(session, provider) for provider in direct]
         if config.get("ha_agent"):
             from .assistant.ha_agent_provider import HAConversationAgent
 
-            providers.append(HAConversationAgent(hass, entry, config["ha_agent"]))
-        providers.extend(Ollama(session, provider) for provider in direct)
+            providers.insert(
+                1 if config.get("agy") else 0,
+                HAConversationAgent(hass, entry, config["ha_agent"]),
+            )
         search = Search(session, search_config) if search_enabled else None
         runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
         article_policy = entry.options.get("articles", {})

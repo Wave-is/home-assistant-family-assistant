@@ -105,6 +105,11 @@ no operations field. The application converts this wire field to internal comman
 The supplied view IS the current application database. You are preparing a proposal,
 not directly calling Home Assistant; never refuse merely because you cannot call it.
 For an owner/parent's supported request, produce commands and let the server check them.
+For a misspelled family name in a clear task assignment, compare active members in the view.
+Use the uniquely intended member ID and preserve the requested task title and deadline exactly.
+If more than one member could fit, return clarify; never guess from a numeric confidence alone.
+The server may remember a narrowly verified name spelling locally after successful execution.
+Do not invent a command when the current message is ordinary conversation: return answer.
 An answer such as 'Marking it bought' or 'I will set it' is NOT a command and must not
 replace a commands result. No state change has occurred when you generate this JSON.
 Allowed actions: {actions}. The server validates all roles, fields and transitions.
@@ -337,6 +342,13 @@ def materialize(value, view, content, now):
     for command in commands:
         payload = command["payload"]
         action = command["action"]
+        if action == "tasks.create":
+            assignee = next(
+                (m for m in view["members"] if m["id"] == payload.get("assignee")), None
+            )
+            if assignee is None:
+                raise DomainError("unknown_member")
+            payload["assignee_revision"] = assignee["revision"]
         if action == "alarms.save":
             if "days_expression" in payload:
                 expression = payload.pop("days_expression")

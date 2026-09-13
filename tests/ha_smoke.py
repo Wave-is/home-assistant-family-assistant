@@ -100,6 +100,11 @@ async def main(*, case="all"):
 
                 await verify_existing_ha_agent(hass, user)
                 return
+            if case == "name-learning":
+                from ha_name_learning_smoke import verify_name_learning
+
+                await verify_name_learning(hass, user)
+                return
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -348,6 +353,9 @@ async def main(*, case="all"):
             from ha_semantic_feedback_smoke import verify_semantic_feedback
 
             await verify_semantic_feedback(hass, user)
+            from ha_name_learning_smoke import verify_name_learning
+
+            await verify_name_learning(hass, user)
             from ha_school_retention_smoke import verify_school_retention
 
             await verify_school_retention(hass, entry)
@@ -1361,6 +1369,8 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--case", choices=("all", "ha-agent", "voice", "panel", "settings"), default="all"
+        "--case",
+        choices=("all", "ha-agent", "voice", "panel", "settings", "name-learning"),
+        default="all",
     )
     asyncio.run(main(case=parser.parse_args().case))

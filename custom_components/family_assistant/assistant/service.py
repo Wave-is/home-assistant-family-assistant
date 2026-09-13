@@ -49,6 +49,17 @@ class Assistant:
         )
         cascade = bind_actor(self.cascade, actor, actor_revision, language)
         t = COPY[language]
+        from ..telegram import commands as parsed_commands
+
+        prior = parsed_commands.previous(self.engine, actor, content, refs, operation_id)
+        if prior and prior["action"] == "conversation.apply_name_repair":
+            from ..domain.name_learning import reply as name_repair_reply
+
+            result = await self.engine.execute(
+                actor, prior["action"], prior["payload"], operation_id, now
+            )
+            await self._check_scope(scope_check)
+            return name_repair_reply(result, self.engine.view(actor), language)
         proposal_id = "P" + hashlib.sha256(operation_id.encode()).hexdigest()[:20]
         existing = self.engine.snapshot()["proposals"].get(proposal_id)
         if existing:
@@ -83,6 +94,7 @@ class Assistant:
                     view,
                     now,
                     t,
+                    refs=refs,
                     scope_check=scope_check,
                 )
             if value["kind"] == "read":
@@ -176,6 +188,7 @@ class Assistant:
         now,
         t,
         *,
+        refs=(),
         scope_check=None,
     ):
         await self._check_scope(scope_check)
@@ -183,6 +196,35 @@ class Assistant:
             next(m["revision"] for m in view["members"] if m["id"] == actor)
         )
         commands = plans.materialize(value, view, content, now)
+        from ..domain.name_learning import prove
+        from ..domain.name_learning import reply as name_repair_reply
+
+        correction = prove(self.engine.snapshot(), view, content, now, commands)
+        if correction is not None:
+            from ..telegram.commands import execute
+
+            await self._check_scope(scope_check)
+            result = await execute(
+                self.engine,
+                actor,
+                content,
+                refs,
+                operation_id,
+                now,
+                "conversation.apply_name_repair",
+                {
+                    "source": content,
+                    "commands": commands,
+                    "actor_revision": actor_revision,
+                    "member_revision": correction["member_revision"],
+                },
+            )
+            await self._check_scope(scope_check)
+            return name_repair_reply(
+                result,
+                self.engine.view(actor),
+                next(m["language"] for m in view["members"] if m["id"] == actor),
+            )
         signature = hashlib.sha256(
             json.dumps([actor, content, commands], sort_keys=True).encode()
         ).hexdigest()
