@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic home status</title>
+<style>
+  body { margin: 0; padding: 12px; font-family: system-ui; background: #eef3f1; color: #19332f; }
+  main { max-width: 700px; margin: auto; }
+</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+// Synthetic WS projection only. Source ACL/registry/Options/Store/Telegram are
+// independently covered by the real Engine tests and the native HA smoke case.
+const query = new URLSearchParams(location.search);
+const language = query.get("lang") || "en";
+const role = query.get("role") || "owner";
+document.documentElement.lang = language;
+window.calls = [];
+window.fixture = {
+  actor: role, role, home_status_access: "synthetic-access-one",
+  settings: {name: "Synthetic household", timezone: "UTC", modules: query.has("disabled") ? [] : ["home_status"]},
+  members: [{id: role, name: "Synthetic reader", role, active: true, revision: 1}],
+  tasks: [], shopping: [], court: [], proposals: [],
+};
+const row = (id, label, value, unit) => ({
+  id, label, value, unit, reported_state: null, active: null, quality: "ok",
+  ha_reported_at: "2026-09-13T12:00:00+00:00", freshness_basis: "last_reported", report_age_seconds: 0,
+});
+window.readings = {
+  access_marker: "synthetic-access-one", generated_at: "2026-09-13T12:00:00+00:00",
+  config_revision: 1, max_age_seconds: 300,
+  energy: [row("soc", "Synthetic battery", 65, "%"), row("power", "Synthetic power", -2500, "W")],
+  active: [{...row("relay", "Synthetic relay", null, null), reported_state: "on", active: true}],
+  groups: [{id: "room", title: "Synthetic room", rows: [row("temperature", "Synthetic temperature", 21.5, "°C")]}],
+};
+const card = document.createElement("family-assistant-home-status-card");
+window.card = card;
+card.setConfig({entry_id: "synthetic-home-status", language});
+card.hass = {language, user: {id: "synthetic-home-status-user"}, config: {time_zone: "UTC"}, callWS: async message => {
+  window.calls.push(structuredClone(message));
+  if (message.type === "family_assistant/households") return [{entry_id: "synthetic-home-status", title: "Synthetic household"}];
+  if (message.type === "family_assistant/view") return structuredClone(window.fixture);
+  if (message.type !== "family_assistant/home_status") throw new Error("unexpected_fixture_request");
+  if (window.failRead) throw new Error("PRIVATE_EXCEPTION_CANARY");
+  if (window.deferRead) return new Promise(resolve => {window.resolveRead = resolve;});
+  return structuredClone(window.readings);
+}};
+document.querySelector("main").append(card);
+</script>
+</html>

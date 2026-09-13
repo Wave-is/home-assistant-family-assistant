@@ -399,6 +399,9 @@ def render(event, target, state, *, now=None):
                 "allow_sending_without_reply": True,
             }
     elif event["key"] == "telegram_reply":
+        if "home_status" in data:
+            # Only the HA adapter can authorize and late-render these descriptors.
+            raise DeliveryError("delivery_revoked")
         from datetime import UTC, datetime
 
         from .reply_delivery import current

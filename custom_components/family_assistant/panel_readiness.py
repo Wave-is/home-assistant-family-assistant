@@ -174,6 +174,10 @@ def capabilities(state, services, health, members):
     for module in MODULES:
         issues = []
         ready = module in enabled
+        if ready and module == "home_status":
+            # Enabling a read-on-request module proves neither configured sources
+            # nor current ACL/freshness. The dedicated card performs the read.
+            ready = None
         if ready and module == "conversation":
             if not services.get("conversation"):
                 issues.append("provider_unavailable")

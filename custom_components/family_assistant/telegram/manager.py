@@ -348,6 +348,12 @@ class TelegramManager:
             await asyncio.sleep(1)
 
     async def _send_notification(self, event, target):
+        if "home_status" in event.get("data", {}):
+            from ..home_status.delivery import payload as home_status_payload
+
+            payload = await home_status_payload(self, event, target)
+            result = await self.client.call("sendMessage", payload)
+            return str(result["message_id"])
         if "image_job_id" in event.get("data", {}):
             try:
                 self._manager_guard()
@@ -659,16 +665,21 @@ class TelegramManager:
                             command_guard(engine.snapshot())
                             return result
 
+                        from ..home_status.telegram import route as route_home_status
                         from .image_generation import enqueue as enqueue_image
 
-                        response = await enqueue_image(
-                            self,
-                            actor,
-                            message,
-                            content,
-                            f"tg:{bot_id}:{update_id}:action",
-                            command_guard,
+                        response = await route_home_status(
+                            self, actor, content, command_guard, private=private
                         )
+                        if response is None:
+                            response = await enqueue_image(
+                                self,
+                                actor,
+                                message,
+                                content,
+                                f"tg:{bot_id}:{update_id}:action",
+                                command_guard,
+                            )
                         if response is None:
                             response = await self.photo_reports.enqueue(
                                 scoped_engine,
@@ -743,8 +754,16 @@ class TelegramManager:
                             actor,
                             "telegram_reply",
                             {
-                                "text": response,
+                                "text": "" if hasattr(response, "descriptor") else response,
                                 "private_context": isinstance(response, PersonalReply),
+                                **(
+                                    {
+                                        "home_status": response.descriptor,
+                                        "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                                    }
+                                    if hasattr(response, "descriptor")
+                                    else {}
+                                ),
                                 **(
                                     {"school_context": response.school_scope}
                                     if hasattr(response, "school_scope")

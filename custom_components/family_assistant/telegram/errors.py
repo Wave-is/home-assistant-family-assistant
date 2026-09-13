@@ -2,6 +2,7 @@
 
 ERRORS = {
     "en": {
+        "home_status_group_in_use": "Remove or move the group's sources before removing the group.",
         "migration_prepare_source_invalid": "The source exports or additional IDs "
         "are invalid, unsupported or oversized. "
         "Obtain corrected coherent exports; no "
@@ -301,6 +302,7 @@ ERRORS = {
         "online_school_timeout": "School did not respond in time. Saved data was kept.",
     },
     "ru": {
+        "home_status_group_in_use": "Перед удалением группы удалите или перенесите её источники.",
         "migration_prepare_source_invalid": "Экспорты или дополнительные ID "
         "некорректны, не поддерживаются или "
         "слишком велики. Подготовьте "
@@ -611,6 +613,7 @@ ERRORS = {
         "online_school_timeout": "Школа не ответила вовремя. Прежние данные сохранены.",
     },
     "uk": {
+        "home_status_group_in_use": "Перед видаленням групи видаліть або перенесіть її джерела.",
         "migration_prepare_source_invalid": "Експорти чи додаткові ID некоректні, "
         "не підтримуються або завеликі. "
         "Підготуйте виправлений узгоджений "

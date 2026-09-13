@@ -25,14 +25,38 @@ def test_inventory_has_explicit_unfinished_settings_not_a_blanket_pass():
     assert result == {
         "status": "declarations_accounted_for",
         "source_verified": False,
-        "missing": 16,
-        "replaced": 10,
+        "missing": 9,
+        "replaced": 17,
         "review_required": 3,
     }
 
 
 def test_source_coverage_checks_every_legacy_declared_setting():
     assert validate(INVENTORY, synthetic_sources())["source_verified"]
+
+
+def test_home_status_replaces_only_read_only_mappings_not_controls_or_forecasts():
+    source = INVENTORY["sources"]["family_assistant"]
+    assert {
+        "status_groups",
+        "active_entities",
+        "battery_soc_entity",
+        "battery_power_entity",
+        "load_power_entity",
+        "pv_power_entity",
+        "grid_power_entity",
+    } <= set(source["replaced"])
+    assert set(source["missing"]) == {
+        "gate_entity",
+        "climates",
+        "fans",
+        "car_chargers",
+        "kettle_status_entity",
+        "kettle_temperature_entity",
+        "kettle_fault_entity",
+        "kettle_stop_entity",
+        "solar_forecast_audit",
+    }
 
 
 @pytest.mark.parametrize("mutation", ["added", "removed", "renamed"])

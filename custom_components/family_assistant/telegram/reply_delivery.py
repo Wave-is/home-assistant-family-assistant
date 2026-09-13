@@ -6,6 +6,11 @@ from ..domain.validation import DomainError, timestamp
 def current(event, state, now):
     """Keep legacy envelopes compatible, but never revive a pinned old identity."""
     data = event.get("data", {})
+    if "home_status" in data:
+        from ..home_status.delivery import current as home_status_current
+
+        if not home_status_current(state, data, now):
+            return False
     if "image_job_id" in data:
         from .image_generation import current_result
 

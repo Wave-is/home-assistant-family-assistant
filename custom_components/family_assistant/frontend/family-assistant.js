@@ -34,6 +34,7 @@ import {renderMealShopping} from "./meal-shopping-view.js";
 import {renderAvailabilityShell} from "./availability-shell.js";
 import {renderToday} from "./today-view.js";
 import {renderHealth,reconcileHealthRefresh} from "./health-view.js";
+import {clearHomeStatus,refreshHomeStatus,renderHomeStatus} from "./home-status-view.js";
 import {captureFocusRefresh,renderWithFocusRefresh} from "./focus-refresh.js";
 import {ALARM_EDITOR_COPY,openAlarmEditor,renderAlarmEditor,reconcileAlarmEditorRefresh} from "./alarm-editor.js";
 import {renderTaskSeries,reconcileTaskSeriesRefresh} from "./task-series-view.js";
@@ -44,6 +45,7 @@ import {MEMBER_CONTEXT_VIEWS,memberContextId,inMemberContext,memberContextComman
 import "./family-panel.js";
 const COPY = {
   en: {
+    home_status: "Home status",
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
     networkLeaseOnly:"DHCP inventory. Reading makes no changes; Kid Control is configured separately.",networkLeaseWriteOff:"DHCP lease writes are disabled. This does not disable separately authorized Kid Control commands.",
     networkPrepare:"Preview selected leases",networkSelect:"Select lease",networkComment:"Proposed comment",networkReplace:"Replace existing comment",networkApply:"Apply reviewed plan",networkCancel:"Cancel plan",networkReview:"Review lease changes",networkConsent:"I understand: rollback of a conversion removes only its new reservation. Dynamic DHCP recovery requires renewal and is not an exact restoration.",networkWriteOff:"Writes are disabled. Enable reviewed changes and protect management devices in connection settings, then create a fresh plan.",networkToStatic:"Dynamic → static",networkNoChanges:"No change",networkExpired:"Preview expired — create a fresh one.",networkState_preview:"Preview only",networkState_queued:"Queued; not yet applied",networkState_applying:"Applying with read-back",networkState_rolling_back:"Compensating selected changes",networkState_applied:"Applied and verified",networkState_rolled_back:"Compensated — check DHCP recovery",networkState_review_required:"Needs your review",networkState_failed:"Not applied",networkState_cancelled:"Cancelled",networkSelectDynamic:"Select eligible dynamic leases",
@@ -90,6 +92,7 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    home_status: "Состояние дома",
     networkWriteHint:"Роутер меняют только выбранные и подтверждённые планы. Чтение инвентаря ничего не меняет.",
     networkLeaseOnly:"Инвентарь DHCP. Чтение ничего не меняет; Kid Control настраивается отдельно.",networkLeaseWriteOff:"Изменение лизов DHCP выключено. Это не отключает отдельно разрешённые команды Kid Control.",
     networkPrepare:"Предпросмотр выбранных лизов",networkSelect:"Выбрать лиз",networkComment:"Предлагаемый комментарий",networkReplace:"Заменить существующий комментарий",networkApply:"Применить проверенный план",networkCancel:"Отменить план",networkReview:"Проверка изменений лизов",networkConsent:"Понимаю: откат преобразования удалит только новую резервацию. Для восстановления динамического DHCP нужно обновление лиза; это не точное восстановление.",networkWriteOff:"Запись выключена. В параметрах подключения разрешите проверенные изменения и защитите устройства управления, затем создайте свежий план.",networkToStatic:"Динамический → статический",networkNoChanges:"Без изменений",networkExpired:"Предпросмотр истёк — создайте новый.",networkState_preview:"Только предпросмотр",networkState_queued:"В очереди; ещё не применён",networkState_applying:"Применяется с повторной проверкой",networkState_rolling_back:"Откат выбранных изменений",networkState_applied:"Применён и проверен",networkState_rolled_back:"Выполнен откат — проверьте DHCP",networkState_review_required:"Нужна ваша проверка",networkState_failed:"Не применён",networkState_cancelled:"Отменён",networkSelectDynamic:"Выбрать подходящие динамические лизы",
@@ -136,6 +139,7 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    home_status: "Стан дому",
     networkWriteHint:"Роутер змінюють лише вибрані й підтверджені плани. Читання інвентарю нічого не змінює.",
     networkLeaseOnly:"Інвентар DHCP. Читання нічого не змінює; Kid Control налаштовується окремо.",networkLeaseWriteOff:"Зміну лізів DHCP вимкнено. Це не вимикає окремо дозволені команди Kid Control.",
     networkPrepare:"Попередній перегляд вибраних лізів",networkSelect:"Вибрати ліз",networkComment:"Пропонований коментар",networkReplace:"Замінити чинний коментар",networkApply:"Застосувати перевірений план",networkCancel:"Скасувати план",networkReview:"Перевірка змін лізів",networkConsent:"Розумію: відкат перетворення видалить лише нову резервацію. Для відновлення динамічного DHCP потрібне оновлення ліза; це не точне відновлення.",networkWriteOff:"Запис вимкнено. У параметрах підключення дозвольте перевірені зміни й захистіть пристрої керування, потім створіть свіжий план.",networkToStatic:"Динамічний → статичний",networkNoChanges:"Без змін",networkExpired:"Попередній перегляд застарів — створіть новий.",networkState_preview:"Лише попередній перегляд",networkState_queued:"У черзі; ще не застосовано",networkState_applying:"Застосовується з повторною перевіркою",networkState_rolling_back:"Відкат вибраних змін",networkState_applied:"Застосовано й перевірено",networkState_rolled_back:"Виконано відкат — перевірте DHCP",networkState_review_required:"Потрібна ваша перевірка",networkState_failed:"Не застосовано",networkState_cancelled:"Скасовано",networkSelectDynamic:"Вибрати придатні динамічні лізи",
@@ -248,13 +252,15 @@ export class FamilyCard extends HTMLElement {
     disposeAssetDocuments(this);
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
-    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests"].includes(this._view)) throw new Error("Unknown Family Assistant view");
+    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
     // Requests from the previous configuration are fenced by generation. They
     // must not keep the replacement household/view locked until their response.
     this._loading=false;this._writing=false;this._error=null;this._entries=null;
     this._entry = config.entry_id;
     this._data = null;
+    clearHomeStatus(this);
+    this._homeStatusRequested=true;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._shoppingEditorDraft=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
     this._taskItemAction=null;this._taskCreateDraft=null;this._taskSeriesDraft=null;this._alarmEditorDraft=null;
@@ -305,6 +311,10 @@ export class FamilyCard extends HTMLElement {
       if (!current()) return;
       const previousData = this._data;
       this._data = data; this._error = null;
+      if(this._view==="home_status"){
+        await refreshHomeStatus(this,current);
+        if(!current())return;
+      }else clearHomeStatus(this);
       const taskFormForce = reconcileTaskFormRefresh(this,previousData);
       const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
@@ -331,7 +341,7 @@ export class FamilyCard extends HTMLElement {
       const documentForce = reconcileAssetDocuments(this);
       // Avoid destroying a form that the user is currently filling out.
       if (taskFormForce || taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
-    } catch(error) { if (current()) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
+    } catch(error) { if (current()) { clearHomeStatus(this); disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (current()) this._loading = false; }
   }
   button(text, action, primary=false) {
@@ -423,6 +433,7 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="today") {renderToday(this,body);return;}
     if(memberContextId(this)===null)this.renderProposals(body);
     if(this._view==="health") {renderHealth(this,body);return;}
+    if(this._view==="home_status") {renderHomeStatus(this,body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
       if(renderAvailabilityShell(this,body,{module:"school",projection:this._data.school,state:this._data.role==="guest"?"role_unavailable":undefined})){
@@ -671,7 +682,7 @@ class FamilyEditor extends HTMLElement {
         for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
         input.disabled=!this._entries?.length;
       }
-      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests"]){const option=el("option",t[view]);option.value=view;input.append(option);}
+      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status"]){const option=el("option",t[view]);option.value=view;input.append(option);}
       const defaultView=cardView(this._config?.type);
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});

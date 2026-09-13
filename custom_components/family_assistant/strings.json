@@ -30,11 +30,13 @@
           "maintenance": "Home maintenance",
           "polls": "Family polls",
           "presence": "Family presence",
-          "digests": "Private family digests"
+          "digests": "Private family digests",
+          "home_status": "Home status"
         }
       }
     },
     "error": {
+      "home_status_group_in_use": "Remove or move the group's sources before removing the group.",
       "chat_unavailable": "Conversation has changed or is unavailable. Refresh the card before sending again.",
       "chat_busy": "Several conversations are already in progress. Try again shortly; no new action was started.",
       "chat_context_expired": "This request's retry context has expired. Check the current result before sending a new command.",
@@ -367,7 +369,8 @@
           "maintenance": "Home maintenance",
           "polls": "Family polls",
           "presence": "Family presence",
-          "digests": "Private family digests"
+          "digests": "Private family digests",
+          "home_status": "Home status"
         }
       },
       "alarm_device_settings": {
@@ -446,6 +449,63 @@
           "api_key": "API key (optional)",
           "clear_key": "Clear saved key",
           "allow_http": "Allow unencrypted HTTP on a trusted network"
+        }
+      },
+      "home_status": {
+        "title": "Home status",
+        "description": "Optional read-only sources. Enable Home status separately in Household preferences. No services, history, alerts or model access. Open the Home status card or request /home privately.",
+        "menu_options": {
+          "home_status_settings": "Report freshness",
+          "home_status_group": "Groups",
+          "home_status_source": "Sources",
+          "init": "← Back"
+        }
+      },
+      "home_status_settings": {
+        "title": "Report freshness",
+        "data": {
+          "max_age_seconds": "Maximum HA report age, seconds (30–86400)"
+        }
+      },
+      "home_status_group": {
+        "title": "Groups",
+        "data": {
+          "record": "Source or group (+ adds a new one)"
+        }
+      },
+      "home_status_source": {
+        "title": "Sources",
+        "data": {
+          "record": "Source or group (+ adds a new one)"
+        }
+      },
+      "home_status_group_edit": {
+        "title": "Groups",
+        "description": "Groups have stable keys shown after saving and in the card. Group and source roles both apply. No physical activity is inferred.",
+        "data": {
+          "key": "Stable group key: lowercase Latin letters, digits, underscore (e.g. room)",
+          "title": "Group title",
+          "roles": "Visible to these family roles (HA read permission is also required)",
+          "remove": "Remove this record"
+        }
+      },
+      "home_status_source_edit": {
+        "title": "Sources",
+        "description": "Select one explicit registered entity. Energy accepts sensor % or W/kW; groups accept bounded numeric/enum states. Active requires explicit matching states, including binary sensors. A relay state or HVAC mode is not proof of physical operation.",
+        "data": {
+          "label": "Label",
+          "entity_id": "Registered entity you may read",
+          "mode": "Section / energy metric",
+          "roles": "Visible to these family roles (HA read permission is also required)",
+          "active_states": "Explicit activity states (leave empty for energy/groups)",
+          "remove": "Remove this record"
+        }
+      },
+      "home_status_review": {
+        "title": "Home status",
+        "description": "Review: {summary}. Configuration revision: {revision}. Only mappings change; no values are read or sent. Saving finishes this flow; reopen Configure to continue.",
+        "data": {
+          "confirmed": "I confirm this exact configuration"
         }
       },
       "presence_sources": {
@@ -599,6 +659,7 @@
           "mikrotik": "MikroTik network",
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
+          "home_status": "Home status",
           "digests": "Digest schedule",
           "init": "← Back to main menu",
           "online_school": "Online school"
@@ -631,6 +692,7 @@
           "articles": "Public article reading",
           "recipes": "Recipe source (Mealie)",
           "presence_sources": "Presence sources",
+          "home_status": "Home status",
           "digests": "Digest schedule",
           "developer_diagnostics": "Developer diagnostics",
           "mikrotik": "MikroTik network",
@@ -787,6 +849,7 @@
       }
     },
     "error": {
+      "home_status_group_in_use": "Remove or move the group's sources before removing the group.",
       "migration_prepare_source_invalid": "The source exports or additional IDs are invalid, unsupported or oversized. Obtain corrected coherent exports; no copy was written.",
       "migration_prepare_selection_invalid": "Choose an allowed participant, complete reviewer set or valid bounded file for this page. No association was advanced.",
       "migration_prepare_policy_changed": "The declared old reviewer set differs from the destination parents. Discard this review and reconcile the source policy and target roles; do not omit reviewers to bypass this check.",
@@ -1049,6 +1112,9 @@
     }
   },
   "exceptions": {
+    "home_status_group_in_use": {
+      "message": "Remove or move the group's sources before removing the group."
+    },
     "file_too_large": {
       "message": "The file exceeds the supported size."
     },

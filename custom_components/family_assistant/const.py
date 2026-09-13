@@ -19,6 +19,7 @@ MODULES = (
     "digests",
     "mikrotik",
     "price_watch",
+    "home_status",
 )
 DEFAULT_MODULES = ("shopping", "tasks", "alarms", "court", "price_watch")
 ROLES = ("owner", "parent", "adult", "child", "guest")

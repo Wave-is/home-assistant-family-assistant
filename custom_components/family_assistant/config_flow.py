@@ -30,6 +30,7 @@ CONFIGURABLE_MODULES = (
     "polls",
     "presence",
     "digests",
+    "home_status",
 )
 
 
@@ -269,6 +270,7 @@ class FamilyOptionsFlow(
                 "mikrotik",
                 "recipes",
                 "presence_sources",
+                "home_status",
                 "online_school",
                 "digests",
                 "init",
@@ -306,6 +308,7 @@ class FamilyOptionsFlow(
                 "articles",
                 "recipes",
                 "presence_sources",
+                "home_status",
                 "online_school",
                 "digests",
                 "mikrotik",
@@ -330,6 +333,41 @@ class FamilyOptionsFlow(
         if self.hass.data[DOMAIN].get("backup"):
             raise DomainError("backup_in_progress")
         return runtime, actor
+
+    async def async_step_home_status(self, user_input=None):
+        from .home_status.options import menu
+
+        return await menu(self, user_input)
+
+    async def async_step_home_status_settings(self, user_input=None):
+        from .home_status.options import settings
+
+        return await settings(self, user_input)
+
+    async def async_step_home_status_group(self, user_input=None):
+        from .home_status.options import pick
+
+        return await pick(self, "group", user_input)
+
+    async def async_step_home_status_source(self, user_input=None):
+        from .home_status.options import pick
+
+        return await pick(self, "source", user_input)
+
+    async def async_step_home_status_group_edit(self, user_input=None):
+        from .home_status.options import edit
+
+        return await edit(self, "group", user_input)
+
+    async def async_step_home_status_source_edit(self, user_input=None):
+        from .home_status.options import edit
+
+        return await edit(self, "source", user_input)
+
+    async def async_step_home_status_review(self, user_input=None):
+        from .home_status.options import review
+
+        return await review(self, user_input)
 
     async def async_step_legacy_copy(self, user_input=None):
         from .migration.copy_flow import upload_step

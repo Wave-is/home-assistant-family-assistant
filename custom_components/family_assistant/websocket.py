@@ -15,6 +15,7 @@ def async_register_api(hass):
     from .assistant.chat_api import chat
     from .developer_api import report as developer_report
     from .digest_api import preview as digest_preview
+    from .home_status.api import read as home_status_read
     from .panel_api import (
         ai_sandbox_test,
         module_toggle,
@@ -37,6 +38,7 @@ def async_register_api(hass):
         network_refresh,
         recipes,
         digest_preview,
+        home_status_read,
         school_calendar_preview,
         developer_report,
         panel,
@@ -79,6 +81,16 @@ async def view(hass, connection, msg):
         actor_id = runtime.engine.actor_for_ha(connection.user.id)
         now = dt_util.utcnow()
         data = runtime.engine.view(actor_id, now=now)
+        if data["role"] != "guest" and "home_status" in data["settings"]["modules"]:
+            from .home_status.observations import access_marker
+
+            data["home_status_access"] = access_marker(
+                hass,
+                hass.config_entries.async_get_entry(msg["entry_id"]),
+                runtime,
+                actor_id,
+                connection.user,
+            )
         if data["role"] != "guest" and "conversation" in data["settings"]["modules"]:
             from .assistant.article_api import source_view as article_source_view
             from .assistant.chat_api import source_view as conversation_source_view

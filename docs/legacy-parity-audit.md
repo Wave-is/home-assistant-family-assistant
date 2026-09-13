@@ -7,6 +7,18 @@ real Telegram delivery, or proof that every possible user expression works.
 
 ## Inventory and reproducibility
 
+### Optional home-status increment — development after rc.7
+
+The [home-status module](home-status.md) replaces exactly seven declarations:
+named status groups, explicit activity mappings and five energy readouts. Owner
+reviewed, registered sources stay off by default and require current family role
+and HA ACL before an on-demand read. No private configuration is imported or
+automatically activated. Home controls, kettle operations and forecasts remain
+missing. Isolated native HA 2026.9.2 acceptance passed using synthetic entities,
+real Options/Store/WS and a synthetic Telegram transport; this is not physical
+device or live-bot acceptance. These counts describe the development source, not
+the published rc.7 archive.
+
 ### Current release checkpoint — rc.7
 
 [Early release 0.2.0-rc.7](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.2.0-rc.7)
@@ -64,8 +76,8 @@ bot acceptance for this increment remain open.
 
 - [Source setting inventory](legacy-settings-inventory.json): all 26 original
   Assistant and three Court top-level configuration declarations are accounted
-  for. Ten are replaced by the independent public architecture, three require
-  explicit member/output review, and 16 home/energy mapping declarations remain
+  for. Seventeen are replaced by the independent public architecture, three require
+  explicit member/output review, and nine home-control/forecast declarations remain
   missing. These counts describe keys, **not 29 independent features**.
 - `python tools/check_legacy_settings_inventory.py --legacy-root <local-source>`
   compares that inventory against the two actual old Python setup modules. It
@@ -98,7 +110,7 @@ bot acceptance for this increment remain open.
 | `members`, `member_profiles` | Reviewed identity mapping, explicit aliases, names, roles and HA/Telegram bindings. Actor-relative spouse/son/daughter/sibling relationships are **not** modeled. A matching display name cannot confer identity or permissions. |
 | `alarm_sirens` | Explicit native alarm binding. This audit restores separate `number` duration and `select` volume companions to the same registered alarm device. Existing native siren volume remains supported. Imported schedules remain disabled/gentle/penalty-free pending review. |
 | `gate_entity`, `climates`, `fans`, `car_chargers` | **Missing:** generic reviewed household-control mappings and typed effect execution, including charger source interlock/read-back. Never replace this with arbitrary HA service execution. |
-| `status_groups`, `active_entities`, `battery_soc_entity`, `battery_power_entity`, `load_power_entity`, `pv_power_entity`, `grid_power_entity` | **Missing:** configurable factual home/energy/status groups. Current family Today card is not the old home-energy summary. |
+| `status_groups`, `active_entities`, `battery_soc_entity`, `battery_power_entity`, `load_power_entity`, `pv_power_entity`, `grid_power_entity` | **Replaced in development:** optional owner-configured factual home status/energy/groups, role + HA ACL + registry fences, manual card/API/private Telegram reads. Native isolated acceptance passed; no automatic legacy import, private configuration, physical inference or household activation. See [contract and evidence](home-status.md). |
 | `kettle_status_entity`, `kettle_temperature_entity`, `kettle_fault_entity`, `kettle_stop_entity` | **Missing:** mapped kettle operations and factual temperature-growth/settings confirmation. A generic device switch is not equivalent. |
 | `solar_forecast_audit` | **Missing:** matched-lead-time weekly forecast freezing, actual yield, curtailment flags and error statistics. School/calendar statistics do not replace it. |
 

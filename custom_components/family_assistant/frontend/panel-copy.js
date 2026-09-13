@@ -105,6 +105,7 @@ export const PANEL_COPY = Object.freeze(Object.fromEntries(
 ));
 export const PANEL_LANGUAGES = Object.freeze({en:"English", ru:"Русский", uk:"Українська"});
 export const PANEL_MODULES = Object.freeze([
+  ["home_status", "🏡", ["Home status", "Состояние дома", "Стан дому"], ["Explicit read-only home and energy sources", "Явно выбранные источники состояния дома и энергии, только чтение", "Явно вибрані джерела стану дому й енергії, лише читання"]],
   ["tasks", "📋", ["Tasks and reminders", "Задачи и напоминания", "Завдання й нагадування"], ["Assignments, recurring duties and reports", "Поручения, дежурства и отчёты", "Доручення, чергування й звіти"]],
   ["court", "⚖️", ["Points and rules", "Баллы и правила", "Бали й правила"], ["Rewards, limits and weekly review", "Поощрения, лимиты и итоги недели", "Заохочення, ліміти й підсумки тижня"]],
   ["school", "🎒", ["School", "Школа", "Школа"], ["Timetables, homework and preparation", "Расписания, домашние задания и подготовка", "Розклади, домашні завдання й підготовка"]],

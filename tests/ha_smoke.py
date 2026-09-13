@@ -115,6 +115,11 @@ async def main(*, case="all"):
 
                 await verify_command_completion(hass, user)
                 return
+            if case == "home-status":
+                from ha_home_status_smoke import verify_home_status
+
+                await verify_home_status(hass, user)
+                return
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -1391,6 +1396,7 @@ if __name__ == "__main__":
             "settings",
             "name-learning",
             "command-completion",
+            "home-status",
             "online-school",
         ),
         default="all",

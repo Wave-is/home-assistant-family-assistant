@@ -21,6 +21,24 @@ are separate from these public software gates. Read-only household/energy and
 opt-in task rollover/correction remain different development streams, not rc.7
 features. [Release scope](releases/0.2.0-rc.7.md).
 
+## Optional home status — development checkpoint
+
+The disabled-by-default [home-status module](home-status.md) adds owner-reviewed
+registered sources, named groups, explicit activity-state mappings and five
+energy readings. Explicit card/API/private Telegram reads enforce current family
+roles and HA source ACL/registry identity. Idle card refresh performs metadata
+revocation checks only; readings, attributes and URLs are absent from family
+Store/outbox/model context. No services, history, polling worker or physical
+activity inference are introduced. Focused compatibility passed **395 Python
+tests, one platform skip**, **130 frontend tests** and **10 Chromium scenarios**
+(including real idle timers and EN/RU/UK mobile controls). The integration writer
+independently passed actual isolated HA **2026.9.2** Options/ACL/WS/Store/reload
+and late private delivery using synthetic entities and transport. Exactly seven
+legacy declaration mappings are replaced: the development inventory now has
+**17 replaced, nine missing, three review-required**. No private configuration
+is imported or activated. This increment is not part of rc.7; combined release
+gates and household acceptance remain separate.
+
 ## Shared-shopping buyer increment — local branch, 13 September 2026
 
 `codex/shopping-assignments` adds bounded RU/UK/EN buyer commands, S-ID

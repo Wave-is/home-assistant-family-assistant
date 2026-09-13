@@ -6,6 +6,7 @@ export const CARD_VIEWS = Object.freeze([
   ["calendar", "calendar"], ["routines", "routines"], ["pantry", "pantry"],
   ["meals", "meals"], ["school", "school"], ["maintenance", "maintenance"],
   ["polls", "polls"], ["presence", "presence"], ["digests", "digests"],
+  ["home_status", "home-status"],
 ].map(pair=>Object.freeze(pair)));
 
 export function cardView(type) {
