@@ -425,6 +425,12 @@ async def route(
         # an unrelated rule after migration.
         return t["forget_scope"]
 
+    from ..online_school.messages import query as school_query
+
+    school_reply = school_query(engine, actor, content, now, private=private, language=language)
+    if school_reply is not None:
+        return school_reply
+
     def saved(result):
         if result.get("status") == "repaired":
             from ..domain.name_learning import reply as name_repair_reply

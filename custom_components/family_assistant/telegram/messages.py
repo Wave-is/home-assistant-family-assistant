@@ -259,6 +259,10 @@ def targets(event, state):
     from ..domain.task_delivery import TASK_EVENTS, current_task_event
 
     recipient, key = event["recipient"], event["key"]
+    if key == "online_school_notice":
+        from ..online_school.delivery import targets as school_targets
+
+        return school_targets(state, event)
     if key == "network_unreviewed_devices":
         from .watch_messages import targets as watch_targets
 
@@ -343,6 +347,12 @@ def targets(event, state):
 
 
 def render(event, target, state, *, now=None):
+    if event.get("key") == "online_school_notice":
+        from datetime import UTC, datetime
+
+        from ..online_school.messages import render as school_render
+
+        return school_render(event, target, state, now if now is not None else datetime.now(UTC))
     if event.get("key") == "network_unreviewed_devices":
         from datetime import UTC, datetime
 

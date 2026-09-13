@@ -90,6 +90,11 @@ async def main(*, case="all"):
 
                 await verify_settings_audit(hass, user)
                 return
+            if case == "online-school":
+                from ha_online_school_smoke import verify_online_school
+
+                await verify_online_school(hass, user)
+                return
             if case == "voice":
                 from ha_voice_smoke import verify_voice_shopping
 
@@ -1370,7 +1375,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--case",
-        choices=("all", "ha-agent", "voice", "panel", "settings", "name-learning"),
+        choices=("all", "ha-agent", "voice", "panel", "settings", "name-learning", "online-school"),
         default="all",
     )
     asyncio.run(main(case=parser.parse_args().case))

@@ -6,6 +6,7 @@ import {fileURLToPath} from "node:url";
 export const frontendRoot = "custom_components/family_assistant/frontend";
 export const cards = ["today", "shopping", "tasks", "court", "alarms", "health", "conversation", "mikrotik", "calendar", "routines", "pantry", "meals", "school", "maintenance", "polls", "presence", "digests"];
 export const moduleForFile = file => {
+  if (file.startsWith("online-school-")) return "school";
   if (file.startsWith("panel-") || file === "family-panel.js") return "panel";
   if (file.startsWith("network-")) return "mikrotik";
   if (file.startsWith("task-") || file === "task-items.js") return "tasks";

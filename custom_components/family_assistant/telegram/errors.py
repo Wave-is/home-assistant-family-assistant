@@ -286,6 +286,19 @@ ERRORS = {
         "no longer available. Review its current status.",
         "provider_quota_exceeded": "The provider quota is exhausted. Try later or "
         "configure an available fallback.",
+        "capacity_exceeded": "The configured source limit has been reached. Review "
+        "existing connections first.",
+        "online_school_auth_failed": "School login failed or the session expired. "
+        "Check the account in its portal.",
+        "online_school_unavailable": "School is unavailable. Saved data has not been erased.",
+        "online_school_rate_limited": "School has limited requests; retry later.",
+        "online_school_invalid_response": "The school response could not be safely "
+        "understood. Saved data was kept.",
+        "online_school_student_mismatch": "The response does not belong to the "
+        "selected student. No data was imported.",
+        "online_school_invalid_config": "Check the school HTTPS origin, login, "
+        "password and time zone.",
+        "online_school_timeout": "School did not respond in time. Saved data was kept.",
     },
     "ru": {
         "migration_prepare_source_invalid": "Экспорты или дополнительные ID "
@@ -583,6 +596,19 @@ ERRORS = {
         "текущий статус.",
         "provider_quota_exceeded": "Квота провайдера исчерпана. Попробуйте позже "
         "или настройте доступный резервный провайдер.",
+        "capacity_exceeded": "Достигнут лимит подключений. Сначала проверьте "
+        "существующие подключения.",
+        "online_school_auth_failed": "Не удалось войти в школу или сессия истекла. "
+        "Проверьте вход на сайте школы.",
+        "online_school_unavailable": "Школа недоступна. Сохранённые данные не удалены.",
+        "online_school_rate_limited": "Школа ограничила частоту запросов. Повторите позже.",
+        "online_school_invalid_response": "Не удалось безопасно разобрать ответ "
+        "школы. Прежние данные сохранены.",
+        "online_school_student_mismatch": "Ответ относится не к выбранному ученику. "
+        "Данные не импортированы.",
+        "online_school_invalid_config": "Проверьте HTTPS-адрес школы, логин, пароль "
+        "и часовой пояс.",
+        "online_school_timeout": "Школа не ответила вовремя. Прежние данные сохранены.",
     },
     "uk": {
         "migration_prepare_source_invalid": "Експорти чи додаткові ID некоректні, "
@@ -876,5 +902,17 @@ ERRORS = {
         "provider_quota_exceeded": "Квоту провайдера вичерпано. Спробуйте пізніше "
         "або налаштуйте доступного резервного "
         "провайдера.",
+        "capacity_exceeded": "Досягнуто ліміту підключень. Спочатку перевірте наявні підключення.",
+        "online_school_auth_failed": "Не вдалося ввійти до школи або сесія спливла. "
+        "Перевірте вхід на сайті школи.",
+        "online_school_unavailable": "Школа недоступна. Збережені дані не видалені.",
+        "online_school_rate_limited": "Школа обмежила частоту запитів. Повторіть пізніше.",
+        "online_school_invalid_response": "Не вдалося безпечно розібрати відповідь "
+        "школи. Попередні дані збережені.",
+        "online_school_student_mismatch": "Відповідь стосується не вибраного учня. "
+        "Дані не імпортовано.",
+        "online_school_invalid_config": "Перевірте HTTPS-адресу школи, логін, "
+        "пароль і часовий пояс.",
+        "online_school_timeout": "Школа не відповіла вчасно. Попередні дані збережені.",
     },
 }

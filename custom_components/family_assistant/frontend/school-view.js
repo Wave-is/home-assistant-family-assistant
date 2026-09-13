@@ -2,6 +2,7 @@
 
 import { SCHOOL_COPY } from "./school-copy.js";
 import { renderSchoolImport } from "./school-import-view.js";
+import { renderOnlineSchool } from "./online-school-view.js";
 import {inMemberContext} from "./panel-member-context.js";
 
 const PARENTS = new Set(["owner", "parent"]);
@@ -515,6 +516,7 @@ export function renderSchool(card, body) {
     card._schoolDraft = null;
     return;
   }
+  renderOnlineSchool(card, body);
   if (
     card._schoolDraft &&
     !draftAllowed(card, card._schoolDraft, !card._schoolDraft.pending)
