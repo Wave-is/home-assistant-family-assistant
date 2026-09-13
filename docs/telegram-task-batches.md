@@ -97,6 +97,14 @@ and date-stable replay, duplicate delivery, addressing, localized failures and
 multi-ID reply context. The existing `tests/test_task_multi_create.py` verifies
 the underlying domain batch transaction independently.
 
+`tests/ha_command_completion_smoke.py` additionally prepares native isolated-HA
+acceptance through the existing `command-completion` case: numbered two-task
+creation, shared/item settings, persisted task-ID references, authenticated child
+denial, unknown/nested-list rejection, actual batch rollback on a stale recipient,
+and date-stable replay after ConfigEntry/Store reload. This exercises route results
+and command receipts; it does not send a message to a real Telegram bot. Adding
+the test is not evidence that its native run passed.
+
 The development checkpoint records exact executed test totals in
 [implementation status](implementation-status.md). Unit/adapter tests do not
 establish actual Telegram delivery, household deployment or native HA acceptance

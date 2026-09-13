@@ -9,6 +9,8 @@ async def verify_command_completion(hass, owner):
     from homeassistant.config_entries import ConfigEntryState
     from homeassistant.helpers.storage import Store
 
+    from custom_components.family_assistant.domain.validation import DomainError
+    from custom_components.family_assistant.telegram.context import result_refs
     from custom_components.family_assistant.telegram.router import route
 
     flow = await hass.config_entries.flow.async_init(
@@ -62,6 +64,94 @@ async def verify_command_completion(hass, owner):
             engine, "owner", "покажи задачи Роман", "completion-list", now, private=True
         )
         assert "убрать стол" in reply
+        store = Store(hass, 1, f"family_assistant.{entry.entry_id}")
+        numbered_operation = "completion-numbered-tasks"
+        numbered_command = (
+            "создай 2 задачи для Роман на завтра с фотоотчетом:\n"
+            "1. Подготовить Книгу\n"
+            "2. для Owner: Проверить Рюкзак через неделю без отчета"
+        )
+        numbered_reply = await route(
+            engine, "owner", numbered_command, numbered_operation, now, private=True
+        )
+        numbered_state = engine.snapshot()
+        numbered_plan = deepcopy(numbered_state["telegram"]["plans"][numbered_operation])
+        numbered_receipt = deepcopy(numbered_state["processed"][numbered_operation]["result"])
+        first, second = numbered_receipt["items"]
+        numbered_ids = [first["id"], second["id"]]
+        assert len(set(numbered_ids)) == 2
+        assert all(identifier in numbered_reply for identifier in numbered_ids)
+        assert result_refs(numbered_receipt) == numbered_ids
+        assert (first["title"], first["assignee"], first["report_type"]) == (
+            "Подготовить Книгу",
+            child,
+            "photo",
+        )
+        assert (second["title"], second["assignee"], second["report_type"]) == (
+            "Проверить Рюкзак",
+            "owner",
+            "none",
+        )
+        assert datetime.fromisoformat(first["due_at"]).date() == (now + timedelta(days=1)).date()
+        assert datetime.fromisoformat(second["due_at"]).date() == (now + timedelta(days=7)).date()
+        for command, item in zip(
+            numbered_plan["payload"]["commands"], numbered_receipt["items"], strict=True
+        ):
+            assert command["action"] == "tasks.create"
+            assert command["payload"]["assignee_revision"] == item["assignee_revision"]
+            assert command["payload"]["due_at"] == item["due_at"]
+        persisted = await store.async_load()
+        assert persisted["telegram"]["plans"][numbered_operation] == numbered_plan
+        assert persisted["processed"][numbered_operation]["result"] == numbered_receipt
+
+        # These are the real grammar and Engine on a native synthetic ConfigEntry.
+        # A valid first line must not become a task or pending plan on any rejection.
+        for suffix, actor, content, expected in (
+            (
+                "child",
+                engine.actor_for_ha(child_user.id),
+                "2 tasks:\n1. task Роман Первое дело\n2. task Owner Чужое дело",
+                "forbidden",
+            ),
+            (
+                "unknown",
+                "owner",
+                "2 tasks:\n1. task Роман Первое дело\n2. for Unconfigured Member: Второе дело",
+                "unknown_member",
+            ),
+            (
+                "nested",
+                "owner",
+                "2 tasks for Роман:\n1. Первое дело\n2. 2 tasks for Owner: Второе дело",
+                "invalid_field",
+            ),
+        ):
+            before_rejection = engine.snapshot()
+            stored_before_rejection = await store.async_load()
+            try:
+                await route(
+                    engine, actor, content, f"completion-numbered-{suffix}", now, private=True
+                )
+            except DomainError as error:
+                assert error.code == expected, (suffix, error.code)
+            else:
+                raise AssertionError(f"Numbered batch unexpectedly accepted: {suffix}")
+            assert engine.snapshot() == before_rejection
+            assert await store.async_load() == stored_before_rejection
+
+        # Exercise authenticated domain atomicity too: the second create fails
+        # its recipient revision after the first has modified only working state.
+        stale_batch = deepcopy(numbered_plan["payload"])
+        stale_batch["commands"][1]["payload"]["assignee_revision"] += 1
+        before_atomic = engine.snapshot()
+        stored_before_atomic = await store.async_load()
+        rejected = await _execute(
+            hass, entry, owner, 10, "batch", stale_batch, "completion-numbered-atomic"
+        )
+        assert not rejected["success"], rejected
+        assert engine.snapshot() == before_atomic
+        assert await store.async_load() == stored_before_atomic
+
         response = await _execute(
             hass,
             entry,
@@ -89,8 +179,10 @@ async def verify_command_completion(hass, owner):
         reminders = [e for e in state["outbox"].values() if e["key"] == "task_review_overdue"]
         assert len(reminders) == 1 and reminders[0]["recipient"] == "parents"
         assert not state["court"]
-        saved = await Store(hass, 1, f"family_assistant.{entry.entry_id}").async_load()
+        saved = await store.async_load()
         assert saved["tasks"] == state["tasks"] and saved["shopping"] == state["shopping"]
+        assert saved["telegram"]["plans"][numbered_operation] == numbered_plan
+        assert saved["processed"][numbered_operation]["result"] == numbered_receipt
         baseline = deepcopy(state)
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done()
@@ -98,11 +190,34 @@ async def verify_command_completion(hass, owner):
         await entry.runtime_data.scheduler.stop()
         engine = entry.runtime_data.engine
         assert engine.snapshot()["tasks"] == baseline["tasks"]
+        # A later received date must replay the original plan and IDs, not resolve
+        # "tomorrow" again or create another batch after native Store reload.
+        before_replay = engine.snapshot()
+        stored_before_replay = await store.async_load()
+        assert (
+            await route(
+                engine,
+                "owner",
+                numbered_command,
+                numbered_operation,
+                now + timedelta(days=3),
+                private=True,
+            )
+            == numbered_reply
+        )
+        assert engine.snapshot() == before_replay
+        assert await store.async_load() == stored_before_replay
+        assert (
+            result_refs(engine.snapshot()["processed"][numbered_operation]["result"])
+            == numbered_ids
+        )
+        for item in numbered_receipt["items"]:
+            assert engine.snapshot()["tasks"][item["id"]] == baseline["tasks"][item["id"]]
         await engine.tick(clock + timedelta(minutes=1))
         await route(engine, "owner", task_command, "completion-grammar-task", now, private=True)
         await route(engine, "owner", shopping_command, "completion-grammar-buy", now, private=True)
         state = engine.snapshot()
-        assert len(state["tasks"]) == 2 and len(state["shopping"]) == 1
+        assert len(state["tasks"]) == 4 and len(state["shopping"]) == 1
         assert len([e for e in state["outbox"].values() if e["key"] == "task_review_overdue"]) == 1
         current = state["tasks"][review_task["id"]]
         completed = await _execute(
@@ -119,7 +234,8 @@ async def verify_command_completion(hass, owner):
         assert not engine.snapshot()["court"]
         print(
             "PASS: actual HA natural task report/deadline and shopping quantity commands, "
-            "scoped list, native reviewer policy/submit/Store/reload/replay/completion"
+            "scoped list, numbered two-task atomic creation/denial/rollback/task IDs/date-stable "
+            "replay, native reviewer policy/submit/Store/reload/replay/completion"
         )
     finally:
         await hass.config_entries.async_unload(entry.entry_id)
