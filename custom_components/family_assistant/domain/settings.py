@@ -153,6 +153,14 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
 
         for task in ctx.state["tasks"].values():
             revoke_review(ctx, task)
+    if (set(ctx.state["settings"]["modules"]) ^ set(modules)) & {"tasks", "court"} or any(
+        key in payload and payload[key] != ctx.state["settings"].get(key)
+        for key in ("automatic_penalties", "timezone")
+    ):
+        from .task_settlements import revoke
+
+        for task in ctx.state["tasks"].values():
+            revoke(ctx, task)
     ctx.state["settings"].update(
         {
             "name": text(payload["name"], "name", 80),

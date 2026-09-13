@@ -24,6 +24,17 @@ def award(
     record_id = f"{source}:{source_id}"
     if record_id in ctx.state["court"]:
         return False
+    if (
+        source == "task"
+        and ":missed:" not in source_id
+        and any(
+            event.get("source") == "task"
+            and event.get("reason_data", {}).get("task_id") == source_id
+            and event.get("reason_data", {}).get("settlement_id")
+            for event in ctx.state["court"].values()
+        )
+    ):
+        return False  # Returning to one-off policy cannot charge a previously settled task again.
     zone = ZoneInfo(timezone)
     today = ctx.now.astimezone(zone).date()
     spent = sum(

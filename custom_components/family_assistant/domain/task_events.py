@@ -4,7 +4,7 @@ from copy import deepcopy
 from datetime import timedelta
 
 from ..const import PRIVILEGED
-from . import penalties, task_access
+from . import penalties, task_access, task_settlements
 from .context import Context
 from .incidents import close_incident, open_incident
 from .validation import DomainError, timestamp
@@ -177,6 +177,12 @@ def tick_review(ctx, item):
 def close(ctx, item, *, assignment=False):
     if (
         assignment
+        or item["status"] in {"completed", "cancelled", "archived"}
+        or "tasks" not in ctx.state["settings"]["modules"]
+    ):
+        task_settlements.revoke(ctx, item)
+    if (
+        assignment
         or item["status"] != "submitted"
         or "tasks" not in ctx.state["settings"]["modules"]
     ):
@@ -225,13 +231,19 @@ def tick(ctx: Context):
         if not task_access.current_assignee(ctx.state, item):
             close(ctx, item)
             continue
+        if task_settlements.managed(item) and not task_settlements.current(ctx.state, item):
+            task_settlements.revoke(ctx, item)
+            close(ctx, item)
+            continue
         if item["status"] in {"submitted", "completed", "cancelled", "archived"} or not item.get(
             "due_at"
         ):
             close(ctx, item)
             continue
         deadline = timestamp(item["due_at"], "due_at")
-        if deadline <= timestamp(item["created_at"], "created_at"):
+        if deadline <= timestamp(item["created_at"], "created_at") and not task_settlements.managed(
+            item
+        ):
             continue  # Never issue a retroactive automatic penalty on an imported/past task.
         config = item.get(
             "deadline_policy", {"reminder_minutes": 60, "grace_minutes": 30, "penalty": 0}
@@ -263,6 +275,11 @@ def tick(ctx: Context):
             if events:
                 item.setdefault("deadline_events", {})[item["due_at"]] = events
             continue  # Personal reminders never create court rows or family incidents.
+        if task_settlements.managed(item):
+            if events:
+                item.setdefault("deadline_events", {})[item["due_at"]] = events
+            task_settlements.tick(ctx, item)
+            continue
         if ctx.now >= deadline + timedelta(minutes=config["grace_minutes"]) and not events.get(
             "escalated"
         ):

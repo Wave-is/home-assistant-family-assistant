@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import task_access, task_events
+from . import task_access, task_events, task_settlements
 from .context import Context
 from .validation import DomainError, fields, text, timestamp
 from .validation import revision as strict_revision
@@ -17,7 +17,10 @@ ACTION_FIELDS = {
         "grace_minutes",
         "penalty",
         "review_minutes",
+        "missed_policy",
+        "missed_actor_revision",
     },
+    "correct_miss": {"settlement_id", "court_revision", "actor_revision", "reason"},
     "submit": {"report", "media"},
     "check": {"checklist_index", "done"},
     "request_changes": {"note"},
@@ -60,6 +63,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 "grace_minutes",
                 "penalty",
                 "review_minutes",
+                "missed_policy",
+                "missed_actor_revision",
                 "personal",
             },
             {"title", "assignee"},
@@ -111,9 +116,15 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         if personal:
             item["delivery_scope"] = "personal"
         task_events.review_policy(ctx, payload, item, personal=personal)
+        if "missed_policy" in payload:
+            if strict_revision(payload.get("missed_actor_revision")) != ctx.actor["revision"]:
+                raise DomainError("conflict")
+            task_settlements.configure(ctx, item, payload["missed_policy"])
+        elif "missed_actor_revision" in payload:
+            raise DomainError("invalid_field", "missed_actor_revision")
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
         ctx.notify(assignee["id"], "task_assigned", task_events.member_stamp(ctx, item))
-        return item
+        return task_access.public_task(item, parent=True) if "missed_policy" in item else item
     if action not in ACTION_FIELDS:
         raise DomainError("unknown_action")
     fields(payload, {"id", "revision"} | ACTION_FIELDS[action], {"id", "revision"})
@@ -137,6 +148,15 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         )
         return {key: item[key] for key in ("id", "revision", "status")}
     item = ctx.record("tasks", payload["id"], strict_revision(payload["revision"]))
+    if action == "correct_miss":
+        fields(
+            payload,
+            {"id", "revision"} | ACTION_FIELDS[action],
+            {"id", "revision"} | ACTION_FIELDS[action],
+        )
+        task_settlements.correct(ctx, item, payload=payload)
+        ctx.touch(item)
+        return task_access.public_task(item, parent=ctx.privileged)
     if task_access.private_task(item) and not task_access.may_view(ctx.state, ctx.actor, item):
         raise DomainError("forbidden")
     personal = task_access.personal_task(item)
@@ -159,6 +179,22 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             raise DomainError("forbidden")
         if item["status"] == "submitted":
             raise DomainError("invalid_transition")
+        if item.get("missed_scope") and (
+            any(
+                key in payload and payload[key] != item["deadline_policy"].get(key)
+                for key in ("grace_minutes", "penalty")
+            )
+            or "assignee" in payload
+            and (
+                payload["assignee"] != item["assignee"]
+                or item.get("assignee_revision") != ctx.member(payload["assignee"])["revision"]
+            )
+            or "due_at" in payload
+            and (timestamp(payload["due_at"], "due_at") if payload["due_at"] else None)
+            != (timestamp(item["due_at"], "due_at") if item.get("due_at") else None)
+        ):
+            ctx.require_parent()
+            task_settlements.revoke(ctx, item)
         if "title" in payload:
             item["title"] = text(payload["title"], "title")
         if "due_at" in payload:
@@ -191,6 +227,12 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 item["assignee_revision"] = ctx.member(new_assignee)["revision"]
         item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
         task_events.review_policy(ctx, payload, item, personal=personal)
+        if "missed_policy" in payload:
+            if strict_revision(payload.get("missed_actor_revision")) != ctx.actor["revision"]:
+                raise DomainError("conflict")
+            task_settlements.configure(ctx, item, payload["missed_policy"])
+        elif "missed_actor_revision" in payload:
+            raise DomainError("invalid_field", "missed_actor_revision")
         if personal and (
             item["deadline_policy"]["penalty"] or item["deadline_policy"]["grace_minutes"]
         ):
@@ -250,6 +292,8 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         else:
             item["status"] = "completed"
             item["closed_at"] = ctx.now.isoformat()
+            if item.get("missed_receipt"):
+                task_settlements.correct(ctx, item)
     elif action == "cancel":
         if not ctx.privileged and item["creator"] != ctx.actor_id:
             raise DomainError("forbidden")

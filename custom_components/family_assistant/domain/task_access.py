@@ -86,6 +86,9 @@ def archive_report(ctx, task, reason):
 
 def public_task(task, *, parent, state=None, actor=None, now=None):
     result = deepcopy(task)
+    from .task_settlements import project
+
+    project(result, parent=parent)
     review = result.pop("review_deadline", None)
     result.pop("review_generation", None)
     if isinstance(review, dict):
@@ -125,6 +128,15 @@ def public_task(task, *, parent, state=None, actor=None, now=None):
 
 def authorize_replay(state, actor, result):
     current = state.get("tasks", {}).get(result.get("id"))
+    if result.get("missed_policy"):
+        from .task_settlements import supported
+
+        if (
+            not isinstance(current, dict)
+            or not supported(state, current)
+            or result.get("assignee_revision") != current.get("assignee_revision")
+        ):
+            raise DomainError("conflict")
     if personal_task(result) or personal_task(current):
         if (
             not personal_task(current)

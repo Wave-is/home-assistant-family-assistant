@@ -1,5 +1,6 @@
 import {wallTimeCandidates} from "./local-time.js";
 import {personalTaskCopy} from "./personal-task-copy.js";
+import {settlementControls, settlementActorRevision} from "./task-settlements.js";
 
 export const TASK_FORM_COPY = {
   en: {
@@ -788,6 +789,7 @@ export function renderTaskForm(card) {
     reviewInput.max = "10080";
     reviewInput.step = "1";
   }
+  const missedControls = card.parent ? settlementControls(card, el, advanced, draft.missed_policy, policy => { draft.missed_policy = policy; }) : null;
   form.append(advanced);
 
   for (const key of ["reminder_minutes", "grace_minutes", "penalty"]) {
@@ -800,6 +802,7 @@ export function renderTaskForm(card) {
   const syncMulti = () => {
     const isMulti = Boolean(multi && multi.checked);
     draft.multi = isMulti;
+    missedControls?.available(!card._writing && !draft.payload && !draft.pending && !isMulti && !personal.checked && Boolean(due.value) && card._data.members.some(m => m.id === assignee.value && m.active && m.role === "child"));
     if (multiHint) multiHint.hidden = !isMulti;
     if (isMulti) {
       personal.checked = false;
@@ -880,7 +883,9 @@ export function renderTaskForm(card) {
       draft.fold = "";
       fold.value = "";
       updateDue();
+      syncMulti();
     }
+    if (event.target === assignee) syncMulti();
   });
 
   form.addEventListener("change", (event) => {
@@ -893,6 +898,7 @@ export function renderTaskForm(card) {
     }
     if (event.target === personal) syncPersonal();
     if (event.target === multi) syncMulti();
+    if (event.target === assignee || event.target === due) syncMulti();
   });
 
   if (draft.error) {
@@ -1039,6 +1045,10 @@ export function renderTaskForm(card) {
       const reviewMinutes = form.elements.namedItem("review_minutes");
       if (card.parent && !personal.checked && Number(reviewMinutes?.value) > 0) {
         payload.review_minutes = Number(reviewMinutes.value);
+      }
+      if (missedControls && !missedControls.fieldset.disabled && missedControls.read().daily_rollover) {
+        payload.missed_policy = missedControls.read();
+        payload.missed_actor_revision = settlementActorRevision(card);
       }
 
       const operationId = crypto.randomUUID();

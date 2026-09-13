@@ -14,6 +14,7 @@ TASK_EVENTS = frozenset(
         "task_review_overdue",
         "task_overdue",
         "task_incident_closed",
+        "task_rollover",
     }
 )
 OPEN = frozenset({"assigned", "accepted", "in_progress", "needs_changes"})
@@ -136,6 +137,10 @@ def current_task_event(state: dict, event: dict) -> bool:
             return False
         if not isinstance(event.get("id"), str) or not event["id"]:
             return False
+        if event["key"] == "task_rollover":
+            from .task_settlements import event_current
+
+            return event_current(state, event)
         recipient = event.get("recipient")
         data = event.get("data")
         if not isinstance(recipient, str) or not _mapping(data):

@@ -4,6 +4,7 @@ import { wallTime, wallTimeCandidates } from "./local-time.js";
 import { renderTaskMedia } from "./task-media-view.js";
 import { personalTaskCopy } from "./personal-task-copy.js";
 import { renderReportHistory } from "./task-report-history.js";
+import { settlementControls, settlementCopy, settlementSupported, settlementActorRevision } from "./task-settlements.js";
 
 export const TASK_ITEM_COPY = {
   en: {
@@ -376,7 +377,7 @@ export function renderTaskItem(card, list, item) {
     }
     // Verify rights haven't been revoked
     if (card._data?.role === "guest") return true;
-    if (["complete", "request_changes", "confirm_archive"].includes(actionState.type) && !card.parent && !personalOwner) {
+    if (["complete", "correct_miss", "request_changes", "confirm_archive"].includes(actionState.type) && !card.parent && !personalOwner) {
       return true;
     }
     if (["edit", "confirm_cancel"].includes(actionState.type) && !card.parent && (item.creator !== card._data?.actor || item.assignee !== card._data?.actor)) {
@@ -389,6 +390,28 @@ export function renderTaskItem(card, list, item) {
   };
 
   // 1. Accept button: status is 'assigned' or 'needs_changes'
+  if (isParent && item.missed_policy_reason) {
+    row.append(el("p", settlementCopy(card)[item.missed_policy_reason] || "", "notice"));
+  }
+  if (isParent && item.last_settlement) {
+    const settlement = item.last_settlement;
+    const text = settlementCopy(card);
+    row.append(el("p", `${text.receipt}: ${settlement.due_local_date} · ${text[settlement.outcome] || settlement.outcome} · ${settlement.points}`));
+    if (item.correction_status === "needs_review") row.append(el("p", text.needs_review));
+    if (item.status === "completed" && item.correction_status === "needs_review" && settlement.ledger_id && card._data.settings?.modules?.includes("court")) {
+      const correctButton = card.button(text.corrected, () => {
+        if (!canInteract(card, startGeneration) || !hasCurrentTarget()) return;
+        const ledger = card._data.court?.find(record => record.id === settlement.ledger_id);
+        if (!ledger) return;
+        const payload = card._taskItemAction?.type === "correct_miss" && card._taskItemAction.itemId === item.id
+          ? card._taskItemAction.frozenPayload
+          : {id: item.id, revision: item.revision, actor_revision: settlementActorRevision(card), settlement_id: settlement.id, court_revision: ledger.revision, reason: text.reason};
+        card._taskItemAction = {type: "correct_miss", itemId: item.id, targetRevision: item.revision, targetStatus: item.status, targetAssignee: item.assignee, targetCreator: item.creator, frozenPayload: payload, generation: startGeneration};
+        executeCardCommand(card, "tasks.correct_miss", payload, startGeneration);
+      });
+      actionsEl.append(correctButton);
+    }
+  }
   if (canPerformAssigneeOps && (item.status === "assigned" || item.status === "needs_changes")) {
     const acceptBtn = card.button(copy.action_accept, () => {
       if (!canInteract(card, startGeneration)) return;
@@ -529,6 +552,7 @@ export function renderTaskItem(card, list, item) {
         draftGrace: item.deadline_policy?.grace_minutes ?? 30,
         draftPenalty: item.deadline_policy?.penalty ?? 0,
         draftReviewMinutes: item.review_minutes ?? 0,
+        draftMissedPolicy: item.missed_policy,
         frozenPayload: null,
         generation: startGeneration
       };
@@ -905,6 +929,12 @@ export function renderTaskItem(card, list, item) {
           actionState.draftReviewMinutes = Number(e.target.value);
         });
       }
+      const missedControls = settlementSupported(card, item) ? settlementControls(card, el, policyDetails, actionState.draftMissedPolicy, policy => { actionState.draftMissedPolicy = policy; }) : null;
+      const syncMissed = () => missedControls?.available(!isWriting && !isInputFrozen && Boolean(dueInput.value) && card._data.members.some(member => member.id === (assigneeSelect?.value || item.assignee) && member.active && member.role === "child"));
+      syncMissed();
+      assigneeSelect?.addEventListener("change", syncMissed);
+      dueInput.addEventListener("input", syncMissed);
+      if (item.missed_policy_status) policyDetails.append(el("p", settlementCopy(card)[item.missed_policy_reason || item.missed_policy_status] || ""));
       form.append(policyDetails);
 
       const formActions = el("div", null, "actions");
@@ -985,6 +1015,11 @@ export function renderTaskItem(card, list, item) {
             return;
           }
           payload.review_minutes = Number(reviewInput.value);
+        }
+        if (missedControls && !missedControls.fieldset.disabled && (item.missed_policy || missedControls.read().daily_rollover)) {
+          if (!form.checkValidity()) { form.reportValidity(); return; }
+          payload.missed_policy = missedControls.read();
+          payload.missed_actor_revision = settlementActorRevision(card);
         }
 
         actionState.frozenPayload = payload;

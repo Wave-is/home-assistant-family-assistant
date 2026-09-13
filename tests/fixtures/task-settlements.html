@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic task settlement controls</title>
+<style>body {margin:0;padding:12px;background:#edf3f1;font-family:system-ui} main {max-width:680px;margin:auto}</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+// A fictional view and WS adapter, not evidence of domain authorization. The
+// matching Python/native suites exercise actual Engine transactions and Store.
+const params = new URLSearchParams(location.search);
+const language = params.get("lang") || "en", actor = params.get("actor") || "parent";
+document.documentElement.lang = language;
+const members = [
+  {id:"owner",name:"Parent 1",role:"owner"}, {id:"parent",name:"Parent 2",role:"parent"},
+  {id:"child",name:"Child 1",role:"child"}, {id:"sibling",name:"Child 2",role:"child"},
+  {id:"adult",name:"Adult 1",role:"adult"},
+].map(m => ({...m,active:true,revision:1,language}));
+const fixture = window.fixture = {revision:1,actor,actor_revision:1,role:actor,settings:{name:"Synthetic settlement family",modules:["tasks","court"],timezone:"UTC"},members,tasks:[],task_series:[],court:[],health:{},delivery_issues:[]};
+const defaultPolicy = () => ({daily_rollover:true,settle_time:"20:00",repeat_penalty:false,same_day_correction:false});
+if (params.has("seed")) fixture.tasks.push({id:"T000001",title:"Synthetic existing task",creator:actor,assignee:params.get("scope") === "personal" ? actor : "child",assignee_revision:1,revision:1,status:"assigned",created_at:"2026-09-06T08:00:00+00:00",due_at:"2030-09-06T19:00:00+00:00",report_type:"text",report:null,checklist:[],deadline_policy:{reminder_minutes:60,grace_minutes:30,penalty:0},...(params.get("scope") ? {delivery_scope:params.get("scope")} : {}),...(params.has("policy") ? {missed_policy:defaultPolicy(),missed_policy_status:"active"} : {})});
+if (params.has("capacity")) Object.assign(fixture.tasks[0],{missed_policy_status:"needs_review",missed_policy_reason:"settlement_capacity"});
+if (params.has("correction")) {
+  Object.assign(fixture.tasks[0],{status:"completed",correction_status:"needs_review",last_settlement:{id:"T000001:missed:1:2030-09-06",due_local_date:"2030-09-06",settled_at:"2030-09-06T20:00:00+00:00",from_due_at:"2030-09-06T19:00:00+00:00",due_at:"2030-09-07T19:00:00+00:00",points:-1,outcome:"applied",ledger_id:"task:T000001:missed:2030-09-06"}});
+  fixture.court.push({id:"task:T000001:missed:2030-09-06",revision:2,member:"child",points:-1,status:"active"});
+}
+window.calls = [];
+const receipts = new Map();
+const parent = () => ["parent","owner"].includes(fixture.role);
+const fail = code => {throw {code};};
+function missed(payload,item) {
+  if (!("missed_policy" in payload)) return;
+  const policy = payload.missed_policy, member = members.find(m => m.id === item.assignee);
+  if (!parent() || payload.missed_actor_revision !== members.find(m => m.id === fixture.actor).revision) fail("forbidden");
+  if (item.delivery_scope || item.series_id || item.source || member?.role !== "child" || !item.due_at) fail("invalid_field");
+  if (Object.keys(policy).sort().join() !== Object.keys(defaultPolicy()).sort().join() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(policy.settle_time) || ["daily_rollover","repeat_penalty","same_day_correction"].some(k => typeof policy[k] !== "boolean")) fail("invalid_field");
+  item.missed_policy = structuredClone(policy); item.missed_policy_status = policy.daily_rollover ? "active" : "disabled";
+}
+function apply(tasks, action, payload) {
+  if (action === "tasks.create") {
+    const member = members.find(m => m.id === payload.assignee && m.active);
+    if (!member || member.revision !== payload.assignee_revision) fail("conflict");
+    const item = {id:`T${String(tasks.length+1).padStart(6,"0")}`,revision:1,creator:actor,assignee:member.id,assignee_revision:member.revision,title:payload.title,created_at:"2026-09-06T08:00:00+00:00",due_at:payload.due_at || null,status:"assigned",report_type:payload.report_type,report:null,checklist:[],deadline_policy:{reminder_minutes:payload.reminder_minutes,grace_minutes:payload.grace_minutes,penalty:payload.penalty},...(payload.personal ? {delivery_scope:"personal"} : {})};
+    missed(payload,item); tasks.push(item); return item;
+  }
+  const item = tasks.find(t => t.id === payload.id);
+  if (!item || item.revision !== payload.revision) fail("conflict");
+  if (action === "tasks.revise") {
+    for (const key of ["title","due_at","assignee"]) if (key in payload) item[key] = payload[key];
+    for (const key of ["reminder_minutes","grace_minutes","penalty"]) if (key in payload) item.deadline_policy[key] = payload[key];
+    missed(payload,item);
+  } else if (action === "tasks.correct_miss") {
+    const ledger = fixture.court.find(record => record.id === item.last_settlement?.ledger_id);
+    if (!parent() || payload.actor_revision !== members.find(m => m.id === actor).revision) fail("forbidden");
+    if (!ledger || ledger.revision !== payload.court_revision || payload.settlement_id !== item.last_settlement.id) fail("conflict");
+    item.correction_status = "reversed";
+  } else fail("unknown_action");
+  item.revision++; return item;
+}
+const card = window.card = document.createElement("family-assistant-card");
+card.setConfig({entry_id:"synthetic-settlements",view:"tasks",language});
+card.hass = {language,user:{id:"synthetic-settlement-user"},config:{time_zone:"UTC"},callWS:async message => {
+  if (message.type.endsWith("/households")) return [{entry_id:"synthetic-settlements",title:"Synthetic family"}];
+  if (message.type.endsWith("/view")) return structuredClone(fixture);
+  if (!message.type.endsWith("/execute")) fail("unknown_action");
+  window.calls.push(structuredClone(message));
+  if (window.failCommand) fail("storage_error");
+  const signature = JSON.stringify([actor,message.action,message.payload]), old = receipts.get(message.operation_id);
+  if (old) {if (old.signature !== signature) fail("idempotency_conflict"); return structuredClone(old.result);}
+  const working = structuredClone(fixture.tasks);
+  const commands = message.action === "batch" ? message.payload.commands : [{action:message.action,payload:message.payload}];
+  const results = commands.map(c => apply(working,c.action,c.payload));
+  fixture.tasks = working; fixture.revision++;
+  const result = message.action === "batch" ? {items:results} : results[0];
+  receipts.set(message.operation_id,{signature,result:structuredClone(result)});
+  return structuredClone(result);
+}};
+document.querySelector("main").append(card);
+</script>
+</html>

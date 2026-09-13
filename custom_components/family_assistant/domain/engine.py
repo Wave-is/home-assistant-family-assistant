@@ -761,6 +761,23 @@ class Engine:
                 result,
             )
         elif module == "tasks":
+            if "missed_policy" in payload and self._actor(actor_id)["revision"] != payload.get(
+                "missed_actor_revision"
+            ):
+                raise DomainError("forbidden")
+            if action == "tasks.correct_miss":
+                actor = self._actor(actor_id)
+                if (
+                    actor["role"] not in PRIVILEGED
+                    or actor["revision"] != payload["actor_revision"]
+                ):
+                    raise DomainError("forbidden")
+                from .task_settlements import current
+
+                if "court" not in self._state["settings"]["modules"] or not current(
+                    self._state, self._state["tasks"].get(payload["id"], {}), active=False
+                ):
+                    raise DomainError("conflict")
             task_access.authorize_replay(self._state, self._actor(actor_id), result)
         elif module == "notifications":
             delivery.authorize_replay(self._state, self._actor(actor_id), payload)

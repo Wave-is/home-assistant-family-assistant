@@ -40,6 +40,10 @@ MESSAGES = {
         "task_reminder": "📋 Task due soon: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Personal reminder: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: task overdue: {id} · {title}. Parent review is needed.",
+        "task_rollover": (
+            "📅 {id} · {title}: deadline moved to {due_at}. Points for this settlement: {points}. "
+            "Completion has not been confirmed."
+        ),
         "task_incident_closed": (
             "✅ The overdue incident for {member}'s task {id} is closed. "
             "Any recorded points remain separately reviewable."
@@ -99,6 +103,10 @@ MESSAGES = {
         "task_reminder": "📋 Скоро срок задачи: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Личное напоминание: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: просрочена задача {id} · {title}. Нужна проверка родителя.",
+        "task_rollover": (
+            "📅 {id} · {title}: срок перенесён на {due_at}. Баллы за этот перенос: {points}. "
+            "Выполнение не подтверждено."
+        ),
         "task_incident_closed": (
             "✅ Ситуация с просрочкой задачи {id} у {member} закрыта. "
             "Начисленные баллы проверяются отдельно."
@@ -154,6 +162,10 @@ MESSAGES = {
         "task_review_overdue": "📋 Минув термін перевірки: {id} · {title}. Перевірте зданий звіт.",
         "task_reminder": "📋 Скоро термін завдання: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Особисте нагадування: {id} · {title} · {due_at}",
+        "task_rollover": (
+            "📅 {id} · {title}: термін перенесено на {due_at}. Бали за це перенесення: {points}. "
+            "Виконання не підтверджено."
+        ),
         "task_overdue": (
             "⚠️ {member}: прострочено завдання {id} · {title}. Потрібна перевірка батьків."
         ),

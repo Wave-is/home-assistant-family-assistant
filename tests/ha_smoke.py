@@ -120,6 +120,11 @@ async def main(*, case="all"):
 
                 await verify_home_status(hass, user)
                 return
+            if case == "task-settlements":
+                from ha_task_settlements_smoke import verify_task_settlements
+
+                await verify_task_settlements(hass, user)
+                return
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -374,6 +379,9 @@ async def main(*, case="all"):
             from ha_command_completion_smoke import verify_command_completion
 
             await verify_command_completion(hass, user)
+            from ha_task_settlements_smoke import verify_task_settlements
+
+            await verify_task_settlements(hass, user)
             from ha_school_retention_smoke import verify_school_retention
 
             await verify_school_retention(hass, entry)
@@ -1397,6 +1405,7 @@ if __name__ == "__main__":
             "name-learning",
             "command-completion",
             "home-status",
+            "task-settlements",
             "online-school",
         ),
         default="all",

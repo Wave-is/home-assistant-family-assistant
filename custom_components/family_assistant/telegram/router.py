@@ -23,7 +23,9 @@ COPY = {
             "member | task title\n/done T000001 | report\n"
             "/report T000001 — photo caption, no note\n"
             "/approve T000001 — "
-            "parent confirmation\n/alarms — wake-up checks\n/stats — scores and "
+            "parent confirmation\n/correcttask T000001 | reason — exact same-day penalty review\n"
+            "Daily rollover is off by default; parents configure it in the task editor.\n"
+            "/alarms — wake-up checks\n/stats — scores and "
             "reasons\n/internet member — Kid Control status\n/netpause member\n"
             "/netresume member\n/netgrant member | 30 — temporary access\n"
             "/netschedule member | weekdays | 08:00-22:00\n"
@@ -76,7 +78,10 @@ COPY = {
             "/tasks — "
             "задачи\n/task участник | задача\n/done T000001 | отчёт\n"
             "/report T000001 — подпись к фото, без примечания\n/approve "
-            "T000001 — подтверждение родителя\n/alarms — проверки подъёма\n"
+            "T000001 — подтверждение родителя\n"
+            "/correcttask T000001 | причина — точный штраф за день выполнения\n"
+            "Ежедневный перенос выключен по умолчанию; родитель включает его в редакторе задачи.\n"
+            "/alarms — проверки подъёма\n"
             "/stats — баллы и причины\nПодтверждайте подъём свежими кнопками "
             "проверки.\n/internet участник — интернет ребёнка\n/netpause участник\n"
             "/netresume участник\n/netgrant участник | 30 — временный доступ\n"
@@ -128,7 +133,10 @@ COPY = {
             "/tasks — "
             "завдання\n/task учасник | завдання\n/done T000001 | звіт\n"
             "/report T000001 — підпис до фото, без примітки\n/approve "
-            "T000001 — підтвердження батьків\n/alarms — перевірки підйому\n"
+            "T000001 — підтвердження батьків\n"
+            "/correcttask T000001 | причина — точний штраф за день виконання\n"
+            "Щоденне перенесення вимкнено типово; батьки вмикають його в редакторі завдання.\n"
+            "/alarms — перевірки підйому\n"
             "/stats — бали та причини\nПідтверджуйте підйом свіжими кнопками "
             "перевірки.\n/internet участник — інтернет дитини\n/netpause учасник\n"
             "/netresume учасник\n/netgrant учасник | 30 — тимчасовий доступ\n"
@@ -438,6 +446,10 @@ async def route(
         return school_reply
 
     def saved(result):
+        from .task_settlements import reply as settlement_reply
+
+        if message := settlement_reply(result, language):
+            return message
         if result.get("status") == "repaired":
             from ..domain.name_learning import reply as name_repair_reply
 
@@ -510,6 +522,14 @@ async def route(
     if prior:
         return saved(
             await engine.execute(actor, prior["action"], prior["payload"], operation_id, now)
+        )
+    from .task_settlements import parsed as task_correction
+
+    correction = task_correction(engine.snapshot(), view, content, refs, language)
+    if correction:
+        action, payload = correction
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, action, payload)
         )
     from .task_batches import parsed as task_batch
 
