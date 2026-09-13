@@ -62,6 +62,10 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
 
 
 def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
+    if event.get("key") == "online_school_notice":
+        from .online_school.delivery import current
+
+        return current(state, event, now)
     """Recheck events whose private source can be revoked before transport."""
     if event.get("key") == "network_unreviewed_devices":
         from .network.watch import current

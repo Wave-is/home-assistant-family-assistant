@@ -90,6 +90,11 @@ async def main(*, case="all"):
 
                 await verify_settings_audit(hass, user)
                 return
+            if case == "online-school":
+                from ha_online_school_smoke import verify_online_school
+
+                await verify_online_school(hass, user)
+                return
             if case == "voice":
                 from ha_voice_smoke import verify_voice_shopping
 
@@ -1386,6 +1391,7 @@ if __name__ == "__main__":
             "settings",
             "name-learning",
             "command-completion",
+            "online-school",
         ),
         default="all",
     )

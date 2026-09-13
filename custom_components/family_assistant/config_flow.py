@@ -269,6 +269,7 @@ class FamilyOptionsFlow(
                 "mikrotik",
                 "recipes",
                 "presence_sources",
+                "online_school",
                 "digests",
                 "init",
             ],
@@ -305,6 +306,7 @@ class FamilyOptionsFlow(
                 "articles",
                 "recipes",
                 "presence_sources",
+                "online_school",
                 "digests",
                 "mikrotik",
                 "legacy_copy",
@@ -393,6 +395,21 @@ class FamilyOptionsFlow(
         from .recipes.options import options_step
 
         return await options_step(self, user_input)
+
+    async def async_step_online_school(self, user_input=None):
+        from .online_school.options import select_step
+
+        return await select_step(self, user_input)
+
+    async def async_step_online_school_account(self, user_input=None):
+        from .online_school.options import account_step
+
+        return await account_step(self, user_input)
+
+    async def async_step_online_school_student(self, user_input=None):
+        from .online_school.options import student_step
+
+        return await student_step(self, user_input)
 
     async def async_step_articles(self, user_input=None):
         from .assistant.article_options import options_step

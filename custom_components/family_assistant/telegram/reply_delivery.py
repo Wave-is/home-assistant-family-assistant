@@ -11,6 +11,11 @@ def current(event, state, now):
 
         if not current_result(state, data):
             return False
+    if "school_context" in data:
+        from ..online_school.messages import reply_current
+
+        if not reply_current(state, data):
+            return False
     if "admission_context" in data:
         from .admission import current as admission_current
 

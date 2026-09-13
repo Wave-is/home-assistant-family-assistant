@@ -11,7 +11,7 @@ GROUPS = {
         "search",
         "articles",
     },
-    "menu_services": {"mikrotik", "recipes", "presence_sources", "digests"},
+    "menu_services": {"mikrotik", "recipes", "presence_sources", "digests", "online_school"},
     "menu_maintenance": {"legacy_copy", "legacy_prepare", "legacy_resume", "developer_diagnostics"},
 }
 

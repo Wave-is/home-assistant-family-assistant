@@ -3,7 +3,9 @@
 Scope: public ConfigFlow/Options code on the home-next branch. Synthetic tests only;
 no household configuration, production API or hardware was read or operated.
 This is a settings inventory, **not a claim of complete legacy behavioral parity**.
-The online-school branch is independent and is not included here.
+The reviewed rc.5 integration merge also includes the three online-school routes.
+School and current provider/image settings are tested together for preservation
+and secret-free forms; merged native HA acceptance remains a separate gate.
 
 ## Every native route
 
@@ -20,7 +22,7 @@ ConfigEntry Options are server-side private storage, never browser drafts.
 | `menu_family` | general, member, guided_onboarding, init | navigation only | test_ha_options_menu |
 | `menu_telegram` | telegram, telegram_group, telegram_member, alarm_device, init | navigation only | test_ha_options_menu |
 | `menu_ai` | provider_chain, image_generation, conversation, ha_agent, search, articles, init | navigation only | test_ha_options_menu |
-| `menu_services` | mikrotik, recipes, presence_sources, digests, init | navigation only | test_ha_options_menu |
+| `menu_services` | mikrotik, recipes, presence_sources, online_school, digests, init | navigation only | test_ha_options_menu |
 | `menu_maintenance` | copy/prepare/resume, developer diagnostics, init | navigation only | test_ha_options_menu |
 | `all_options` | flattened leaf navigation | no duplicate settings implementation | test_ha_options_menu |
 | `general` | name, language, timezone, modules, automatic_penalties, daily_penalty_cap, pantry_expiry_reminders/days, school_preparation_reminders/days_before/time | Engine settings.save → Store; scheduler/domain court/pantry/school; module_runtime.watch handles unchanged Options | test_school_reminder_options, test_panel_settings, test_module_runtime, ha_smoke |
@@ -54,6 +56,9 @@ ConfigEntry Options are server-side private storage, never browser drafts.
 | `alarm_device_settings` | entity_id, volume, enabled, confirmed; optional duration_entity_id/duration_seconds and volume_entity_id/select_volume; clear_duration/clear_volume | Options.alarm_devices[member] → Scheduler/AlarmDevices; read-only alarm_binding validation; same-device companion pin and cross-binding exact-entity exclusivity | test_alarm_options, ha_settings_audit_smoke; actual hardware audibility remains external gate |
 | `mikrotik` | enabled, HTTPS URL, username, password, clear_password, CA PEM, allow_write, allow_kid_control, HA/management MAC, management_confirmed | Options.mikrotik → certificate_context/RouterClient/NetworkManager; protected identities and separate write capability | test_provider_options, network tests, ha_smoke; configuring uses read-only inspect, never a network mutation |
 | `recipes` | enabled, URL, token, clear_token, allow_http, timeout | Options.recipes revision → Mealie source; local endpoint checks and read-only inspect | ha_recipes_smoke; disabled retains connection unless clear requested |
+| `online_school` | reviewed source or new connection | pins current owner, child revisions and full Options scope; no write | test_online_school_options; visible Services and all-options routes |
+| `online_school_account` | enabled, label, HTTPS origin, username, password, child member | private in-memory discovery draft; existing disabled source can be explicitly saved; no cached password form default | test_online_school_options; isolated per-account read-only discovery and scope checks after I/O |
+| `online_school_student` | discovered student, notifications, change notices, preparation time, recipients | Options.online_school revision/generation → runtime binding reconciliation and private SchoolManager; defaults off | test_online_school_options, test_online_school_composition; preserves ordered text/image/Telegram Options; original branch ha_online_school_smoke passed HA 2026.8.2, merged HA 2026.9.2 pending |
 | `presence_sources` | member | pins the chosen member and current source; navigation only | test_presence_options, ha_presence_smoke |
 | `presence_source_settings` | enabled, entity_id, presence_max_age_seconds | hydrates only the pinned member; stages source with identity revision and registered readable entity | test_presence_options, ha_presence_smoke; fixed first-member defaults |
 | `presence_source_review` | confirmed | Engine source mirror then Options.presence_sources and max_age; reconcile_presence_sources uses reviewed identity, not current observations | test_presence_options; before/after Store await guards |

@@ -1857,6 +1857,31 @@ service call does not prove physical sound or volume.
 
 ## Next work
 
+### Online-school integration checkpoint (2026-09-13, local merge)
+
+Accepted scope and source evidence: [online-school connectors](online-schools.md).
+The `codex/online-school-connectors` branch adds reviewed per-child accounts,
+Respublika read-only sessions, bounded private facts, native three-language
+Options, a School dashboard section, deterministic private bot reads and opt-in
+preparation/change notices. It preserves the existing manual School module.
+Provider/domain normalization passed a separate counts-only authorized portal
+smoke. Code checkpoint `4303dcdccc8caf002cc04e6f2c05c7a8dc06becb` then passed all
+nine CI jobs in run 34724950412, including a dedicated actual HA2026.8.2
+native Options/polling/private-view/module-toggle/Store-reload scenario. This
+does **not** establish nonempty real journal/file acceptance or household
+deployment. Those gates and subsequent
+subject/long-work/provider enhancements remain explicit in the connector document.
+
+The local `codex/school-release-integration` merge combines school tip `b7bd2b42`
+with rc.5 `bfc27097`, retaining current provider/image, search and family behavior.
+Thirteen new composition cases plus the repaired native settings inventory passed
+in a 238-test focused run after the full Python run identified that inventory gap
+(6,099 passed, six skipped, 23 subtests passed). Eight school Chromium cases pass;
+privacy, locale, lint, formatting and runtime packaging pass. Full combined frontend
+inventory regeneration and HA 2026.9.2 acceptance remain open while the coordinator
+combines later control-center work. Exact evidence and limitations are recorded in
+[online-school connectors](online-schools.md). No household deployment is claimed.
+
 1. Extend language/context coverage and the LLM/search cascade; keep calendar
    calculations and authorization deterministic.
 2. Complete module controls and localization; extend offline HACS acceptance with live bootstrap/card loading before household cutover.
