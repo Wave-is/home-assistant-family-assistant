@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic task reviewer controls</title>
+<style>
+  body { margin: 0; padding: 16px; font-family: system-ui; background: #eef3f1; color: #19332f; }
+  main { max-width: 650px; margin: auto; }
+</style>
+<main></main>
+<script type="module">
+import "../../custom_components/family_assistant/frontend/family-assistant.js";
+
+// Synthetic WS adapter for the fields/lifecycle in domain/tasks.py. Scheduling,
+// role authorization and persistence are independently tested against the Python
+// Engine and native HA; this fixture establishes browser behavior and payloads.
+const query = new URLSearchParams(location.search);
+const language = query.get("lang") || "en";
+document.documentElement.lang = language;
+const actor = ["owner", "parent", "child"].includes(query.get("actor")) ? query.get("actor") : "owner";
+const fixture = {
+  revision: 1, actor, actor_revision: 1, role: actor,
+  settings: {name: "Synthetic review household", modules: ["tasks"], timezone: "Europe/Berlin"},
+  members: [
+    {id: "owner", name: "Parent 1", role: "owner"},
+    {id: "parent", name: "Parent 2", role: "parent"},
+    {id: "child", name: "Child 1", role: "child"},
+    {id: "sibling", name: "Child 2", role: "child"},
+  ].map(member => ({...member, active: true, revision: 1})),
+  tasks: [], task_series: [], health: {}, delivery_issues: [],
+};
+const instant = "2026-09-13T08:00:00+00:00";
+if (query.has("seed")) {
+  const scope = query.get("scope") || "family";
+  const own = scope === "personal" || query.has("own");
+  fixture.tasks.push({
+    id: "T000001", title: "Synthetic existing task", creator: own ? actor : "owner",
+    assignee: own ? actor : "child", assignee_revision: 1,
+    revision: 1, status: "assigned", due_at: null, created_at: instant, updated_at: instant,
+    report_type: scope === "personal" ? "none" : "text", report: null, checklist: [],
+    deadline_policy: {reminder_minutes: 60, grace_minutes: scope === "personal" ? 0 : 30, penalty: 0},
+    ...(scope === "personal" ? {} : {review_minutes: 60}),
+    ...(scope === "family" ? {} : {delivery_scope: scope}),
+  });
+}
+window.fixture = fixture;
+window.calls = [];
+const receipts = new Map();
+const policyFields = ["reminder_minutes", "grace_minutes", "penalty"];
+const parent = () => ["owner", "parent"].includes(fixture.role);
+const fail = code => { throw {code}; };
+function policy(payload, personal, previous = null) {
+  const result = {...(previous || {reminder_minutes: 60, grace_minutes: personal ? 0 : 30, penalty: 0})};
+  for (const [field, minimum, maximum] of [["reminder_minutes", 0, 10080], ["grace_minutes", 0, 1440], ["penalty", -10, 0]]) {
+    if (!(field in payload)) continue;
+    if (!Number.isInteger(payload[field]) || payload[field] < minimum || payload[field] > maximum) fail("invalid_field");
+    if (field === "penalty" && payload[field] && !parent()) fail("forbidden");
+    result[field] = payload[field];
+  }
+  if (personal && (result.grace_minutes || result.penalty)) fail("invalid_field");
+  return result;
+}
+function reviewPolicy(payload, item) {
+  if (!("review_minutes" in payload)) return;
+  if (!parent()) fail("forbidden");
+  if (item.delivery_scope === "personal" || !Number.isInteger(payload.review_minutes) || payload.review_minutes < 0 || payload.review_minutes > 10080) fail("invalid_field");
+  item.review_minutes = payload.review_minutes;
+}
+function apply(working, action, payload) {
+  if (action === "tasks.create") {
+    const allowed = new Set(["title", "assignee", "assignee_revision", "due_at", "report_type", "checklist", "personal", "review_minutes", ...policyFields]);
+    if (Object.keys(payload).some(key => !allowed.has(key)) || !payload.title?.trim()) fail("invalid_field");
+    const member = fixture.members.find(member => member.id === payload.assignee && member.active && member.role !== "guest");
+    if (!member || ("assignee_revision" in payload && member.revision !== payload.assignee_revision)) fail("conflict");
+    if ((!parent() || payload.personal) && member.id !== fixture.actor) fail("forbidden");
+    const reportType = payload.report_type ?? (payload.personal ? "none" : "text");
+    if (!["text", "photo", "none"].includes(reportType) || (payload.personal && reportType !== "none")) fail("invalid_field");
+    const item = {
+      id: `T${String(working.length + 1).padStart(6, "0")}`, title: payload.title.trim(),
+      creator: fixture.actor, assignee: member.id, assignee_revision: member.revision,
+      revision: 1, status: "assigned", due_at: payload.due_at ?? null, created_at: instant, updated_at: instant,
+      report_type: reportType, report: null, checklist: (payload.checklist || []).map(text => ({text, done: false})),
+      deadline_policy: policy(payload, payload.personal === true),
+      ...(payload.personal ? {delivery_scope: "personal"} : {}),
+    };
+    reviewPolicy(payload, item);
+    working.push(item);
+    return structuredClone(item);
+  }
+  if (action !== "tasks.revise") fail("unknown_action");
+  const allowed = new Set(["id", "revision", "title", "assignee", "due_at", "review_minutes", ...policyFields]);
+  if (Object.keys(payload).some(key => !allowed.has(key))) fail("invalid_field");
+  const item = working.find(task => task.id === payload.id);
+  if (!item || item.revision !== payload.revision) fail("conflict");
+  if (["submitted", "completed", "cancelled", "archived"].includes(item.status)) fail("invalid_transition");
+  if (!parent() && (item.creator !== fixture.actor || item.assignee !== fixture.actor)) fail("forbidden");
+  if (item.delivery_scope === "personal" && item.assignee !== fixture.actor) fail("forbidden");
+  if ("assignee" in payload) {
+    if (!parent()) fail("forbidden");
+    if (item.delivery_scope === "personal") fail("invalid_field");
+    const member = fixture.members.find(member => member.id === payload.assignee && member.active && member.role !== "guest");
+    if (!member) fail("unknown_member");
+    item.assignee = member.id;
+    item.assignee_revision = member.revision;
+  }
+  for (const field of ["title", "due_at"]) if (field in payload) item[field] = payload[field];
+  item.deadline_policy = policy(payload, item.delivery_scope === "personal", item.deadline_policy);
+  reviewPolicy(payload, item);
+  item.revision++;
+  return structuredClone(item);
+}
+const card = document.createElement("family-assistant-card");
+window.card = card;
+card.setConfig({entry_id: "synthetic-reviews", view: "tasks", language});
+card.hass = {
+  language, user: {id: "synthetic-review-user"}, config: {time_zone: "UTC"},
+  callWS: async message => {
+    if (message.type.endsWith("/households")) return [{entry_id: "synthetic-reviews", title: "Synthetic review household"}];
+    if (message.type.endsWith("/view")) return structuredClone(fixture);
+    if (!message.type.endsWith("/execute")) fail("unknown_action");
+    window.calls.push(structuredClone(message));
+    if (window.failCommand) fail("storage_error");
+    const fingerprint = JSON.stringify([fixture.actor, message.action, message.payload]);
+    const previous = receipts.get(message.operation_id);
+    if (previous) {
+      if (previous.fingerprint !== fingerprint) fail("idempotency_conflict");
+      return structuredClone(previous.result);
+    }
+    const commands = message.action === "batch" ? message.payload.commands : [{action: message.action, payload: message.payload}];
+    if (!Array.isArray(commands) || !commands.length || commands.length > 20) fail("invalid_field");
+    const working = structuredClone(fixture.tasks);
+    const results = commands.map(command => apply(working, command.action, command.payload));
+    fixture.tasks = working;
+    fixture.revision++;
+    const result = message.action === "batch" ? {items: results} : results[0];
+    receipts.set(message.operation_id, {fingerprint, result: structuredClone(result)});
+    if (window.loseReplyOnce) {
+      window.loseReplyOnce = false;
+      fail("unconfirmed");
+    }
+    return result;
+  },
+};
+document.querySelector("main").append(card);
+</script>
+</html>

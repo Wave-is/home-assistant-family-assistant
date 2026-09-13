@@ -124,11 +124,11 @@ inventory remains available for review.
 
 ## Limits
 
-Final bounded audit snapshot: **396/396 Chromium scenarios passed** (57 suites,
-3.1 minutes). The manifest contains 81 files and 1,196 conservative source sites;
-558 registered handler groups, of which 466 were invoked and 428 received trusted
+Final bounded audit snapshot: **426/426 Chromium scenarios passed** (60 suites,
+4.6 minutes). The manifest contains 84 files and 1,206 conservative source sites;
+562 registered handler groups, of which 470 were invoked and 432 received trusted
 events. The 92 uninvoked groups remain explicit: one click, zero submit, 51 input,
-39 change and one keydown. Another 644 source lines have no registered handler
+39 change and one keydown. Another 651 source lines have no registered handler
 frame, considering all five collected frames; many are field/helper declarations,
 not individual clickable controls. All 116 observed WS action names have resolved
 synthetic responses; 60 also have rejected-response cases, leaving 56 without that
@@ -149,7 +149,7 @@ mode. The connection is absent when its privileged projection is omitted, and
 no image/Options mutation or required readiness change occurs. Native ordered
 provider forms have their own real-HA/synthetic-I/O acceptance in
 [native-settings-audit.md](../docs/native-settings-audit.md); those checks are not
-included in the 396 browser scenarios.
+included in the 426 browser scenarios.
 
 The exact remaining file/line/column identities are `handlers` with an empty
 `invoked` list (or the `--summary` output). Unregistered source sites are not

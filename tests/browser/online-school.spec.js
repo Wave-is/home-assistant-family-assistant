@@ -141,3 +141,93 @@ test("HTML stays literal and missing coverage does not claim there is no homewor
   expect(externalRequests).toEqual([]);
   expect(await page.evaluate(() => window.calls)).toEqual([]);
 });
+
+test("School assignment and portal clicks open only the approved HTTPS destination without a referrer", async ({ page, context }) => {
+  const fixtureSource = source("en");
+  const assignmentHref = fixtureSource.snapshot.lessons[1].links[0];
+  const portalHref = fixtureSource.snapshot.source_url;
+  fixtureSource.snapshot.source_url += "#discarded-fragment";
+  fixtureSource.snapshot.lessons[1].links.push(
+    "javascript:alert(1)", "data:text/html,unsafe", "http://resource.example.invalid/plain",
+    "https://school.example.invalid/?token=synthetic"
+  );
+  const approved = new Set([assignmentHref, portalHref]);
+  const intercepted = [], unexpected = [];
+  // A context route also intercepts a popup's first request. Only localhost
+  // fixtures reach a server; every external destination is fulfilled or aborted.
+  await context.route("**/*", async route => {
+    const request = route.request();
+    const url = request.url();
+    if (new URL(url).origin === "http://127.0.0.1:8329") return route.continue();
+    if (!approved.has(url) || !request.isNavigationRequest()) {
+      unexpected.push(url);
+      return route.abort();
+    }
+    intercepted.push({ url, method: request.method(), headers: await request.allHeaders() });
+    return route.fulfill({
+      status: 200, contentType: "text/html",
+      body: '<!doctype html><meta name="referrer" content="no-referrer"><link rel="icon" href="data:,"><h1>Synthetic school destination</h1>'
+    });
+  });
+  const panel = await load(page, "en", { sources: [fixtureSource] });
+  await expect(panel.locator("a")).toHaveCount(2);
+  const links = [
+    [panel.locator(".online-assignment-link"), assignmentHref],
+    [panel.getByRole("link", { name: ONLINE_SCHOOL_COPY.en.portal, exact: true }), portalHref]
+  ];
+  const originalUrl = page.url();
+  for (const [link, href] of links) {
+    await expect(link).toHaveAttribute("href", href);
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(link).toHaveAttribute("referrerpolicy", "no-referrer");
+    const opened = context.waitForEvent("page");
+    await link.click();
+    const destination = await opened;
+    await expect(destination).toHaveURL(href);
+    await expect(destination.getByRole("heading", { name: "Synthetic school destination" })).toBeVisible();
+    expect(await destination.evaluate(() => ({ referrer: document.referrer, isolated: window.opener === null })))
+      .toEqual({ referrer: "", isolated: true });
+    await destination.close();
+  }
+  expect(intercepted.map(request => request.url)).toEqual([assignmentHref, portalHref]);
+  expect(intercepted.every(request => request.method === "GET" && !request.headers.referer)).toBe(true);
+  expect(unexpected).toEqual([]);
+  await expect(page).toHaveURL(originalUrl);
+  expect(await page.evaluate(() => window.calls)).toEqual([]);
+});
+
+for (const revoked of ["household generation", "child revision", "source revision"]) {
+  test(`Captured school assignment and portal links reject a changed ${revoked}`, async ({ page, context }) => {
+    const externalRequests = [], popups = [];
+    await context.route("**/*", route => {
+      if (new URL(route.request().url()).origin === "http://127.0.0.1:8329") return route.continue();
+      externalRequests.push(route.request().url());
+      return route.abort();
+    });
+    const panel = await load(page, "en");
+    const assignment = await panel.locator(".online-assignment-link").elementHandle();
+    const portal = await panel.getByRole("link", { name: ONLINE_SCHOOL_COPY.en.portal, exact: true }).elementHandle();
+    context.on("page", popup => popups.push(popup));
+    await page.evaluate(revoked => {
+      window.schoolLinkOutcomes = [];
+      if (revoked === "household generation") window.card._generation++;
+      else if (revoked === "child revision") window.card._data.members.find(member => member.id === "child").revision++;
+      else window.card._data.school.online.sources[0].revision++;
+      // Leave the captured DOM in place to exercise the real click-time fence,
+      // including the brief interval before a projection refresh rerenders it.
+    }, revoked);
+    for (const link of [assignment, portal]) {
+      await link.evaluate(anchor => anchor.addEventListener("click", event => {
+        window.schoolLinkOutcomes.push({ prevented: event.defaultPrevented, trusted: event.isTrusted });
+      }));
+      await link.click();
+    }
+    expect(await page.evaluate(() => window.schoolLinkOutcomes)).toEqual([
+      { prevented: true, trusted: true }, { prevented: true, trusted: true }
+    ]);
+    expect(externalRequests).toEqual([]);
+    expect(popups).toEqual([]);
+    expect(context.pages()).toHaveLength(1);
+    expect(await page.evaluate(() => window.calls)).toEqual([]);
+  });
+}

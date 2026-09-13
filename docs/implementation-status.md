@@ -1,5 +1,27 @@
 # Implementation and acceptance matrix
 
+## Combined early-release candidate rc.6 — 13 September 2026
+
+The online-school branch is now combined with the current optional text/image/
+search providers, natural command improvements, task reviewer reminders and
+namespaced dashboard cards. Synthetic Config Entry composition tests preserve
+unrelated provider settings when configuring schools, and vice versa.
+
+Full combined Python acceptance: **6245 passed, six platform skips, 23 subtests**.
+Actual isolated HA **2026.9.2** school Options/polling/privacy/Store acceptance
+passed, as did the native command-completion lifecycle. A two-process upgrade
+from the exact published **rc.5** archive to **rc.6** passed on HA2026.9.2,
+preserving the synthetic configuration and domain data. The full instrumented
+Chromium run passed **426 scenarios**, including reviewer controls, legacy-card
+coexistence and school link click-time revocation. The generated source/handler
+inventory retains unvisited paths explicitly. Exact-commit CI remains a separate
+release gate. No household
+activation, real nonempty grades/files or complete legacy parity is inferred.
+
+See [rc.6 notes](releases/0.2.0-rc.6.md) for scope and remaining work. Historical
+candidate/pending labels in the dated sections below describe their checkpoints,
+not a reason to rerun or revert already verified increments.
+
 ## Legacy command completion and reviewer windows — 13 September 2026
 
 Current candidate adds bounded RU/UK/EN task report/deadline and shopping quantity

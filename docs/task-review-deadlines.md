@@ -55,3 +55,9 @@ personal-task security, member revisions and the notification worker. **49 Node
 tests** passed across review controls and the existing creation, item and multi-
 person forms. Ruff lint/format and diff whitespace checks passed on the changed
 Python scope. Release-wide and native-HA checks remain separate gates.
+
+Subsequent combined acceptance: the native HA2026.9.2 command-completion case
+verified creation, submission, persisted replay/reload and reminder revocation.
+Eleven actual Chromium synthetic scenarios passed localized mobile create/edit,
+default omission, bounds, private/personal/child controls and frozen single/batch
+retries. These are browser/backend evidence, not live household message delivery.
