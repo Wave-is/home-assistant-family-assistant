@@ -60,6 +60,10 @@ async def reconcile(hass, entry, runtime):
                             await async_configure_network(hass, entry)
                         if "school" in changed:
                             await async_configure_online_school(hass, entry)
+                        if "price_watch" in changed:
+                            from .runtime import async_configure_price_watch
+
+                            await async_configure_price_watch(hass, entry)
                         runtime.module_signature = desired
                         runtime.health.pop("module_settings", None)
                     break

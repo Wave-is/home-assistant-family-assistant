@@ -515,7 +515,7 @@ class Engine:
             data["digests"] = digests.view(self._state, actor)
         if actor["role"] != "guest" and "price_watch" in self._state["settings"]["modules"]:
             data["price_watches"] = [
-                {k: v for k, v in record.items()}
+                price_watch.project(self._state, record)
                 for record in self._state.get("price_watches", {}).values()
             ]
         if parent:
@@ -759,6 +759,10 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
                 result,
+            )
+        elif module == "price_watch":
+            price_watch.authorize_replay(
+                self._state, self._actor(actor_id), action.split(".", 1)[1], result
             )
         elif module == "tasks":
             if "missed_policy" in payload and self._actor(actor_id)["revision"] != payload.get(

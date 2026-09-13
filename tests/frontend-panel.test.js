@@ -359,3 +359,53 @@ test("a delayed resume read cannot replace a newly opened module form",async()=>
   hold=true;const resume=control.resumeDraft();control.openModuleView("school");input(control,"school_preparation_time","17:15");pending.resolve(projection());await resume;
   assert.equal(control._module,"school");assert.equal(control._draft.school_preparation_time,"17:15");assert.equal(control._member,null);assert.equal(control._draftRecord.values.name,"Saved profile draft");
 });
+
+const {PRICE_WATCH_COPY}=await import("../custom_components/family_assistant/frontend/price-watch-view.js");
+function priceProjection(role="owner"){
+  const data=projection();data.view.role=role;data.view.settings.modules.push("price_watch");
+  data.view.price_watches=[{id:"PW1",revision:7,url:"https://merchant.example/item",name:"<img src=x onerror=alert(1)>",policy_status:"review_required",history:[{price_text:"5",currency:"USD"}]}];
+  return data;
+}
+function priceHandler({fail=false,readback=false}={}){
+  let first=true;
+  return async(message,state)=>{
+    if(message.type!=="family_assistant/execute"||message.action!=="price_watch.edit")return;
+    if(fail&&first){first=false;throw {code:"connection_lost"};}
+    const record=state.view.price_watches[0];assert.equal(message.payload.revision,record.revision);
+    Object.assign(record,{url:message.payload.url,revision:record.revision+1,policy_generation:1,policy_status:readback?"review_required":"ready"});
+    return structuredClone(record);
+  };
+}
+for(const language of ["en","ru","uk"])test(`price URL no-op consent is explicit, localized and revisioned: ${language}`,async()=>{
+  const {control,calls,state}=await panel({data:priceProjection(),language,handler:priceHandler()});control.openModuleView("price_watch");
+  const box=control.shadowRoot.querySelector("[data-price-watch-review]"),copy=PRICE_WATCH_COPY[language];assert.ok(box.textContent.includes(copy.review_required));assert.ok(box.textContent.includes("512"));assert.equal(box.querySelector("img,script,a"),null);
+  assert.equal(box.querySelector('[name="price_watch_consent"]').checked,false);input(control,"price_watch_consent",true);
+  box.querySelector("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();
+  const write=calls.find(message=>message.action==="price_watch.edit");assert.deepEqual(write.payload,{id:"PW1",revision:7,actor_revision:2,url:"https://merchant.example/item"});assert.equal(state.view.price_watches[0].history.length,1);assert.ok(control.shadowRoot.textContent.includes(copy.ready));assert.equal(control._pending,null);
+});
+for(const role of ["parent","child","adult","guest"])test(`price URL approval obeys role ${role}`,async()=>{
+  const {control,calls}=await panel({data:priceProjection(role),handler:priceHandler()});control.openModuleView("price_watch");
+  const form=control.shadowRoot.querySelector('[data-price-watch-review] form');assert.equal(!!form,role==="parent");
+  if(form){input(control,"price_watch_consent",true);form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();assert.equal(calls.filter(message=>message.action==="price_watch.edit").length,1);}
+  else assert.equal(await control.command("price_watch.edit",{id:"PW1",revision:7}),false);
+});
+for(const context of ["disabled","read_only"])test(`price URL approval cannot escape ${context}`,async()=>{
+  const data=priceProjection();if(context==="disabled")data.view.settings.modules=[];else data.view.read_only="migration_shadow_read_only";
+  const {control,calls}=await panel({data});control.openModuleView("price_watch");assert.equal(control.shadowRoot.querySelector('[data-price-watch-review] form'),null);assert.equal(calls.filter(message=>message.action==="price_watch.edit").length,0);
+});
+for(const url of ["http://merchant.example/item","https://user:secret@merchant.example/item","https://merchant.example:8443/item","https://merchant.example/item#fragment"])test(`price URL unsupported input stays local: ${url.split(":")[0]}`,async()=>{
+  const {control,calls}=await panel({data:priceProjection()});control.openModuleView("price_watch");input(control,"price_watch_url",url);input(control,"price_watch_consent",true);control.shadowRoot.querySelector('[data-price-watch-review] form').dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();assert.equal(calls.filter(message=>message.action==="price_watch.edit").length,0);assert.ok(control.shadowRoot.textContent.includes(PRICE_WATCH_COPY.en.invalid));
+});
+test("price approval failure freezes URL, actor revision and operation ID on exact retry",async()=>{
+  const {control,calls}=await panel({data:priceProjection(),handler:priceHandler({fail:true})});control.openModuleView("price_watch");input(control,"price_watch_consent",true);control.shadowRoot.querySelector('[data-price-watch-review] form').dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();
+  const frozen=structuredClone(control._pending);assert.ok(frozen);assert.equal(control.shadowRoot.querySelector('[name="price_watch_url"]').disabled,true);assert.equal(control.shadowRoot.querySelector('[name="price_watch_consent"]').disabled,true);
+  control.shadowRoot.querySelector('[name="price_watch_url"]').value="https://other.example/changed";control.shadowRoot.querySelector('[data-price-watch-review] form').dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();const writes=calls.filter(message=>message.action==="price_watch.edit");assert.equal(writes.length,2);assert.deepEqual(writes[0],writes[1]);assert.equal(control._pending,null);
+});
+test("price approval does not report success for unverified readback",async()=>{
+  const {control}=await panel({data:priceProjection(),handler:priceHandler({readback:true})});control.openModuleView("price_watch");input(control,"price_watch_consent",true);control.shadowRoot.querySelector('[data-price-watch-review] form').dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();assert.ok(control._pending);assert.ok(control.shadowRoot.textContent.includes(control.t.unverified));assert.equal(control._notice,null);
+});
+for(const drift of ["detach","member_epoch","watch_revision","household"])test(`stale price approval form cannot submit after ${drift}`,async()=>{
+  const {control,calls}=await panel({data:priceProjection()});control.openModuleView("price_watch");input(control,"price_watch_consent",true);const form=control.shadowRoot.querySelector('[data-price-watch-review] form');
+  if(drift==="detach")control.remove();if(drift==="member_epoch")control._data.view.members[0].revision++;if(drift==="watch_revision")control._data.view.price_watches[0]={...control._data.view.price_watches[0],revision:8};if(drift==="household")control._entry="another";
+  form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));await tick();assert.equal(calls.filter(message=>message.action==="price_watch.edit").length,0);
+});

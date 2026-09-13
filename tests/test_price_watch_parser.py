@@ -148,7 +148,7 @@ def test_no_structured_data_returns_empty_result():
     assert result == PriceFetchResult()
 
 
-def test_price_text_truncated_to_40_chars():
+def test_oversized_price_is_rejected_without_truncating_to_an_invented_price():
 
     long_price = "1" * 50
     html = _wrap_ld(
@@ -158,7 +158,7 @@ def test_price_text_truncated_to_40_chars():
         }
     )
     result = parse_html(html)
-    assert len(result.price_text) <= 40
+    assert result.price_text == "" and result.error == "invalid_response"
 
 
 # ── URL cleaning ───────────────────────────────────────────────────────────────

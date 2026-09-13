@@ -5,16 +5,15 @@ It runs entirely on the HA event loop via aiohttp.
 
 Security
 --------
-* SSRF protection: private / link-local / loopback IPs are blocked before
-  the TCP connection is opened (aiohttp connector resolver intercept).
-* Only https:// and http:// are accepted (validated by the domain layer first).
-* A 10-second total timeout prevents slow-response DoS.
-* Cloudflare-protected stores (Rozetka, Comfy, etc.) may return 403 — this is
-  logged as a transient error, not a parse failure.
+* Reuses the public-article transport's pinned DNS/socket peer checks.
+* Public HTTPS:443 only, with bounded revalidated redirects; no credentials,
+  proxies, cookies, decompression or embedded-resource requests.
+* DNS and all redirects share a 10-second budget; bodies stream to a 512 KiB cap.
+* Errors are stable codes, never provider exception text or URLs.
 
-Algorithm (mirrors tovary.py logic, rewritten async)
------------------------------------------------------
-1. GET with a browser-like User-Agent.
+Algorithm
+---------
+1. Bounded public HTTPS GET through the pinned transport.
 2. Parse <script type="application/ld+json"> tags for schema.org/Product.
 3. Extract offers.price + offers.priceCurrency + offers.availability.
 4. Fallback: regex search for "availability":"…" in raw HTML.
@@ -24,15 +23,16 @@ Algorithm (mirrors tovary.py logic, rewritten async)
 from __future__ import annotations
 
 import asyncio
-import ipaddress
 import json
 import re
-import socket
 from dataclasses import dataclass
 from datetime import timedelta
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
+
+from .domain import price_watch as domain
+from .domain.validation import DomainError
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -41,11 +41,6 @@ if TYPE_CHECKING:
 
 _FETCH_TIMEOUT = 10  # seconds
 _POLL_INTERVAL = timedelta(minutes=30)
-_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/125.0.0.0 Safari/537.36"
-)
 
 # Tracking parameters to strip from URLs before storing / fetching
 _TRACKING_PARAMS = frozenset(
@@ -82,27 +77,6 @@ _AVAILABILITY_MAP: dict[str, str] = {
 }
 
 _AVAILABILITY_REGEX = re.compile(r'"availability"\s*:\s*"([^"]{4,80})"', re.IGNORECASE)
-
-
-# ── SSRF guard ─────────────────────────────────────────────────────────────────
-
-
-def _is_private_host(hostname: str) -> bool:
-    """Return True if the host resolves to a private/loopback/link-local address."""
-    try:
-        results = socket.getaddrinfo(hostname, None)
-    except OSError:
-        # DNS failure — treat as safe to attempt (let aiohttp fail naturally)
-        return False
-    for _, _, _, _, sockaddr in results:
-        addr_str = sockaddr[0]
-        try:
-            addr = ipaddress.ip_address(addr_str)
-            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-                return True
-        except ValueError:
-            continue
-    return False
 
 
 def clean_url(url: str) -> str:
@@ -159,6 +133,8 @@ class PriceFetchResult:
 
 
 def _parse_availability(raw: str) -> str:
+    if not isinstance(raw, str):
+        return "unknown"
     slug = raw.rsplit("/", 1)[-1].lower().replace(" ", "")
     return _AVAILABILITY_MAP.get(slug, "unknown")
 
@@ -177,6 +153,8 @@ def _extract_from_ld_json(html: str) -> PriceFetchResult | None:
             items = data.get("@graph", [data])
         elif isinstance(data, list):
             items = data
+        if not isinstance(items, list):
+            continue
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -199,14 +177,20 @@ def _extract_from_ld_json(html: str) -> PriceFetchResult | None:
             for offer in offers_list:
                 if not isinstance(offer, dict):
                     continue
-                price_val = offer.get("price") or offer.get("lowPrice")
+                price_val = offer.get("price")
+                if price_val is None:
+                    price_val = offer.get("lowPrice")
                 avail_raw = offer.get("availability", "")
                 availability = _parse_availability(avail_raw) if avail_raw else "unknown"
                 price_str = str(price_val).strip() if price_val is not None else ""
                 currency = str(offer.get("priceCurrency", "")).strip().upper()
+                if len(price_str) > 40:
+                    return PriceFetchResult(error="invalid_response")
                 if price_str or availability != "unknown":
                     return PriceFetchResult(
-                        price_text=price_str[:40],
+                        # The domain rejects oversized/invalid values; truncating
+                        # first could turn a hostile numeric prefix into a price.
+                        price_text=price_str,
                         currency=currency[:3] if len(currency) == 3 else "",
                         availability=availability,
                     )
@@ -232,49 +216,52 @@ def parse_html(html: str) -> PriceFetchResult:
 # ── async fetcher ──────────────────────────────────────────────────────────────
 
 
-async def fetch_price(url: str) -> PriceFetchResult:
-    """Fetch and parse a product page.  Never raises — errors go into .error."""
-    try:
-        import aiohttp  # local import — not available in pure-domain tests
-    except ImportError:
-        return PriceFetchResult(error="aiohttp_unavailable")
+async def fetch_price(url: str, *, scope_check=lambda: None) -> PriceFetchResult:
+    """Return bounded observations; cancellation and revoked authority propagate."""
+    from .assistant import article
 
-    parsed = urlparse(url)
-    hostname = parsed.hostname or ""
-    if not hostname:
-        return PriceFetchResult(error="invalid_url")
-
-    # SSRF guard — synchronous DNS lookup is acceptable here: called in executor
-    loop = asyncio.get_event_loop()
+    current, visited = url, set()
     try:
-        private = await loop.run_in_executor(None, _is_private_host, hostname)
-    except Exception:  # noqa: BLE001
-        private = False
-    if private:
-        return PriceFetchResult(error="ssrf_blocked")
-
-    headers = {
-        "User-Agent": _USER_AGENT,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "uk,en;q=0.9",
-    }
-    try:
-        timeout = aiohttp.ClientTimeout(total=_FETCH_TIMEOUT)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, headers=headers, allow_redirects=True) as resp:
-                if resp.status == 403:
-                    return PriceFetchResult(error="cf_blocked")
-                if resp.status != 200:
-                    return PriceFetchResult(error=f"http_{resp.status}")
-                # Read up to 2 MB — enough for any product page
-                html = await resp.text(errors="replace")
-                html = html[:2_000_000]
+        async with asyncio.timeout(_FETCH_TIMEOUT):
+            for count in range(article.MAX_REDIRECTS + 1):
+                target = await article._target(current, scope_check, article._system_resolve)
+                if target.url in visited:
+                    raise DomainError("article_invalid_url")
+                visited.add(target.url)
+                hop = await article._request_hop(target, scope_check)
+                await article._check(scope_check)
+                if hop.status in article._REDIRECTS:
+                    if count == article.MAX_REDIRECTS or not hop.location:
+                        raise DomainError("article_invalid_url")
+                    current = urljoin(target.url, hop.location)
+                    continue
+                if len(hop.body) > article.MAX_BODY_BYTES:
+                    raise DomainError("article_too_large")
+                charset = article._CHARSETS.get((hop.charset or "utf-8").casefold())
+                if charset is None:
+                    raise DomainError("article_unsupported")
+                result = parse_html(hop.body.decode(charset, errors="strict"))
+                if result.error or not result.price_text and result.availability == "unknown":
+                    raise DomainError("article_invalid_content")
+                # Malformed prices cannot erase a good baseline or fabricate a drop.
+                domain.validate_observation(result.price_text, result.currency)
+                return result
+    except DomainError as error:
+        if error.code in {"observation_revoked", "backup_in_progress"}:
+            raise
+        codes = {
+            "article_invalid_url": "invalid_url",
+            "article_timeout": "timeout",
+            "article_too_large": "response_too_large",
+            "article_unsupported": "unsupported_response",
+            "article_unavailable": "unavailable",
+        }
+        return PriceFetchResult(error=codes.get(error.code, "invalid_response"))
     except TimeoutError:
         return PriceFetchResult(error="timeout")
-    except aiohttp.ClientError as exc:
-        return PriceFetchResult(error=str(exc)[:100])
-
-    return parse_html(html)
+    except (ValueError, TypeError, AttributeError, RecursionError, OSError):
+        return PriceFetchResult(error="invalid_response")
+    return PriceFetchResult(error="unavailable")
 
 
 # ── HA scheduler ──────────────────────────────────────────────────────────────
@@ -288,60 +275,92 @@ class PriceWatchScheduler:
         self._entry = entry
         self._runtime = runtime
         self._unsub = None
-        self._running = False
+        self._task = None
+        self._stopped = True
 
     def start(self) -> None:
         from homeassistant.helpers.event import async_track_time_interval
 
+        if self._unsub is not None:
+            return
+        self._stopped = False
         self._unsub = async_track_time_interval(self._hass, self._interval, _POLL_INTERVAL)
-        # Run once immediately
-        self._hass.async_create_task(self._poll_all(), "Family Assistant price watch initial poll")
+        self.request()
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
+        self._stopped = True
         if self._unsub:
             self._unsub()
             self._unsub = None
+        if self._task is not None:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
 
     async def _interval(self, _now) -> None:
-        await self._poll_all()
+        self.request()
+
+    def request(self):
+        if not self._active() or self._task is not None and not self._task.done():
+            return
+        self._task = self._hass.async_create_background_task(
+            self._poll_all(), "Family Assistant price watch"
+        )
+
+    def _active(self):
+        data = self._hass.data.get("family_assistant", {})
+        return (
+            not self._stopped
+            and not data.get("backup")
+            and data.get("entries", {}).get(self._entry.entry_id) is self._runtime
+            and self._entry.runtime_data is self._runtime
+            and not self._runtime.engine.shadow_mode
+            and "price_watch" in self._runtime.engine.snapshot()["settings"]["modules"]
+        )
 
     async def _poll_all(self) -> None:
-        if self._running:
-            return
-        self._running = True
         try:
-            watchers = dict(self._runtime.engine.snapshot().get("price_watches", {}))
-            for watcher_id, watcher in watchers.items():
-                await self._poll_one(watcher_id, watcher)
-        finally:
-            self._running = False
+            for watcher_id in self._runtime.engine.snapshot().get("price_watches", {}):
+                if not self._active():
+                    return
+                await self._poll_one(watcher_id)
+            self._runtime.health.pop("price_watch", None)
+        except DomainError as error:
+            if error.code not in {"observation_revoked", "backup_in_progress"}:
+                self._runtime.health["price_watch"] = "unavailable"
+        except Exception:  # noqa: BLE001 - never log provider or Store exception payloads
+            self._runtime.health["price_watch"] = "unavailable"
 
-    async def _poll_one(self, watcher_id: str, watcher: dict) -> None:
+    async def _poll_one(self, watcher_id: str) -> None:
         from homeassistant.util import dt as dt_util
 
-        url = watcher.get("url", "")
-        if not url:
+        scope = domain.observation_scope(self._runtime.engine.snapshot(), watcher_id)
+        if scope is None:
             return
-        result = await fetch_price(url)
-        now = dt_util.utcnow()
-        # Use a synthetic system actor ("owner") to record via engine
-        from .domain.validation import DomainError
 
-        payload: dict = {"id": watcher_id}
-        if result.error:
-            payload["error"] = result.error
-        else:
-            payload["price_text"] = result.price_text
-            payload["currency"] = result.currency
-            payload["availability"] = result.availability
+        def check():
+            if (
+                not self._active()
+                or domain.observation_scope(self._runtime.engine.snapshot(), watcher_id) != scope
+            ):
+                raise DomainError("observation_revoked")
+
         try:
-            await self._runtime.engine.execute(
-                "owner",
-                "price_watch.record",
-                payload,
-                f"pw-{watcher_id}-{int(now.timestamp())}",
-                now,
+            check()
+            result = await fetch_price(scope["url"], scope_check=check)
+            check()
+
+            def commit(ctx):
+                check()
+                return domain.record_observation(ctx, scope, vars(result))
+
+            await self._runtime.engine.background_update(
+                "price_watch_observation", dt_util.utcnow(), commit
             )
             self._runtime.updated()
-        except DomainError:
-            pass  # watcher may have been removed between snapshot and record
+        except DomainError as error:
+            if error.code not in {"observation_revoked", "backup_in_progress"}:
+                raise

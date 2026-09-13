@@ -62,6 +62,10 @@ def quiet_until(now: datetime, policy: dict) -> datetime | None:
 
 
 def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
+    if event.get("key") in {"price_watch_drop", "price_watch_available"}:
+        from .domain.price_watch import current_event
+
+        return current_event(state, event, now)
     if event.get("key") == "online_school_notice":
         from .online_school.delivery import current
 

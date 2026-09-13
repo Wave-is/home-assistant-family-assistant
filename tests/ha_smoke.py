@@ -95,6 +95,11 @@ async def main(*, case="all"):
 
                 await verify_online_school(hass, user)
                 return
+            if case == "price-watch":
+                from ha_price_watch_smoke import verify_price_watch
+
+                await verify_price_watch(hass, user)
+                return
             if case == "voice":
                 from ha_voice_smoke import verify_voice_shopping
 
@@ -382,6 +387,9 @@ async def main(*, case="all"):
             from ha_task_settlements_smoke import verify_task_settlements
 
             await verify_task_settlements(hass, user)
+            from ha_price_watch_smoke import verify_price_watch
+
+            await verify_price_watch(hass, user)
             from ha_school_retention_smoke import verify_school_retention
 
             await verify_school_retention(hass, entry)
@@ -1407,6 +1415,7 @@ if __name__ == "__main__":
             "home-status",
             "task-settlements",
             "online-school",
+            "price-watch",
         ),
         default="all",
     )

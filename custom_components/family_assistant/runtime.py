@@ -221,10 +221,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await async_configure_telegram(hass, entry)
         async_configure_recipes(hass, entry)
         await async_configure_online_school(hass, entry)
-        from .price_watch_fetcher import PriceWatchScheduler
-
-        runtime.price_watcher = PriceWatchScheduler(hass, entry, runtime)
-        runtime.price_watcher.start()
+        await async_configure_price_watch(hass, entry)
         from .llm_api import async_register
 
         async_register(hass, entry)
@@ -244,7 +241,7 @@ async def _async_setup_runtime(hass, entry) -> bool:
         await async_stop_articles(runtime)
         await async_stop_media(runtime)
         if runtime.price_watcher:
-            runtime.price_watcher.stop()
+            await runtime.price_watcher.stop()
         if runtime.network:
             await runtime.network.stop()
         if runtime.telegram:
@@ -326,7 +323,7 @@ async def _async_unload_runtime(hass, entry) -> bool:
     await async_stop_articles(runtime)
     await async_stop_media(runtime)
     if runtime.price_watcher:
-        runtime.price_watcher.stop()
+        await runtime.price_watcher.stop()
     if runtime.network:
         await runtime.network.stop()
     if runtime.telegram:
@@ -405,12 +402,42 @@ async def async_options_updated(hass, entry):
                     async_configure_assistant(hass, entry)
                     async_configure_recipes(hass, entry)
                     await async_configure_online_school(hass, entry)
+                    await async_configure_price_watch(hass, entry)
                     await async_configure_network(hass, entry)
                     await async_configure_telegram(hass, entry)
                     selected.module_signature = modules_before
                     selected.updated()
                 return
         await coordinator.released.wait()
+
+
+async def async_configure_price_watch(hass, entry):
+    """Own and drain one worker; a disabled module owns neither timer nor I/O."""
+    from .price_watch_fetcher import PriceWatchScheduler
+
+    runtime = entry.runtime_data
+    enabled = (
+        not runtime.engine.shadow_mode
+        and "price_watch" in runtime.engine.snapshot()["settings"]["modules"]
+    )
+    worker = runtime.price_watcher
+    if (
+        enabled
+        and worker is not None
+        and not worker._stopped
+        and worker._unsub is not None
+        and worker._entry is entry
+        and worker._runtime is runtime
+    ):
+        return  # Unrelated/no-op Options must not trigger a new merchant request.
+    if runtime.price_watcher is not None:
+        await runtime.price_watcher.stop()
+        runtime.price_watcher = None
+    if enabled:
+        runtime.price_watcher = PriceWatchScheduler(hass, entry, runtime)
+        runtime.price_watcher.start()
+    else:
+        runtime.health.pop("price_watch", None)
 
 
 async def async_configure_online_school(hass, entry):

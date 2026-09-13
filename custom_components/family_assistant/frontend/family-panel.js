@@ -5,6 +5,7 @@ import {PANEL_COPY, PANEL_LANGUAGES, PANEL_MODULES, moduleCopy} from "./panel-co
 import {searchSettings} from "./panel-search.js";
 import {ERRORS} from "./errors.js";
 import {DRAFT_PREFIX, draftKey, createDraft, decodeDraft, draftConflict} from "./panel-drafts.js";
+import {renderPriceWatchReview} from "./price-watch-view.js";
 
 const AVATARS = {adult:"🧑", child:"🧒", cat:"🐱", dog:"🐶", robot:"🤖", flower:"🌼", star:"⭐"};
 const TABS = [["overview","🏠"],["members","👥"],["modules","⚙️"],["connections","🔌"],["advanced","🛠️"]];
@@ -221,7 +222,8 @@ export class FamilyAssistantPanel extends HTMLElement {
     await this.loadData();
   }
   async command(action,payload,{onSuccess}={}) {
-    if(this._writing||!this._entry||!this._hass||!this.owner)return false;
+    const priceReview=action==="price_watch.edit"&&["owner","parent"].includes(this._data?.view?.role)&&!this._data?.view?.read_only&&this.settings.modules?.includes("price_watch");
+    if(this._writing||!this._entry||!this._hass||(!this.owner&&!priceReview))return false;
     if(this._draftBlocked)return false;
     const generation=this._generation,entry=this._entry,previousPending=this._pending;
     const fingerprint=JSON.stringify([entry,action,payload]);
@@ -247,6 +249,10 @@ export class FamilyAssistantPanel extends HTMLElement {
         if(!member||Object.entries(pending.payload).some(([key,value])=>key!=="revision"&&JSON.stringify(member[key]??null)!==JSON.stringify(value)))throw new Error("readback_mismatch");
       }
       if(action==="settings.onboarding" && ["step","completed"].some(key=>data.onboarding?.[key]!==pending.payload[key]))throw new Error("readback_mismatch");
+      if(action==="price_watch.edit"){
+        const watch=data.view.price_watches?.find(item=>item.id===pending.payload.id);
+        if(!watch||watch.policy_status!=="ready"||watch.url!==pending.payload.url||watch.policy_generation!==result.policy_generation)throw new Error("readback_mismatch");
+      }
       this._data=data;this._observedAt=new Date();this._dirty=false;this._draft=null;this._pending=null;
       if(storedMutation)this.removeStoredDraft({force:true});
       this._notice=this.t.saved;if(onSuccess)onSuccess(data);return true;
@@ -494,6 +500,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     check.addEventListener("change",()=>this.toggleModule(id,check.checked));toggle.prepend(check);row.append(toggle);header.append(row);wrap.append(header);
     const nav=el("div",null,"panel-subtabs");nav.append(this.button(this.t.settings,()=>this.navigate(()=>{this._module=id;})),this.button(this.t.dailyUse,()=>this.openModuleView(id,true)));if(id==="pantry")nav.append(this.button("🍽️",()=>this.navigate(()=>{this._module=id;this._workspace="meals";})));
     wrap.append(nav);
+    if(id==="price_watch")wrap.append(renderPriceWatchReview(this));
     if(this._workspace)wrap.append(this.renderWorkspace(this._workspace));
     else {
       const cap=this._data.capabilities?.find(c=>c.id===id),status=this.section(this.t.readiness);
