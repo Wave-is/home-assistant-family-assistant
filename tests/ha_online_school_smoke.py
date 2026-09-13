@@ -93,7 +93,9 @@ async def verify_online_school(hass, user):
 
     from custom_components.family_assistant.const import DOMAIN, SCHEMA_VERSION
     from custom_components.family_assistant.diagnostics import async_get_config_entry_diagnostics
+    from custom_components.family_assistant.domain.online_school import homework_fingerprint
     from custom_components.family_assistant.domain.settings import current_revision
+    from custom_components.family_assistant.domain.validation import DomainError
     from custom_components.family_assistant.online_school import manager, options
     from custom_components.family_assistant.online_school.provider import RespublikaClient
 
@@ -307,10 +309,111 @@ async def verify_online_school(hass, user):
                 len((await _view(hass, entry, children[1][1]))["school"]["online"]["sources"]) == 1
             )
             assert len(started) == 4 and all(client._closed for client in clients)
+
+            # Native editing uses an already-reviewed binding while the portal is
+            # unavailable; only explicit identity/student refresh may rediscover.
+            source_id = next(key for key, row in sources.items() if row["student_id"] == "101")
+            cached = sources[source_id]
+            lesson = cached["snapshot"]["lessons"][0]
+            await execute(
+                "school.online_homework_ack",
+                {
+                    "id": source_id,
+                    "revision": cached["revision"],
+                    "member_revision": cached["member_revision"],
+                    "lesson_id": lesson["id"],
+                    "homework_hash": homework_fingerprint(lesson),
+                    "ack_revision": None,
+                    "done": True,
+                },
+            )
+            cached = entry.runtime_data.engine.snapshot()["school"]["online"]["sources"][source_id]
+            client_count = len(clients)
+
+            async def unavailable_discovery(self):
+                raise DomainError("online_school_timeout")
+
+            with patch.object(SyntheticSchool, "discover", unavailable_discovery):
+                for changed in (True, False):
+                    form = await _school_form(hass, entry, user)
+                    form = await hass.config_entries.options.async_configure(
+                        form["flow_id"], {"source": source_id}
+                    )
+                    account_defaults = form["data_schema"]({})
+                    assert account_defaults["refresh_students"] is False
+                    form = await hass.config_entries.options.async_configure(
+                        form["flow_id"], account_defaults
+                    )
+                    assert form["step_id"] == "online_school_student", form
+                    defaults = form["data_schema"]({})
+                    assert defaults["student_id"] == "101"
+                    if changed:
+                        defaults.update(
+                            notifications=True,
+                            notify_changes=True,
+                            homework_time="17:25",
+                            recipients=["owner"],
+                        )
+                    else:
+                        assert defaults == {
+                            "student_id": "101",
+                            "notifications": True,
+                            "notify_changes": True,
+                            "homework_time": "17:25",
+                            "recipients": ["owner"],
+                        }
+                        before_noop = deepcopy(dict(entry.options))
+                    result = await hass.config_entries.options.async_configure(
+                        form["flow_id"], defaults
+                    )
+                    assert result["type"] == "create_entry", result
+                    await _drain(hass, entry)
+                    edited = entry.runtime_data.engine.snapshot()["school"]["online"]["sources"][
+                        source_id
+                    ]
+                    assert edited["generation"] == cached["generation"]
+                    assert edited["revision"] == cached["revision"] + 1
+                    assert edited["snapshot"] == cached["snapshot"]
+                    assert edited["acknowledgements"] == cached["acknowledgements"]
+                    assert len(clients) == client_count and fetches == ["101", "202"]
+                    if not changed:
+                        assert dict(entry.options) == before_noop
+
+                form = await _school_form(hass, entry, user)
+                form = await hass.config_entries.options.async_configure(
+                    form["flow_id"], {"source": source_id}
+                )
+                result = await hass.config_entries.options.async_configure(
+                    form["flow_id"], {"enabled": False}
+                )
+                assert result["type"] == "create_entry", result
+                await _drain(hass, entry)
+                disabled = entry.runtime_data.engine.snapshot()["school"]["online"]["sources"][
+                    source_id
+                ]
+                assert disabled["enabled"] is False
+                assert disabled["generation"] == cached["generation"]
+                assert disabled["snapshot"] == cached["snapshot"]
+                assert disabled["acknowledgements"] == cached["acknowledgements"]
+                assert len(clients) == client_count
+
+            persisted = await Store(hass, SCHEMA_VERSION, f"{DOMAIN}.{entry.entry_id}").async_load()
+            assert persisted["school"]["online"]["sources"][source_id] == disabled
+            previous = entry.runtime_data
+            assert await hass.config_entries.async_unload(entry.entry_id)
+            assert await hass.config_entries.async_setup(entry.entry_id)
+            await _drain(hass, entry)
+            assert entry.runtime_data is not previous
+            assert (
+                entry.runtime_data.engine.snapshot()["school"]["online"]["sources"][source_id]
+                == disabled
+            )
+            assert fetches == ["101", "202"]
         finally:
             # Unload while patches are active: no fixture can escape to a real school poller.
             if entry is not None and entry.state is ConfigEntryState.LOADED:
                 assert await hass.config_entries.async_unload(entry.entry_id)
     print(
-        "PASS: actual HA school Options, private child views, polling, module lifecycle and Store"
+        "PASS: actual HA school Options/edit defaults/offline policy and disable, "
+        "private child views, polling, module lifecycle and Store"
     )

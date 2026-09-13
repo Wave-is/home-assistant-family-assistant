@@ -770,6 +770,7 @@
           "url": "School HTTPS origin",
           "username": "School login",
           "password": "Password (blank = keep current)",
+          "refresh_students": "Refresh available students (requires school connection)",
           "member": "Family child"
         }
       },

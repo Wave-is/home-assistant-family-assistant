@@ -451,13 +451,75 @@ def _save_source(ctx, payload, *, assigned_id=None):
     return _configuration(source)
 
 
+def _policy_update(state, source_id, record, previous):
+    """Accept one reviewed policy edit, never reauthorize a changed binding."""
+    marker = record.get("policy_update")
+    if marker is None:
+        return None
+    _object(
+        marker,
+        {
+            "id",
+            "source_id",
+            "generation",
+            "source_revision",
+            "owner",
+            "owner_revision",
+            "recipients",
+        },
+        field="policy_update",
+    )
+    marker_id = _plain(marker["id"], "policy_update", 80)
+    if marker_id == previous.get("options_policy_id"):
+        return None
+    if (
+        marker["source_id"] != source_id
+        or marker["generation"] != previous["generation"]
+        or marker["generation"] != previous.get("options_generation")
+        or revision(marker["source_revision"]) != previous["revision"]
+        or previous.get("enabled") is not True
+        or any(
+            record.get(key) != previous.get(key)
+            for key in (
+                "member",
+                "member_revision",
+                "provider",
+                "student_id",
+                "timezone",
+                "generation",
+            )
+        )
+        or record.get("timezone") != state["settings"].get("timezone", "UTC")
+    ):
+        return None
+    try:
+        owner = _actor(state, _plain(marker["owner"], "owner", 80), owner=True)
+        if revision(marker["owner_revision"]) != owner["revision"]:
+            return None
+        _child(state, record["member"], record["member_revision"])
+        rules = _rules(state, record.get("rules", {}), record["member"])
+        recipients = marker["recipients"]
+        if not isinstance(recipients, dict) or set(recipients) != set(rules["recipients"]):
+            return None
+        if any(
+            revision(expected) != state["members"][member]["revision"]
+            for member, expected in recipients.items()
+        ):
+            return None
+    except DomainError:
+        # A queued Options save may outlive owner/child/recipient authority.
+        return None
+    return marker_id
+
+
 def sync_bindings(ctx, options):
     """Reconcile a newer, guarded native Options envelope without copying secrets.
 
     ``options.online_school`` is {revision: positive int, sources: {OSid: record}}.
     The adapter must additionally fence the exact current Options digest inside
     Engine's lock. An unchanged Options generation never revives a canonical
-    disable/rebind. A newly reviewed generation is explicit reauthorization.
+    disable/rebind. An exact, one-use policy marker may change notification
+    settings without clearing facts. A new generation is reauthorization.
     """
     if "school" not in ctx.state.get("settings", {}).get("modules", []):
         return {"applied": False, "sources": []}
@@ -489,7 +551,11 @@ def sync_bindings(ctx, options):
             previous.get("options_generation"),
             previous["generation"],
         }:
-            continue
+            policy_id = _policy_update(working, source_id, record, previous)
+            if policy_id is None:
+                continue
+        else:
+            policy_id = None
         payload = {key: record[key] for key in CONFIG_FIELDS - {"id", "revision"} if key in record}
         if previous:
             payload.update(id=source_id, revision=previous["revision"])
@@ -509,6 +575,8 @@ def sync_bindings(ctx, options):
             continue
         saved = _save_source(scoped, payload, assigned_id=source_id)
         _sources(working)[source_id]["options_generation"] = generation
+        if policy_id is not None:
+            _sources(working)[source_id]["options_policy_id"] = policy_id
         changed.append(saved)
     for source_id, source in _sources(working).items():
         if (
