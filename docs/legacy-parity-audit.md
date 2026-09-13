@@ -34,8 +34,10 @@ before one Engine batch. Invalid batches cannot fall through to single-command
 or model repair. Recipient revisions and resolved dates are frozen; storage and
 authority races, restart/replay, localized manager failures and task-ID receipts
 have synthetic adapter/domain coverage. This supersedes only the explicit
-numbered-creation gap below. Inline lists, arbitrary multi-task prose, assigned
-purchases and native HA/live bot acceptance for this increment remain open.
+numbered-creation gap below. Root's actual isolated HA2026.9.2 command-completion
+case also passed real Store/reload, date-stable replay and authenticated atomic
+rejection. Inline lists, arbitrary multi-task prose, assigned purchases and live
+bot acceptance for this increment remain open.
 
 - [Source setting inventory](legacy-settings-inventory.json): all 26 original
   Assistant and three Court top-level configuration declarations are accounted

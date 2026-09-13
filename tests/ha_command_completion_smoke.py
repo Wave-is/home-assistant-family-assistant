@@ -4,6 +4,117 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
 
+async def _assigned_shopping(hass, entry, owner, child_user, child, now):
+    from ha_digests_smoke import _execute
+
+    from custom_components.family_assistant.telegram.router import route
+
+    engine = entry.runtime_data.engine
+    command = "поручи Роман купить 2 кг груш"
+    operation = "completion-assigned-shopping"
+    answer = await route(engine, "owner", command, operation, now, private=True)
+    row = next(item for item in engine.snapshot()["shopping"].values() if item["name"] == "груш")
+    assert (row["buyer"], row["quantity"], row["unit"]) == (child, 2, "кг")
+    assert "buyer_revision" not in row
+    mine = await route(engine, child, "/shopping mine", "completion-buy-mine", now, private=True)
+    assert "груш" in mine and "яблок" not in mine
+    shared = await route(engine, child, "/shopping", "completion-buy-shared", now, private=True)
+    assert "груш" in shared and "яблок" in shared
+    decorated = await _execute(
+        hass,
+        entry,
+        owner,
+        20,
+        "shopping.edit",
+        {
+            "id": row["id"],
+            "revision": row["revision"],
+            "name": row["name"],
+            "category": "Synthetic fruit",
+            "store": "Synthetic market",
+            "note": "Shared",
+            "barcode": "96385074",
+            "buyer": child,
+        },
+        "completion-shopping-metadata",
+    )
+    assert decorated["success"], decorated
+    # The responsible buyer is metadata, not an exclusive purchase permission.
+    helped = await _execute(
+        hass,
+        entry,
+        owner,
+        21,
+        "shopping.purchase",
+        {"id": row["id"], "revision": decorated["result"]["revision"], "quantity": 1},
+        "completion-shopping-helper",
+    )
+    assert helped["success"] and helped["result"]["purchased"] == 1, helped
+    before = engine.snapshot()["shopping"][row["id"]]
+    assignment = f"change buyer {row['id']} to Owner"
+    assigned_answer = await route(
+        engine, "owner", assignment, "completion-shopping-reassign", now, private=True
+    )
+    edited = engine.snapshot()["shopping"][row["id"]]
+    assert edited["buyer"] == "owner"
+    for field in (
+        "name",
+        "quantity",
+        "unit",
+        "purchased",
+        "status",
+        "creator",
+        "category",
+        "store",
+        "note",
+        "barcode",
+    ):
+        assert edited[field] == before[field], field
+    # Exact buyer identity is checked under the authenticated Engine lock.
+    state = engine.snapshot()
+    stale = await _execute(
+        hass,
+        entry,
+        owner,
+        22,
+        "shopping.add",
+        {
+            "name": "Must not exist",
+            "buyer": child,
+            "buyer_revision": state["members"][child]["revision"] + 1,
+        },
+        "completion-shopping-stale-buyer",
+    )
+    assert not stale["success"] and engine.snapshot() == state, stale
+    forbidden = await _execute(
+        hass,
+        entry,
+        child_user,
+        23,
+        "shopping.edit",
+        {
+            **{key: edited[key] for key in ("id", "revision", "name", "category", "store", "note")},
+            "buyer": child,
+        },
+        "completion-shopping-child-reassign",
+    )
+    assert not forbidden["success"] and engine.snapshot() == state, forbidden
+    await route(
+        engine,
+        "owner",
+        f"сними покупателя {row['id']}",
+        "completion-shopping-unassign",
+        now,
+        private=True,
+    )
+    assert engine.snapshot()["shopping"][row["id"]]["buyer"] is None
+    # Replaying the earlier assignment after reload must not undo this clearing.
+    return [
+        (command, operation, answer),
+        (assignment, "completion-shopping-reassign", assigned_answer),
+    ]
+
+
 async def verify_command_completion(hass, owner):
     from ha_digests_smoke import _execute
     from homeassistant.config_entries import ConfigEntryState
@@ -65,6 +176,7 @@ async def verify_command_completion(hass, owner):
         )
         assert "убрать стол" in reply
         store = Store(hass, 1, f"family_assistant.{entry.entry_id}")
+        shopping_replays = await _assigned_shopping(hass, entry, owner, child_user, child, now)
         numbered_operation = "completion-numbered-tasks"
         numbered_command = (
             "создай 2 задачи для Роман на завтра с фотоотчетом:\n"
@@ -190,6 +302,15 @@ async def verify_command_completion(hass, owner):
         await entry.runtime_data.scheduler.stop()
         engine = entry.runtime_data.engine
         assert engine.snapshot()["tasks"] == baseline["tasks"]
+        assert engine.snapshot()["shopping"] == baseline["shopping"]
+        shopping_before_replay = engine.snapshot()
+        for content, operation, expected_reply in shopping_replays:
+            assert (
+                await route(engine, "owner", content, operation, now, private=True)
+                == expected_reply
+            )
+        assert engine.snapshot() == shopping_before_replay
+        assert (await store.async_load())["shopping"] == baseline["shopping"]
         # A later received date must replay the original plan and IDs, not resolve
         # "tomorrow" again or create another batch after native Store reload.
         before_replay = engine.snapshot()
@@ -217,7 +338,7 @@ async def verify_command_completion(hass, owner):
         await route(engine, "owner", task_command, "completion-grammar-task", now, private=True)
         await route(engine, "owner", shopping_command, "completion-grammar-buy", now, private=True)
         state = engine.snapshot()
-        assert len(state["tasks"]) == 4 and len(state["shopping"]) == 1
+        assert len(state["tasks"]) == 4 and len(state["shopping"]) == 2
         assert len([e for e in state["outbox"].values() if e["key"] == "task_review_overdue"]) == 1
         current = state["tasks"][review_task["id"]]
         completed = await _execute(
@@ -235,7 +356,9 @@ async def verify_command_completion(hass, owner):
         print(
             "PASS: actual HA natural task report/deadline and shopping quantity commands, "
             "scoped list, numbered two-task atomic creation/denial/rollback/task IDs/date-stable "
-            "replay, native reviewer policy/submit/Store/reload/replay/completion"
+            "replay, assigned shared shopping/filter/metadata/helper purchase/"
+            "stale identity/replay, "
+            "native reviewer policy/submit/Store/reload/replay/completion"
         )
     finally:
         await hass.config_entries.async_unload(entry.entry_id)
