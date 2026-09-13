@@ -112,6 +112,8 @@ class ChatService:
         self._task_actors: dict[str, str] = {}
         self._completed: dict[str, tuple[float, str]] = {}
         self._lock = asyncio.Lock()
+        self._model_waiters = 0
+        self._actor_model_waiters: dict[str, int] = {}
         self._active = 0
         self._actor_active: dict[str, int] = {}
 
@@ -143,6 +145,7 @@ class ChatService:
         self._active += 1
         self._actor_active[actor] = self._actor_active.get(actor, 0) + 1
         admitted = True
+        model_admitted = False
 
         def release_admission() -> None:
             nonlocal admitted
@@ -155,6 +158,31 @@ class ChatService:
                 self._actor_active[actor] = remaining
             else:
                 self._actor_active.pop(actor, None)
+
+        def admit_model() -> None:
+            nonlocal model_admitted
+            if model_admitted:
+                return
+            if (
+                self._model_waiters >= MAX_ACTIVE
+                or self._actor_model_waiters.get(actor, 0) >= MAX_ACTIVE_PER_ACTOR
+            ):
+                raise DomainError("chat_busy")
+            self._model_waiters += 1
+            self._actor_model_waiters[actor] = self._actor_model_waiters.get(actor, 0) + 1
+            model_admitted = True
+
+        def release_model() -> None:
+            nonlocal model_admitted
+            if not model_admitted:
+                return
+            model_admitted = False
+            self._model_waiters -= 1
+            remaining = self._actor_model_waiters.get(actor, 1) - 1
+            if remaining:
+                self._actor_model_waiters[actor] = remaining
+            else:
+                self._actor_model_waiters.pop(actor, None)
 
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
@@ -170,9 +198,11 @@ class ChatService:
                     scope_check=scope_check,
                     on_commit=on_commit,
                     release_admission=release_admission,
+                    admit_model=admit_model,
                 )
         finally:
             release_admission()
+            release_model()
 
     async def _admitted_answer(
         self,
@@ -188,6 +218,7 @@ class ChatService:
         scope_check,
         on_commit,
         release_admission,
+        admit_model,
     ):
         await self._check(scope_check)
         input_hash = _hash(content)
@@ -209,6 +240,7 @@ class ChatService:
             scope_check,
             on_commit,
             release_admission,
+            admit_model,
         )
 
     async def _answer(
@@ -227,6 +259,7 @@ class ChatService:
         scope_check,
         on_commit,
         release_admission,
+        admit_model,
     ) -> str:
         engine = ScopedEngine(runtime.engine, guard, on_commit)
         context_free = self._context_free(content)
@@ -254,6 +287,7 @@ class ChatService:
             # Release its bounded admission before joining or creating model
             # work; model jobs have their own global and per-actor limits.
             release_admission()
+            admit_model()
             cascade = getattr(assistant, "cascade", None)
             if assistant is None or cascade is None:
                 raise DomainError("provider_not_configured")
@@ -294,18 +328,20 @@ class ChatService:
             if self._closed:
                 raise DomainError("not_ready")
             cached = self._completed.get(request_key)
+            cached_valid = bool(cached and cached[0] >= self._clock())
             task = self._tasks.get(request_key)
-            if not (cached and cached[0] >= self._clock()) and task is None:
-                actor_workers = sum(value == actor for value in self._task_actors.values())
-                if len(self._tasks) >= MAX_ACTIVE or actor_workers >= MAX_ACTIVE_PER_ACTOR:
-                    raise DomainError("chat_busy")
-                task = asyncio.create_task(generate())
-                self._tasks[request_key] = task
-                self._task_actors[request_key] = actor
-                task.add_done_callback(
-                    lambda completed, key=request_key: self._task_done(key, completed)
-                )
-        if cached and cached[0] >= self._clock():
+            if not cached_valid:
+                if task is None:
+                    actor_workers = sum(value == actor for value in self._task_actors.values())
+                    if len(self._tasks) >= MAX_ACTIVE or actor_workers >= MAX_ACTIVE_PER_ACTOR:
+                        raise DomainError("chat_busy")
+                    task = asyncio.create_task(generate())
+                    self._tasks[request_key] = task
+                    self._task_actors[request_key] = actor
+                    task.add_done_callback(
+                        lambda completed, key=request_key: self._task_done(key, completed)
+                    )
+        if cached_valid:
             await self._check(scope_check)
             return cached[1]
         reply = await asyncio.shield(task)

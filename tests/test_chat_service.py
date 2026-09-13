@@ -257,6 +257,121 @@ async def test_deterministic_lane_survives_saturated_actor_model_workers(engine,
 
 
 @pytest.mark.asyncio
+async def test_exact_model_joiners_have_separate_bounded_waiter_admission(engine, now):
+    await enable(engine, now)
+    provider = BlockingProvider({"kind": "answer", "text": "bounded answer"})
+    runtime = SimpleNamespace(
+        engine=engine,
+        assistant=Assistant(engine, Cascade([provider], {})),
+    )
+    service = ChatService()
+    requests = []
+    try:
+        for _ in range(12):
+            requests.append(
+                asyncio.create_task(
+                    ask(service, runtime, engine, now, "Question", "same-operation")
+                )
+            )
+            await asyncio.sleep(0)
+            for _ in range(40):
+                if service._active == 0:
+                    break
+                await asyncio.sleep(0)
+        await provider.started.wait()
+        await asyncio.sleep(0)
+
+        assert len(service._tasks) == 1 and provider.calls == 1
+        assert service._model_waiters == MAX_ACTIVE_PER_ACTOR
+        assert service._actor_model_waiters == {"parent": MAX_ACTIVE_PER_ACTOR}
+        assert sum(not request.done() for request in requests) == MAX_ACTIVE_PER_ACTOR
+        rejected = [request for request in requests if request.done()]
+        assert len(rejected) == 12 - MAX_ACTIVE_PER_ACTOR
+        assert all(
+            isinstance(request.exception(), DomainError) and request.exception().code == "chat_busy"
+            for request in rejected
+        )
+        # Waiter admission is independent from the deterministic route lane.
+        assert "here" in await ask(service, runtime, engine, now, "/ping", "joiner-static-ping")
+    finally:
+        provider.release.set()
+        results = await asyncio.gather(*requests, return_exceptions=True)
+        await service.async_stop()
+    assert sum(isinstance(result, str) for result in results) == MAX_ACTIVE_PER_ACTOR
+    assert service._model_waiters == 0 and service._actor_model_waiters == {}
+
+
+@pytest.mark.asyncio
+async def test_cached_model_joiners_hold_waiter_admission_through_scope_and_refs(engine, now):
+    await enable(engine, now)
+    provider = BlockingProvider({"kind": "answer", "text": "cached answer"})
+    provider.release.set()
+    runtime = SimpleNamespace(
+        engine=engine,
+        assistant=Assistant(engine, Cascade([provider], {})),
+    )
+    service = ChatService()
+    assert "cached answer" in await ask(
+        service, runtime, engine, now, "Question", "cached-operation"
+    )
+    for _ in range(20):
+        if service._completed:
+            break
+        await asyncio.sleep(0)
+    assert len(service._completed) == 1 and provider.calls == 1
+
+    revision, guard, _check = scope(engine)
+    release = asyncio.Event()
+    requests = []
+
+    async def cached_call():
+        checks = 0
+
+        async def blocked_after_route():
+            nonlocal checks
+            checks += 1
+            if checks == 3:
+                await release.wait()
+
+        return await service.answer(
+            runtime=runtime,
+            actor="parent",
+            actor_revision=revision,
+            content="Question",
+            operation_id="cached-operation",
+            session_id="session",
+            now=now,
+            guard=guard,
+            scope_check=blocked_after_route,
+        )
+
+    try:
+        for _ in range(12):
+            requests.append(asyncio.create_task(cached_call()))
+            await asyncio.sleep(0)
+            for _ in range(40):
+                if service._active == 0:
+                    break
+                await asyncio.sleep(0)
+        assert service._model_waiters == MAX_ACTIVE_PER_ACTOR
+        assert sum(not request.done() for request in requests) == MAX_ACTIVE_PER_ACTOR
+        rejected = [request for request in requests if request.done()]
+        assert len(rejected) == 12 - MAX_ACTIVE_PER_ACTOR
+        assert all(
+            isinstance(request.exception(), DomainError) and request.exception().code == "chat_busy"
+            for request in rejected
+        )
+        assert "here" in await ask(service, runtime, engine, now, "/ping", "cached-static-ping")
+    finally:
+        release.set()
+        results = await asyncio.gather(*requests, return_exceptions=True)
+        await service.async_stop()
+    assert sum(isinstance(result, str) for result in results) == MAX_ACTIVE_PER_ACTOR
+    assert provider.calls == 1
+    assert service._model_waiters == 0 and service._actor_model_waiters == {}
+
+
+@pytest.mark.asyncio
 async def test_model_lane_preserves_global_limit_across_actor_fairness(engine, now):
     await enable(engine, now)
     provider = BlockingProvider({"kind": "answer", "text": "bounded answer"})
