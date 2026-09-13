@@ -37,7 +37,7 @@ runtime ZIP is not selected by a `zip_release` setting in this repository's
 
 ## Release candidate versus default catalog
 
-At the latest 13 September 2026 audit, `0.2.0-rc.3` was a published GitHub **prerelease**;
+At the rc.6 checkpoint on 13 September 2026, `0.2.0-rc.6` was a published GitHub **prerelease**;
 `0.1.1` remained the latest stable release. Check the current release page rather
 than assuming that the newest candidate is the stable default. In particular,
 “published on GitHub”, “installable as a HACS custom repository” and “included in

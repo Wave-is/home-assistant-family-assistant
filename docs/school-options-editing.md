@@ -1,5 +1,10 @@
 # Editing an online-school account
 
+The coordinating rc.7 candidate passed root's actual isolated HA2026.9.2 native
+Options/defaults/offline policy/disable/cache-and-acknowledgement/Store acceptance.
+The dedicated and combined suites are recorded in the implementation matrix;
+no real school login or household message was used for these tests.
+
 An existing account now opens with its selected student, notification switches,
 preparation time and recipients. New bindings still default to notifications off,
 18:00, and no recipients. Passwords remain blank in the form: blank means retain

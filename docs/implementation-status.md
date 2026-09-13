@@ -1,5 +1,20 @@
 # Implementation and acceptance matrix
 
+## Combined rc.7 acceptance — 13 September 2026
+
+Atomic numbered tasks, shared buyer commands/filters/name repair and cache-
+preserving school Options are combined. Root verified **6440 Python passed,
+six skips, 23 subtests; 793 Node; 433 Chromium**. The generated inventory follows
+that complete browser run and still distinguishes unvisited handlers from tested
+paths. Actual isolated HA2026.9.2 passed school offline policy/defaults/disable/
+Store editing, plus shared purchase metadata/help/filter/identity/replay and task
+atomicity. A two-process upgrade from the exact published rc.6 ZIP to rc.7 passed.
+The expanded suite did not use household devices, credentials or real messages.
+
+Exact-commit CI and release/deployment are separate from these local gates. The
+new read-only household/energy module remains a different development stream;
+it is not included in rc.7. [Release scope](releases/0.2.0-rc.7.md).
+
 ## Shared-shopping buyer increment — local branch, 13 September 2026
 
 `codex/shopping-assignments` adds bounded RU/UK/EN buyer commands, S-ID
@@ -8,8 +23,8 @@ optional member pins and independently proven purchase-recipient typo repair.
 The family list/history and helping-purchase permissions remain shared and
 unchanged. It does not convert shopping to tasks, add private inventory, or
 provide semantic deduplication of distinct new requests. Focused Chromium passed
-22 cases; Python reached 6307 passes plus an independently corrected generated-report
-scanner failure. Final combined full-suite/native/release gates remain separate.
+22 cases; the final standalone Python run passed 6308 tests, six skips and 23
+subtests. The combined and native gates above supersede its interim checkpoint.
 Exact scope and current evidence:
 [shared shopping assignments](shopping-assignments.md).
 
