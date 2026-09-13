@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 
 const proposal = (card) => card.locator("[data-meal-shopping-proposal]");
 

@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 const labels={
   en:{add:"Add shopping item",name:"Name",code:"Barcode (optional GTIN)",review:"Review",save:"Add to shopping list"},

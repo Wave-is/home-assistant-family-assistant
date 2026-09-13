@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 import { SCHOOL_IMPORT_COPY } from "../../custom_components/family_assistant/frontend/school-import-copy.js";
 import { SCHOOL_COPY } from "../../custom_components/family_assistant/frontend/school-copy.js";
 

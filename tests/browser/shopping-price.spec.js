@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 import {PRICE_COPY as PRICE} from "../../custom_components/family_assistant/frontend/shopping-price.js";
 import {SHOPPING_ITEM_COPY as ITEMS} from "../../custom_components/family_assistant/frontend/shopping-items.js";
 

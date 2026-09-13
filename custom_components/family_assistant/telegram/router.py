@@ -34,6 +34,21 @@ COPY = {
             "/unwatch ID — remove price watch"
         ),
         "empty": "No records yet.",
+        "forget_scope": (
+            "Nothing was deleted. Clearing legacy conversation memory is not implemented here. "
+            "To disable one of your learned phrase rules, use /forgetphrase L000001."
+        ),
+        "voice_unsupported": (
+            "Telegram voice messages are not supported yet. Send text or a command. "
+            "No audio was downloaded or transcribed."
+        ),
+        "more_help": (
+            "\n/polls — private voting\n/netblock member | 30 — temporary pause\n"
+            "/netuntil member | 18:00\n/netlimit member | 2M/5M\n/netcancel ID\n"
+            "/confirm proposal ID · /cancel proposal ID\n"
+            "/feedback proposal ID | wrong_target | expected action — private note\n"
+            "/forget — memory compatibility guidance; /voice — voice support status"
+        ),
         "saved": "✅ Saved: {id} · {title}",
         "unwatched": "🗑 Price watch removed: {id} · {title}",
         "private_saved": (
@@ -70,6 +85,21 @@ COPY = {
             "/unwatch ID — удалить из отслеживания"
         ),
         "empty": "Пока нет записей.",
+        "forget_scope": (
+            "Ничего не удалено. Очистка старой разговорной памяти здесь не реализована. "
+            "Чтобы отключить своё правило изученной фразы, используйте /forgetphrase L000001."
+        ),
+        "voice_unsupported": (
+            "Голосовые сообщения Telegram пока не поддерживаются. Напишите текст или команду. "
+            "Аудио не загружалось и не распознавалось."
+        ),
+        "more_help": (
+            "\n/polls — личные голосования\n/netblock участник | 30 — временная пауза\n"
+            "/netuntil участник | 18:00\n/netlimit участник | 2M/5M\n/netcancel ID\n"
+            "/confirm ID предложения · /cancel ID предложения\n"
+            "/feedback ID предложения | wrong_target | ожидаемое действие — личная заметка\n"
+            "/forget — различия памяти; /voice — доступность голосовых сообщений"
+        ),
         "saved": "✅ Сохранено: {id} · {title}",
         "unwatched": "🗑 Отслеживание снято: {id} · {title}",
         "private_saved": (
@@ -105,6 +135,21 @@ COPY = {
             "/unwatch ID — видалити з відстеження"
         ),
         "empty": "Поки немає записів.",
+        "forget_scope": (
+            "Нічого не видалено. Очищення старої розмовної пам’яті тут не реалізоване. "
+            "Щоб вимкнути власне правило вивченої фрази, використайте /forgetphrase L000001."
+        ),
+        "voice_unsupported": (
+            "Голосові повідомлення Telegram поки не підтримуються. Напишіть текст або команду. "
+            "Аудіо не завантажувалося й не розпізнавалося."
+        ),
+        "more_help": (
+            "\n/polls — особисті голосування\n/netblock учасник | 30 — тимчасова пауза\n"
+            "/netuntil учасник | 18:00\n/netlimit учасник | 2M/5M\n/netcancel ID\n"
+            "/confirm ID пропозиції · /cancel ID пропозиції\n"
+            "/feedback ID пропозиції | wrong_target | очікувана дія — особиста нотатка\n"
+            "/forget — відмінності пам’яті; /voice — доступність голосових повідомлень"
+        ),
         "saved": "✅ Збережено: {id} · {title}",
         "unwatched": "🗑 Відстеження скасовано: {id} · {title}",
         "private_saved": (
@@ -181,7 +226,8 @@ def addressed(message: dict, bot: dict, *, language: str = "ru") -> str | None:
     content = raw_content.strip()
     if not content and (has_photo or reply_has_photo):
         content = photo_prompt
-    if not content:
+    has_voice = isinstance(message.get("voice"), dict)
+    if not content and not has_voice:
         return None
     username = re.escape(bot["username"])
     mention = re.compile(rf"(?<!\w)@{username}(?!\w)", re.I)
@@ -190,6 +236,10 @@ def addressed(message: dict, bot: dict, *, language: str = "ru") -> str | None:
         return None
     direct = message.get("chat", {}).get("type") == "private"
     reply = replied_msg.get("from", {}).get("id") == bot["id"]
+    if has_voice:
+        # Voice is not text. A caption/quote must not stand in for a transcript
+        # or quietly enter the model/photo pipeline. Ignore unrelated group audio.
+        return "/voice" if direct or reply or mention.search(content) else None
     if not (direct or command or reply or mention.search(content)):
         return None
     content = re.sub(rf"(^/\w+)@{username}(?!\w)", r"\1", content, flags=re.I)
@@ -200,6 +250,7 @@ def addressed(message: dict, bot: dict, *, language: str = "ru") -> str | None:
 
 
 COMMAND_ALIASES = {
+    "/забыть": "/forget",
     "/commands": "/help",
     "/команды": "/help",
     "/команди": "/help",
@@ -325,7 +376,7 @@ COMMAND_ALIASES = {
 
 
 def canonical_command(cmd: str) -> str:
-    c = cmd.casefold()
+    c = cmd.casefold().replace("ё", "е")
     if c.startswith("/."):
         c = "/" + c[2:]
     if c in COMMAND_ALIASES:
@@ -339,6 +390,12 @@ def canonical_command(cmd: str) -> str:
 
 def member_by_name(state: dict, value: str) -> str:
     return find_member(state, value)
+
+
+def command_parts(content: str) -> tuple[str, str]:
+    """Telegram command arguments may follow a space, tab or line break."""
+    parts = content.split(maxsplit=1)
+    return (parts[0], parts[1] if len(parts) == 2 else "") if parts else ("", "")
 
 
 async def route(
@@ -359,6 +416,14 @@ async def route(
         view["tasks"] = [task for task in view["tasks"] if not private_task(task)]
     language = next(m["language"] for m in view["members"] if m["id"] == actor)
     t = COPY.get(language, COPY["en"])
+    initial_command = canonical_command(command_parts(content)[0])
+    if initial_command == "/voice":
+        return t["voice_unsupported"]
+    if initial_command == "/forget":
+        # The legacy verb cleared conversation context, not learned phrase rules.
+        # Guard before replay too: an old pending interpretation must not delete
+        # an unrelated rule after migration.
+        return t["forget_scope"]
 
     def saved(result):
         if "watch_revision" in result and type(result.get("enabled")) is bool:
@@ -425,7 +490,7 @@ async def route(
         return saved(
             await engine.execute(actor, prior["action"], prior["payload"], operation_id, now)
         )
-    head, _, tail = content.partition(" ")
+    head, tail = command_parts(content)
     normalized = normalize(canonical_command(head) if not tail else content)
     if normalized in {
         "/ping",
@@ -512,6 +577,7 @@ async def route(
             + ADMISSION_COPY.get(language, ADMISSION_COPY["en"])["help"]
             + COMMAND_COPY.get(language, COMMAND_COPY["en"])["help"]
             + task_commands.help_text(language)
+            + t["more_help"]
         )
     from .proposal_reply import parse_reply
 
@@ -585,7 +651,7 @@ async def route(
     from ..domain.learning import resolve
 
     original_content = content
-    command, _, tail = content.partition(" ")
+    command, tail = command_parts(content)
     command = canonical_command(command)
     if command == "/ask":
         if fallback is not None and tail.strip():
@@ -593,7 +659,8 @@ async def route(
         return t["unknown"]
     if command == "/alarm" and not tail.strip():
         command = "/alarms"
-    alarm_intent = alarm_commands.parsed(engine.snapshot(), view, original_content)
+    alarm_content = f"{command} {tail}" if command == "/alarm" and tail else original_content
+    alarm_intent = alarm_commands.parsed(engine.snapshot(), view, alarm_content)
     if alarm_intent:
         if len(alarm_intent) == 1:
             operation = alarm_intent[0]
@@ -605,7 +672,7 @@ async def route(
                 engine, actor, original_content, refs, operation_id, now, action, payload
             )
         )
-    if original_content.partition(" ")[0].casefold() == "/завдання" and tail.strip():
+    if command_parts(original_content)[0].casefold() == "/завдання" and tail.strip():
         command = "/task"
     parse_error = None
     try:
@@ -620,7 +687,7 @@ async def route(
         canonical = resolve(engine.snapshot(), actor, content)
         if canonical != content:
             content = canonical
-            command, _, tail = content.partition(" ")
+            command, tail = command_parts(content)
             command = canonical_command(command)
             parse_error = None
             try:
@@ -817,8 +884,10 @@ async def route(
         )
     elif command == "/learn" and len(fields) == 2:
         action, payload = "conversation.learn", {"source": fields[0], "canonical": fields[1]}
-    elif command == "/forget" and len(fields) == 1:
-        action, payload = "conversation.forget", {"id": fields[0]}
+    elif command == "/forgetphrase":
+        if len(fields) != 1 or not re.fullmatch(r"L\d{6,}", fields[0], re.I):
+            raise DomainError("invalid_field", "id")
+        action, payload = "conversation.forget", {"id": fields[0].upper()}
     elif (
         (command == "/watch" and 1 <= len(fields) <= 2)
         or command.startswith("http://")

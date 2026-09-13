@@ -494,22 +494,21 @@ def async_configure_assistant(hass, entry):
     ):
         # A native HA-only provider owns its transport. Do not create another
         # HTTP session (or initialize discovery/DNS) unless a direct source needs it.
-        session = (
-            async_get_clientsession(hass)
-            if any(config.get(key) for key in ("agy", "primary", "fallback", "search"))
-            else None
-        )
+        search_config = config.get("search", {})
+        search_enabled = bool(search_config) and search_config.get("enabled", True)
+        direct = [
+            config[key]
+            for key in ("agy", "primary", "fallback")
+            if config.get(key) and (key != "fallback" or config[key].get("enabled", True))
+        ]
+        session = async_get_clientsession(hass) if direct or search_enabled else None
         providers = []
         if config.get("ha_agent"):
             from .assistant.ha_agent_provider import HAConversationAgent
 
             providers.append(HAConversationAgent(hass, entry, config["ha_agent"]))
-        if config.get("agy"):
-            providers.append(Ollama(session, config["agy"]))
-        providers.extend(
-            Ollama(session, config[key]) for key in ("primary", "fallback") if config.get(key)
-        )
-        search = Search(session, config["search"]) if config.get("search") else None
+        providers.extend(Ollama(session, provider) for provider in direct)
+        search = Search(session, search_config) if search_enabled else None
         runtime.assistant = Assistant(runtime.engine, Cascade(providers, runtime.health), search)
         article_policy = entry.options.get("articles", {})
         if (

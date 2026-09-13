@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 import { TASK_BATCH_COPY } from "../../custom_components/family_assistant/frontend/task-batch-copy.js";
 
 async function select(page, lang="en", action="tasks.complete", ids=["T000001","T000002"]) {

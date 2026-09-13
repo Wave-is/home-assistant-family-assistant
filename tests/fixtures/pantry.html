@@ -223,6 +223,16 @@
             (s) => s.pantry_id !== item.id || s.status !== "open",
           );
           result = item;
+        } else if (action === "pantry.item_archive") {
+          if (!activeParent()) throw { code: "forbidden" };
+          if (Object.keys(p).sort().join(",") !== "id,reason,revision" || typeof p.reason !== "string" || !p.reason.trim() || p.reason.length > 500) throw { code: "invalid_field" };
+          const item = data.pantry.items.find((v) => v.id === p.id);
+          if (!item || item.revision !== p.revision) throw { code: "conflict" };
+          if (item.status !== "active") throw { code: "invalid_transition" };
+          item.status = "archived"; item.revision++; item.archived_at = "2026-09-13T12:00:00Z";
+          item.history ??= []; item.history.push({action:"archived",reason:p.reason,actor:data.actor});
+          for (const suggestion of data.pantry.suggestions) if (suggestion.pantry_id === item.id && suggestion.status === "open") {suggestion.status="superseded";suggestion.revision++;}
+          result = item;
         } else if (action === "pantry.suggestion_accept") {
           if (!activeParent()) throw { code: "forbidden" };
           const s = data.pantry.suggestions.find((v) => v.id === p.id);

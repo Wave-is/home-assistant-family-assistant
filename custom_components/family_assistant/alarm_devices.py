@@ -14,13 +14,21 @@ from .domain.engine import Engine
 from .domain.validation import DomainError, timestamp
 
 
+class AlarmNotStarted(DomainError):
+    """Sender knows no siren turn_on was attempted, despite preparation calls."""
+
+
+class AlarmPreparationCancelled(asyncio.CancelledError):
+    """Cancellation before the sender attempted the main siren service."""
+
+
 class AlarmDevices:
     def __init__(
         self,
         engine: Engine,
         bindings: Callable[[], dict],
         read: Callable[[str], dict | None],
-        send: Callable[[str, bool, dict], Awaitable[None]],
+        send: Callable[[str, bool, dict], Awaitable[bool | None]],
     ) -> None:
         self.engine = engine
         self.bindings = bindings
@@ -69,19 +77,65 @@ class AlarmDevices:
                     )
                     continue
                 # Keep a durable ownership marker before the first external call.
-                await self._receipt(
-                    entity,
-                    now,
-                    owned=True,
-                    desired=on,
-                    status="requested",
-                    attempted_at=now.isoformat(),
-                )
+                try:
+                    await self._receipt(
+                        entity,
+                        now,
+                        owned=True,
+                        desired=on,
+                        status="requested",
+                        attempted_at=now.isoformat(),
+                    )
+                except asyncio.CancelledError as error:
+                    # Engine settles a cancelled Store write before raising.
+                    # No sender was entered, so its durable intent is not proof
+                    # that this integration started the siren.
+                    try:
+                        await self._cancel_before_start(entity, now, record)
+                    finally:
+                        raise error
                 if observed_state in {"unavailable", "unknown"}:
-                    await self._failed(entity, now, "device_unavailable")
+                    await self._failed(
+                        entity, now, "device_unavailable", owned=bool(record.get("owned"))
+                    )
                     continue
                 try:
-                    await self.send(entity, on, binding)
+                    # Store persistence yielded; acknowledgement or a binding
+                    # change must not cause one last stale ring.
+                    if on and self.desired().get(entity) != binding:
+                        await self._receipt(
+                            entity,
+                            now,
+                            owned=bool(record.get("owned")),
+                            desired=False,
+                            status="superseded",
+                        )
+                        continue
+                    sent = await self.send(entity, on, binding)
+                    if on and sent is False:
+                        # Companion controls can yield before the siren call.
+                        # Never stop an unowned siren we did not actually start.
+                        await self._receipt(
+                            entity,
+                            now,
+                            owned=bool(record.get("owned")),
+                            desired=False,
+                            status="superseded",
+                        )
+                        continue
+                except AlarmPreparationCancelled as error:
+                    try:
+                        await self._cancel_before_start(entity, now, record)
+                    finally:
+                        raise error
+                except AlarmNotStarted:
+                    # The sender completed no siren call. Restore the prior
+                    # ownership atomically with the failure receipt; a later
+                    # manual signal must not become ours to silence.
+                    await self._failed(
+                        entity, now, "device_command_failed", owned=bool(record.get("owned"))
+                    )
+                    continue
                 except (DomainError, OSError, TimeoutError):
                     await self._failed(entity, now, "device_command_failed")
                     continue
@@ -108,6 +162,24 @@ class AlarmDevices:
                     last_error=None,
                 )
 
+    async def _cancel_before_start(self, entity: str, now: datetime, previous: dict) -> None:
+        """Settle ownership restoration even if the caller is cancelled again."""
+        cleanup = asyncio.create_task(
+            self._receipt(
+                entity,
+                now,
+                owned=bool(previous.get("owned")),
+                desired=False,
+                status="superseded",
+            )
+        )
+        while not cleanup.done():
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                continue
+        cleanup.result()
+
     async def _receipt(self, entity: str, now: datetime, **values) -> None:
         def update(ctx):
             record = ctx.state["alarm_outputs"].setdefault(entity, {})
@@ -115,9 +187,13 @@ class AlarmDevices:
 
         await self.engine.background_update("alarm_output", now, update)
 
-    async def _failed(self, entity: str, now: datetime, code: str) -> None:
+    async def _failed(
+        self, entity: str, now: datetime, code: str, *, owned: bool | None = None
+    ) -> None:
         def failed(ctx):
             record = ctx.state["alarm_outputs"][entity]
+            if owned is not None:
+                record["owned"] = owned
             record.update(
                 status="error", last_error=code, retry_at=(now + timedelta(seconds=15)).isoformat()
             )

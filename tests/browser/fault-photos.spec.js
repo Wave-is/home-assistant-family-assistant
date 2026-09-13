@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 import { FAULT_PHOTO_COPY } from "../../custom_components/family_assistant/frontend/fault-photo-copy.js";
 const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64");
 async function upload(page, lang = "en") {

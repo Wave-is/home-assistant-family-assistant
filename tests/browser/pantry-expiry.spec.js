@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 
 test("Russian parent expiry policy is readable, static and owner-configured", async ({
   page,

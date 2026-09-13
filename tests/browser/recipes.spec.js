@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 
 async function loadCandidate(page, language = "en") {
   await page.goto(`/tests/fixtures/recipes.html?lang=${language}`);

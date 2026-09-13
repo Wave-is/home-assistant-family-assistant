@@ -249,6 +249,9 @@ export class FamilyCard extends HTMLElement {
     this._view = config.view || this.constructor.defaultView || "today";
     if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
+    // Requests from the previous configuration are fenced by generation. They
+    // must not keep the replacement household/view locked until their response.
+    this._loading=false;this._writing=false;this._error=null;this._entries=null;
     this._entry = config.entry_id;
     this._data = null;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
@@ -272,7 +275,7 @@ export class FamilyCard extends HTMLElement {
       this.setConfig(this._config);
       return;
     }
-    if (!this._data && !this._loading) this.refresh();
+    if (!this._data && !this._loading && !this._error && this._entries == null) this.refresh();
   }
   get t() { return COPY[this._config?.language || this._hass?.language?.split("-")[0]] || COPY.en; }
   get parent() { return ["owner","parent"].includes(this._data?.role); }
@@ -286,17 +289,19 @@ export class FamilyCard extends HTMLElement {
     if (!this._hass || !this._config || this._loading || this._writing) return;
     this._loading = true;
     const generation = this._generation;
+    const sequence=this._readSequence=(this._readSequence || 0)+1;
+    const current=()=>generation===this._generation && sequence===this._readSequence;
     const focusSnapshot = captureFocusRefresh(this);
     try {
       if (!this._entry) {
         const entries = await this._hass.callWS({type:"family_assistant/households"});
-        if (generation !== this._generation) return;
+        if (!current()) return;
         this._entries = entries;
         if (entries.length === 1) this._entry = entries[0].entry_id;
         else { this.render(); return; }
       }
       const data = await this._hass.callWS({type:"family_assistant/view",entry_id:this._entry});
-      if (generation !== this._generation) return;
+      if (!current()) return;
       const previousData = this._data;
       this._data = data; this._error = null;
       const taskFormForce = reconcileTaskFormRefresh(this,previousData);
@@ -325,8 +330,8 @@ export class FamilyCard extends HTMLElement {
       const documentForce = reconcileAssetDocuments(this);
       // Avoid destroying a form that the user is currently filling out.
       if (taskFormForce || taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
-    } catch(error) { if (generation === this._generation) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
-    finally { if (generation === this._generation) this._loading = false; }
+    } catch(error) { if (current()) { disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
+    finally { if (current()) this._loading = false; }
   }
   button(text, action, primary=false) {
     const button=el("button",text,primary?"primary":""); button.type="button";
@@ -348,6 +353,9 @@ export class FamilyCard extends HTMLElement {
   async command(action,payload,operationId) {
     if (this._writing) return;
     if(!memberContextCommandAllowed(this,action,payload)){this._actionError="conflict";this.render();return;}
+    // A background projection started before this mutation cannot replace its
+    // readback or hold the loading slot after the mutation has completed.
+    this._readSequence=(this._readSequence || 0)+1;this._loading=false;
     const generation=this._generation;
     const fingerprint=JSON.stringify([this._entry,action,payload]);
     if(operationId || this._pending?.fingerprint!==fingerprint) this._pending={fingerprint,id:operationId || crypto.randomUUID()};
@@ -492,9 +500,10 @@ export class FamilyCard extends HTMLElement {
     const health=this._data.health?.mikrotik;if(health && health!=="network_connected"){const lang=this._config?.language || this._hass.language?.split("-")[0];body.append(el("p",(ERRORS[lang] || ERRORS.en)[health] || this.t.failure,"notice"));}
     body.append(this.button(this.t.networkRefresh,async()=>{
       if(this._writing)return;const generation=this._generation;this._writing=true;
+      this._readSequence=(this._readSequence || 0)+1;this._loading=false;
       try{await this._hass.callWS({type:"family_assistant/network_refresh",entry_id:this._entry});if(generation===this._generation)this._actionError=null;}
       catch(error){if(generation===this._generation)this._actionError=error.code || this.t.failure;}
-      finally{this._writing=false;await this.refresh();this.render();}
+      finally{if(generation===this._generation){this._writing=false;await this.refresh();if(generation===this._generation)this.render();}}
     }));
     const inventory=this._data.network?.inventory;
     if(!inventory){body.append(el("p",this.t.networkNoData,"empty"));return;}

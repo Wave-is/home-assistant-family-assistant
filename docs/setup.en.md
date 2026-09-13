@@ -146,8 +146,10 @@ agent/patch loop remains a separate pending gate.
 
 To teach your own phrase explicitly, send `/learn my groceries | /shopping`.
 Only your account can use it. The Conversation card also has a teaching form
-and a list of your saved phrases. `/forget L…` disables a rule. Rules do not
+and a list of your saved phrases. `/forgetphrase L…` disables a rule. Rules do not
 grant permissions; relative dates and reply targets are resolved on each use.
+Legacy `/forget` and `/забыть` only explain this distinction; they do not delete
+anything. Clearing legacy short or long conversation memory is not implemented.
 
 An existing HA agent that supports selectable LLM APIs can select the household's
 Family Assistant API. It provides role-filtered reads and confirmed plan previews,

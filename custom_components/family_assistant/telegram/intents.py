@@ -188,7 +188,11 @@ SHOPPING_PURCHASE_RE = re.compile(
 )
 
 TASK_CREATE_PATTERNS = [
-    re.compile(r"^(.{1,80}?)\s+(?:задача|завдання|task)\s*[:.]?\s+(.+)$", re.I),
+    re.compile(
+        r"^(?:назначь(?:те)?|назначить|признач(?:те)?|призначити|задай(?:те)?|задати|дай(?:те)?|дати|assign)\s+"
+        r"(.{1,80}?)\s+(?:задач[ауе]|завдання|task)\s*[:.]?\s+(.+)$",
+        re.I,
+    ),
     re.compile(
         r"^(?:(?:создай(?:те)?|создать|добавь(?:те)?|добавить|дай(?:те)?|дать|"
         r"створи(?:ть)?|додай(?:те)?|додати|признач(?:те)?|призначити|"
@@ -197,20 +201,35 @@ TASK_CREATE_PATTERNS = [
         r"(?:(?:для|кому|for)\s+)?([^\s:.]+)\s*[:.]?\s+(.+)$",
         re.I,
     ),
-    re.compile(
-        r"^(?:назначь(?:те)?|назначить|признач(?:те)?|призначити|задай(?:те)?|задати|дай(?:те)?|дати|assign)\s+"
-        r"([^\s:.]+)\s+(?:задач[ауе]|завдання|task)\s*[:.]?\s+(.+)$",
-        re.I,
-    ),
+    re.compile(r"^(.{1,80}?)\s+(?:задача|завдання|task)\s*[:.]?\s+(.+)$", re.I),
 ]
+
+
+def _task_member_prefix(state, content):
+    """Prefer a complete configured recipient over a matching first-word ID."""
+    boundaries = [match for match in re.finditer(r"\s+", content) if match.start() <= 80]
+    for boundary in reversed(boundaries):
+        candidate = content[: boundary.start()].rstrip(" .:")
+        title = content[boundary.end() :].lstrip(" .:")
+        if not title:
+            continue
+        try:
+            member = find_member(state, candidate)
+        except DomainError as error:
+            if error.code == "unknown_member":
+                continue
+            raise
+        return member, title
+    raise DomainError("unknown_member")
+
 
 TASK_REVISE_RE = re.compile(
     r"^(?:(?:установи(?:ть)?|постав(?:ить)?|измени(?:ть)?|смени(?:ть)?|перенеси(?:ть)?)\s+срок|"
     r"(?:встанови(?:ти)?|постав(?:ити)?|зміни(?:ти)?|перенеси(?:ти)?)\s+термін|"
     r"set\s+(?:the\s+)?deadline|change\s+(?:the\s+)?deadline|"
     r"дедлайн|срок|термін|deadline|"
-    r"перенеси|перенести)\s+"
-    r"(?:(?:задач[ие]|завдання|для|for)\s+)?\s*(T\d{6})?\s*[:,-]?\s*(.+)$",
+    r"перенеси|перенести|продли|продлите|подовж(?:и|іть)|продовж(?:и|іть)|extend)\s+"
+    r"(?:(?:задач[уие]|завдання|task|для|for)\s+)?\s*(T\d{6,})?\s*[:,-]?\s*(.+)$",
     re.I,
 )
 
@@ -294,13 +313,8 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
             },
         )
 
-    for pat in TASK_CREATE_PATTERNS:
-        create = pat.match(value)
-        if create:
-            member = find_member(state, create.group(1))
-            title, due = extract_due(create.group(2), now, timezone)
-            return Intent("tasks.create", {"assignee": member, "title": title, "due_at": due})
-
+    # Explicit edit verbs take precedence over the broad "name task title"
+    # creation shape. Assignment titles containing a move verb remain creation.
     revise = TASK_REVISE_RE.match(value)
     if revise:
         target = task_target(view, revise.group(1), refs)
@@ -313,6 +327,18 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
                 "due_at": parse_due(revise.group(2), now, timezone),
             },
         )
+
+    for index, pat in enumerate(TASK_CREATE_PATTERNS):
+        create = pat.match(value)
+        if create:
+            if index == 1:
+                member, task_text = _task_member_prefix(
+                    state, create.group(1) + " " + create.group(2)
+                )
+            else:
+                member, task_text = find_member(state, create.group(1)), create.group(2)
+            title, due = extract_due(task_text, now, timezone)
+            return Intent("tasks.create", {"assignee": member, "title": title, "due_at": due})
 
     comp = TASK_COMPLETE_SUBMIT_RE.match(value)
     short_done = re.fullmatch(r"готово|зроблено|виконано|done", value, re.I) and refs

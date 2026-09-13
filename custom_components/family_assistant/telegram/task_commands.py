@@ -77,6 +77,7 @@ def help_text(language):
             "\n/mine — my tasks\n/accept ID · /begin ID\n/changes ID | reason\n"
             "/edit ID deadline tomorrow · /edit ID title new title\n/archive ID · /canceltask ID\n"
             "/approvebuy ID · /rejectbuy ID\n/ask question\n"
+            "/learn phrase | command · /forgetphrase ID\n"
             "/alarm member | weekdays or weekends | HH:MM, on or off\n"
             "Reminders: remind me to call tomorrow at 18:00"
         ),
@@ -86,6 +87,7 @@ def help_text(language):
             "/edit ID срок завтра · /edit ID текст новый текст\n"
             "/archive ID — архив · /canceltask ID — отмена задачи\n"
             "/approvebuy ID · /rejectbuy ID — решение по покупке\n/ask вопрос\n"
+            "/learn фраза | команда · /forgetphrase ID\n"
             "/alarm участник | будни или выходные | ЧЧ:ММ, on или off\n"
             "Напоминания: напомни мне позвонить завтра в 18:00"
         ),
@@ -95,6 +97,7 @@ def help_text(language):
             "/edit ID термін завтра · /edit ID текст новий текст\n"
             "/archive ID — архів · /canceltask ID — скасувати завдання\n"
             "/approvebuy ID · /rejectbuy ID — рішення щодо покупки\n/ask запитання\n"
+            "/learn фраза | команда · /forgetphrase ID\n"
             "/alarm учасник | будні або вихідні | ГГ:ХХ, on або off\n"
             "Нагадування: нагадай мені зателефонувати завтра о 18:00"
         ),

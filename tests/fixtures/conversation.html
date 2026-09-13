@@ -143,6 +143,16 @@
       };
       const execute = async (request) => {
         window.executeCalls.push(structuredClone(request));
+        if(request.action === "conversation.reject" && !request.payload.feedback){
+          if(receipts.has(request.operation_id))return structuredClone(receipts.get(request.operation_id));
+          if(window.failure === "reject-before"){window.failure=null;throw code("not_ready");}
+          if(JSON.stringify(Object.keys(request.payload))!==JSON.stringify(["id"]))throw code("invalid_field");
+          const proposal=fixture.proposals.find(item=>item.id===request.payload.id);
+          if(!proposal)throw code("proposal_expired");
+          fixture.proposals=fixture.proposals.filter(item=>item.id!==proposal.id);
+          const result={id:proposal.id,status:"rejected",items:[]};receipts.set(request.operation_id,result);
+          return structuredClone(result);
+        }
         if(request.action === "conversation.reject" && request.payload.feedback){
           if(window.failure === "note-before"){window.failure=null;throw code("not_ready");}
           const p=fixture.proposals.find(p=>p.id===request.payload.id);

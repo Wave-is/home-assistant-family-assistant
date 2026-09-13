@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("RU mobile owner weekly configuration saves parameters and stays responsive",async({page})=>{
   await page.setViewportSize({width:390,height:844});

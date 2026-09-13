@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-09-07T07:00:00Z"));

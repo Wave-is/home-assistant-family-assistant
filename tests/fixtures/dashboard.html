@@ -47,6 +47,20 @@ data.shopping.forEach(item=>item.creator="owner");
 const card=document.createElement("family-assistant-card");window.card=card;card.setConfig({view,entry_id:"synthetic"});
 if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 if(query.has("kids")){data.settings.timezone="UTC";data.members[0].role="owner";data.members[1].role="child";data.kid_control={can_manage:data.role!=="child",writable:true,observed_at:"2026-09-06T08:00:00Z",plans:[],profiles:[{member:"child",name:"Child profile",device_names:["Phone"],observed:{disabled:"false",paused:"false",...Object.fromEntries(["mon","tue","wed","thu","fri","sat","sun"].map(d=>[d,"08:00-22:00"]))}}]};}
+if(query.has("kidadoption")){
+  // Synthetic local projection/command contracts from network/kid_plans.py.
+  // These operations adopt existing ownership or grant management, never apply router controls.
+  data.settings.modules.push("mikrotik");
+  data.members.push({id:"sibling",name:"Child 2",active:true,role:"child",revision:1},{id:"adult",name:"Adult 1",active:true,role:"adult",revision:1},{id:"parent",name:"Parent 2",active:true,role:"parent",revision:1});
+  data.actor=data.role;data.kid_control.profiles=[];data.kid_control.writable=false;
+  window.kidAdmin={profiles:[{id:"*1",name:"Study profile",devices:[{id:"*2",name:"Study phone",mac:"02:11:22:33:44:66"}]},{id:"*3",name:"Leisure profile",devices:[{id:"*4",name:"Leisure tablet",mac:"02:11:22:33:44:77"},{id:"*5",name:"Leisure laptop",mac:"02:11:22:33:44:88"}]}],bindings:{},grants:{adult:false},operations:new Map(),observedAt:Date.now()};
+  window.projectKidAdmin=()=>{
+    const source=window.kidAdmin,managed=["owner","parent"].includes(data.role)||(data.role==="adult"&&source.grants[data.actor]===true);
+    data.kid_control.can_manage=managed;data.kid_control.candidates=data.role==="owner"?structuredClone(source.profiles):[];data.kid_control.delegations=data.role==="owner"?{...source.grants}:{};
+    data.kid_control.profiles=Object.values(source.bindings).filter(binding=>managed||binding.member===data.actor).map(binding=>({member:binding.member,name:binding.name,device_names:binding.devices.map(device=>device.name),devices:managed?structuredClone(binding.devices):[],observed:null,status:null}));
+  };
+  window.projectKidAdmin();
+}
 if(query.has("kidstatus")){
  const profile=data.kid_control.profiles[0];
  data.settings.timezone="Europe/Kyiv";
@@ -83,6 +97,27 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
   if(message.type.endsWith("/chat")){window.calls.push(message);return {reply:"Я тут. Списки и задачи работают без модели."};}
   if(message.type.endsWith("/execute")){
     window.calls.push(message);if(window.failCommand)throw {code:"storage_error"};
+    if(window.kidAdmin&&["mikrotik.kid_adopt","mikrotik.kid_permission"].includes(message.action)){
+      const source=window.kidAdmin,p=message.payload;
+      if(data.role!=="owner")throw {code:"forbidden"};
+      if(source.operations.has(message.operation_id))return structuredClone(source.operations.get(message.operation_id));
+      const member=data.members.find(item=>item.id===p.member&&item.active);if(!member)throw {code:"unknown_member"};
+      const allowed=message.action==="mikrotik.kid_adopt"?["member","profile_id","devices","confirmed"]:["member","enabled"];
+      if(Object.keys(p).length!==allowed.length||Object.keys(p).some(key=>!allowed.includes(key)))throw {code:"invalid_field"};
+      let result;
+      if(message.action==="mikrotik.kid_permission"){
+        if(member.role!=="adult"||typeof p.enabled!=="boolean")throw {code:"invalid_field"};
+        source.grants[member.id]=p.enabled;result={id:member.id,enabled:p.enabled};
+      }else{
+        if(Date.now()-source.observedAt>180000||source.observedAt>Date.now())throw {code:"network_stale"};
+        if(member.role!=="child")throw {code:"invalid_field"};if(p.confirmed!==true)throw {code:"network_confirmation"};
+        const profile=source.profiles.find(item=>item.id===p.profile_id);if(!profile)throw {code:"network_conflict"};
+        if(!Array.isArray(p.devices)||!p.devices.length||p.devices.length!==profile.devices.length||new Set(p.devices).size!==p.devices.length||profile.devices.some(device=>!p.devices.includes(device.id)))throw {code:"network_kid_membership"};
+        if(Object.values(source.bindings).some(binding=>binding.profile_id===p.profile_id&&binding.member!==member.id))throw {code:"network_conflict"};
+        source.bindings[member.id]={member:member.id,profile_id:profile.id,name:profile.name,devices:structuredClone(profile.devices)};result={id:member.id,name:profile.name,status:"adopted"};
+      }
+      source.operations.set(message.operation_id,structuredClone(result));data.revision++;window.projectKidAdmin();return structuredClone(result);
+    }
     if(message.action.startsWith("calendar.")){
       if(window.calendarOperations.has(message.operation_id))return structuredClone(window.calendarOperations.get(message.operation_id));
       const p=message.payload,action=message.action.slice(9);let result;
@@ -228,14 +263,29 @@ card.hass={language,user:{id:"synthetic-ha-user"},callWS:async message=>{
      if(idx>=0)data.shopping_series[idx]=item;else data.shopping_series.push(item);
    }
    if(message.action==="shopping.series_enable")Object.assign(data.shopping_series.find(s=>s.id===message.payload.id),{enabled:message.payload.enabled,revision:message.payload.revision+1});
+   if(message.action==="alarms.enable"){
+     const alarm=data.alarms.find(item=>item.id===message.payload.id);
+     if(!alarm||alarm.revision!==message.payload.revision)throw {code:"revision_conflict"};
+     if(!["owner","parent"].includes(data.role))throw {code:"forbidden"};
+     alarm.enabled=message.payload.enabled;alarm.revision++;return structuredClone(alarm);
+   }
    if(message.action==="conversation.confirm" || message.action==="conversation.reject")data.proposals=[];
    if(message.action==="conversation.learn")data.learned_phrases.push({id:"Lsynthetic",...message.payload,active:true,revision:1});
-   if(message.action==="mikrotik.lease_plan"){const target=message.payload.leases[0];data.network.plans=[{id:"N000001",status:"preview",expires_at:"2099-09-06T08:00:00Z",requires_dhcp_recovery_consent:true,targets:[{id:target.id,mac:"02:11:22:33:44:55",address:"198.51.100.10",server:"lan",old_comment:"Existing comment",comment:target.replace_comment?target.comment:"Existing comment",convert:true,changed:true,warnings:[]}]}];}
+   if(message.action==="mikrotik.lease_plan"){const target=message.payload.leases[0];data.network.plans=[{id:"N000001",actor:data.actor,status:"preview",expires_at:"2099-09-06T08:00:00Z",requires_dhcp_recovery_consent:true,targets:[{id:target.id,mac:"02:11:22:33:44:55",address:"198.51.100.10",server:"lan",old_comment:"Existing comment",comment:target.replace_comment?target.comment:"Existing comment",convert:true,changed:true,warnings:[]}]}];}
    if(message.action==="mikrotik.lease_apply")data.network.plans[0].status="applied";
    if(message.action==="mikrotik.kid_plan")data.kid_control.plans=[{id:"K000001",actor:data.actor,member:"child",mode:message.payload.mode,status:"preview",expires_at:"2099-09-06T08:00:00Z",until:message.payload.minutes?"2099-09-06T08:30:00Z":null,diff:{disabled:{before:"false",after:"true"}}}];
    if(message.action==="mikrotik.kid_apply")data.kid_control.plans[0].status="applied";
+   if(["mikrotik.lease_cancel","mikrotik.kid_cancel"].includes(message.action)){
+     const lease=message.action==="mikrotik.lease_cancel",plans=lease?data.network.plans:data.kid_control.plans;
+     if(lease?data.role!=="owner":!data.kid_control.can_manage)throw {code:"forbidden"};
+     const plan=plans.find(item=>item.id===message.payload.id);
+     if(!plan)throw {code:"not_found"};if(plan.actor!==data.actor)throw {code:"forbidden"};
+     if(plan.status!=="preview")throw {code:"invalid_transition"};
+     plan.status="cancelled";return structuredClone(plan);
+   }
    return {id:"S000003"};
  }
+ if(window.projectKidAdmin)window.projectKidAdmin();
  return structuredClone(data);
 }};
 document.getElementById("cards").append(card);

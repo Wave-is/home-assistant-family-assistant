@@ -161,7 +161,12 @@ def _telegram(
 
 def _models(options: Mapping, enabled: set[str], runtime_status: Mapping) -> dict:
     config = options.get("conversation")
-    search_enabled = int(isinstance(config, Mapping) and isinstance(config.get("search"), Mapping))
+    search_enabled = int(
+        isinstance(config, Mapping)
+        and isinstance(config.get("search"), Mapping)
+        and bool(config["search"])
+        and config["search"].get("enabled", True) is True
+    )
     if "conversation" not in enabled:
         status = "off"
     elif config is None:

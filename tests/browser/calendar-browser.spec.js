@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("RU mobile calendar creates all-day family event and requires export consent",async({page})=>{
   await page.setViewportSize({width:390,height:844});

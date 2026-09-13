@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("mobile private correction remains a reviewed note, with retry and explicit purge",async({page})=>{
   await page.setViewportSize({width:390,height:844});

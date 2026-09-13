@@ -60,8 +60,65 @@ test("retry reuses the operation ID after uncertain network result",async()=>{
 });
 test("late response from previous household cannot replace current household",async()=>{
   const card=document.createElement("family-shopping-card");let finish;
-  card.setConfig({entry_id:"old"});card.hass={language:"en",callWS:()=>new Promise(resolve=>{finish=resolve;})};
-  card.setConfig({entry_id:"new"});finish(base);await tick();assert.equal(card._data,null);
+  card.setConfig({entry_id:"old"});card.hass={language:"en",callWS:message=>message.entry_id==="old"?new Promise(resolve=>{finish=resolve;}):Promise.resolve({...base,settings:{...base.settings,name:"New household"}})};
+  card.setConfig({entry_id:"new"});await tick();
+  assert.equal(card._data.settings.name,"New household");assert.equal(card._loading,false);
+  finish(base);await tick();assert.equal(card._data.settings.name,"New household");
+});
+
+test("changing card configuration during an uncertain write does not lock the new household",async()=>{
+  const card=document.createElement("family-shopping-card");let fail;
+  card.setConfig({entry_id:"old"});
+  card.hass={language:"en",callWS:message=>message.type.endsWith("/execute")?new Promise((_,reject)=>{fail=reject;}):Promise.resolve({...base,settings:{...base.settings,name:message.entry_id}})};
+  await tick();const pending=card.command("shopping.add",{name:"Old draft"});
+  card.setConfig({entry_id:"new"});await tick();
+  assert.equal(card._data.settings.name,"new");assert.equal(card._writing,false);
+  assert.ok([...card.shadowRoot.querySelectorAll("button")].some(button=>!button.disabled));
+  fail({code:"storage_error"});await pending;
+  assert.equal(card._data.settings.name,"new");assert.equal(card._actionError,null);
+});
+
+test("a pre-command slow refresh cannot suppress readback or overwrite committed state",async()=>{
+  const card=document.createElement("family-shopping-card");let finishOld,reads=0;
+  card.setConfig({entry_id:"same"});
+  const state=structuredClone(base);
+  card.hass={language:"en",callWS:message=>{
+    if(message.type.endsWith("/execute")){state.revision=2;return Promise.resolve({});}
+    reads++;
+    if(reads===2)return new Promise(resolve=>{finishOld=()=>resolve({...base,revision:1});});
+    return Promise.resolve(structuredClone(state));
+  }};await tick();
+  const pending=card.refresh();
+  await card.command("shopping.add",{name:"Synthetic"});
+  assert.equal(card._data.revision,2);assert.equal(reads,3);
+  finishOld();await pending;assert.equal(card._data.revision,2);assert.equal(card._loading,false);
+});
+
+test("routine HA state updates do not storm an unresolved household picker or failed first read",async()=>{
+  for(const scenario of ["multiple","none","error"]){
+    const card=document.createElement("family-shopping-card");let calls=0;
+    card.setConfig({});
+    const hass={language:"en",user:{id:"same"},callWS:async()=>{calls++;if(scenario==="error")throw {code:"storage_error"};return scenario==="none"?[]:[{entry_id:"one",title:"One"},{entry_id:"two",title:"Two"}];}};
+    card.hass=hass;await tick();
+    for(let index=0;index<5;index++){card.hass={...hass,states:{}};await tick();}
+    assert.equal(calls,1,scenario);
+    await card.refresh();assert.equal(calls,2,"Explicit refresh is still available");
+  }
+});
+
+test("old network refresh cannot unlock a new configuration's active write",async()=>{
+  const card=document.createElement("family-network-card");let finishOld,finishNew;
+  card.setConfig({entry_id:"old"});
+  card.hass={language:"en",callWS:message=>{
+    if(message.type.endsWith("/network_refresh"))return new Promise(resolve=>{finishOld=resolve;});
+    if(message.type.endsWith("/execute"))return new Promise(resolve=>{finishNew=resolve;});
+    return Promise.resolve({...base,settings:{...base.settings,modules:[...base.settings.modules,"mikrotik"]},network:{inventory:null}});
+  }};await tick();
+  [...card.shadowRoot.querySelectorAll("button")].find(button=>button.textContent==="Read router again").click();
+  card.setConfig({entry_id:"new",view:"shopping"});await tick();
+  const pending=card.command("shopping.add",{name:"New item"});
+  finishOld({});await tick();assert.equal(card._writing,true);
+  finishNew({});await pending;assert.equal(card._writing,false);
 });
 
 test("changing household clears private recurring-shopping drafts",()=>{

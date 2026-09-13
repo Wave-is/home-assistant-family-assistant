@@ -110,7 +110,7 @@ async def test_no_fixed_record_target_unauthorized_teaching_or_cross_actor_forge
         await route(engine, "child", "/learn duty | Parent task Work", "unauthorized4", now)
     await route(engine, "parent", "/learn my situation | /tasks", "learn4", now)
     with pytest.raises(DomainError, match="forbidden"):
-        await route(engine, "child", "/forget L000001", "forget-other4", now)
-    await route(engine, "parent", "/forget L000001", "forget4", now)
+        await route(engine, "child", "/forgetphrase L000001", "forget-other4", now)
+    await route(engine, "parent", "/forgetphrase L000001", "forget4", now)
     assert engine.view("parent")["learned_phrases"][0]["active"] is False
     assert "haven't understood" in await route(engine, "parent", "my situation", "after4", now)

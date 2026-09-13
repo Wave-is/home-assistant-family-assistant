@@ -178,6 +178,10 @@ async def verify_backup(hass, entry, owner, media_expected) -> None:
     # submit must still pass the current commit-time gate.
     begun_options = await _options_form(hass, entry, owner, "alarm_device")
     assert begun_options["type"] == "form" and begun_options["step_id"] == "alarm_device"
+    begun_options = await hass.config_entries.options.async_configure(
+        begun_options["flow_id"], {"member": "owner"}
+    )
+    assert begun_options["type"] == "form" and begun_options["step_id"] == "alarm_device_settings"
 
     store_path = Path(hass.config.path(".storage", f"{DOMAIN}.{entry.entry_id}"))
     assert store_path.is_file() and not store_path.is_symlink()
@@ -220,7 +224,6 @@ async def verify_backup(hass, entry, owner, media_expected) -> None:
             blocked_begun = await hass.config_entries.options.async_configure(
                 begun_options["flow_id"],
                 {
-                    "member": "owner",
                     "volume": 0.5,
                     "enabled": False,
                     "confirmed": False,

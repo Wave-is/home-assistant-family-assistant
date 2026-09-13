@@ -4,7 +4,7 @@ COPY = {
     "en": {
         "learned": (
             "📖 Remembered for your account: {id}. It grants no new permissions; "
-            "deadlines and targets are resolved anew. /forget {id} disables it."
+            "deadlines and targets are resolved anew. /forgetphrase {id} disables it."
         ),
         "forgotten": "📖 Phrase {id} is disabled. History is preserved.",
         "queued": "💬 I'll work on that. Ordinary commands and wake-up buttons remain available.",
@@ -29,7 +29,7 @@ COPY = {
     "ru": {
         "learned": (
             "📖 Запомнил для вашего аккаунта: {id}. Новых прав это не даёт; "
-            "сроки и объекты определяются заново. /forget {id} отключит правило."
+            "сроки и объекты определяются заново. /forgetphrase {id} отключит правило."
         ),
         "forgotten": "📖 Фраза {id} отключена. История сохранена.",
         "queued": (
@@ -56,7 +56,7 @@ COPY = {
     "uk": {
         "learned": (
             "📖 Запам’ятав для вашого акаунта: {id}. Нових прав це не дає; "
-            "терміни й об’єкти визначаються заново. /forget {id} вимкне правило."
+            "терміни й об’єкти визначаються заново. /forgetphrase {id} вимкне правило."
         ),
         "forgotten": "📖 Фразу {id} вимкнено. Історію збережено.",
         "queued": "💬 Розберуся зі зверненням. Звичайні команди та кнопки підйому працюють далі.",

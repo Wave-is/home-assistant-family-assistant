@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "meaning": "Source configuration declaration coverage, not proof of migrated behavior or activation.",
+  "sources": {
+    "family_assistant": {
+      "replaced": ["telegram_event_entity", "telegram_config_entry_id", "family_chat_id", "group_mentions", "group_privacy_mode", "gateway_url", "gateway_secret"],
+      "review_required": ["members", "member_profiles", "alarm_sirens"],
+      "missing": ["gate_entity", "climates", "fans", "car_chargers", "status_groups", "active_entities", "battery_soc_entity", "battery_power_entity", "load_power_entity", "pv_power_entity", "grid_power_entity", "kettle_status_entity", "kettle_temperature_entity", "kettle_fault_entity", "kettle_stop_entity", "solar_forecast_audit"]
+    },
+    "family_court": {
+      "replaced": ["telegram_event_entity", "chat_id", "notify_entity"],
+      "review_required": [],
+      "missing": []
+    }
+  }
+}

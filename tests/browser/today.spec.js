@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./control-audit.js";
 
 const card = (page) => page.locator("family-assistant-card");
 const overview = (page) => card(page).locator(".today-overview");

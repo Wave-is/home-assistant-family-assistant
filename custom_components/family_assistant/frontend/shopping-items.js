@@ -1238,6 +1238,9 @@ export function renderShoppingArchive(card, body) {
   const archivedItems = allItems.filter(item =>
     item && ["purchased", "rejected", "archived", "merged"].includes(item.status)
   );
+  // A completed purchase can move here while its service reply is uncertain.
+  // Keep the frozen retry or explicit archive review visible after read-back.
+  details.open = archivedItems.some(item => card._shoppingItemAction?.itemId === item.id);
 
   if (archivedItems.length === 0) {
     details.append(el("div", copy.archive_empty, "empty"));

@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 for(const [language,title,more] of [
   ["en","Previous reports","Show earlier reports"],

@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 import {TASK_FORM_COPY} from "../../custom_components/family_assistant/frontend/task-form.js";
 
 async function open(page,lang="en",role="owner") {

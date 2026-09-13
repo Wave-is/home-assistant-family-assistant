@@ -10,7 +10,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .alarm_devices import AlarmDevices
+from .alarm_devices import AlarmDevices, AlarmNotStarted, AlarmPreparationCancelled
 from .domain.validation import DomainError
 from .routine_observations import collect as collect_routine_observations
 
@@ -32,32 +32,70 @@ class Scheduler:
         return {"state": state.state, "attributes": dict(state.attributes)} if state else None
 
     async def _send(self, entity_id, on, binding):
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            raise DomainError("device_unavailable")
-        features = state.attributes.get("supported_features", 0)
-        if not features & SirenEntityFeature.TURN_OFF or not features & SirenEntityFeature.TURN_ON:
-            raise DomainError("device_unsupported")
-        data = {"entity_id": entity_id}
-        if on:
-            # Renew before the device's finite duration expires; no fixed ring count.
-            if features & SirenEntityFeature.DURATION:
-                data["duration"] = 35
-            if features & SirenEntityFeature.VOLUME_SET:
-                data["volume_level"] = binding.get("volume", 0.5)
-            available = state.attributes.get("available_tones", [])
-            if features & SirenEntityFeature.TONES and available:
-                tones = list(available.values()) if isinstance(available, dict) else list(available)
-                index = self._tone_index.get(entity_id, 0)
-                data["tone"] = tones[index % len(tones)]
-                self._tone_index[entity_id] = index + 1
+        from .alarm_binding import pending_controls, validate_binding
+
+        siren_attempted = False
         try:
+            state = self.hass.states.get(entity_id)
+            if state is None:
+                raise DomainError("device_unavailable")
+            features = state.attributes.get("supported_features", 0)
+            if (
+                not features & SirenEntityFeature.TURN_OFF
+                or not features & SirenEntityFeature.TURN_ON
+            ):
+                raise DomainError("device_unsupported")
+            data = {"entity_id": entity_id}
+            if on:
+                checked = validate_binding(self.hass, binding)
+                # Renew before the device's finite duration expires; no fixed ring count.
+                if features & SirenEntityFeature.DURATION and not checked.get("duration_entity_id"):
+                    data["duration"] = 35
+                if features & SirenEntityFeature.VOLUME_SET and not checked.get("volume_entity_id"):
+                    data["volume_level"] = checked["volume"]
+                available = state.attributes.get("available_tones", [])
+                if features & SirenEntityFeature.TONES and available:
+                    tones = (
+                        list(available.values()) if isinstance(available, dict) else list(available)
+                    )
+                    index = self._tone_index.get(entity_id, 0)
+                    data["tone"] = tones[index % len(tones)]
+                    self._tone_index[entity_id] = index + 1
             async with asyncio.timeout(10):
+                if on:
+                    for domain, service, payload in pending_controls(self.hass, checked):
+                        if self._stopped or self.devices.desired().get(entity_id) != binding:
+                            return False
+                        validate_binding(self.hass, checked)
+                        await self.hass.services.async_call(domain, service, payload, blocking=True)
+                    # A helper's service receipt is not evidence that the target
+                    # setting changed. Briefly allow its HA state to catch up.
+                    for attempt in range(21):
+                        if self._stopped or self.devices.desired().get(entity_id) != binding:
+                            return False
+                        validate_binding(self.hass, checked)
+                        if not pending_controls(self.hass, checked):
+                            break
+                        if attempt == 20:
+                            raise DomainError("device_command_failed")
+                        await asyncio.sleep(0.1)
+                # Once this await begins, even a failed receipt cannot prove
+                # that the siren stayed off. Keep durable ownership for stop.
+                siren_attempted = True
                 await self.hass.services.async_call(
                     "siren", "turn_on" if on else "turn_off", data, blocking=True
                 )
-        except HomeAssistantError:
-            raise DomainError("device_command_failed") from None
+        except asyncio.CancelledError as error:
+            if on and not siren_attempted:
+                raise AlarmPreparationCancelled(*error.args) from None
+            raise
+        except (DomainError, HomeAssistantError, OSError, TimeoutError) as error:
+            if on and not siren_attempted:
+                code = error.code if isinstance(error, DomainError) else "device_command_failed"
+                raise AlarmNotStarted(code) from None
+            if isinstance(error, HomeAssistantError):
+                raise DomainError("device_command_failed") from None
+            raise
 
     def start(self):
         self._unsub = async_track_time_interval(self.hass, self._interval, timedelta(seconds=5))
@@ -103,9 +141,37 @@ class Scheduler:
         self._stopped = True
         if self._unsub:
             self._unsub()
-        if self._task and not self._task.done():
-            await self._task
-        # Interval callbacks are not in _task; wait for the bounded in-flight send.
-        while self._busy:
-            await asyncio.sleep(0.05)
-        await self.devices.reconcile(dt_util.utcnow(), stopping=True)
+
+        async def drain():
+            if self._task:
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    # Cancellation of the worker is not cancellation of stop.
+                    # Its durable ownership still requires reconciliation.
+                    if asyncio.current_task().cancelling():
+                        raise
+            # Interval callbacks are not in _task; wait for the in-flight send.
+            while self._busy:
+                await asyncio.sleep(0.05)
+            await self.devices.reconcile(dt_util.utcnow(), stopping=True)
+
+        cleanup = asyncio.create_task(drain())
+        cancellation = None
+        try:
+            while True:
+                try:
+                    await asyncio.shield(cleanup)
+                    break
+                except asyncio.CancelledError as error:
+                    cancellation = cancellation or error
+                    if cleanup.done():
+                        break
+                except BaseException:
+                    if cancellation is None:
+                        raise
+                    break
+            cleanup.result()
+        finally:
+            if cancellation is not None:
+                raise cancellation

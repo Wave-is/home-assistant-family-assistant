@@ -593,6 +593,11 @@ test("renderTaskArchive renders collapsed details containing final tasks", () =>
   assert.match(text, /Cancelled 1/);
   assert.match(text, /Archived 1/);
   assert.doesNotMatch(text, /Active 1/);
+  assert.equal(details.open, false);
+  card._taskItemAction = {type:"confirm_archive",itemId:"T12",targetRevision:2,targetStatus:"completed"};
+  assert.equal(renderTaskArchive(card, document.createElement("div")).open, true);
+  card._taskItemAction = null;
+  assert.equal(renderTaskArchive(card, document.createElement("div")).open, false);
 });
 
 test("custom element family-tasks-card integration test", async () => {

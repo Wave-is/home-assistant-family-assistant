@@ -143,6 +143,39 @@ def update(update_id=10, *, group=False, text="/buy Bread | 1 | pc"):
     }
 
 
+@pytest.mark.parametrize(
+    "address", ["private", "reply", "mention", "unaddressed", "other_bot", "forwarded"]
+)
+async def test_voice_only_gets_honest_support_message_without_audio_or_model_work(
+    manager_module, address
+):
+    engine, _store, _entry, runtime, manager, client = fixture(manager_module)
+    runtime.assistant = object()  # Would permit enqueue if the text/model fallback were reached.
+    message_update = update(group=address != "private", text="")
+    message = message_update["message"]
+    message.pop("text")
+    message["voice"] = {"file_id": "synthetic-voice", "duration": 3, "mime_type": "audio/ogg"}
+    if address == "reply":
+        message["reply_to_message"] = {"from": {"id": BOT["id"]}, "message_id": 7}
+    elif address == "mention":
+        message["caption"] = "@" + BOT["username"]
+    elif address == "other_bot":
+        message["caption"] = "/voice@some_other_bot"
+    elif address == "forwarded":
+        message["forward_origin"] = {"type": "user"}
+    await manager.process(message_update)
+    state = engine.snapshot()
+    replies = [event for event in state["outbox"].values() if event["key"] == "telegram_reply"]
+    if address in {"private", "reply", "mention"}:
+        assert len(replies) == 1
+        assert replies[0]["data"]["text"] == manager_module.COPY["en"]["voice_unsupported"]
+    else:
+        assert not replies
+    assert not state["telegram"].get("photo_jobs")
+    assert not state["assistant_jobs"]
+    assert client.calls == []  # No getFile/download or other Telegram network call.
+
+
 async def blocked_update(engine, store, change):
     store.block = True
     task = asyncio.create_task(engine.system_update("identity_change", NOW, change))

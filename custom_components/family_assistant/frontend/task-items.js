@@ -1041,6 +1041,8 @@ export function renderTaskArchive(card, body) {
   const archivedTasks = allTasks.filter(item =>
     item && FINAL_STATUSES.has(item.status)
   );
+  // Re-rendering an archive review must not hide its own confirmation controls.
+  details.open = archivedTasks.some(item => card._taskItemAction?.itemId === item.id);
 
   if (archivedTasks.length === 0) {
     details.append(el("div", copy.archive_empty, "empty"));

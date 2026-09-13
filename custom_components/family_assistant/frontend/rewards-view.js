@@ -399,6 +399,8 @@ export function renderRewards(card, body) {
     }
     if (termReqs.length) {
       const det = el("details", null, "item");
+      // Refund review lives inside this section, including after a failed save.
+      det.open = termReqs.some(req => card._rewardDraft?.type === "transition" && card._rewardDraft.id === req.id);
       det.append(el("summary", `${copy.terminal_requests} (${termReqs.length})`));
       const tUl = el("ul", null, "list");
       for (const req of termReqs) tUl.append(renderRequestItem(req));

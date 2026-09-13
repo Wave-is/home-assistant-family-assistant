@@ -237,7 +237,11 @@ def edit(member="adult", *, enabled=True, entity="person.adult", age=300):
 async def begin(module, flow, payload):
     first = await module.source_step(flow)
     assert first["type"] == "form" and first["step_id"] == "presence_sources"
-    return await module.source_step(flow, payload)
+    editor = await module.source_step(flow, {"member": payload["member"]})
+    assert editor["type"] == "form" and editor["step_id"] == "presence_source_settings"
+    return await module.source_settings_step(
+        flow, {key: value for key, value in payload.items() if key != "member"}
+    )
 
 
 @pytest.mark.asyncio
@@ -258,9 +262,14 @@ async def test_form_uses_strict_age_and_current_plus_stale_bound_members(module)
         "child",
         "adult",
     }
+    editor = await module.source_step(flow, {"member": "adult"})
+    assert editor["step_id"] == "presence_source_settings"
+    defaults = editor["data_schema"]({})
+    assert defaults["entity_id"] == "person.adult" and defaults["enabled"] is True
+    assert "member" not in defaults
     for invalid in (True, 29, 3601, 300.0, "300"):
         with pytest.raises(vol.Invalid):
-            form["data_schema"]({**defaults, "presence_max_age_seconds": invalid})
+            editor["data_schema"]({**defaults, "presence_max_age_seconds": invalid})
 
 
 @pytest.mark.asyncio
@@ -315,7 +324,7 @@ async def test_wrong_domain_unregistered_or_ha_denied_source_never_reaches_revie
         allowed={entity} if allowed else set(),
     )
     result = await begin(module, flow, edit(entity=entity))
-    assert result["step_id"] == "presence_sources"
+    assert result["step_id"] == "presence_source_settings"
     assert result["errors"] == {"base": "forbidden"}
     assert flow.events == []
 
@@ -333,7 +342,7 @@ async def test_owner_and_options_scope_are_rechecked_after_display(module):
             flow.engine.state["members"]["owner"]["role"] = "parent"
         else:
             flow.hass.config_entries.async_get_entry = lambda _id: SimpleNamespace()
-        result = await module.source_step(flow, edit())
+        result = await module.source_step(flow, {"member": "adult"})
         if drift in {"owner_role", "entry"}:
             assert result["type"] == "abort"
         else:
@@ -347,7 +356,7 @@ async def test_target_member_epoch_change_after_form_display_conflicts(module):
     await module.source_step(flow)
     flow.engine.state["members"]["adult"]["revision"] += 1
 
-    result = await module.source_step(flow, edit())
+    result = await module.source_step(flow, {"member": "adult"})
     assert result["type"] == "form"
     assert result["errors"] == {"base": "conflict"}
     assert flow.events == []
@@ -635,3 +644,146 @@ async def test_age_only_edit_preserves_binding_revision_and_unrelated_options(mo
     assert result["data"]["presence_sources"] == options["presence_sources"]
     assert result["data"]["unrelated"] == {"preserve": True}
     assert result["data"]["presence_max_age_seconds"] == 600
+
+
+@pytest.mark.asyncio
+async def test_member_picker_hydrates_only_selected_saved_source_without_writes(module):
+    options = active_options(age=450)
+    options["presence_sources"]["owner"] = {
+        "revision": 1,
+        "status": "active",
+        "member_revision": 1,
+        "entity_id": "person.owner",
+    }
+    flow = _Flow(base_state(), options=options)
+    for member, entity, enabled in (
+        ("adult", "person.adult", True),
+        ("owner", "person.owner", True),
+        ("child", "", False),
+    ):
+        picker = await module.source_step(flow)
+        assert set(picker["data_schema"]({})) == {"member"}
+        assert "person." not in repr(picker)
+        editor = await module.source_step(flow, {"member": member})
+        assert editor["description_placeholders"] == {"member": member.title()}
+        assert {"entity_id": "", **editor["data_schema"]({})} == {
+            "enabled": enabled,
+            "entity_id": entity,
+            "presence_max_age_seconds": 450,
+        }
+        assert flow.events == [] and flow.config_entry.options == options
+
+
+@pytest.mark.asyncio
+async def test_editor_rejects_member_swap_and_old_combined_picker_payload(module):
+    flow = _Flow(base_state(), entities={"person.adult"}, allowed={"person.adult"})
+    await module.source_step(flow)
+    rejected = await module.source_step(flow, edit())
+    assert rejected["errors"] == {"base": "invalid_field"}
+    assert flow._presence_editor is None
+    await module.source_step(flow, {"member": "adult"})
+    rejected = await module.source_settings_step(flow, edit("child"))
+    assert rejected["errors"] == {"base": "invalid_field"}
+    assert flow._presence_editor["member"] == "adult"
+    assert flow._presence_review is None and not flow.events
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("drift", ["options", "owner_epoch", "member_epoch", "owner_role"])
+async def test_editor_rechecks_pinned_scope_before_rendering_or_review(module, drift):
+    options = active_options()
+    flow = _Flow(base_state(), options=options)
+    await module.source_step(flow)
+    await module.source_step(flow, {"member": "adult"})
+    if drift == "options":
+        flow.config_entry.options["unrelated"] = False
+    elif drift == "owner_epoch":
+        flow.engine.state["members"]["owner"]["revision"] += 1
+    elif drift == "member_epoch":
+        flow.engine.state["members"]["adult"]["revision"] += 1
+    else:
+        flow.engine.state["members"]["owner"]["role"] = "parent"
+    result = await module.source_settings_step(flow)
+    assert result == {
+        "type": "abort",
+        "reason": "forbidden" if drift == "owner_role" else "conflict",
+    }
+    assert "person.adult" not in repr(result)
+    assert flow._presence_editor is None and not flow.events
+
+
+@pytest.mark.asyncio
+async def test_removal_can_omit_entity_and_affects_only_selected_member(module):
+    options = active_options()
+    options["presence_sources"]["child"] = {
+        "revision": 1,
+        "status": "active",
+        "member_revision": 4,
+        "entity_id": "person.child",
+    }
+    flow = _Flow(base_state(), options=options)
+    sync_existing(flow)
+    await module.source_step(flow)
+    await module.source_step(flow, {"member": "adult"})
+    review = await module.source_settings_step(
+        flow, {"enabled": False, "presence_max_age_seconds": 300}
+    )
+    assert review["step_id"] == "presence_source_review"
+    result = await module.review_step(flow, {"confirmed": True})
+    assert result["data"]["presence_sources"]["adult"]["status"] == "removed"
+    assert result["data"]["presence_sources"]["child"] == options["presence_sources"]["child"]
+
+
+@pytest.mark.asyncio
+async def test_editor_without_member_selection_returns_safe_picker(module):
+    flow = _Flow(base_state(), options=active_options())
+    result = await module.source_settings_step(flow, {"enabled": False})
+    assert result["step_id"] == "presence_sources"
+    assert set(result["data_schema"]({})) == {"member"}
+    assert not flow.events
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("consent", [True, False])
+async def test_native_projection_spy_excludes_timer_but_tracks_real_authorized_reads(
+    engine, now, monkeypatch, consent
+):
+    import asyncio
+
+    from ha_presence_smoke import _projection_reads, _state_reads
+    from test_presence_observations import ReportedState, configured, harness
+
+    from custom_components.family_assistant import presence_observations
+
+    configured_engine, options = configured(engine, now, ("parent",))
+    hass, entry, runtime, user, _ = harness(
+        monkeypatch,
+        configured_engine,
+        options,
+        {"person.parent": ReportedState("home", now)},
+        {"person.parent"},
+    )
+    if not consent:
+        await configured_engine.execute(
+            "parent",
+            "presence.access_set",
+            {
+                "member": "parent",
+                "member_revision": 1,
+                "binding_revision": 1,
+                "subscription_revision": 1,
+                "enabled": False,
+            },
+            "revoke-for-read-audit",
+            now,
+        )
+    unrelated = "sensor.synthetic_unrelated_timer"
+    with _state_reads(hass) as all_reads, _projection_reads(hass) as reads:
+        asyncio.get_running_loop().call_soon(hass.states.get, unrelated)
+        await asyncio.sleep(0)
+        result = presence_observations.project(hass, entry, runtime, "parent", user, now)
+    expected = ["person.parent"] if consent else []
+    assert all_reads == [unrelated, *expected]
+    assert reads == expected
+    assert result["self"]["enabled"] is consent
+    assert result["self"]["status"] == ("reported_home" if consent else "unknown")

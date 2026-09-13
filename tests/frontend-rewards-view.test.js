@@ -96,6 +96,16 @@ test("1. REWARD_COPY exact RU UK EN key parity and valid non-empty strings", () 
   }
 });
 
+test("terminal reward section stays open while its own refund review is active", () => {
+  const card=createMockCard({rewards:{catalog:[],requests:[{id:"V1",revision:1,status:"fulfilled",member:"c1",name:"Synthetic reward",cost:2}],balances:[]}});
+  const render=()=>{const body=document.createElement("div");renderRewards(card,body);return body.querySelector("section > details");};
+  assert.equal(render().open,false);
+  card._rewardDraft={type:"transition",id:"V1",revision:1,decision:"refund",reason:""};
+  assert.equal(render().open,true);
+  card._rewardDraft=null;
+  assert.equal(render().open,false);
+});
+
 test("2. XSS prevention and anonymous/guest/disabled-court safety", () => {
   const hostile = { id: "cat1", revision: 1, name: "<script>alert(1)</script>", description: "<img src=x onerror=alert(1)>", cost: 10, enabled: true };
   const card = createMockCard({ role: "parent", rewards: { catalog: [hostile], requests: [], balances: [] } });

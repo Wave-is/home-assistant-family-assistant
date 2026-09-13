@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 import {PRESENCE_NOTIFICATIONS_COPY as COPY} from "../../custom_components/family_assistant/frontend/presence-notifications-copy.js";
 for(const language of ["ru","uk","en"])test(`${language} mobile reviewed return-home reminders`,async({page})=>{
   await page.setViewportSize({width:390,height:844});

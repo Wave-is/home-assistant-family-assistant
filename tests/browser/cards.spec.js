@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("Russian shopping merge is reviewed and keeps source history",async({page})=>{
   await page.setViewportSize({width:390,height:844});
@@ -285,4 +285,67 @@ test("parent creates a rotating duty using the Russian mobile form",async({page}
 test("child cannot create a recurring family duty",async({page})=>{
  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=en&role=child");
  await expect(page.getByRole("button",{name:"Add recurring task",exact:true})).toHaveCount(0);
+});
+
+test("household switch during a view request loads the new context and rejects the late projection",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=en");
+ await expect(page.getByText("Apples",{exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+   const hass=window.card._hass,old=hass.callWS.bind(hass);
+   window.card._hass={...hass,callWS:message=>message.type.endsWith("/view")&&message.entry_id==="synthetic"?new Promise(resolve=>{window.releaseOldView=()=>resolve({...window.fixture,settings:{...window.fixture.settings,name:"Stale household"}});}):old(message)};
+   void window.card.refresh();
+   window.card.setConfig({entry_id:"new-synthetic",view:"shopping"});
+ });
+ await expect(page.getByText("Apples",{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>window.card._loading)).toBe(false);
+ await page.evaluate(()=>window.releaseOldView());
+ await expect(page.locator(".eyebrow")).toHaveText("Our family");
+ await page.getByRole("button",{name:"Add shopping item",exact:true}).click();
+ await expect(page.getByLabel("Name",{exact:true})).toBeEditable();
+});
+
+test("household switch during a failed save does not disable the replacement card",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=en");
+ await expect(page.getByText("Apples",{exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+   const hass=window.card._hass,old=hass.callWS.bind(hass);
+   window.card._hass={...hass,callWS:message=>message.type.endsWith("/execute")?new Promise((_,reject)=>{window.rejectOldWrite=()=>reject({code:"storage_error"});}):old(message)};
+ });
+ await page.getByRole("button",{name:"Bought remaining",exact:true}).click();
+ await page.evaluate(()=>window.card.setConfig({entry_id:"new-synthetic",view:"shopping"}));
+ await expect(page.getByRole("button",{name:"Add shopping item",exact:true})).toBeEnabled();
+ await page.evaluate(()=>window.rejectOldWrite());
+ await expect(page.getByRole("alert")).toHaveCount(0);
+ await page.getByRole("button",{name:"Add shopping item",exact:true}).click();
+ await expect(page.getByLabel("Name",{exact:true})).toBeEditable();
+});
+
+test("slow pre-save refresh cannot replace the successful purchase readback",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=en");
+ await expect(page.getByText("Apples",{exact:true})).toBeVisible();
+ await page.evaluate(()=>{
+   const hass=window.card._hass,old=hass.callWS.bind(hass);let delayed=false;
+   window.card._hass={...hass,callWS:message=>{
+     if(message.type.endsWith("/view")&&!delayed){delayed=true;const snapshot=structuredClone(window.fixture);return new Promise(resolve=>{window.releaseStale=()=>resolve(snapshot);});}
+     return old(message);
+   }};
+   void window.card.refresh();
+ });
+ await page.getByRole("button",{name:"Bought remaining",exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.card._data.shopping[0].purchased)).toBe(3);
+ await page.evaluate(()=>window.releaseStale());
+ await expect.poll(()=>page.evaluate(()=>window.card._data.shopping[0].purchased)).toBe(3);
+ await expect(page.getByRole("button",{name:"Add shopping item",exact:true})).toBeEnabled();
+});
+
+test("synthetic action audit preserves the identity and original behavior of a wrapped client",async({page})=>{
+ await page.goto("/tests/fixtures/dashboard.html?view=shopping&lang=en");
+ await expect(page.getByText("Apples",{exact:true})).toBeVisible();
+ const result=await page.evaluate(async()=>{
+   const original=window.card._hass.callWS,stable=original===window.card._hass.callWS;
+   window.card._hass.callWS=message=>original(message);
+   const data=await window.card._hass.callWS({type:"family_assistant/view",entry_id:"synthetic"});
+   return {stable,name:data.settings.name};
+ });
+ expect(result).toEqual({stable:true,name:"Our family"});
 });

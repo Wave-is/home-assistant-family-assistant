@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("RU mobile owner saves a configured threshold without changing the report schedule",async({page},testInfo)=>{
   const errors=[];page.on("pageerror",error=>errors.push(error.message));

@@ -539,6 +539,20 @@ test("History pagination: latest 50 entries shown, Show more expands without del
   assert.equal(moreBtn.style.display, "none");
 });
 
+test("Archive keeps only its own uncertain purchase or archive review visible", () => {
+  const card = createMockCard({shopping:[{id:"S000001",name:"Synthetic completed item",status:"purchased",quantity:3,purchased:3,revision:2}]});
+  for (const type of ["partial_purchase", "archive_confirm"]) {
+    card._shoppingItemAction = {type,itemId:"S000001",frozenPayload:{id:"S000001",revision:1,quantity:2},draftQuantity:"2",generation:1};
+    card._actionError = "connection_lost";
+    assert.equal(renderShoppingArchive(card, document.createElement("div")).open, true);
+  }
+  card._shoppingItemAction = {itemId:"S000099"};
+  assert.equal(renderShoppingArchive(card, document.createElement("div")).open, false);
+  card._shoppingItemAction = null;
+  assert.equal(renderShoppingArchive(card, document.createElement("div")).open, false);
+  assert.equal(card.commands.length, 0);
+});
+
 test("Archive rendering: uses details and ul, filters only purchased/rejected/archived/merged", () => {
   const shopping = [
     { id: "1", name: "Open item", status: "approved", quantity: 1, purchased: 0 },

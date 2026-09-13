@@ -39,6 +39,46 @@ afterEach(()=>{document.body.replaceChildren();window.confirm=()=>true;window.se
 function input(control,name,value) {const node=control.shadowRoot.querySelector(`[name="${name}"]`);assert.ok(node,`Missing ${name}`);if(node.type==="checkbox")node.checked=value;else node.value=value;node.dispatchEvent(new Event(node.tagName==="SELECT"||node.type==="checkbox"?"change":"input",{bubbles:true}));return node;}
 function action(control,id){const button=control.shadowRoot.querySelector(`#${id}`);assert.ok(button,`Missing ${id}`);button.click();}
 
+function syntheticClipboard(context,writeText){
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"navigator");
+  Object.defineProperty(globalThis,"navigator",{configurable:true,value:{clipboard:{writeText}}});
+  context.after(()=>previous?Object.defineProperty(globalThis,"navigator",previous):delete globalThis.navigator);
+}
+function issuedInvitation(control){
+  const record={id:"synthetic-copy-enrollment",kind:"member",member:"M2",state:"issued",code:"SYNTHETIC-COPY",expires_at:"2030-01-01T00:00:00Z"};
+  control._invite=record;control.render();return record;
+}
+
+test("clipboard retry clears its own error without clearing an unrelated operation error",async context=>{
+  const {control,calls}=await panel(),record=issuedInvitation(control);let fail=true;
+  syntheticClipboard(context,async()=>{if(fail)throw Error("Synthetic clipboard denial");});
+  await control.copyInvitation(record.code,record);assert.equal(control._inviteClipboard.error,control.t.failure);
+  assert.equal(control._error,null);control._error="Synthetic unrelated operation error";fail=false;
+  await control.copyInvitation(record.code,record);
+  assert.equal(control._inviteClipboard.error,null);assert.equal(control._inviteClipboard.notice,control.t.copied);
+  assert.equal(control._error,"Synthetic unrelated operation error");
+  assert.equal(calls.filter(call=>call.type.includes("telegram_")||call.type.endsWith("/execute")).length,0);
+});
+
+for(const drift of ["member","household","enrollment","user","connection","role","close","disconnect"])for(const outcome of ["resolve","reject"])test(`late clipboard ${outcome} cannot alter a changed ${drift} context`,async context=>{
+  const {control,hass,calls}=await panel(),record=issuedInvitation(control),pending=deferred();
+  syntheticClipboard(context,()=>pending.promise);const copying=control.copyInvitation(record.code,record);
+  if(drift==="member")control.openMemberView(control.members[1]);
+  if(drift==="household")await control.selectFamily("other-household");
+  if(drift==="enrollment"){control._invite={...record,id:"new-enrollment",member:"M1"};control.render();}
+  if(drift==="user"){control.hass={...hass,user:{id:"new-owner"}};await tick();}
+  if(drift==="connection"){control.hass={...hass,connection:{}};await tick();}
+  if(drift==="role"){control._data.view.role="child";control.render();}
+  if(drift==="close")[...control.shadowRoot.querySelectorAll('[role="dialog"] button')].find(button=>button.textContent==="Close").click();
+  if(drift==="disconnect")control.remove();
+  control._error="Synthetic current error";control._notice="Synthetic current notice";control.render();
+  const html=control.shadowRoot.innerHTML,invite=control._invite;
+  pending[outcome](outcome==="reject"?Error("Synthetic late clipboard failure"):undefined);await copying;
+  assert.equal(control._error,"Synthetic current error");assert.equal(control._notice,"Synthetic current notice");
+  assert.equal(control._invite,invite);assert.equal(control.shadowRoot.innerHTML,html);
+  assert.equal(calls.filter(call=>call.type.includes("telegram_")||call.type.endsWith("/execute")).length,0);
+});
+
 test("initial state contains no household samples and shows actual loading",async()=>{
   const pending=deferred(),{control}=await panel({handler:m=>m.type==="family_assistant/households"?pending.promise:undefined});
   assert.match(control.shadowRoot.textContent,/Loading your family/);assert.doesNotMatch(control.shadowRoot.textContent,/Example Owner/);

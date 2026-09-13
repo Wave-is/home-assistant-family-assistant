@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 import {SHADOW_COPY} from "../../custom_components/family_assistant/frontend/shadow-view.js";
 
 for(const lang of ["en","ru","uk"])test(`owner shadow review is mobile read-only ${lang}`,async({page})=>{

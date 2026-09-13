@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 const field=(card,key)=>card.locator(`[data-recurrence-control="${key}"]`);
 

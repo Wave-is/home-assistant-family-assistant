@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager, contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -67,17 +68,35 @@ async def _general_presence(hass, entry, owner, enabled):
     await hass.async_block_till_done()
 
 
-async def _presence_source(hass, entry, owner, member, enabled, entity_id=""):
+async def _presence_editor(hass, entry, owner, member):
     flow = await hass.config_entries.options.async_init(
         entry.entry_id, context={"user_id": owner.id}
     )
     assert flow["type"] == "menu" and flow["step_id"] == "init", flow
     form = await select_option(hass, flow, "presence_sources")
     assert form["type"] == "form" and form["step_id"] == "presence_sources", form
+    assert set(form["data_schema"]({})) == {"member"}
+    editor = await hass.config_entries.options.async_configure(form["flow_id"], {"member": member})
+    assert editor["type"] == "form" and editor["step_id"] == "presence_source_settings", editor
+    defaults = {"entity_id": "", **editor["data_schema"]({})}
+    existing = entry.options.get("presence_sources", {}).get(member, {})
+    assert defaults == {
+        "enabled": existing.get("status") == "active",
+        "entity_id": existing.get("entity_id", ""),
+        "presence_max_age_seconds": entry.options.get("presence_max_age_seconds", 300),
+    }, defaults
+    assert (
+        editor["description_placeholders"]["member"]
+        == (entry.runtime_data.engine.snapshot()["members"][member]["name"])
+    )
+    return editor
+
+
+async def _presence_source(hass, entry, owner, member, enabled, entity_id=""):
+    editor = await _presence_editor(hass, entry, owner, member)
     review = await hass.config_entries.options.async_configure(
-        form["flow_id"],
+        editor["flow_id"],
         {
-            "member": member,
             "enabled": enabled,
             "entity_id": entity_id,
             "presence_max_age_seconds": 300,
@@ -104,6 +123,30 @@ def _state_reads(hass):
         return original(machine, entity_id)
 
     with patch.object(type(hass.states), "get", new=read):
+        yield reads
+
+
+@contextmanager
+def _projection_reads(hass):
+    """Audit every real projection read, excluding unrelated HA timer tasks.
+
+    The authenticated WebSocket request still calls the real synchronous
+    projection. Its stack cannot interleave with an unrelated async scheduler;
+    no selected source, HA permission check or observation is mocked away.
+    """
+    from custom_components.family_assistant import presence_observations
+
+    reads = []
+    original = presence_observations.project
+
+    def project(*args, **kwargs):
+        with _state_reads(hass) as current:
+            try:
+                return original(*args, **kwargs)
+            finally:
+                reads.extend(current)
+
+    with patch.object(presence_observations, "project", new=project):
         yield reads
 
 
@@ -207,7 +250,7 @@ async def verify_presence(hass, entry, owner_user):
     assert replay["success"] and replay["result"] == consent["result"]
 
     before_view = engine.snapshot()
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         current = await _request(hass, entry, owner_user, 4)
     assert current["success"], current
     assert reads == [first_id]
@@ -239,7 +282,7 @@ async def verify_presence(hass, entry, owner_user):
             return False
 
     denied_user = SimpleNamespace(id=owner_user.id, is_active=True, permissions=DeniedPermissions())
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         denied = presence_observations.project(
             hass,
             entry,
@@ -266,9 +309,22 @@ async def verify_presence(hass, entry, owner_user):
         "revision": 2,
         "status": "disabled",
     }
-    with _state_reads(hass) as reads:
+    # Demonstrate the global spy's overbroad scope deterministically: this
+    # unrelated timer lookup occurs while the real WS roundtrip yields.
+    unrelated = "sensor.synthetic_presence_unrelated_timer"
+    with _state_reads(hass) as all_reads, _projection_reads(hass) as reads:
+        asyncio.get_running_loop().call_soon(hass.states.get, unrelated)
         consent_revoked = await _request(hass, entry, owner_user, 52)
-    assert consent_revoked["success"] and reads == []
+    assert unrelated in all_reads and unrelated not in reads
+    assert consent_revoked["success"] and reads == [], {
+        "success": consent_revoked.get("success"),
+        "error_code": consent_revoked.get("error", {}).get("code"),
+        "state_reads": reads,
+        "presence_subscription_statuses": {
+            key: value.get("status")
+            for key, value in engine.snapshot()["presence"]["subscriptions"].items()
+        },
+    }
     revoked_row = consent_revoked["result"]["presence"]["self"]
     assert revoked_row["enabled"] is False and revoked_row["reason"] == "not_shared"
     restored_consent = await _request(
@@ -303,7 +359,7 @@ async def verify_presence(hass, entry, owner_user):
     engine = entry.runtime_data.engine
     replacement_source = entry.options["presence_sources"]["owner"]
     assert replacement_source["revision"] == 2
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         invalidated = await _request(hass, entry, owner_user, 6)
     assert invalidated["success"] and reads == []
     invalidated_row = invalidated["result"]["presence"]["self"]
@@ -328,7 +384,7 @@ async def verify_presence(hass, entry, owner_user):
         "presence-ha-renew",
     )
     assert renewed["success"] and renewed["result"]["revision"] == 4
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         away = await _request(hass, entry, owner_user, 8)
     assert away["success"] and reads == [replacement_id]
     assert away["result"]["presence"]["self"]["status"] == "reported_away"
@@ -341,14 +397,14 @@ async def verify_presence(hass, entry, owner_user):
     engine = entry.runtime_data.engine
     assert engine.snapshot()["presence"] == expected_presence
     assert first_id not in repr(engine.snapshot()["presence"])
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         reloaded = await _request(hass, entry, owner_user, 9)
     assert reloaded["success"] and reads == [replacement_id]
     assert reloaded["result"]["presence"]["self"]["status"] == "reported_away"
 
     await _general_presence(hass, entry, owner_user, False)
     engine = entry.runtime_data.engine
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         disabled = await _request(hass, entry, owner_user, 10)
     assert disabled["success"] and "presence" not in disabled["result"]
     assert reads == []
@@ -382,7 +438,7 @@ async def verify_presence(hass, entry, owner_user):
         "presence-ha-owner-refresh",
     )
     assert member_edit["success"], member_edit
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         epoch_changed = await _request(hass, entry, owner_user, 13)
     assert epoch_changed["success"] and reads == []
     changed_row = epoch_changed["result"]["presence"]["self"]
@@ -428,6 +484,14 @@ async def _verify_guardian_presence(hass, entry, owner_user, registry):
     )
     hass.states.async_set(source.entity_id, "home", {"latitude": "GUARDIAN_COORDINATE_CANARY"})
     await _presence_source(hass, entry, owner_user, child_id, True, source.entity_id)
+    # Reopening a non-first bound member must hydrate that source, not the owner's.
+    before_options = deepcopy(dict(entry.options))
+    before_state = entry.runtime_data.engine.snapshot()
+    editor = await _presence_editor(hass, entry, owner_user, child_id)
+    assert editor["data_schema"]({})["entity_id"] == source.entity_id
+    hass.config_entries.options.async_abort(editor["flow_id"])
+    assert dict(entry.options) == before_options
+    assert entry.runtime_data.engine.snapshot() == before_state
     request = {
         "member": child_id,
         "member_revision": 1,
@@ -456,7 +520,7 @@ async def _verify_guardian_presence(hass, entry, owner_user, registry):
         "revision": 1,
         "status": "enabled",
     }
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         current = await _request(hass, entry, owner_user, 206)
     assert current["success"] and reads == [source.entity_id]
     row = next(row for row in current["result"]["presence"]["managed"] if row["member"] == child_id)
@@ -470,7 +534,7 @@ async def _verify_guardian_presence(hass, entry, owner_user, registry):
             return False
 
     denied_user = SimpleNamespace(id=owner_user.id, is_active=True, permissions=DeniedPermissions())
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         denied = presence_observations.project(
             hass, entry, entry.runtime_data, "owner", denied_user, datetime.now(UTC)
         )
@@ -479,7 +543,7 @@ async def _verify_guardian_presence(hass, entry, owner_user, registry):
         next(row for row in denied["managed"] if row["member"] == child_id)["status"] == "unknown"
     )
     denied_user.is_active = False
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         inactive = presence_observations.project(
             hass, entry, entry.runtime_data, "owner", denied_user, datetime.now(UTC)
         )
@@ -509,7 +573,7 @@ async def _verify_guardian_presence(hass, entry, owner_user, registry):
         },
     )
     assert edited["success"], edited
-    with _state_reads(hass) as reads:
+    with _projection_reads(hass) as reads:
         revoked = await _request(hass, entry, owner_user, 209)
     assert revoked["success"] and not reads
     assert (

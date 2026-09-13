@@ -85,6 +85,11 @@ async def main(*, case="all"):
 
                 await verify_panel(hass, user)
                 return
+            if case == "settings":
+                from ha_settings_audit_smoke import verify_settings_audit
+
+                await verify_settings_audit(hass, user)
+                return
             if case == "voice":
                 from ha_voice_smoke import verify_voice_shopping
 
@@ -192,9 +197,12 @@ async def main(*, case="all"):
             )
             options = await select_option(hass, options, "alarm_device")
             options = await hass.config_entries.options.async_configure(
+                options["flow_id"], {"member": child_id}
+            )
+            assert options["step_id"] == "alarm_device_settings"
+            options = await hass.config_entries.options.async_configure(
                 options["flow_id"],
                 {
-                    "member": child_id,
                     "entity_id": siren.entity_id,
                     "volume": 0.5,
                     "enabled": True,
@@ -205,7 +213,6 @@ async def main(*, case="all"):
             options = await hass.config_entries.options.async_configure(
                 options["flow_id"],
                 {
-                    "member": child_id,
                     "entity_id": siren.entity_id,
                     "volume": 0.5,
                     "enabled": True,
@@ -1353,5 +1360,7 @@ async def verify_routine_controls(hass, entry, owner, child, child_id, request):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=("all", "ha-agent", "voice", "panel"), default="all")
+    parser.add_argument(
+        "--case", choices=("all", "ha-agent", "voice", "panel", "settings"), default="all"
+    )
     asyncio.run(main(case=parser.parse_args().case))

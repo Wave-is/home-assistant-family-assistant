@@ -272,20 +272,31 @@ def _proposal(scope, user_input) -> tuple[dict, dict]:
     }
 
 
-def _editor_schema(scope):
-    config = presence.validate_options(scope["options"])
+def _member_schema(scope):
     members = _members(scope)
-    default_member = next(iter(members), "")
-    current = config["sources"].get(default_member, {})
     return vol.Schema(
         {
-            vol.Required("member", default=default_member): selector.SelectSelector(
+            vol.Required("member", default=next(iter(members), "")): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=[{"value": key, "label": value} for key, value in members.items()]
                 )
             ),
+        }
+    )
+
+
+def _editor_schema(scope, member_id):
+    config = presence.validate_options(scope["options"])
+    current = config["sources"].get(member_id, {})
+    entity_field = (
+        vol.Optional("entity_id", default=current["entity_id"])
+        if current.get("entity_id")
+        else vol.Optional("entity_id")
+    )
+    return vol.Schema(
+        {
             vol.Required("enabled", default=current.get("status") == "active"): bool,
-            vol.Optional("entity_id", default=current.get("entity_id", "")): (
+            entity_field: (
                 selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=["person", "device_tracker"])
                 )
@@ -298,12 +309,14 @@ def _editor_schema(scope):
 
 
 async def source_step(flow, user_input=None):
-    """Select one per-member source mutation, then require a separate review."""
+    """Choose a member before hydrating that member's source settings."""
     try:
         scope = await _scope(flow)
     except DomainError as error:
         return flow.async_abort(reason=error.code)
     scope["flow"] = flow
+    flow._presence_review = None
+    flow._presence_editor = None
     errors = {}
     if user_input is not None:
         displayed = getattr(flow, "_presence_displayed_scope", None)
@@ -311,26 +324,76 @@ async def source_step(flow, user_input=None):
             errors["base"] = "conflict"
         else:
             try:
-                member_id = user_input.get("member") if isinstance(user_input, dict) else None
-                if isinstance(member_id, str) and _member_marker(
-                    scope["state"], member_id
-                ) != _member_marker(displayed["state"], member_id):
+                if not isinstance(user_input, dict) or set(user_input) != {"member"}:
+                    raise DomainError("invalid_field", "payload")
+                member_id = user_input["member"]
+                if not isinstance(member_id, str) or member_id not in _members(scope):
+                    raise DomainError("unknown_member")
+                if _member_marker(scope["state"], member_id) != _member_marker(
+                    displayed["state"], member_id
+                ):
                     raise DomainError("conflict")
-                options, summary = _proposal(scope, user_input)
-                flow._presence_review = {
+                flow._presence_editor = {
                     "scope": displayed,
-                    "options": options,
-                    "summary": summary,
-                    "target_marker": _member_marker(displayed["state"], summary["member"]),
+                    "member": member_id,
+                    "target_marker": _member_marker(displayed["state"], member_id),
                 }
-                return await review_step(flow)
+                return await source_settings_step(flow)
             except DomainError as error:
                 errors["base"] = error.code
     flow._presence_displayed_scope = scope
     return flow.async_show_form(
         step_id="presence_sources",
-        data_schema=_editor_schema(scope),
+        data_schema=_member_schema(scope),
         errors=errors,
+    )
+
+
+async def source_settings_step(flow, user_input=None):
+    """Edit only the pinned member; never reuse another member's source defaults."""
+    editor = getattr(flow, "_presence_editor", None)
+    if not isinstance(editor, dict):
+        return await source_step(flow)
+    try:
+        scope = await _scope(flow)
+        member_id = editor["member"]
+        if (
+            not _same_scope(scope, editor["scope"])
+            or _member_marker(scope["state"], member_id) != editor["target_marker"]
+        ):
+            raise DomainError("conflict")
+    except DomainError as error:
+        flow._presence_editor = None
+        flow._presence_review = None
+        return flow.async_abort(reason=error.code)
+    scope["flow"] = flow
+    errors = {}
+    if user_input is not None:
+        try:
+            required = {"enabled", "presence_max_age_seconds"}
+            if (
+                not isinstance(user_input, dict)
+                or not required <= set(user_input)
+                or set(user_input) - required - {"entity_id"}
+            ):
+                raise DomainError("invalid_field", "payload")
+            options, summary = _proposal(
+                scope, {"entity_id": "", **user_input, "member": member_id}
+            )
+            flow._presence_review = {
+                "scope": editor["scope"],
+                "options": options,
+                "summary": summary,
+                "target_marker": editor["target_marker"],
+            }
+            return await review_step(flow)
+        except DomainError as error:
+            errors["base"] = error.code
+    return flow.async_show_form(
+        step_id="presence_source_settings",
+        data_schema=_editor_schema(scope, member_id),
+        errors=errors,
+        description_placeholders={"member": _members(scope)[member_id]},
     )
 
 

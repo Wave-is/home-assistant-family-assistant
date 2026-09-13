@@ -15,6 +15,7 @@ from .domain.household import TEMPLATES, timezone
 from .domain.validation import DomainError
 from .onboarding_handoff import async_post_create_handoff, is_guided_handoff
 from .onboarding_options import GuidedOnboardingMixin
+from .provider_options import guarded_provider_step
 
 CONFIGURABLE_MODULES = (
     *DEFAULT_MODULES,
@@ -65,6 +66,18 @@ class SchoolPreparationClock(vol.Coerce):
 
 school_preparation_days = SchoolPreparationDays()
 school_preparation_clock = SchoolPreparationClock()
+
+
+class AlarmVolume(vol.Coerce):
+    """Keep HA's supported float schema while rejecting boolean numeric coercion."""
+
+    def __init__(self):
+        super().__init__(float)
+
+    def __call__(self, value):
+        if isinstance(value, bool):
+            raise vol.Invalid("volume")
+        return super().__call__(value)
 
 
 def select(options, translation_key=None):
@@ -399,6 +412,11 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
 
         return await source_step(self, user_input)
 
+    async def async_step_presence_source_settings(self, user_input=None):
+        from .presence_options import source_settings_step
+
+        return await source_settings_step(self, user_input)
+
     async def async_step_presence_source_review(self, user_input=None):
         from .presence_options import review_step
 
@@ -414,6 +432,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
 
         return await review_step(self, user_input)
 
+    @guarded_provider_step
     async def async_step_mikrotik(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -429,35 +448,47 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         if user_input is not None:
             config = dict(current)
             config["enabled"] = user_input["enabled"]
+            if user_input.get("clear_password"):
+                config.pop("password", None)
             try:
-                if config["enabled"]:
-                    if (
-                        (
-                            user_input.get("url") != current.get("url")
-                            or user_input.get("username") != current.get("username")
-                        )
-                        and current.get("password")
-                        and not user_input.get("password")
-                    ):
-                        raise DomainError("network_credential_scope")
-                    config.update(
-                        url=user_input.get("url", ""),
-                        username=user_input.get("username", ""),
-                        password=user_input.get("password") or current.get("password", ""),
-                        ca_pem=user_input.get("ca_pem", ""),
-                        allow_write=user_input.get("allow_write", False),
-                        allow_kid_control=user_input.get("allow_kid_control", False),
-                        ha_mac=user_input.get("ha_mac", ""),
-                        management_mac=user_input.get("management_mac", ""),
-                        management_confirmed=user_input.get("management_confirmed", False),
-                    )
-                    protected(config)
+                for key in (
+                    "url",
+                    "username",
+                    "ca_pem",
+                    "allow_write",
+                    "allow_kid_control",
+                    "ha_mac",
+                    "management_mac",
+                    "management_confirmed",
+                ):
+                    if key in user_input:
+                        config[key] = user_input[key]
+                if (
+                    any(config.get(key) != current.get(key) for key in ("url", "username"))
+                    and current.get("password")
+                    and not (user_input.get("password") or user_input.get("clear_password"))
+                ):
+                    raise DomainError("network_credential_scope")
+                if user_input.get("password") and not user_input.get("clear_password"):
+                    config["password"] = user_input["password"]
+                protected(config)
+                context = True
+                if config["enabled"] or config.get("ca_pem"):
                     context = await self.hass.async_add_executor_job(
-                        certificate_context, config["ca_pem"]
+                        certificate_context, config.get("ca_pem", "")
                     )
+                if config["enabled"]:
                     await RouterClient(
                         async_get_clientsession(self.hass), config, context
                     ).inspect()
+                elif config.get("url") or config.get("username"):
+                    # Validate without a transport. Clearing a password while disabled
+                    # must remain possible; this local-only stand-in is never saved.
+                    RouterClient(
+                        None,
+                        {**config, "password": config.get("password") or "validation-only"},
+                        context,
+                    )
                 options = dict(self.config_entry.options)
                 options["mikrotik"] = config
                 return self.async_create_entry(title="", data=options)
@@ -474,6 +505,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                     vol.Optional("password"): selector.TextSelector(
                         selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                     ),
+                    vol.Required("clear_password", default=False): bool,
                     vol.Optional(
                         "ca_pem", default=current.get("ca_pem", "")
                     ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
@@ -490,6 +522,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             ),
         )
 
+    @guarded_provider_step
     async def async_step_conversation(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -505,34 +538,50 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             config = dict(current)
             config["enabled"] = user_input["enabled"]
             try:
-                if config["enabled"]:
-                    for key in ("primary", "fallback"):
-                        if key == "fallback" and not user_input.get("fallback_enabled"):
-                            config.pop(key, None)
-                            continue
-                        old = current.get(key, {})
-                        provider = {
-                            "url": user_input.get(key + "_url", ""),
-                            "model": user_input.get(key + "_model", ""),
-                            "allow_http": user_input.get("allow_http", False),
-                            "timeout": user_input["timeout"],
-                        }
-                        # Blank means preserve; explicitly clearing uses the dedicated checkbox.
-                        if (
-                            provider["url"] != old.get("url")
-                            and old.get("api_key")
-                            and not (
-                                user_input.get(key + "_key") or user_input.get(key + "_clear_key")
-                            )
-                        ):
-                            raise DomainError("provider_key_scope")
-                        api_key = user_input.get(key + "_key") or old.get("api_key", "")
-                        if user_input.get(key + "_clear_key"):
-                            api_key = ""
-                        if api_key:
-                            provider["api_key"] = api_key
-                        await Ollama(async_get_clientsession(self.hass), provider).inspect()
-                        config[key] = provider
+                for key in ("primary", "fallback"):
+                    old = current.get(key, {})
+                    active = key == "primary" or user_input.get(
+                        "fallback_enabled", bool(old) and old.get("enabled", True)
+                    )
+                    provider = {
+                        **old,
+                        "url": user_input.get(key + "_url", old.get("url", "")),
+                        "model": user_input.get(key + "_model", old.get("model", "")),
+                        "allow_http": user_input.get("allow_http", old.get("allow_http", False)),
+                        "timeout": user_input.get("timeout", old.get("timeout", 15)),
+                    }
+                    # Disabling is not deletion. Keys still belong to their endpoint.
+                    if (
+                        provider["url"] != old.get("url")
+                        and old.get("api_key")
+                        and not (user_input.get(key + "_key") or user_input.get(key + "_clear_key"))
+                    ):
+                        raise DomainError("provider_key_scope")
+                    if user_input.get(key + "_clear_key"):
+                        provider.pop("api_key", None)
+                    elif user_input.get(key + "_key"):
+                        provider["api_key"] = user_input[key + "_key"]
+                    if key == "fallback":
+                        provider["enabled"] = bool(active)
+                    configured = bool(old) or any(
+                        provider.get(name) for name in ("url", "model", "api_key")
+                    )
+                    required = active and (
+                        key == "fallback"
+                        or config["enabled"]
+                        and not (config.get("ha_agent") or config.get("agy"))
+                    )
+                    if not configured and not required:
+                        continue
+                    client = Ollama(
+                        async_get_clientsession(self.hass)
+                        if config["enabled"] and active
+                        else None,
+                        provider,
+                    )
+                    if config["enabled"] and active:
+                        await client.inspect()
+                    config[key] = provider
                 options = dict(self.config_entry.options)
                 options["conversation"] = config
                 return self.async_create_entry(title="", data=options)
@@ -549,7 +598,11 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             schema[vol.Required(key + "_clear_key", default=False)] = bool
         schema.update(
             {
-                vol.Required("fallback_enabled", default=bool(current.get("fallback"))): bool,
+                vol.Required(
+                    "fallback_enabled",
+                    default=bool(current.get("fallback"))
+                    and current["fallback"].get("enabled", True),
+                ): bool,
                 vol.Required(
                     "allow_http", default=current.get("primary", {}).get("allow_http", False)
                 ): bool,
@@ -562,6 +615,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             step_id="conversation", data_schema=vol.Schema(schema), errors=errors
         )
 
+    @guarded_provider_step
     async def async_step_search(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -577,11 +631,14 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             options = dict(self.config_entry.options)
             config = dict(options.get("conversation", {}))
             try:
-                if user_input["enabled"]:
-                    search = {
-                        "url": user_input["url"],
-                        "allow_http": user_input.get("allow_http", False),
-                    }
+                search = {**current, "enabled": user_input["enabled"]}
+                if user_input.get("clear_key"):
+                    search.pop("api_key", None)
+                if user_input.get("url") or current.get("url") or search["enabled"]:
+                    search.update(
+                        url=user_input.get("url", current.get("url", "")),
+                        allow_http=user_input.get("allow_http", current.get("allow_http", False)),
+                    )
                     if (
                         search["url"] != current.get("url")
                         and current.get("api_key")
@@ -591,13 +648,13 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                     api_key = user_input.get("api_key") or current.get("api_key", "")
                     if api_key and not user_input.get("clear_key"):
                         search["api_key"] = api_key
-                    # Uses only a public synthetic query, never household data.
-                    await Search(async_get_clientsession(self.hass), search).query(
-                        "Home Assistant", "en"
+                    provider = Search(
+                        async_get_clientsession(self.hass) if search["enabled"] else None, search
                     )
-                    config["search"] = search
-                else:
-                    config.pop("search", None)
+                    if search["enabled"]:
+                        # Uses only a public synthetic query, never household data.
+                        await provider.query("Home Assistant", "en")
+                config["search"] = search
                 options["conversation"] = config
                 return self.async_create_entry(title="", data=options)
             except DomainError as err:
@@ -607,7 +664,9 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             errors=errors,
             data_schema=vol.Schema(
                 {
-                    vol.Required("enabled", default=bool(current)): bool,
+                    vol.Required(
+                        "enabled", default=bool(current) and current.get("enabled", True)
+                    ): bool,
                     vol.Optional("url", default=current.get("url", "")): str,
                     vol.Optional("api_key"): selector.TextSelector(
                         selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
@@ -618,6 +677,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             ),
         )
 
+    @guarded_provider_step
     async def async_step_telegram(self, user_input=None):
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -633,7 +693,26 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         if user_input is not None:
             config = dict(current)
             config["enabled"] = user_input["enabled"]
-            token = user_input.get("token") or current.get("token", "")
+            if user_input.get("clear_token"):
+                config.pop("token", None)
+                config.pop("bot", None)
+            token = (
+                ""
+                if user_input.get("clear_token")
+                else user_input.get("token") or current.get("token", "")
+            )
+            if (
+                not config["enabled"]
+                and user_input.get("token")
+                and not user_input.get("clear_token")
+            ):
+                try:
+                    TelegramClient(None, token)  # Syntax only; no connection while disabled.
+                    config["token"] = token
+                    if token != current.get("token"):
+                        config.pop("bot", None)
+                except (DomainError, DeliveryError) as err:
+                    errors["base"] = err.code
             if config["enabled"]:
                 try:
                     # Detect the built-in HA integration before starting another poller.
@@ -665,6 +744,7 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
                     vol.Optional("token"): selector.TextSelector(
                         selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                     ),
+                    vol.Required("clear_token", default=False): bool,
                 }
             ),
         )
@@ -893,27 +973,63 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
         )
 
     async def async_step_alarm_device(self, user_input=None):
+        """Choose the member before displaying that member's saved device settings."""
+        try:
+            runtime, _actor = self._authorized_runtime()
+            members = runtime.engine.snapshot()["members"]
+            if user_input is not None:
+                selected = members.get(user_input.get("member"), {})
+                if not selected.get("active"):
+                    raise DomainError("unknown_member")
+                self._alarm_member = selected["id"]
+                self._alarm_member_revision = selected["revision"]
+                return await self.async_step_alarm_device_settings()
+        except DomainError as error:
+            return self.async_abort(reason=error.code)
+        return self.async_show_form(
+            step_id="alarm_device",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("member"): select(
+                        [
+                            {"value": m["id"], "label": m["name"]}
+                            for m in members.values()
+                            if m["active"]
+                        ]
+                    )
+                }
+            ),
+        )
+
+    @guarded_provider_step(member_attribute="_alarm_member")
+    async def async_step_alarm_device_settings(self, user_input=None):
         from homeassistant.components.siren import SirenEntityFeature
+
+        from .alarm_binding import validate_binding
 
         try:
             runtime, _actor = self._authorized_runtime()
+            member_id = getattr(self, "_alarm_member", None)
+            member = runtime.engine.snapshot()["members"].get(member_id, {})
+            if not member.get("active") or member.get("revision") != getattr(
+                self, "_alarm_member_revision", None
+            ):
+                raise DomainError("conflict")
         except DomainError as err:
             return self.async_abort(reason=err.code)
-        members = runtime.engine.snapshot()["members"]
+        current = self.config_entry.options.get("alarm_devices", {}).get(member_id, {})
         errors = {}
         if user_input is not None:
-            if user_input["member"] in members and not user_input.get("enabled", True):
+            if not user_input.get("enabled", True):
                 options = dict(self.config_entry.options)
                 bindings = dict(options.get("alarm_devices", {}))
-                bindings.pop(user_input["member"], None)
+                bindings.pop(member_id, None)
                 options["alarm_devices"] = bindings
                 return self.async_create_entry(title="", data=options)
             entity_id = user_input.get("entity_id", "")
             state = self.hass.states.get(entity_id)
             features = state.attributes.get("supported_features", 0) if state else 0
-            if user_input["member"] not in members:
-                errors["base"] = "unknown_member"
-            elif not state or not entity_id.startswith("siren."):
+            if not state or not entity_id.startswith("siren."):
                 errors["base"] = "device_unavailable"
             elif (
                 not features & SirenEntityFeature.TURN_ON
@@ -923,46 +1039,87 @@ class FamilyOptionsFlow(GuidedOnboardingMixin, config_entries.OptionsFlow):
             elif not user_input.get("confirmed"):
                 errors["base"] = "device_confirmation_required"
             else:
+                candidate = {
+                    "entity_id": entity_id,
+                    "volume": user_input["volume"],
+                    "confirmed": True,
+                }
+                for prefix, value_key, default in (
+                    ("duration", "duration_seconds", 1800),
+                    ("volume", "select_volume", "high"),
+                ):
+                    selected = user_input.get(prefix + "_entity_id")
+                    if selected and not user_input.get("clear_" + prefix):
+                        candidate[prefix + "_entity_id"] = selected
+                        candidate[value_key] = user_input.get(value_key, default)
+                if all(
+                    candidate.get(key) == current.get(key)
+                    for key in ("entity_id", "duration_entity_id", "volume_entity_id")
+                ) and current.get("companion_device_id"):
+                    candidate["companion_device_id"] = current["companion_device_id"]
+                try:
+                    candidate = validate_binding(self.hass, candidate)
+                except DomainError as error:
+                    errors["base"] = error.code
                 # An entity belongs to only one wake-up owner/household.
+                selected_entities = {
+                    candidate.get(key)
+                    for key in ("entity_id", "duration_entity_id", "volume_entity_id")
+                } - {None, ""}
                 for other in self.hass.config_entries.async_entries(DOMAIN):
-                    for member_id, binding in other.options.get("alarm_devices", {}).items():
-                        if binding.get("entity_id") == entity_id and (
+                    for other_member, binding in other.options.get("alarm_devices", {}).items():
+                        used = {
+                            binding.get(key)
+                            for key in ("entity_id", "duration_entity_id", "volume_entity_id")
+                        } - {None, ""}
+                        if selected_entities & used and (
                             other.entry_id != self.config_entry.entry_id
-                            or member_id != user_input["member"]
+                            or other_member != member_id
                         ):
                             errors["base"] = "device_already_assigned"
                 if not errors:
                     options = dict(self.config_entry.options)
                     bindings = dict(options.get("alarm_devices", {}))
-                    if user_input.get("enabled", True):
-                        bindings[user_input["member"]] = {
-                            "entity_id": entity_id,
-                            "volume": user_input["volume"],
-                            "confirmed": True,
-                        }
-                    else:
-                        bindings.pop(user_input["member"], None)
+                    bindings[member_id] = candidate
                     options["alarm_devices"] = bindings
                     return self.async_create_entry(title="", data=options)
         return self.async_show_form(
-            step_id="alarm_device",
+            step_id="alarm_device_settings",
+            description_placeholders={"member": member["name"]},
             errors=errors,
             data_schema=vol.Schema(
                 {
-                    vol.Required("member"): select(
-                        [
-                            {"value": m["id"], "label": m["name"]}
-                            for m in members.values()
-                            if m["active"]
-                        ]
-                    ),
-                    vol.Optional("entity_id"): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="siren")
-                    ),
-                    vol.Required("volume", default=0.5): vol.All(
-                        vol.Coerce(float), vol.Range(min=0, max=1)
+                    vol.Optional(
+                        "entity_id", **({"default": current["entity_id"]} if current else {})
+                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="siren")),
+                    vol.Required("volume", default=current.get("volume", 0.5)): vol.All(
+                        AlarmVolume(), vol.Range(min=0, max=1)
                     ),
                     vol.Required("enabled", default=True): bool,
+                    vol.Optional(
+                        "duration_entity_id",
+                        **(
+                            {"default": current["duration_entity_id"]}
+                            if current.get("duration_entity_id")
+                            else {}
+                        ),
+                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="number")),
+                    vol.Optional(
+                        "volume_entity_id",
+                        **(
+                            {"default": current["volume_entity_id"]}
+                            if current.get("volume_entity_id")
+                            else {}
+                        ),
+                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="select")),
+                    vol.Required(
+                        "duration_seconds", default=current.get("duration_seconds", 1800)
+                    ): vol.All(int, vol.Range(min=60, max=1800)),
+                    vol.Required(
+                        "select_volume", default=current.get("select_volume", "high")
+                    ): select(["low", "middle", "high"]),
+                    vol.Required("clear_duration", default=False): bool,
+                    vol.Required("clear_volume", default=False): bool,
                     vol.Required("confirmed", default=False): bool,
                 }
             ),

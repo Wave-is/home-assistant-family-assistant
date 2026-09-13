@@ -51,7 +51,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     window.removeEventListener("beforeunload",this._onUnload);
     window.clearInterval(this._timer); this._timer=null;
     this._generation++; this._loading=false; this._writing=false;
-    this._invite=null; this._preview=null; this._embedded=null;
+    this._invite=null; this._inviteClipboard=null; this._preview=null; this._embedded=null;
   }
   reset() {
     this._generation++; this._entries=null; this._entry=null; this._data=null;
@@ -59,7 +59,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     this._member=null;this._draft=null;this._dirty=false;this._pending=null;
     this._draftRecord=null;this._draftActive=false;this._draftKind=null;this._draftStorageError=false;this._draftBlocked=false;
     this._wizardOpen=false;this._module=null;this._workspace=null;this._workspaceMember=null;this._workspaceSchoolSection=null;this._embedded=null;
-    this._invite=null;this._enrollmentConsent=null;this._preview=null;this._tab="overview";this._search="";this._workspaceDirty=false;this._testing=false;this._phrase="";
+    this._invite=null;this._inviteClipboard=null;this._enrollmentConsent=null;this._preview=null;this._tab="overview";this._search="";this._workspaceDirty=false;this._testing=false;this._phrase="";
     this.render();
   }
   async loadData({quiet=false}={}) {
@@ -196,6 +196,7 @@ export class FamilyAssistantPanel extends HTMLElement {
     if(this.hasDraft&&!window.confirm(this.t.discard))return false;
     if(this._draftActive&&!this.removeStoredDraft()){this._error=this.t.draftRemoveFailed;this.render();return false;}
     this._navigation++;
+    this._inviteClipboard=null;
     this._draftKind=null;this._draftBlocked=false;
     this._dirty=false;this._draft=null;this._pending=null;this._notice=null;this._error=null;
     this._member=null;this._module=null;this._workspace=null;this._workspaceMember=null;this._workspaceSchoolSection=null;this._embedded=null;
@@ -568,7 +569,7 @@ export class FamilyAssistantPanel extends HTMLElement {
   }
   async generateTelegramInvite(memberId,kind="member") {
     if(!this.owner||this._writing)return;
-    const generation=this._generation;this._writing=true;this._error=null;this.render();
+    const generation=this._generation;this._writing=true;this._error=null;this._inviteClipboard=null;this.render();
     try{
       const result=await this._hass.callWS({type:"family_assistant/telegram_invite",entry_id:this._entry,...(kind==="group"?{kind}:{member_id:memberId})});
       if(generation!==this._generation)return;
@@ -582,7 +583,7 @@ export class FamilyAssistantPanel extends HTMLElement {
   }
   async refreshEnrollment() {
     if(!this.owner||!this._invite?.id||this._writing)return;
-    const generation=this._generation,id=this._invite.id;this._writing=true;this._enrollmentConsent=null;this._error=null;this.render();
+    const generation=this._generation,id=this._invite.id;this._writing=true;this._enrollmentConsent=null;this._error=null;this._inviteClipboard=null;this.render();
     try {
       const status=await this._hass.callWS({type:"family_assistant/telegram_enrollment",entry_id:this._entry,enrollment_id:id});
       if(generation!==this._generation||id!==this._invite?.id)return;
@@ -613,11 +614,24 @@ export class FamilyAssistantPanel extends HTMLElement {
     finally{if(generation===this._generation){this._writing=false;this.render();}}
   }
   formatDate(value) {const date=new Date(value);return Number.isNaN(date.valueOf())?this.t.unknown:date.toLocaleString(this.lang);}
+  async copyInvitation(value,invite) {
+    if(!this.owner||this._writing||invite!==this._invite||invite.state!=="issued"||this.enrollmentExpired(invite))return;
+    const generation=this._generation,navigation=this._navigation,entry=this._entry,user=this._hass.user?.id,connection=this._hass.connection;
+    const status={invite,pending:true,error:null,notice:null};this._inviteClipboard=status;
+    const current=()=>this.isConnected&&this.owner&&!this._writing&&this._inviteClipboard===status&&this._invite===invite&&this._generation===generation&&this._navigation===navigation&&this._entry===entry&&this._hass.user?.id===user&&this._hass.connection===connection;
+    this.render();
+    try{await navigator.clipboard.writeText(value);if(current())status.notice=this.t.copied;}
+    catch{if(current())status.error=this.t.failure;}
+    finally{if(current()){status.pending=false;this.render();}}
+  }
   renderInvite() {
     const overlay=el("div",null,"modal-overlay"),modal=el("section",null,"modal-content");modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-label",this.t.invite);
     const result=this._invite,member=this.members.find(member=>member.id===result.member);
     modal.append(el("h3",result.kind==="group"?this.t.groupInvite:this.t.invite),el("p",result.kind==="group"?this.t.group:member?.name||this.t.members));
     if(this._error)modal.append(this.notice(this._error,true));
+    const clipboard=this._inviteClipboard?.invite===result?this._inviteClipboard:null;
+    if(clipboard?.error)modal.append(this.notice(clipboard.error,true));
+    if(clipboard?.notice)modal.append(this.notice(clipboard.notice));
     let value=result.kind==="group"?result.instruction:result.code;
     if(result.kind!=="group"&&result.url){try{const url=new URL(result.url);if(url.protocol==="https:"&&url.hostname==="t.me"&&url.username===""&&url.password==="")value=url.href;}catch{/* Only the verified code remains. */}}
     const input=el("input");input.className="form-control";input.value=value||"";input.readOnly=true;input.setAttribute("aria-label",this.t.invite);
@@ -634,9 +648,9 @@ export class FamilyAssistantPanel extends HTMLElement {
       const button=this.button(this.t.confirmLink,()=>this.confirmEnrollment(),{primary:true,disabled:!checkbox.checked,id:"confirm-enrollment"});
       checkbox.addEventListener("change",()=>{this._enrollmentConsent=checkbox.checked?this.enrollmentFingerprint(result):null;button.disabled=!checkbox.checked||this._writing;});label.prepend(checkbox);modal.append(label,button);
     }
-    const close=()=>{this._invite=null;this.render();};
+    const close=()=>{this._invite=null;this._inviteClipboard=null;this.render();};
     const actions=el("div",null,"panel-actions");
-    if(value&&result.state==="issued"&&!expired)actions.append(this.button(this.t.copy,async()=>{try{await navigator.clipboard.writeText(value);this._notice=this.t.copied;}catch{this._error=this.t.failure;}this.render();}));
+    if(value&&result.state==="issued"&&!expired)actions.append(this.button(this.t.copy,()=>this.copyInvitation(value,result),{disabled:!!clipboard?.pending}));
     if(!expired&&["issued","captured"].includes(result.state))actions.append(this.button(this.t.refresh,()=>this.refreshEnrollment(),{id:"refresh-enrollment"}));
     if(expired||result.state==="superseded"||(!value&&result.state==="issued"))actions.append(this.button(this.t.invite,()=>this.generateTelegramInvite(result.member,result.kind)));
     actions.append(this.button(this.t.close,close));modal.append(actions);

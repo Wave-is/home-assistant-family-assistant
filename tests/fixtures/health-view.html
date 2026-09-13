@@ -75,7 +75,7 @@
       card.setConfig({ view: "health", language, entry_id: "entry-1" });
       card._data = data;
       window.calls = [];
-      card._hass = {
+      card.hass = {
         language,
         user: { id: "fixture-user" },
         callWS: async (request) => {
@@ -85,6 +85,15 @@
           }
           if (request.type === "family_assistant/execute") {
             window.calls.push(structuredClone(request));
+            if (window.failCommand) throw {code:"storage_error"};
+            if (request.action === "notifications.resolve") {
+              if (!["owner","parent"].includes(data.role)) throw {code:"forbidden"};
+              const issue=data.delivery_issues.find(item=>item.id===request.payload.id);
+              if (!issue || !request.payload.reason?.trim()) throw {code:"invalid_payload"};
+              window.deliveryResolution={id:issue.id,state:"resolved",reason:request.payload.reason};
+              data.delivery_issues=data.delivery_issues.filter(item=>item!==issue);
+              return structuredClone(window.deliveryResolution);
+            }
             return { id: request.payload.id, state: "pending", reason: request.payload.reason };
           }
           return structuredClone(data);

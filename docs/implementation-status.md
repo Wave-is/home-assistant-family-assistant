@@ -14,6 +14,18 @@ Legacy commands and court identity/period handling also regressed. The current
 acceptance evidence and remaining gaps. No household cutover or device activation
 is implied by the software tests below.
 
+The subsequent [all-controls and legacy parity audit](legacy-parity-audit.md)
+accounts for all 29 old top-level configuration declarations and explicitly
+records 16 still-missing home/energy mapping keys. This is not a claim of full
+feature parity. Archived settings, functioning current controls, and deployed
+household behavior are separate outcomes. Interface/settings/command inventories
+and fresh exact-commit acceptance are the required evidence for further releases.
+The workflow-level source comparison additionally found missing creation report
+qualifiers, natural shopping quantities, multi-task/scoped-query grammar, reviewer
+deadlines and same-day correction integration. Daily rollover and reminder cadence
+also differ from the old implementation. The linked audit records exact semantics
+and the repair order; generic task/court support must not hide these omissions.
+
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
 | Clean public source and HACS structure | Releases published; repair acceptance in progress | Re-run exact source privacy, packaging and transport gates; historical release labels do not establish full product completion |
@@ -26,7 +38,7 @@ is implied by the software tests below.
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
 | LLM, search, command repair | In progress / unit-, browser- and HA-tested | Own Ollama/fallback, bounded plans, confirmed mutations, SearXNG snippets, standard Assist entity and explicit bounded public-article reading; scoped ordinary chat and exact retries verified; real Qwen evaluation identified schema/day/quote fixes, broader model acceptance remains; explicitly bounded existing official HA Ollama agent/native identity gate passed in the alpha.34 candidate |
-| RU / UK / EN | Implemented / unit- and contract-tested | Existing forms/cards/errors translated; 975 keys in full parity across strings.json and translations/*.json; Telegram messages full parity across EN/RU/UK; strict precondition reason selectors added |
+| RU / UK / EN | Implemented / unit- and contract-tested | Existing forms/cards/errors translated; current strings.json and translations/*.json key parity is checked automatically, including added native settings; Telegram message catalog parity across EN/RU/UK; strict precondition reason selectors added. Legacy Russian varied reply banks do not imply equivalent varied EN/UK banks |
 | Today and module cards | Seventeen cards browser-tested; automatic resource HA-tested | Today/shopping/tasks/court/alarms/conversation/network/health/calendar/routines/pantry/meals/school/maintenance/polls/presence/digests; ownership-safe Lovelace registration, module-graph versioning and offline HACS install/upgrade tested; richer overview and live provider acceptance pending |
 | Family calendar | In progress / unit-, browser- and HA-tested | Private event projection, child approval, date-only/timed agenda, recurrence/task-link editor, preparation reminders, opt-in read-only HA calendar; production acceptance pending |
 | Routines | In progress / unit-, browser- and HA-tested | Ordered durable runs, per-step handoffs, private confirmations, overrides, approved observations, three-valued conditions, modes/templates, recurrence, template and advanced per-step condition editors; production acceptance pending |

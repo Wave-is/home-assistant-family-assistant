@@ -1,11 +1,12 @@
 """A virtual siren verifies renewal, failure, restart and acknowledgement races."""
 
+import asyncio
 from datetime import timedelta
 
 import pytest
 from test_alarms import answer, current, schedule
 
-from custom_components.family_assistant.alarm_devices import AlarmDevices
+from custom_components.family_assistant.alarm_devices import AlarmDevices, AlarmPreparationCancelled
 from custom_components.family_assistant.domain.engine import Engine
 
 
@@ -127,6 +128,43 @@ async def test_failed_intent_save_never_starts_hardware(engine, store, now):
 
 
 @pytest.mark.asyncio
+async def test_acknowledgement_during_intent_save_never_rings(engine, now, monkeypatch):
+    await schedule(engine, now)
+    await engine.tick(now)
+    siren = VirtualSiren()
+    output = driver(engine, siren)
+    receipt = output._receipt
+
+    async def acknowledged(entity, stamp, **values):
+        await receipt(entity, stamp, **values)
+        if values.get("status") == "requested":
+            await answer(engine, current(engine), now)
+
+    monkeypatch.setattr(output, "_receipt", acknowledged)
+    await output.reconcile(now)
+    assert siren.calls == []
+    assert not engine.snapshot()["alarm_outputs"]["siren.synthetic_alarm"]["owned"]
+
+
+@pytest.mark.asyncio
+async def test_aborted_helper_preparation_does_not_stop_an_unowned_siren(engine, now):
+    await schedule(engine, now)
+    await engine.tick(now)
+    siren = VirtualSiren()
+    output = driver(engine, siren)
+
+    async def aborted(entity, on, options):
+        assert on
+        await answer(engine, current(engine), now)
+        return False
+
+    output.send = aborted
+    await output.reconcile(now)
+    assert not siren.calls
+    assert not engine.snapshot()["alarm_outputs"]["siren.synthetic_alarm"]["owned"]
+
+
+@pytest.mark.asyncio
 async def test_unavailable_is_not_called_and_uncertain_stop_retried(engine, now):
     await schedule(engine, now)
     await engine.tick(now)
@@ -144,3 +182,100 @@ async def test_unavailable_is_not_called_and_uncertain_stop_retried(engine, now)
     siren.fail = False
     await output.reconcile(now + timedelta(seconds=31), stopping=True)
     assert siren.state == "off"
+
+
+@pytest.mark.asyncio
+async def test_unavailable_before_start_never_claims_or_stops_manual_siren(engine, store, now):
+    await schedule(engine, now)
+    await engine.tick(now)
+    siren = VirtualSiren()
+    siren.state = "unavailable"
+    output = driver(engine, siren)
+    await output.reconcile(now)
+    record = engine.snapshot()["alarm_outputs"]["siren.synthetic_alarm"]
+    assert record["status"] == "error" and record["owned"] is False
+    await answer(engine, current(engine), now)
+    siren.state = "on"  # A later manual signal is not this failed attempt's output.
+    restarted = Engine(store.value, store.save)
+    await driver(restarted, siren).reconcile(now + timedelta(seconds=16), stopping=True)
+    assert not siren.calls and siren.state == "on"
+
+
+@pytest.mark.parametrize("previous_owned", [False, True])
+async def test_cancelled_intent_save_settles_without_claiming_an_unstarted_siren(
+    engine, store, now, previous_owned
+):
+    await schedule(engine, now)
+    await engine.tick(now)
+    siren = VirtualSiren()
+    output = driver(engine, siren)
+    if previous_owned:
+        await output.reconcile(now)
+        now += timedelta(seconds=20)
+    entered, release = asyncio.Event(), asyncio.Event()
+    intercepted = False
+
+    async def persist(state):
+        nonlocal intercepted
+        record = state["alarm_outputs"].get("siren.synthetic_alarm", {})
+        if not intercepted and record.get("status") == "requested":
+            intercepted = True
+            entered.set()
+            await release.wait()
+        await store.save(state)
+
+    engine._persist = persist
+    first_call = len(siren.calls)
+    pending = asyncio.create_task(output.reconcile(now))
+    await entered.wait()
+    pending.cancel()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await pending
+    assert pending.cancelled() and len(siren.calls) == first_call
+    assert engine.snapshot()["alarm_outputs"]["siren.synthetic_alarm"]["owned"] is previous_owned
+    await answer(engine, current(engine), now)
+    restarted = Engine(store.value, store.save)
+    siren.state = "on"
+    await driver(restarted, siren).reconcile(now + timedelta(seconds=16), stopping=True)
+    assert siren.calls[first_call:] == (
+        [("siren.synthetic_alarm", False)] if previous_owned else []
+    )
+    assert siren.state == ("off" if previous_owned else "on")
+
+
+async def test_repeated_cancellation_does_not_abandon_prestart_ownership_restoration(
+    engine, store, now
+):
+    await schedule(engine, now)
+    await engine.tick(now)
+    siren = VirtualSiren()
+    output = driver(engine, siren)
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def cancelled(entity, on, binding):
+        raise AlarmPreparationCancelled("Synthetic first cancellation")
+
+    async def persist(state):
+        record = state["alarm_outputs"].get("siren.synthetic_alarm", {})
+        if record.get("status") == "superseded":
+            entered.set()
+            await release.wait()
+        await store.save(state)
+
+    output.send, engine._persist = cancelled, persist
+    pending = asyncio.create_task(output.reconcile(now))
+    await entered.wait()
+    pending.cancel("Synthetic second cancellation")
+    await asyncio.sleep(0)
+    pending.cancel("Synthetic third cancellation")
+    release.set()
+    with pytest.raises(asyncio.CancelledError) as cancellation:
+        await pending
+    assert cancellation.value.args == ("Synthetic first cancellation",)
+    assert pending.cancelled() and not siren.calls
+    restarted = Engine(store.value, store.save)
+    assert restarted.snapshot()["alarm_outputs"]["siren.synthetic_alarm"]["owned"] is False
+    siren.state = "on"
+    await driver(restarted, siren).reconcile(now, stopping=True)
+    assert not siren.calls and siren.state == "on"

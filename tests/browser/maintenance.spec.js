@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./control-audit.js";
 
 const reviewForm = (card) => card.locator('[data-maintenance-form="review"]');
 async function confirm(card) {

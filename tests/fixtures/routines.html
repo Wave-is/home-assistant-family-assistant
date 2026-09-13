@@ -9,18 +9,27 @@ const params=new URLSearchParams(location.search),language=params.get("lang")||"
 const words={en:["Parent 1","Child 1","Morning routine","Wash","Pack bag"],ru:["Родитель 1","Ребёнок 1","Утренний распорядок","Умыться","Собрать рюкзак"],uk:["Батько 1","Дитина 1","Ранковий розпорядок","Умитися","Зібрати наплічник"]}[language];
 const step=title=>({title,offset_minutes:0,confirmation:"manual",completion_condition:null,skip_when:null,escalate_minutes:15});
 const template={id:"U000001",revision:1,title:words[2],description:"",enabled:true,assignees:["child"],rule:null,skip_when:null,steps:[step(words[3]),step(words[4])]};
+if(params.has("multi"))template.assignees=["owner","child"];
 const data={revision:1,actor:child?"child":"owner",role:child?"child":"owner",settings:{name:"Example family",modules:["routines"],timezone:"Europe/Kyiv"},
  members:[{id:"owner",name:words[0],role:"owner",active:true,revision:1},{id:"child",name:words[1],role:"child",active:true,revision:1}],
  routines:{config:{modes:["normal"],entity_allowlist:["binary_sensor.synthetic_ready"],revision:0},templates:[template],presets:[],runs:[]},proposals:[]};
-if(child)data.routines.runs=[{id:"J000001",template_id:template.id,revision:2,title:words[2],member:"child",status:"active",started_at:"2026-09-06T08:00:00Z",planned_at:"2026-09-06T08:00:00Z",steps:template.steps.map((s,i)=>({...s,status:i?"pending":"active",...(i?{}:{nonce:"synthetic-fresh-first"})})),history:[]}];
+const stamp="2026-09-06T08:00:00Z";
+const makeRun=(record,member)=>({id:"J"+String(data.routines.runs.length+1).padStart(6,"0"),template_id:record.id,template_revision:record.revision,revision:2,title:record.title,description:record.description,member,status:"active",started_at:stamp,planned_at:stamp,steps:record.steps.map((s,i)=>({...structuredClone(s),member:s.assignee||member,status:i?"pending":"active",...(i?{}:{nonce:"synthetic-fresh-first",activated_at:stamp})})),history:[{actor:data.actor,at:stamp,action:"started",reason:""},{actor:data.actor,at:stamp,action:"step_activated",step:0,reason:""}]});
+if(child||params.has("run"))data.routines.runs=[makeRun(template,"child")];
+const history=(run,action,reason="",step)=>{run.history.push({actor:data.actor,at:stamp,action,reason,...(step===undefined?{}:{step})});run.revision++;};
+const advance=run=>{const next=run.steps.find(s=>s.status==="pending");if(next){next.status="active";next.nonce="synthetic-fresh-second";next.activated_at=stamp;history(run,"step_activated","",run.steps.indexOf(next));}else{run.status="completed";run.completed_at=stamp;history(run,"completed");}};
 window.fixture=data;window.calls=[];window.operations=new Map();window.commitThenLose=false;window.lostOnce=false;
 const card=document.createElement("family-routines-card");card.setConfig({entry_id:"synthetic",language});
 card.hass={language,callWS:async msg=>{
  if(msg.type.endsWith("/view"))return structuredClone(data);
  if(!msg.type.endsWith("/execute"))throw {code:"unknown_action"};
  window.calls.push(structuredClone(msg));if(window.failCommand)throw {code:"storage_error"};
- if(window.operations.has(msg.operation_id))return structuredClone(window.operations.get(msg.operation_id));
+ const actor=data.members.find(m=>m.id===data.actor),parent=["owner","parent"].includes(data.role);
+ if(!actor?.active||actor.role!==data.role||!data.settings.modules.includes("routines"))throw {code:"forbidden"};
  const p=msg.payload,action=msg.action.split(".")[1];let result;
+ if(["save","modes","override","cancel"].includes(action)&&!parent)throw {code:"forbidden"};
+ if(action==="configure"&&data.role!=="owner")throw {code:"forbidden"};
+ if(window.operations.has(msg.operation_id))return structuredClone(window.operations.get(msg.operation_id));
  if(action==="save"){
   let record=data.routines.templates.find(t=>t.id===p.id);
   if(record&&record.revision!==p.revision)throw {code:"conflict"};
@@ -28,19 +37,33 @@ card.hass={language,callWS:async msg=>{
   Object.assign(record,p,{revision:record.revision+1});result=record;
  }else if(action==="configure"||action==="modes"){
   if(p.revision!==data.routines.config.revision)throw {code:"conflict"};
+  if(action==="modes"&&(!Array.isArray(p.modes)||!p.modes.length||p.modes.length>5||new Set(p.modes).size!==p.modes.length||p.modes.some(mode=>!["normal","holidays","guests","ill","vacation"].includes(mode))||(p.modes.includes("normal")&&p.modes.length>1)))throw {code:"invalid_field"};
   Object.assign(data.routines.config,p,{revision:p.revision+1});result=data.routines.config;
+  if(action==="modes")result.modes=[...p.modes].sort();
+ }else if(action==="start"){
+  const record=data.routines.templates.find(t=>t.id===p.id),member=data.members.find(m=>m.id===p.member);
+  if(!record||record.revision!==p.revision)throw {code:"conflict"};
+  if(!parent&&p.member!==data.actor)throw {code:"forbidden"};
+  if(!record.enabled||!record.assignees.includes(p.member)||!member?.active||member.role==="guest")throw {code:"invalid_transition"};
+  result=data.routines.runs.find(run=>run.template_id===record.id&&run.member===p.member&&run.status==="active");
+  if(!result){result=makeRun(record,p.member);data.routines.runs.push(result);}
  }else{
   const run=data.routines.runs.find(r=>r.id===p.id);
   if(!run||run.revision!==p.revision)throw {code:"conflict"};
+  if(run.status!=="active")throw {code:"invalid_transition"};
+  if(["override","cancel"].includes(action)&&(!p.reason?.trim()||p.reason.length>500))throw {code:"invalid_field"};
   if(action==="confirm"){
-   const current=run.steps[p.step];if(current.nonce!==p.nonce||run.member!==data.actor)throw {code:"forbidden"};
-   current.status="completed";delete current.nonce;
-   const next=run.steps.find(s=>s.status==="pending");
-   if(next){next.status="active";next.nonce="synthetic-fresh-second";}else run.status="completed";
-  }else if(action==="cancel")run.status="cancelled";
-  else if(action==="override")run.steps[p.step].status=p.outcome;
+   const current=run.steps[p.step];if(current?.status!=="active")throw {code:"invalid_transition"};
+   if(current.nonce!==p.nonce||(current.member||run.member)!==data.actor)throw {code:"forbidden"};
+   current.status="completed";current.completed_at=stamp;delete current.nonce;history(run,"step_completed","confirmation",p.step);advance(run);
+  }else if(action==="cancel"){
+   run.status="cancelled";run.completed_at=stamp;run.cancellation_cause="manual";for(const step of run.steps)delete step.nonce;history(run,"cancelled",p.reason.trim());
+  }else if(action==="override"){
+   const current=run.steps[p.step];if(current?.status!=="active"||!["completed","skipped"].includes(p.outcome))throw {code:"invalid_transition"};
+   current.status=p.outcome;current.completed_at=stamp;delete current.nonce;history(run,"step_"+p.outcome,p.reason.trim(),p.step);advance(run);
+  }
   else throw {code:"unknown_action"};
-  run.revision++;result=run;
+  result=run;
  }
  data.revision++;window.operations.set(msg.operation_id,structuredClone(result));
  if(window.commitThenLose&&!window.lostOnce){window.lostOnce=true;throw {code:"storage_error"};}

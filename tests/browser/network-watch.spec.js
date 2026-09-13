@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 import {NETWORK_WATCH_COPY as COPY} from "../../custom_components/family_assistant/frontend/network-watch-copy.js";
 for(const language of ["ru","uk","en"])test(`${language} mobile private discovery subscription`,async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto(`/tests/fixtures/network-watch.html?lang=${language}`);

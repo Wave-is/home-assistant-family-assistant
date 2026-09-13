@@ -346,23 +346,36 @@
           "digests": "Private family digests"
         }
       },
+      "alarm_device_settings": {
+        "title": "Wake-up siren",
+        "description": "Dedicated wake-up siren for {member}, never a fire or security alarm. Saving does not sound the siren. Optional number/select controls must belong to the same HA device. Duration and named volume apply only when their companion is selected. Disabling removes the binding and stops sound started by Family Assistant; physically verify audibility separately.",
+        "data": {
+          "entity_id": "Dedicated siren",
+          "volume": "Volume (0–1)",
+          "enabled": "Use this siren",
+          "duration_entity_id": "Optional duration number entity",
+          "volume_entity_id": "Optional volume select entity",
+          "duration_seconds": "Companion duration (60–1800 seconds)",
+          "select_volume": "Companion volume option",
+          "clear_duration": "Remove duration companion",
+          "clear_volume": "Remove volume companion",
+          "confirmed": "I confirm this device may be used repeatedly as a wake-up alarm"
+        }
+      },
       "alarm_device": {
         "title": "Wake-up siren",
         "description": "Assign a dedicated wake-up siren, never a fire or security alarm. Strict alarms renew sound until the member answers. Check the volume physically; HA state does not prove audible sound. Disabling removes the binding and stops sound started by Family Assistant.",
         "data": {
-          "member": "Family member",
-          "entity_id": "Dedicated siren",
-          "volume": "Volume (0–1)",
-          "enabled": "Use this siren",
-          "confirmed": "I confirm this device may be used repeatedly as a wake-up alarm"
+          "member": "Family member"
         }
       },
       "telegram": {
         "title": "Connect your own Telegram bot",
-        "description": "Create your own bot with @BotFather → /newbot and paste its token here. Do not reuse a bot already polled by another integration. An existing webhook is never removed automatically. Leave the token empty to keep the saved one. To disable, turn off the switch.",
+        "description": "Create your own bot with @BotFather → /newbot and paste its token here. Do not reuse a bot already polled by another integration. An existing webhook is never removed automatically. Leave the token empty to keep the saved one. To disable, turn off the switch. Disabled token replacements are checked for syntax only and clear the previous bot identity; enabling verifies the bot. Disabling retains the saved token unless you explicitly clear it.",
         "data": {
           "enabled": "Use Telegram",
-          "token": "Your bot token"
+          "token": "Your bot token",
+          "clear_token": "Clear saved token and bot identity (also when disabled)"
         }
       },
       "telegram_member": {
@@ -384,7 +397,7 @@
       },
       "conversation": {
         "title": "Language model and fallback",
-        "description": "Optional: messages and a limited role-filtered family context go to the servers you configure. First enable Conversation under Household preferences. Enter the Ollama base URL and exact installed model name (see /api/tags or ollama list). Both servers are checked before saving. A model has no internet without Search. HTTP is unencrypted; use it only on a trusted LAN/VPN, never expose Ollama directly. Leave keys blank to preserve them. Model-generated mutations require confirmation.",
+        "description": "Optional: messages and a limited role-filtered family context go to the servers you configure. First enable Conversation under Household preferences. Enter the Ollama base URL and exact installed model name (see /api/tags or ollama list). Enabled servers are checked before saving. Disabled edits receive local validation only; connection and fallback settings are retained. Changing a server URL requires re-entering or clearing its key. A model has no internet without Search. HTTP is unencrypted; use it only on a trusted LAN/VPN, never expose Ollama directly. Leave keys blank to preserve them. Model-generated mutations require confirmation.",
         "data": {
           "enabled": "Enable model requests",
           "primary_url": "Primary Ollama base URL",
@@ -402,7 +415,7 @@
       },
       "search": {
         "title": "Internet search (SearXNG)",
-        "description": "Enter your own SearXNG base URL. Enable json in search.formats in SearXNG settings.yml. Saving tests a public query. Search sends only a phrase grounded in the current request, not stored family records. Results are filtered for internal addresses and treated as untrusted snippets. Full public articles require separate opt-in and explicit URL review in the Conversation card; links are not fetched automatically.",
+        "description": "Enter your own SearXNG base URL. Enable json in search.formats in SearXNG settings.yml. Enabling tests a public query. Disabling keeps settings; disabled edits make no query. Search sends only a phrase grounded in the current request, not stored family records. Results are filtered for internal addresses and treated as untrusted snippets. Full public articles require separate opt-in and explicit URL review in the Conversation card; links are not fetched automatically.",
         "data": {
           "enabled": "Enable search",
           "url": "SearXNG base URL",
@@ -413,9 +426,15 @@
       },
       "presence_sources": {
         "title": "Presence sources",
-        "description": "Display-only, optional. Select a registered person or device_tracker you may read. Each HA-linked member consents on their own card. Changing the source revokes old consent. No history or coordinates are stored.",
+        "description": "Select the family member whose presence source you want to edit.",
         "data": {
-          "member": "Family member",
+          "member": "Family member"
+        }
+      },
+      "presence_source_settings": {
+        "title": "Presence sources",
+        "description": "Presence source for {member}. Display-only, optional. Select a registered person or device_tracker you may read. Changing the source revokes that member’s old consent; each HA-linked member consents on their own card. No history or coordinates are stored.",
+        "data": {
           "enabled": "Use this source",
           "entity_id": "Person or device tracker",
           "presence_max_age_seconds": "Maximum report age (seconds, 30–3600)"
@@ -484,12 +503,13 @@
       },
       "mikrotik": {
         "title": "Read your MikroTik inventory",
-        "description": "Optional RouterOS 7 HTTPS REST connection. Enable MikroTik in Household preferences too. Use your own dedicated account with read and rest-api only for inventory, not the built-in read group (it has extra powers). This step makes no router changes. A custom CA certificate may be pasted below; verification is never disabled. Do not paste a private key. Passwords stay in local HA options. Blank preserves the password; changing server or username requires entering it again. Optional writes need a dedicated account with read,write,rest-api. Write is a broad RouterOS policy; this integration exposes only selected lease plans. Specify and verify the HA host and your administration device as protected MACs before enabling. Saving these settings makes no router changes; each plan requires separate confirmation.",
+        "description": "Optional RouterOS 7 HTTPS REST connection. Enable MikroTik in Household preferences too. Use your own dedicated account with read and rest-api only for inventory, not the built-in read group (it has extra powers). This step makes no router changes. A custom CA certificate may be pasted below; verification is never disabled. Do not paste a private key. Passwords stay in local HA options. Blank preserves the password; changing server or username requires entering it again. Optional writes need a dedicated account with read,write,rest-api. Write is a broad RouterOS policy; this integration exposes only selected lease plans. Specify and verify the HA host and your administration device as protected MACs before enabling. Saving these settings makes no router changes; each plan requires separate confirmation. Disabled connection edits are saved without contacting the router.",
         "data": {
           "enabled": "Enable connection",
           "url": "HTTPS router URL",
           "username": "Dedicated username",
           "password": "Password",
+          "clear_password": "Clear saved password (also when disabled)",
           "ca_pem": "Optional trusted CA certificate (PEM)",
           "allow_write": "Allow selected lease changes",
           "ha_mac": "Protected Home Assistant host MAC",

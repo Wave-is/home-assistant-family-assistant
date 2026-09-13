@@ -174,15 +174,25 @@ async def _bind_siren(
     result = await _options_step(hass, entry, owner_id, "alarm_device")
     if result.get("type") != "form" or result.get("step_id") != "alarm_device":
         raise AssertionError("alarm-device Options form did not open")
+    fields = {str(key) for key in result["data_schema"].schema}
+    payload = {
+        "entity_id": siren.entity_id,
+        "volume": 0.4,
+        "enabled": True,
+        "confirmed": True,
+    }
+    if "entity_id" not in fields:
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"member": child_id}
+        )
+        if result.get("step_id") != "alarm_device_settings":
+            raise AssertionError("selected member alarm settings did not open")
+    else:
+        # The published baseline has the old one-step Options contract.
+        payload["member"] = child_id
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {
-            "member": child_id,
-            "entity_id": siren.entity_id,
-            "volume": 0.4,
-            "enabled": True,
-            "confirmed": True,
-        },
+        payload,
     )
     if result.get("type") != "create_entry":
         raise AssertionError("alarm-device Options write failed")

@@ -1,4 +1,4 @@
-import {test, expect} from "@playwright/test";
+import {test, expect} from "./control-audit.js";
 import {readFile} from "node:fs/promises";
 
 test("mobile owner reviews complete deidentified JSON before a fresh local download", async ({page}) => {

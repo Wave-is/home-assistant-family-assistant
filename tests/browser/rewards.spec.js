@@ -1,4 +1,4 @@
-import {test,expect} from "@playwright/test";
+import {test,expect} from "./control-audit.js";
 
 test("RU mobile parent creates catalog then edits name/cost on frozen retry after window.failCommand before effect",async({page})=>{
   await page.setViewportSize({width:390,height:844});
