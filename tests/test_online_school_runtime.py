@@ -498,6 +498,41 @@ async def test_manager_does_not_overlap_requests_and_stop_cancels_its_pending_jo
     await worker.stop()
     assert first.cancelled() and worker.task is None
     assert runtime.health == {}
+    worker.request(now + timedelta(minutes=2))
+    await worker._interval(now + timedelta(minutes=3))
+    assert worker.task is None and calls == [now]
+
+
+async def test_school_interval_listener_is_coroutine_and_uses_loop_owned_single_flight(
+    monkeypatch, now
+):
+    from inspect import iscoroutinefunction
+
+    assert iscoroutinefunction(manager.SchoolManager._interval)
+    calls = []
+
+    async def poll_on_loop(engine, options, when, **kwargs):
+        assert asyncio.get_running_loop() is loop
+        calls.append(when)
+
+    loop = asyncio.get_running_loop()
+    monkeypatch.setattr(manager, "poll", poll_on_loop)
+    runtime = SimpleNamespace(engine=object(), health={}, updated=lambda: None)
+    entry = SimpleNamespace(options={"online_school": {"sources": {}}})
+
+    def create_on_loop(coro, name):
+        assert asyncio.get_running_loop() is loop
+        return loop.create_task(coro)
+
+    worker = manager.SchoolManager(
+        SimpleNamespace(data={}, async_create_background_task=create_on_loop), entry, runtime
+    )
+    await worker._interval(now)
+    await worker.task
+    await worker._interval(now + timedelta(minutes=1))
+    await worker.task
+    assert calls == [now, now + timedelta(minutes=1)]
+    await worker.stop()
 
 
 @pytest.fixture

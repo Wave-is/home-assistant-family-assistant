@@ -99,16 +99,27 @@ class SchoolManager:
         self.options = deepcopy(entry.options.get("online_school", {}))
         self.task = None
         self.unsubscribe = None
+        self._stopped = False
 
     def start(self):
         from homeassistant.helpers.event import async_track_time_interval
         from homeassistant.util import dt as dt_util
 
-        self.unsubscribe = async_track_time_interval(self.hass, self.request, timedelta(minutes=1))
+        if self.unsubscribe is not None:
+            return
+        self._stopped = False
+        self.unsubscribe = async_track_time_interval(
+            self.hass, self._interval, timedelta(minutes=1)
+        )
         self.request(dt_util.utcnow())
 
+    async def _interval(self, now):
+        # HA dispatches plain synchronous listeners in its executor. A coroutine
+        # listener keeps loop-only background-task creation on the HA event loop.
+        self.request(now)
+
     def request(self, now):
-        if self.task is not None and not self.task.done():
+        if self._stopped or self.task is not None and not self.task.done():
             return
 
         async def run():
@@ -131,6 +142,7 @@ class SchoolManager:
         self.task = self.hass.async_create_background_task(run(), "Family Assistant online school")
 
     async def stop(self):
+        self._stopped = True
         if self.unsubscribe:
             self.unsubscribe()
             self.unsubscribe = None

@@ -128,9 +128,15 @@ async def verify_online_school(hass, user):
 
     real_start = manager.SchoolManager.start
 
+    # The Options fixture below controls its clock; separately prove the real
+    # HA interval dispatcher rather than treating a patched timer as evidence.
+    from ha_online_school_interval_smoke import verify_online_school_interval
+
+    await verify_online_school_interval(hass)
+
     def controlled_start(worker):
         def timer(selected_hass, callback, interval):
-            assert selected_hass is hass and callback == worker.request
+            assert selected_hass is hass and callback == worker._interval
             assert interval == timedelta(minutes=1)
             started.append(worker)
             return lambda: stopped.append(worker)
