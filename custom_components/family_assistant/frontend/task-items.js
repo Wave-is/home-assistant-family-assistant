@@ -45,6 +45,7 @@ export const TASK_ITEM_COPY = {
     label_reminder_minutes: "Reminder before deadline (minutes, 0 disables)",
     label_grace_minutes: "Grace after deadline (minutes)",
     label_penalty: "Missed task points (0 disables)",
+    label_review_minutes: "Remind parents to review after submission (minutes, 0 disables)",
     archive_title: "Archived & Completed Tasks",
     archive_empty: "No archived tasks",
     unknown_member: "Unknown member",
@@ -95,6 +96,7 @@ export const TASK_ITEM_COPY = {
     label_reminder_minutes: "Напомнить до срока (минут, 0 — выключено)",
     label_grace_minutes: "Пауза после срока (минут)",
     label_penalty: "Баллы за пропуск задачи (0 — без штрафа)",
+    label_review_minutes: "Напомнить родителям о проверке после сдачи (минут, 0 — выключено)",
     archive_title: "Архив и завершённые задачи",
     archive_empty: "В архиве пусто",
     unknown_member: "Неизвестный участник",
@@ -145,6 +147,7 @@ export const TASK_ITEM_COPY = {
     label_reminder_minutes: "Нагадати до терміну (хвилини, 0 — вимкнено)",
     label_grace_minutes: "Пауза після терміну (хвилини)",
     label_penalty: "Бали за пропуск завдання (0 — без штрафу)",
+    label_review_minutes: "Нагадати батькам про перевірку після здачі (хвилини, 0 — вимкнено)",
     archive_title: "Архів і завершені завдання",
     archive_empty: "В архіві порожньо",
     unknown_member: "Невідомий учасник",
@@ -525,6 +528,7 @@ export function renderTaskItem(card, list, item) {
         draftReminder: item.deadline_policy?.reminder_minutes ?? 60,
         draftGrace: item.deadline_policy?.grace_minutes ?? 30,
         draftPenalty: item.deadline_policy?.penalty ?? 0,
+        draftReviewMinutes: item.review_minutes ?? 0,
         frozenPayload: null,
         generation: startGeneration
       };
@@ -889,6 +893,18 @@ export function renderTaskItem(card, list, item) {
         });
       }
 
+      let reviewInput = null;
+      if (isParent && !isPersonal) {
+        reviewInput = card.input(policyDetails, "review_minutes", copy.label_review_minutes, "number", String(actionState.draftReviewMinutes), true);
+        reviewInput.min = "0";
+        reviewInput.max = "10080";
+        reviewInput.step = "1";
+        reviewInput.disabled = isWriting || isInputFrozen;
+        reviewInput.addEventListener("input", (e) => {
+          if (!canInteract(card, startGeneration) || isInputFrozen) return;
+          actionState.draftReviewMinutes = Number(e.target.value);
+        });
+      }
       form.append(policyDetails);
 
       const formActions = el("div", null, "actions");
@@ -962,6 +978,13 @@ export function renderTaskItem(card, list, item) {
         payload.grace_minutes = Number(graceInput.value);
         if (isParent && penaltyInput) {
           payload.penalty = Number(penaltyInput.value);
+        }
+        if (isParent && reviewInput && Number(reviewInput.value) !== (item.review_minutes ?? 0)) {
+          if (!reviewInput.checkValidity()) {
+            reviewInput.reportValidity();
+            return;
+          }
+          payload.review_minutes = Number(reviewInput.value);
         }
 
         actionState.frozenPayload = payload;

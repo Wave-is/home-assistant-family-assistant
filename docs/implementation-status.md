@@ -1,5 +1,22 @@
 # Implementation and acceptance matrix
 
+## Legacy command completion and reviewer windows — 13 September 2026
+
+Current candidate adds bounded RU/UK/EN task report/deadline and shopping quantity
+parsing, role-scoped task lists, and parent-only optional `review_minutes` in the
+actual Tasks create/edit controls. A review reminder belongs to one exact report
+generation and goes only to current parents' private channels; completion,
+request-changes, module and identity changes revoke it. Internal scope metadata
+is never projected in public task views. Existing records/policies stay unchanged.
+
+Independent actual isolated HA2026.9.2 `command-completion` passed authenticated
+creation/submission/completion, native Store/reload, replay and pending reminder
+revocation. The seven Chromium legacy-card collision cases and 119 focused
+card-registry/base/panel JS tests passed. Broader Python/frontend and exact final
+combined release checks are separate gates, not implied by these focused results.
+See `docs/task-review-deadlines.md`, `docs/telegram-command-parity.md` and the
+continuing legacy-parity audit. No whole-vision or household rollout claim.
+
 ## Optional provider chains and image gateway — 13 September 2026
 
 Prepared candidate `0.2.0-rc.4` adds owner-configurable ordered lists of zero to

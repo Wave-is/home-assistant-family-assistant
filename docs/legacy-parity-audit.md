@@ -7,6 +7,25 @@ real Telegram delivery, or proof that every possible user expression works.
 
 ## Inventory and reproducibility
 
+### Completion increment — candidate after rc.5
+
+This paragraph supersedes the affected historical "missing" rows below. Bounded
+natural task report/deadline qualifiers, shopping quantities and named task-list
+queries are now implemented (93 grammar regressions). Parent-only optional
+reviewer deadlines have separate durable private reminders with no child penalty
+during review; existing tasks stay off. See [reviewer contract](task-review-deadlines.md).
+Root's actual isolated HA2026.9.2 `command-completion` case passed: grammar,
+authenticated submit/review, real Store/reload, exact command replay and
+cancellation of the completed review's pending reminder. This is not household
+deployment, assigned-shopping support or unrestricted/multi-task prose support.
+
+New namespaced card types coexist with previously loaded legacy task/alarm
+elements without replacing them. Seven actual Chromium collision cases passed;
+existing aliases remain compatibility-only and are not advertised as new cards.
+Final combined release/browser inventory gates still apply. Remaining gaps:
+atomic multi-task grammar, assigned purchases, daily rollover/correction policy,
+scoped memory/media, household mappings and the other explicitly open rows.
+
 - [Source setting inventory](legacy-settings-inventory.json): all 26 original
   Assistant and three Court top-level configuration declarations are accounted
   for. Ten are replaced by the independent public architecture, three require

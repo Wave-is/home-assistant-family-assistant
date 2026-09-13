@@ -168,10 +168,12 @@ to recognized commands; arbitrary fuzzy text is not executed as a slash command.
 | `ps:ACTION:POLL[:OPTION]`, `pr:yes/no:REVIEW` | Private selection, explicit fresh review, canonical poll mutation | `test_telegram_polls.py` |
 | RU/UK/EN availability, help and read expressions | Strict whole-message patterns in `intents.py` / `router.py`; no model needed | `test_telegram.py`, `test_telegram_legacy_parity.py` |
 | Task creation in either member/keyword order | Complete configured multiword name/alias is preferred; equal matches reject; no automatic kinship | `test_telegram_language_audit.py` |
+| Natural task report/deadline qualifiers | Terminal RU/UK/EN photo/text/no-report slots in either deadline order; contradictory or negated requirements reject. Bounded `на завтра` / `for tomorrow` prefixes are removed from the exact title. | `test_telegram_creation_grammar.py` |
+| `покажи задачи MEMBER`, `покажи завдання MEMBER`, `show tasks for MEMBER`, `/tasks MEMBER` | Filter the current authorized task view; a child/adult can query only self, parents/owner can query configured members. Group/private/personal restrictions remain. | `test_telegram_creation_grammar.py` |
 | `напомни мне`, `нагадай мені`, `remind me to` | Self-only personal task, deterministic due date, zero penalty | `test_telegram_legacy_parity.py` |
 | Deadline change, including exact task reply | `TASK_REVISE_RE`; received-date/week computation, bounded relative day/week slots, DST/past checks; receipt ID is not authority | `test_language_context.py`, `test_legacy_relative_deadlines.py` |
 | Short `готово` / `done` reply | Exactly one receipted task; child submits, privileged actor confirms | `test_telegram_legacy_parity.py` |
-| Natural shopping add / purchased name | Exact unique active item or ID; no arbitrary duplicate selection | `test_telegram_legacy_parity.py` |
+| Natural shopping add / purchased name | Leading decimal quantity and optional bounded unit are extracted, preserving the remaining name; children still create approval requests. Purchase uses exact unique active item or ID; no arbitrary duplicate selection. | `test_telegram_creation_grammar.py`, `test_telegram_legacy_parity.py` |
 | Natural alarm weekdays/weekends | Explicit member, day group and time; two groups atomic, no guessed holidays | `test_telegram_legacy_parity.py` |
 | Natural court praise/penalty/history/periods | Configured identities/rules and authorized ledger; no household-specific consequences | `test_court_configured_rules.py`, `test_court_periods.py` |
 | Natural internet pause/resume/grant | Conservative phrases in `telegram/network.py`; a reviewed plan, not immediate execution | `test_kid_telegram.py` |
@@ -224,11 +226,11 @@ to recognized commands; arbitrary fuzzy text is not executed as a slash command.
    status; the public route is Kid Control. These are explicit compatibility gaps,
    not successful transfers. Current unambiguous `/approve`, `/buy` and other
    documented canonical commands retain their own contracts.
-8. **Concrete creation/query grammar is missing.** Report qualifiers can remain
-   in task titles and suppress deadline extraction; natural leading shopping
-   quantities remain part of the item name. Assigned purchases, explicit 2–5-item
-   task messages, scoped named-child task queries, and contextual same-day penalty
-   correction are not equivalent to the available dashboard/domain operations.
+8. **Some concrete creation/query grammar remains missing.** Assigned purchases,
+   explicit 2–5-item task messages and contextual same-day penalty correction are
+   not equivalent to the available dashboard/domain operations. The bounded
+   report/deadline, numeric shopping quantity and named task-list gaps are now
+   repaired and tested through the public parser/router/manager contracts below.
    See the [workflow-level audit](legacy-parity-audit.md#workflow-level-omissions-confirmed-by-actual-source-comparison)
    for reproduction examples and the exact missing/changed behavior.
 9. Missing memory aliases additionally include `/memory`, `/remember`,
@@ -238,6 +240,27 @@ to recognized commands; arbitrary fuzzy text is not executed as a slash command.
 
 ## Repairs and verification in this audit
 
+- Natural task creation now extracts terminal `с фотоотчётом`, `нужен фотоотчёт`,
+  `с фото`, `с текстовым отчётом`, `без отчёта` and their explicit UK/EN forms.
+  Report qualifiers may precede or follow the bounded deadline. Contradictory
+  report types, negated requirements, malformed explicit report slots and multiple
+  deadlines reject without a model reinterpretation of invalid report policy.
+  Unqualified title spelling/case is retained. `/task MEMBER | TITLE` remains the
+  literal-title command; this change does not reinterpret its pipe-delimited title.
+- Natural shopping supports leading decimals (`2`, `1,5`, `0.5`), optional units
+  such as `кг`, `л`, `шт.`, `kg`, `liters`, `packs`, and a remaining exact name.
+  `добавь 2 кг яблок в покупки`, `додай 2 кг яблук у покупки`, and
+  `add 2 kg Apples to shopping` now save separate fields. Signed, fractional,
+  scientific, non-finite and missing-name quantity slots reject; explicit pipe
+  fields remain unchanged. Number-word quantities and unrestricted units are not
+  inferred. A bare number plus name means a quantity without a unit.
+- Named task queries use complete configured identities and current authority,
+  then filter the already authorized view. Ambiguous identities reject, private
+  task details stay out of group replies, and a parent's query does not expose a
+  child's personal reminder. Successful mutations retain frozen replay plans.
+  The focused creation-grammar suite also exercises the real Telegram manager's
+  addressing, duplicate delivery, localized error replies and absence of model
+  jobs on contradictory report requirements.
 - Complete multiword task recipients no longer silently resolve to a matching
   first-word ID; verb-first forms no longer get swallowed by the bare-name form.
 - Task/alarm and normal slash argument parsing accepts tabs/newlines while exact

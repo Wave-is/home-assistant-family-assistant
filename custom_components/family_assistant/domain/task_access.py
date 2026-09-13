@@ -86,6 +86,14 @@ def archive_report(ctx, task, reason):
 
 def public_task(task, *, parent, state=None, actor=None, now=None):
     result = deepcopy(task)
+    review = result.pop("review_deadline", None)
+    result.pop("review_generation", None)
+    if isinstance(review, dict):
+        # Review scope holds source lineage and attachment IDs. Never export it
+        # through task reads or command receipts, including a private child view.
+        result["review_status"] = review.get("state")
+        if review.get("state") in {"scheduled", "queued"}:
+            result["review_due_at"] = review.get("due_at")
     if not parent:
         result.pop("previous_reports", None)
     # A global library or raw ID list would disclose stale/private attachments.

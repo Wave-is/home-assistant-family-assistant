@@ -148,6 +148,11 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             clock(payload["school_preparation_time"])
         except DomainError:
             raise DomainError("invalid_field", "school_preparation_time") from None
+    if "tasks" in ctx.state["settings"]["modules"] and "tasks" not in modules:
+        from .task_events import revoke_review
+
+        for task in ctx.state["tasks"].values():
+            revoke_review(ctx, task)
     ctx.state["settings"].update(
         {
             "name": text(payload["name"], "name", 80),

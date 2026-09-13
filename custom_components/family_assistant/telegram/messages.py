@@ -34,6 +34,9 @@ MESSAGES = {
         "alarm_device_recovered": "✅ The wake-up siren is responding again.",
         "task_assigned": "📋 New task: {id} · {title}",
         "task_review": "📸 Review requested: {id} · {title}",
+        "task_review_overdue": (
+            "📋 Review overdue: {id} · {title}. Please check the submitted report."
+        ),
         "task_reminder": "📋 Task due soon: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Personal reminder: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: task overdue: {id} · {title}. Parent review is needed.",
@@ -92,6 +95,7 @@ MESSAGES = {
         "alarm_device_recovered": "✅ Сирена будильника снова отвечает.",
         "task_assigned": "📋 Новая задача: {id} · {title}",
         "task_review": "📸 Отчёт ждёт проверки: {id} · {title}",
+        "task_review_overdue": "📋 Истёк срок проверки: {id} · {title}. Проверьте сданный отчёт.",
         "task_reminder": "📋 Скоро срок задачи: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Личное напоминание: {id} · {title} · {due_at}",
         "task_overdue": "⚠️ {member}: просрочена задача {id} · {title}. Нужна проверка родителя.",
@@ -147,6 +151,7 @@ MESSAGES = {
         "alarm_device_recovered": "✅ Сирена будильника знову відповідає.",
         "task_assigned": "📋 Нове завдання: {id} · {title}",
         "task_review": "📸 Звіт чекає перевірки: {id} · {title}",
+        "task_review_overdue": "📋 Минув термін перевірки: {id} · {title}. Перевірте зданий звіт.",
         "task_reminder": "📋 Скоро термін завдання: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Особисте нагадування: {id} · {title} · {due_at}",
         "task_overdue": (

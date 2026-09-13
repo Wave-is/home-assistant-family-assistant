@@ -11,6 +11,7 @@ TASK_EVENTS = frozenset(
         "task_reminder",
         "task_personal_due",
         "task_review",
+        "task_review_overdue",
         "task_overdue",
         "task_incident_closed",
     }
@@ -187,6 +188,19 @@ def current_task_event(state: dict, event: dict) -> bool:
         if key == "task_review":
             return (
                 recipient == "parents" and task.get("status") == "submitted" and _has_parent(state)
+            )
+        if key == "task_review_overdue":
+            from .task_events import review_current
+
+            review = task.get("review_deadline", {})
+            return (
+                recipient == "parents"
+                and review_current(state, task)
+                and review.get("state") == "queued"
+                and review.get("event_id") == event["id"]
+                and data.get("review_generation") == review.get("generation")
+                and data.get("submission_id") == review.get("submission_id")
+                and data.get("review_due_at") == review.get("due_at")
             )
         if key != "task_overdue" or not _has_parent(state):
             return False

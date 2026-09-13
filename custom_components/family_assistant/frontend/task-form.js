@@ -28,6 +28,7 @@ export const TASK_FORM_COPY = {
     reviewChecklist: "Checklist",
     reviewReport: "Report",
     reviewPolicy: "Penalties & reminders",
+    reviewMinutes: "Remind parents to review after submission (minutes, 0 disables)",
     noDeadline: "No deadline",
     noChecklist: "No checklist steps",
     confirmBatch: "I confirm creating separate tasks for all selected people",
@@ -66,6 +67,7 @@ export const TASK_FORM_COPY = {
     reviewChecklist: "Шаги",
     reviewReport: "Отчёт",
     reviewPolicy: "Штрафы и напоминания",
+    reviewMinutes: "Напомнить родителям о проверке после сдачи (минут, 0 — выключено)",
     noDeadline: "Без срока",
     noChecklist: "Без шагов",
     confirmBatch: "Подтверждаю создание отдельных задач для всех выбранных участников",
@@ -104,6 +106,7 @@ export const TASK_FORM_COPY = {
     reviewChecklist: "Кроки",
     reviewReport: "Звіт",
     reviewPolicy: "Штрафи та нагадування",
+    reviewMinutes: "Нагадати батькам про перевірку після здачі (хвилини, 0 — вимкнено)",
     noDeadline: "Без терміну",
     noChecklist: "Без кроків",
     confirmBatch: "Підтверджую створення окремих завдань для всіх вибраних учасників",
@@ -356,6 +359,9 @@ function renderReview(card, form, draft, copy, canInteract, generation) {
   const polText = `${card.t.reminderMinutes}: ${draft.reminder_minutes ?? 60} · ${card.t.graceMinutes}: ${draft.grace_minutes ?? 30} · ${card.t.taskPenalty}: ${draft.penalty ?? 0}`;
   polP.append(polB, document.createTextNode(polText));
   preview.append(polP);
+  if (Number(draft.review_minutes) > 0) {
+    preview.append(el("p", `${copy.reviewMinutes}: ${draft.review_minutes}`));
+  }
 
   form.append(preview);
 
@@ -469,6 +475,7 @@ function renderReview(card, form, draft, copy, canInteract, generation) {
           penalty: Number(draft.penalty ?? 0),
         };
         if (draft.reviewedDueAt) p.due_at = draft.reviewedDueAt;
+        if (Number(draft.review_minutes) > 0) p.review_minutes = Number(draft.review_minutes);
         return { action: "tasks.create", payload: p };
       });
 
@@ -775,6 +782,12 @@ export function renderTaskForm(card) {
   const advanced = el("details");
   advanced.append(el("summary", card.t.advanced));
   card.deadlinePolicy(advanced);
+  if (card.parent) {
+    const reviewInput = card.input(advanced, "review_minutes", copy.reviewMinutes, "number", draft.review_minutes ?? "0", true);
+    reviewInput.min = "0";
+    reviewInput.max = "10080";
+    reviewInput.step = "1";
+  }
   form.append(advanced);
 
   for (const key of ["reminder_minutes", "grace_minutes", "penalty"]) {
@@ -807,7 +820,7 @@ export function renderTaskForm(card) {
     for (const field of [
       assignee,
       report,
-      ...["grace_minutes", "penalty"].map((k) => form.elements.namedItem(k)).filter(Boolean),
+      ...["grace_minutes", "penalty", "review_minutes"].map((k) => form.elements.namedItem(k)).filter(Boolean),
     ]) {
       field.disabled = Boolean(card._writing || draft.payload || draft.pending || personal.checked);
     }
@@ -839,7 +852,7 @@ export function renderTaskForm(card) {
       report.value = "none";
       draft.assignee = actor || "";
       draft.report_type = "none";
-      for (const key of ["grace_minutes", "penalty"]) {
+      for (const key of ["grace_minutes", "penalty", "review_minutes"]) {
         const input = form.elements.namedItem(key);
         if (input) input.value = "0";
         draft[key] = "0";
@@ -975,6 +988,7 @@ export function renderTaskForm(card) {
         revision: m.revision,
         active: m.active,
       })));
+      draft.review_minutes = form.elements.namedItem("review_minutes")?.value ?? "0";
       draft.stage = "review";
       draft.confirmed = false;
       draft.error = null;
@@ -1021,6 +1035,10 @@ export function renderTaskForm(card) {
       for (const key of ["reminder_minutes", "grace_minutes", "penalty"]) {
         const input = form.elements.namedItem(key);
         if (input) payload[key] = Number(input.value);
+      }
+      const reviewMinutes = form.elements.namedItem("review_minutes");
+      if (card.parent && !personal.checked && Number(reviewMinutes?.value) > 0) {
+        payload.review_minutes = Number(reviewMinutes.value);
       }
 
       const operationId = crypto.randomUUID();

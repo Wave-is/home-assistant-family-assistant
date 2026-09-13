@@ -1,7 +1,9 @@
 """Deadline reminders and opt-in penalties are persisted with the task transition."""
 
+from copy import deepcopy
 from datetime import timedelta
 
+from ..const import PRIVILEGED
 from . import penalties, task_access
 from .context import Context
 from .incidents import close_incident, open_incident
@@ -40,7 +42,145 @@ def member_stamp(ctx, item):
     }
 
 
+def review_policy(ctx, payload, item, *, personal=False):
+    """Reviewer time is explicitly parent-configured and independent of child due time."""
+    if "review_minutes" not in payload:
+        return
+    ctx.require_parent()
+    value = payload["review_minutes"]
+    if personal or type(value) is not int or not 0 <= value <= 10080:
+        raise DomainError("invalid_field", "review_minutes")
+    item["review_minutes"] = value
+
+
+def reviewers(state):
+    return {
+        member["id"]: member["revision"]
+        for member in state["members"].values()
+        if member.get("active") is True and member.get("role") in PRIVILEGED
+    }
+
+
+def schedule_review(ctx, item):
+    """Persist the exact submitted report generation before any transport runs."""
+    revoke_review(ctx, item)
+    minutes = item.get("review_minutes", 0)
+    if not minutes or task_access.personal_task(item):
+        return
+    try:
+        due_at = (ctx.now + timedelta(minutes=minutes)).isoformat()
+    except OverflowError:
+        raise DomainError("invalid_field", "review_minutes") from None
+    item["review_generation"] = item.get("review_generation", 0) + 1
+    item["review_deadline"] = {
+        "generation": item["review_generation"],
+        "submission_id": ctx.operation_id,
+        "submitted_at": item["submitted_at"],
+        "due_at": due_at,
+        "minutes": minutes,
+        "member": item["assignee"],
+        "member_revision": ctx.member(item["assignee"])["revision"],
+        "reviewers": reviewers(ctx.state),
+        "source": deepcopy(item.get("source")),
+        "report_generation": item.get("report_generation"),
+        "report_media": deepcopy(item.get("report_media")),
+        "state": "scheduled",
+    }
+
+
+def review_current(state, item):
+    """Identity/source changes revoke this submission's reminder, never retarget it."""
+    review = item.get("review_deadline")
+    if not isinstance(review, dict) or review.get("state") not in {"scheduled", "queued"}:
+        return False
+    if (
+        type(review.get("generation")) is not int
+        or review["generation"] < 1
+        or not isinstance(review.get("submission_id"), str)
+        or not review["submission_id"]
+        or type(review.get("minutes")) is not int
+        or not 0 < review["minutes"] <= 10080
+    ):
+        return False
+    try:
+        if timestamp(review.get("due_at"), "review_due_at") != timestamp(
+            review.get("submitted_at"), "submitted_at"
+        ) + timedelta(minutes=review["minutes"]):
+            return False
+    except (DomainError, OverflowError):
+        return False
+    member = state["members"].get(item.get("assignee"), {})
+    return (
+        "tasks" in state["settings"]["modules"]
+        and not task_access.personal_task(item)
+        and item.get("status") == "submitted"
+        and type(item.get("review_minutes")) is int
+        and 0 < item["review_minutes"] <= 10080
+        and review.get("minutes") == item["review_minutes"]
+        and review.get("generation") == item.get("review_generation")
+        and review.get("submitted_at") == item.get("submitted_at")
+        and review.get("report_generation") == item.get("report_generation")
+        and review.get("report_media") == item.get("report_media")
+        and review.get("source") == item.get("source")
+        and review.get("member") == item.get("assignee")
+        and member.get("active") is True
+        and member.get("role") != "guest"
+        and type(review.get("member_revision")) is int
+        and review["member_revision"] == member.get("revision")
+        and task_access.current_assignee(state, item)
+        and bool(review.get("reviewers"))
+        and review["reviewers"] == reviewers(state)
+    )
+
+
+def revoke_review(ctx, item):
+    review = item.get("review_deadline")
+    if isinstance(review, dict) and review.get("state") in {"scheduled", "queued"}:
+        review["state"] = "revoked"
+    for event in ctx.state["outbox"].values():
+        if (
+            event["key"] in {"task_review", "task_review_overdue"}
+            and event["data"].get("id") == item["id"]
+            and event["state"] in {"pending", "awaiting_channel"}
+        ):
+            event["state"] = "superseded"
+
+
+def tick_review(ctx, item):
+    if not review_current(ctx.state, item):
+        if item.get("review_deadline") is not None:
+            revoke_review(ctx, item)
+        return
+    review = item["review_deadline"]
+    if review["state"] != "scheduled" or ctx.now < timestamp(review["due_at"], "review_due_at"):
+        return
+    notification_ctx = Context(
+        ctx.state,
+        ctx.actor,
+        ctx.now,
+        f"task-review:{item['id']}:{review['generation']}:{review['submission_id']}",
+    )
+    review["event_id"] = notification_ctx.notify(
+        "parents",
+        "task_review_overdue",
+        {
+            **member_stamp(ctx, item),
+            "member_revision": review["member_revision"],
+            "review_generation": review["generation"],
+            "submission_id": review["submission_id"],
+            "review_due_at": review["due_at"],
+        },
+    )
+    review["state"] = "queued"
+
+
 def close(ctx, item, *, assignment=False):
+    if (
+        assignment
+        or item["status"] != "submitted"
+        or "tasks" not in ctx.state["settings"]["modules"]
+    ):
+        revoke_review(ctx, item)
     stale_keys = {"task_reminder", "task_personal_due"}
     if assignment or item["status"] in {"submitted", "completed", "cancelled", "archived"}:
         stale_keys.add("task_assigned")
@@ -81,6 +221,7 @@ def tick(ctx: Context):
             close(ctx, item)
         return
     for item in ctx.state["tasks"].values():
+        tick_review(ctx, item)
         if not task_access.current_assignee(ctx.state, item):
             close(ctx, item)
             continue

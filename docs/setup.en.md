@@ -168,7 +168,12 @@ fingerprint and static paths are registered, then refresh the browser and add a
 card from the picker. The visual editor lists only households linked to your HA
 account; no entry ID needs to be copied.
 
-The 17 available card types are:
+The card picker offers 17 Family Assistant views using namespaced types, such as
+`custom:family-assistant-tasks-card` and `custom:family-assistant-alarms-card`.
+An old resource that registers `family-tasks-card` cannot replace these new cards.
+Alternatively use `custom:family-assistant-card` with an explicit `view`.
+The short names below remain compatibility aliases only when another resource
+has not already claimed them. Existing resources and dashboards are not removed:
 
 - `custom:family-assistant-card` — Today;
 - `custom:family-shopping-card` — Shopping;

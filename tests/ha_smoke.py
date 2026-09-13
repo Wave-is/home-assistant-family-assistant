@@ -105,6 +105,11 @@ async def main(*, case="all"):
 
                 await verify_name_learning(hass, user)
                 return
+            if case == "command-completion":
+                from ha_command_completion_smoke import verify_command_completion
+
+                await verify_command_completion(hass, user)
+                return
             await async_setup_component(hass, "websocket_api", {})
             result = await hass.config_entries.flow.async_init(
                 "family_assistant", context={"source": "user", "user_id": user.id}
@@ -356,6 +361,9 @@ async def main(*, case="all"):
             from ha_name_learning_smoke import verify_name_learning
 
             await verify_name_learning(hass, user)
+            from ha_command_completion_smoke import verify_command_completion
+
+            await verify_command_completion(hass, user)
             from ha_school_retention_smoke import verify_school_retention
 
             await verify_school_retention(hass, entry)
@@ -1370,7 +1378,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--case",
-        choices=("all", "ha-agent", "voice", "panel", "settings", "name-learning"),
+        choices=(
+            "all",
+            "ha-agent",
+            "voice",
+            "panel",
+            "settings",
+            "name-learning",
+            "command-completion",
+        ),
         default="all",
     )
     asyncio.run(main(case=parser.parse_args().case))

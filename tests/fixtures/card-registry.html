@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Card Registry Legacy Collisions Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #eef3f7;
+        font-family: system-ui, sans-serif;
+        color: #182c32;
+      }
+      main {
+        max-width: 680px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .legacy-banner {
+        padding: 12px;
+        background: #fff;
+        border: 1px dashed #b0bec5;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="container"></main>
+
+    <script>
+      // 1. Define legacy custom elements BEFORE loading actual family-assistant.js
+      class LegacyTasksCard extends HTMLElement {
+        static isLegacy = true;
+        static legacyMarker = "legacy-tasks-constructor";
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" });
+          const wrapper = document.createElement("div");
+          wrapper.className = "legacy-tasks-marker";
+          wrapper.textContent = "Legacy tasks card content";
+          this.shadowRoot.append(wrapper);
+        }
+      }
+
+      class LegacyAlarmsCard extends HTMLElement {
+        static isLegacy = true;
+        static legacyMarker = "legacy-alarms-constructor";
+        constructor() {
+          super();
+          this.attachShadow({ mode: "open" });
+          const wrapper = document.createElement("div");
+          wrapper.className = "legacy-alarms-marker";
+          wrapper.textContent = "Legacy alarms card content";
+          this.shadowRoot.append(wrapper);
+        }
+      }
+
+      customElements.define("family-tasks-card", LegacyTasksCard);
+      customElements.define("family-alarms-card", LegacyAlarmsCard);
+      window.LegacyTasksCard = LegacyTasksCard;
+      window.LegacyAlarmsCard = LegacyAlarmsCard;
+
+      // 2. Include existing legacy metadata in customCards picker
+      window.customCards = [
+        {
+          type: "family-tasks-card",
+          name: "Legacy Tasks",
+          description: "Legacy pre-registered tasks card",
+          preview: true,
+        },
+      ];
+    </script>
+
+    <script type="module">
+      // 3. Load actual family-assistant.js (registers canonical cards)
+      await import("/custom_components/family_assistant/frontend/family-assistant.js");
+
+      // 4. Setup synthetic fictional data and callWS mock
+      const query = new URLSearchParams(location.search);
+      const language = query.get("lang") || "en";
+      document.documentElement.lang = language;
+
+      const fictionalData = {
+        revision: 1,
+        actor: "parent-1",
+        role: "owner",
+        settings: {
+          name: "Synthetic Household",
+          timezone: "UTC",
+          modules: ["tasks", "alarms"],
+        },
+        members: [
+          {
+            id: "parent-1",
+            name: "Synthetic Parent",
+            role: "owner",
+            active: true,
+            revision: 1,
+          },
+          {
+            id: "child-1",
+            name: "Synthetic Child",
+            role: "child",
+            active: true,
+            revision: 1,
+          },
+        ],
+        // Fictional task containing HTML/script tags to verify safe textContent rendering
+        tasks: [
+          {
+            id: "T-000001",
+            title:
+              'Safe Task Title <script>window.injectedTaskScript=true<\/script><b class="injected-probe">probe</b> Clean room',
+            assignee: "child-1",
+            creator: "parent-1",
+            status: "assigned",
+            due_at: "2026-09-20T10:00:00Z",
+            revision: 1,
+          },
+        ],
+        task_series: [],
+        // Fictional alarm containing HTML/img tags to verify safe textContent rendering
+        alarms: [
+          {
+            id: "A-000001",
+            member: "child-1",
+            name:
+              'Safe Alarm Name <img src=x onerror="window.injectedAlarmScript=true"><span class="injected-alarm-probe">probe</span> Wake-up call',
+            time: "07:30",
+            timezone: "UTC",
+            days: [0, 1, 2, 3, 4],
+            profile: "gentle",
+            enabled: true,
+            revision: 1,
+          },
+        ],
+        alarm_runs: [],
+        shopping: [],
+        court: [],
+      };
+
+      window.fixture = fictionalData;
+      window.calls = [];
+
+      const syntheticHass = {
+        language,
+        config: { time_zone: "UTC" },
+        user: { id: "synthetic-user-1" },
+        callWS: async (message) => {
+          window.calls.push(structuredClone(message));
+          if (message.type === "family_assistant/households") {
+            return [
+              {
+                entry_id: "synthetic-household",
+                title: fictionalData.settings.name,
+              },
+            ];
+          }
+          if (message.type === "family_assistant/view") {
+            return structuredClone(fictionalData);
+          }
+          if (message.type === "family_assistant/execute") {
+            return { id: "operation-ok" };
+          }
+          throw new Error(`Unhandled synthetic callWS type: ${message.type}`);
+        },
+      };
+      window.syntheticHass = syntheticHass;
+
+      const container = document.getElementById("container");
+
+      // 5. Mount legacy card instances into fixture container to inspect legacy behavior
+      const legacyTasks = document.createElement("family-tasks-card");
+      legacyTasks.id = "legacy-tasks-card";
+      container.append(legacyTasks);
+      window.legacyTasksCard = legacyTasks;
+
+      const legacyAlarms = document.createElement("family-alarms-card");
+      legacyAlarms.id = "legacy-alarms-card";
+      container.append(legacyAlarms);
+      window.legacyAlarmsCard = legacyAlarms;
+
+      // 6. Exercise actual new canonical family-assistant-tasks-card
+      const tasksCard = document.createElement("family-assistant-tasks-card");
+      tasksCard.id = "canonical-tasks-card";
+      container.append(tasksCard);
+      tasksCard.setConfig({
+        type: "custom:family-assistant-tasks-card",
+        entry_id: "synthetic-household",
+      });
+      tasksCard.hass = syntheticHass;
+      window.tasksCard = tasksCard;
+
+      // 7. Exercise actual new canonical family-assistant-alarms-card
+      const alarmsCard = document.createElement("family-assistant-alarms-card");
+      alarmsCard.id = "canonical-alarms-card";
+      container.append(alarmsCard);
+      alarmsCard.setConfig({
+        type: "custom:family-assistant-alarms-card",
+        entry_id: "synthetic-household",
+      });
+      alarmsCard.hass = syntheticHass;
+      window.alarmsCard = alarmsCard;
+
+      // 8. Mount card editor element to verify editor default view behavior
+      const editor = document.createElement("family-assistant-card-editor");
+      editor.id = "card-editor";
+      container.append(editor);
+      editor.setConfig({ type: "custom:family-assistant-tasks-card" });
+      editor.hass = syntheticHass;
+      window.editor = editor;
+
+      window.fixtureReady = true;
+    </script>
+  </body>
+</html>

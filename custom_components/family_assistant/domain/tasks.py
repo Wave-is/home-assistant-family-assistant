@@ -9,7 +9,15 @@ from .validation import revision as strict_revision
 
 FINAL = {"completed", "cancelled", "archived"}
 ACTION_FIELDS = {
-    "revise": {"title", "due_at", "assignee", "reminder_minutes", "grace_minutes", "penalty"},
+    "revise": {
+        "title",
+        "due_at",
+        "assignee",
+        "reminder_minutes",
+        "grace_minutes",
+        "penalty",
+        "review_minutes",
+    },
     "submit": {"report", "media"},
     "check": {"checklist_index", "done"},
     "request_changes": {"note"},
@@ -51,6 +59,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 "reminder_minutes",
                 "grace_minutes",
                 "penalty",
+                "review_minutes",
                 "personal",
             },
             {"title", "assignee"},
@@ -101,6 +110,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
         }
         if personal:
             item["delivery_scope"] = "personal"
+        task_events.review_policy(ctx, payload, item, personal=personal)
         ctx.state["tasks"][item["id"]] = ctx.touch(item)
         ctx.notify(assignee["id"], "task_assigned", task_events.member_stamp(ctx, item))
         return item
@@ -180,6 +190,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 # An explicitly reviewed assignment refreshes a changed identity binding.
                 item["assignee_revision"] = ctx.member(new_assignee)["revision"]
         item["deadline_policy"] = task_events.policy(ctx, payload, item.get("deadline_policy"))
+        task_events.review_policy(ctx, payload, item, personal=personal)
         if personal and (
             item["deadline_policy"]["penalty"] or item["deadline_policy"]["grace_minutes"]
         ):
@@ -208,6 +219,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 item["report"] = report
             item["submitted_at"] = ctx.now.isoformat()
             item["status"] = "submitted"
+            task_events.schedule_review(ctx, item)
             ctx.notify("parents", "task_review", task_events.member_stamp(ctx, item))
         elif action == "check":
             index = payload.get("checklist_index")
@@ -234,6 +246,7 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
                 raise DomainError("invalid_transition")
             item["review_note"] = text(payload.get("note"), "note")
             item["status"] = "needs_changes"
+            task_events.revoke_review(ctx, item)
         else:
             item["status"] = "completed"
             item["closed_at"] = ctx.now.isoformat()

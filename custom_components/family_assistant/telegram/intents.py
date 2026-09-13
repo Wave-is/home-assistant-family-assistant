@@ -7,6 +7,7 @@ from datetime import datetime
 from ..const import PRIVILEGED
 from ..domain.deadlines import extract_due, parse_due
 from ..domain.validation import DomainError
+from .creation import shopping_details, task_details
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,21 @@ READ_SHOPPING_RE = re.compile(
     r"shopping|shopping\s+list|what\s+to\s+buy|groceries|grocery\s+list|buy\s+list|show\s+shopping)$",
     re.I,
 )
+
+SCOPED_TASKS_RE = re.compile(
+    r"^(?:(?:покажи\s+)?(?:задачи|задания|дела)|"
+    r"покажи\s+(?:завдання|справи)|(?:show\s+)?tasks)\s+"
+    r"(?:(?:для|у|for)\s+)?(.+)$",
+    re.I,
+)
+
+
+def task_list_member(state, view, value):
+    member = find_member(state, value)
+    if view["role"] == "guest" or (view["role"] not in PRIVILEGED and member != view["actor"]):
+        raise DomainError("forbidden")
+    return member
+
 
 READ_ALARMS_RE = re.compile(
     r"^(?:будильники|список\s+будильников|какие\s+будильники|покажи\s+будильники|мои\s+будильники|активные\s+будильники|будильник|"
@@ -298,6 +314,9 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
         if pat.search(n):
             return Intent(intent_name, {})
 
+    if scoped := SCOPED_TASKS_RE.fullmatch(value.strip(" .?!")):
+        return Intent("read.tasks", {"assignee": task_list_member(state, view, scoped[1])})
+
     if not re.search(r"[а-яіїєґ]", value, re.I):
         trans = normalize(layout_trans(value))
         for intent_name, pat in READ_PATTERNS:
@@ -312,26 +331,14 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
     shop_add = SHOPPING_ADD_RE.match(value)
     if not shop_add:
         shop_add = re.fullmatch(
-            r"(?:добавь|додай)\s+(.+?)\s+(?:в|у|до)\s+(?:покупки|список\s+покупок|список\s+покупок)",
+            r"(?:(?:добавь|додай)\s+(.+?)\s+(?:в|у|до)\s+"
+            r"(?:покупки|список\s+покупок)|add\s+(.+?)\s+to\s+(?:the\s+)?shopping(?:\s+list)?)",
             value,
             re.I,
         )
     if shop_add:
-        raw_item = shop_add.group(1).strip()
-        parts = [p.strip() for p in raw_item.split("|")]
-        if len(parts) > 3:
-            raise DomainError("invalid_field", "shopping")
-        name = parts[0]
-        qty = 1.0
-        unit = ""
-        if len(parts) > 1:
-            try:
-                qty = float(parts[1].replace(",", "."))
-            except ValueError:
-                raise DomainError("invalid_field", "quantity") from None
-        if len(parts) > 2:
-            unit = parts[2]
-        return Intent("shopping.add", {"name": name, "quantity": qty, "unit": unit})
+        raw_item = next(group for group in shop_add.groups() if group is not None).strip()
+        return Intent("shopping.add", shopping_details(raw_item))
 
     purchase = re.fullmatch(r"(?:купил[аи]?|придбав|придбала|bought|purchased)\s+(.+)", value, re.I)
     if purchase:
@@ -385,8 +392,9 @@ def parse(state, view, content: str, now: datetime, refs=()) -> Intent | None:
                 task_text = re.sub(r"^(?:[:.]\s*|[–—]\s*|-\s+)", "", task_text)
                 if not task_text.strip():
                     raise DomainError("ambiguous_command")
-            title, due = extract_due(task_text, now, timezone)
-            return Intent("tasks.create", {"assignee": member, "title": title, "due_at": due})
+            return Intent(
+                "tasks.create", {"assignee": member, **task_details(task_text, now, timezone)}
+            )
 
     comp = TASK_COMPLETE_SUBMIT_RE.match(value)
     short_done = re.fullmatch(r"готово|зроблено|виконано|done", value, re.I) and refs

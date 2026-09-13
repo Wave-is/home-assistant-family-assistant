@@ -8,7 +8,7 @@ from datetime import datetime
 from ..domain.validation import DomainError
 from . import alarm_commands, calendar, commands, rewards, routines, task_commands
 from .context import PersonalReply
-from .intents import find_member, layout_trans, normalize, parse
+from .intents import find_member, layout_trans, normalize, parse, task_list_member
 from .presentation import court_stats, summary
 
 COPY = {
@@ -755,9 +755,17 @@ async def route(
             raise DomainError("module_disabled")
         if bucket == "court":
             return court_stats(engine.view(actor, now=now), language, weekly=command == "/week")
+        task_member = None
+        if command == "/tasks":
+            if intent and intent.action == "read.tasks":
+                task_member = intent.payload.get("assignee")
+            elif tail:
+                task_member = task_list_member(engine.snapshot(), view, tail)
         lines = []
         for item in view.get(bucket, []):
             if command == "/mine" and item.get("assignee") != actor:
+                continue
+            if task_member is not None and item.get("assignee") != task_member:
                 continue
             if item.get("status") in {"archived", "cancelled", "rejected", "merged"}:
                 continue

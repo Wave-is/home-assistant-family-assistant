@@ -1,5 +1,6 @@
 /* Family Assistant cards. User data is inserted only through textContent. */
 import {ERRORS} from "./errors.js";
+import {cardView,registerCards} from "./card-registry.js";
 import {renderShadow} from "./shadow-view.js";
 import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
@@ -670,17 +671,12 @@ class FamilyEditor extends HTMLElement {
         input.disabled=!this._entries?.length;
       }
       if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests"]){const option=el("option",t[view]);option.value=view;input.append(option);}
-      const defaultView={"custom:family-alarms-card":"alarms","custom:family-shopping-card":"shopping","custom:family-tasks-card":"tasks","custom:family-court-card":"court","custom:family-health-card":"health","custom:family-conversation-card":"conversation","custom:family-network-card":"mikrotik","custom:family-calendar-card":"calendar","custom:family-routines-card":"routines","custom:family-pantry-card":"pantry","custom:family-meals-card":"meals","custom:family-school-card":"school","custom:family-maintenance-card":"maintenance","custom:family-polls-card":"polls","custom:family-presence-card":"presence","custom:family-digests-card":"digests"}[this._config?.type] || "today";
+      const defaultView=cardView(this._config?.type);
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
   }
 }
 if(!customElements.get("family-assistant-card-editor"))customElements.define("family-assistant-card-editor",FamilyEditor);
-for(const [type,view] of [["family-assistant-card","today"],["family-shopping-card","shopping"],["family-tasks-card","tasks"],["family-court-card","court"],["family-alarms-card","alarms"],["family-health-card","health"],["family-conversation-card","conversation"],["family-network-card","mikrotik"],["family-calendar-card","calendar"],["family-routines-card","routines"],["family-pantry-card","pantry"],["family-meals-card","meals"],["family-school-card","school"],["family-maintenance-card","maintenance"],["family-polls-card","polls"],["family-presence-card","presence"],["family-digests-card","digests"]]){
-  class Card extends FamilyCard {static defaultView=view;}
-  if(!customElements.get(type))customElements.define(type,Card);
-  window.customCards=window.customCards || [];
-  if(!window.customCards.some(card=>card.type===type))window.customCards.push({type,name:`Family Assistant · ${COPY.en[view]}`,description:COPY.en[view],preview:true});
-}
+registerCards(FamilyCard,COPY.en);
 export {COPY};
