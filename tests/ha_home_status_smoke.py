@@ -38,13 +38,13 @@ async def _settings(hass, entry, user, age=None, *, confirmed=True):
     return await _save(hass, form, {"max_age_seconds": age}, confirmed=confirmed)
 
 
-async def _group(hass, entry, user, *, existing=False, confirmed=True):
+async def _group(hass, entry, user, *, existing=False, confirmed=True, key="synthetic_room"):
     form = await _open(hass, entry, user, "home_status_group")
     form = await hass.config_entries.options.async_configure(
-        form["flow_id"], {"record": "synthetic_room" if existing else "new"}
+        form["flow_id"], {"record": key if existing else "new"}
     )
     values = {
-        "key": "synthetic_room",
+        "key": key,
         "title": "Synthetic status group",
         "roles": ["owner", "parent"],
         "remove": False,
@@ -411,6 +411,9 @@ async def verify_home_status(hass, owner):
         assert revoked["success"], revoked
         await manager.notifications.run(datetime.now(UTC))
         assert len(client.calls) == 1
+        from ha_home_status_typed_smoke import verify_typed_home_status
+
+        await verify_typed_home_status(hass, entry, owner, child_user)
         print(
             "PASS: actual HA home-status native Options/no-op/cancel, explicit registry/role/ACL "
             "reads, metadata-only family refresh, units/stale/replacement, private late Telegram "

@@ -36,7 +36,7 @@ export function renderHomeStatus(card,body){
   const data=card._homeStatus;
   if(!data||card._homeStatusMarker!==marker(card)){wrap.append(el("p",card._loading?t.loading:t.refresh,"empty"));return;}
   wrap.append(el("p",`${t.generated}: ${data.generated_at}`,"sub"));
-  const sections=[[t.energy,data.energy],[t.active,data.active],...data.groups.slice(0,8).map(group=>[`${group.title} (${group.id})`,group.rows])];
+  const sections=[[t.energy,data.energy],[t.active,data.active],...data.groups.slice(0,32).map(group=>[`${group.title} (${group.id})`,group.rows])];
   let count=0;
   for(const [title,rows]of sections){
     if(!Array.isArray(rows)||!rows.length)continue;
@@ -45,7 +45,12 @@ export function renderHomeStatus(card,body){
       count++;const line=el("div",undefined,"item");line.dataset.quality=row.quality;line.append(el("strong",String(row.label||"").slice(0,80)));
       let value;
       if(row.quality!=="ok")value=t[row.quality==="unavailable"?"unavailable_state":row.quality]||t.invalid_state;
-      else if(typeof row.value==="number"&&Number.isFinite(row.value))value=`${row.value} ${row.unit}`;
+      else if(typeof row.value==="number"&&Number.isFinite(row.value))value=`${row.value} ${row.unit}`.trimEnd();
+      else if(typeof row.reported_timestamp==="string"&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00$/.test(row.reported_timestamp)&&Number.isFinite(Date.parse(row.reported_timestamp))){
+        const lang=card._config?.language||card._hass?.language?.split("-")[0];
+        const locale=({en:"en-GB",ru:"ru-RU",uk:"uk-UA"})[lang]||"en-GB";
+        value=`${t.reported}: ${new Intl.DateTimeFormat(locale,{timeZone:"UTC",dateStyle:"medium",timeStyle:"medium",hourCycle:"h23"}).format(new Date(row.reported_timestamp))} UTC`;
+      }
       else if(typeof row.reported_state==="string")value=`${t.reported}: ${t["state_"+row.reported_state]||t.invalid_state}`;
       else value=t.invalid_value;
       line.append(el("p",value));

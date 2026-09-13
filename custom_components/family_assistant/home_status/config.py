@@ -12,7 +12,18 @@ from ..domain.validation import DomainError
 MODULE = "home_status"
 ROLES = ("owner", "parent", "adult", "child")
 METRICS = ("battery_soc", "battery_power", "load_power", "pv_power", "grid_power")
-DOMAINS = ("sensor", "switch", "light", "input_boolean", "binary_sensor", "media_player", "climate")
+DOMAINS = (
+    "sensor",
+    "switch",
+    "light",
+    "input_boolean",
+    "binary_sensor",
+    "media_player",
+    "climate",
+    "weather",
+    "camera",
+    "event",
+)
 STATES = {
     "switch": ("on", "off"),
     "light": ("on", "off"),
@@ -21,8 +32,30 @@ STATES = {
     "media_player": ("on", "off", "playing", "paused", "buffering", "idle", "standby"),
     "climate": ("off", "heat", "cool", "heat_cool", "auto", "dry", "fan_only"),
 }
+# Factual group readouts do not confer an activity mapping or any device control.
+GROUP_STATES = {
+    **STATES,
+    "camera": ("idle", "recording", "streaming"),
+    "weather": (
+        "clear-night",
+        "cloudy",
+        "fog",
+        "hail",
+        "lightning",
+        "lightning-rainy",
+        "partlycloudy",
+        "pouring",
+        "rainy",
+        "snowy",
+        "snowy-rainy",
+        "sunny",
+        "windy",
+        "windy-variant",
+        "exceptional",
+    ),
+}
 MAX_SOURCES = 64
-MAX_GROUPS = 8
+MAX_GROUPS = 32
 DEFAULT = {"revision": 0, "max_age_seconds": 300, "groups": [], "sources": []}
 
 

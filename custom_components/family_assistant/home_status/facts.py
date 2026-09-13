@@ -1,9 +1,12 @@
 """Allowlisted HA facts; a report timestamp is not a physical measurement time."""
 
-from datetime import datetime
+import re
+from datetime import UTC, datetime
 from math import isfinite
 
-from .config import STATES
+from .config import GROUP_STATES
+
+_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})")
 
 UNITS = frozenset(
     {"%", "W", "kW", "Wh", "kWh", "V", "A", "°C", "°F", "hPa", "bar", "lx", "ppm", "Hz"}
@@ -18,6 +21,7 @@ def normalize(source, observed, now, max_age):
         "value": None,
         "unit": None,
         "reported_state": None,
+        "reported_timestamp": None,
         "active": None,
         "quality": "missing",
         "ha_reported_at": None,
@@ -51,15 +55,32 @@ def normalize(source, observed, now, max_age):
     if state in ("unknown", "unavailable"):
         return {**result, "quality": state}
     domain = source["entity_id"].split(".", 1)[0]
-    if domain in STATES:
-        if not isinstance(state, str) or state not in STATES[domain]:
+    if domain in GROUP_STATES:
+        if not isinstance(state, str) or state not in GROUP_STATES[domain]:
             return {**result, "quality": "invalid_state"}
         result.update(quality="ok", reported_state=state)
         if source["section"] == "active":
             result["active"] = state in source["active_states"]
         return result
+    if domain == "event" or (
+        domain == "sensor" and source["metric"] is None and attrs.get("device_class") == "timestamp"
+    ):
+        # Only a typed absolute timestamp is released. Event attributes may contain
+        # image URLs, event payloads and credentials; none are read or projected.
+        try:
+            if not isinstance(state, str) or len(state) > 40 or not _TIMESTAMP.fullmatch(state):
+                raise ValueError
+            stamp = datetime.fromisoformat(state).astimezone(UTC)
+            if domain == "event" and stamp > now:
+                raise ValueError
+        except (ValueError, OverflowError):
+            return {**result, "quality": "invalid_state"}
+        return {**result, "quality": "ok", "reported_timestamp": stamp.isoformat()}
     unit = attrs.get("unit_of_measurement")
-    if not isinstance(unit, str) or unit not in UNITS:
+    unitless = source["metric"] is None and unit in (None, "") and attrs.get("device_class") is None
+    if unitless:
+        unit = ""
+    elif not isinstance(unit, str) or unit not in UNITS:
         return {**result, "quality": "invalid_unit"}
     metric = source["metric"]
     if metric == "battery_soc":

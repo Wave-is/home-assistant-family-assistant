@@ -1,6 +1,22 @@
 # Implementation and acceptance matrix
 
-## Combined rc.8 — candidate under verification
+## Typed home-status follow-up — development after rc.8
+
+Home-status now preserves up to 32 named groups in both native Options and the
+card (64 total sources), including group-only closed weather/camera state enums,
+strict event/timestamp-sensor UTC facts and finite unitless numeric readings.
+There is no camera media, device command, event listener, arbitrary text sensor
+or automatic private configuration import. Current family role, registry identity,
+HA ACL, restoration and freshness gates apply before every value is projected.
+Focused acceptance passed **137 Python tests**, another **125 public/settings
+checks with one platform skip**, **13 Node** and **13 Chromium** scenarios.
+Actual isolated HA **2026.8.2 and 2026.9.2** proved native 13-group setup, typed
+source selection, no-op Options, child isolation and Store/reload. RU/UK mobile
+screenshots were inspected; raw timestamp presentation was changed to a readable
+UTC date/time. This is not a published release or household configuration claim.
+See [bounded contract](home-status.md).
+
+## Combined rc.8 — published checkpoint
 
 Home-status, opt-in dated task settlement/correction and independent static chat
 admission are merged. Task focused acceptance passed 314 Python, 41 Node and
@@ -12,8 +28,10 @@ correction. Final combined local acceptance passed **6623 Python, six skips,
 passed on HA2026.8.2 and HA2026.9.2 after correcting executor-dispatched sync
 callbacks; direct startup-only tests had not established periodic operation.
 An exact published rc.7-to-candidate two-process upgrade passed on HA2026.9.2.
-Exact-commit CI and publication are subsequent gates, not asserted by this source
-checkpoint. The 18-card inventory comes from the complete passing browser run.
+All ten [exact-commit CI jobs](https://github.com/Wave-is/home-assistant-family-assistant/actions/runs/34765162253)
+passed for `883a87da24179b1f30e646ea9e2057f298602a17`; the
+[rc.8 prerelease](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.2.0-rc.8)
+is published. The 18-card inventory comes from the complete passing browser run.
 See [candidate scope](releases/0.2.0-rc.8.md) and
 [task contract](task-settlements.md). Neither new household mappings nor task
 policies are enabled by updating.

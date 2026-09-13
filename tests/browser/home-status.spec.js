@@ -49,6 +49,26 @@ test("the real idle timer checks revocation metadata, never polls sources", asyn
   expect(await sourceCalls(page)).toBe(2);
 });
 
+for(const language of ["ru", "uk", "en"])test(`typed facts remain visible beyond eight groups ${language}`, async({page}, testInfo)=>{
+  await page.setViewportSize({width:390,height:844});await open(page,`lang=${language}`);
+  await page.evaluate(async()=>{
+    const base={...window.readings.groups[0].rows[0],value:null,unit:null};
+    window.readings.groups=Array.from({length:13},(_,i)=>({id:`group_${i}`,title:`Synthetic group ${i}`,rows:[{...base,label:`Condition ${i}`,reported_state:"sunny"}]}));
+    window.readings.groups[12].rows.push({...base,label:"Last event",reported_timestamp:"2026-09-12T12:00:00+00:00"});
+    window.readings.groups[12].rows.push({...base,label:"Camera state",reported_state:"recording"});
+    window.card._homeStatusRequested=true;await window.card.refresh();
+  });
+  const view=section(page),t=HOME_STATUS_COPY[language];
+  await expect(view).toContainText("Synthetic group 12");
+  await expect(view).toContainText(t.state_sunny);await expect(view).toContainText(t.state_recording);
+  await expect(view).toContainText("12:00:00 UTC");
+  await expect(view).not.toContainText("2026-09-12T12:00:00+00:00");
+  await expect(view.locator("img,iframe,a")).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await view.getByText("Last event",{exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath(`typed-status-${language}.png`)});
+});
+
 for (const query of ["role=guest", "disabled=1"]) {
   test(`home status ${query}: unavailable without a source request`, async ({page}) => {
     await open(page, query);

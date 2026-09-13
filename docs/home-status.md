@@ -58,7 +58,7 @@ The seven formerly missing mappings are implemented as named status groups,
 explicit activity mappings and five optional energy slots: battery SOC,
 battery/load/PV/grid power. This is not generic household control or forecasting.
 
-- At most eight groups and 64 sources; report-age setting 30–86400 integer
+- At most 32 groups and 64 sources; report-age setting 30–86400 integer
   seconds, default 300. Each source pins both entity ID and entity-registry
   identity. Recreating an entity under the same ID does not adopt it silently.
 - Owner/parent visibility is the default. Adult/child access needs explicit role
@@ -70,8 +70,23 @@ battery/load/PV/grid power. This is not generic household control or forecasting
   to W. kWh is not power. Signed battery/grid values do not infer direction or
   electricity-grid availability. No inverter/voltage/brand heuristics apply.
 - Groups permit bounded numeric sensor units (`%`, W/kW, Wh/kWh, V, A, °C/°F,
-  hPa, bar, lx, ppm, Hz) or known enum states from the supported domains.
-  Arbitrary text sensors, attributes, media titles, images and URLs are excluded.
+  hPa, bar, lx, ppm, Hz), finite unitless readings without a device class, or
+  known enum states from the supported domains. The 32-group limit applies to
+  both configuration and card rendering; sources remain bounded at 64 total.
+- Group-only weather conditions and camera states use the documented closed
+  [weather](https://www.home-assistant.io/integrations/weather/) and
+  [camera](https://www.home-assistant.io/integrations/camera/) enums. No weather
+  forecast service, stream, snapshot, camera operation or event listener is invoked.
+- An [event entity](https://www.home-assistant.io/integrations/event/) releases
+  only its validated last-event timestamp, never event payload/type or media.
+  A sensor explicitly classified by HA as `timestamp` may report a future
+  planned date. Both require strict timezone-aware ISO input and return UTC;
+  a future *event* timestamp is invalid. These values are distinct from the
+  HA report timestamp and do not establish physical occurrence or future truth.
+  Freshness/restoration/ACL rules below still apply before any typed value.
+- Arbitrary text sensors, attributes, media titles, images and URLs are excluded.
+  An old free-text forecast-winner/schedule sensor is not silently imported as
+  safe text. Configuring a source is still an explicit owner's action.
 - Activity is only an exact match against the owner's selected states of
   switch/light/input_boolean/binary_sensor/media_player/climate. Relay on,
   climate heat mode or media idle is never proof of physical operation. A binary
@@ -160,3 +175,22 @@ integration writer after merging independent increments. No production
 installation, credentials or private legacy sources were accessed for this
 implementation. Already transmitted Telegram text cannot be recalled; manual
 readings are snapshots, not guaranteed live physical measurements.
+
+## Typed groups follow-up — development after rc.8
+
+The typed group and 32-group display changes passed 137 focused Python tests,
+125 public/settings tests (one platform skip), 13 Node and 13 Chromium cases.
+`ha_home_status_typed_smoke.py`, invoked by the actual home-status HA fixture,
+passed isolated HA2026.8.2 and HA2026.9.2: native 13-group creation, weather/camera/
+event/timestamp/count selectors, no-op Options, current child isolation, Store
+and reload. No real device, camera endpoint or Telegram transport was used.
+RU/UK mobile screenshots were inspected; timestamp values are displayed as
+readable UTC dates, with precise ISO values retained only in the bounded API.
+A bounded public-only AGY review timed out without findings; it is not accepted
+review evidence. Full combined release/upgrade/CI acceptance remains separate.
+
+Focused additions: `tests/test_home_status_typed.py`,
+`tests/ha_home_status_typed_smoke.py`, `tests/frontend-home-status.test.js` and
+`tests/browser/home-status.spec.js`. Existing argument-free configurations and
+the exact no-op Options contract remain unchanged; no settings schema import
+or household activation occurs on update.

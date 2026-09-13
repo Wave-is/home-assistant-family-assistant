@@ -37,6 +37,23 @@ test("disabled and guest cards do not request source values",async()=>{
   }
 });
 
+for(const language of ["en","ru","uk"])test(`all 32 groups and typed facts render safely ${language}`,async()=>{
+  const {card,setSnapshot}=setup(language),data=snapshot(),base={...data.energy[0],value:null,unit:null};
+  data.groups=Array.from({length:33},(_,i)=>({id:`group_${i}`,title:`Synthetic group ${i}`,rows:[{...base,label:`Row ${i}`,reported_state:"sunny"}]}));
+  data.groups[12].rows.push({...base,label:"Event timestamp",reported_timestamp:"2026-09-12T12:00:00+00:00"});
+  data.groups[12].rows.push({...base,label:"Camera state",reported_state:"recording"});
+  data.groups[12].rows.push({...base,label:"Count",value:12,unit:""});
+  data.groups[12].rows.push({...base,label:"Bad timestamp",reported_timestamp:"<img src=x onerror=bad>"});
+  setSnapshot(data);await card.refresh();
+  const text=card.shadowRoot.textContent;
+  assert.ok(text.includes("Synthetic group 31"));assert.ok(!text.includes("Synthetic group 32"));
+  assert.ok(text.includes(HOME_STATUS_COPY[language].state_sunny));
+  assert.ok(text.includes(HOME_STATUS_COPY[language].state_recording));
+  assert.ok(text.includes("12:00:00 UTC"));assert.ok(!text.includes("2026-09-12T12:00:00+00:00"));
+  assert.ok(!text.includes("<img"));assert.equal(card.shadowRoot.querySelectorAll("a,img,iframe").length,0);
+  assert.ok(!text.includes("12 null"));card.remove();
+});
+
 test("other cards never request home observations",async()=>{
   const {card,requests}=setup();card._hass=null;card.setConfig({entry_id:"synthetic",view:"shopping"});
   card._hass={language:"en",user:{id:"owner"},callWS:async request=>{requests.push(request);return family();}};

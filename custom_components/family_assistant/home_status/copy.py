@@ -1,5 +1,7 @@
 """Bounded trilingual factual readouts; never physical activity claims."""
 
+from datetime import datetime
+
 ROWS = {
     "role_owner": ("Owner", "Владелец", "Власник"),
     "role_parent": ("Parent", "Родитель", "Батько / мати"),
@@ -22,6 +24,23 @@ ROWS = {
     "state_auto": ("Automatic mode", "Автоматический режим", "Автоматичний режим"),
     "state_dry": ("Dry mode", "Режим осушения", "Режим осушення"),
     "state_fan_only": ("Fan-only mode", "Режим вентиляции", "Режим вентиляції"),
+    "state_recording": ("Recording", "Запись", "Запис"),
+    "state_streaming": ("Streaming", "Трансляция", "Трансляція"),
+    "state_clear-night": ("Clear night", "Ясная ночь", "Ясна ніч"),
+    "state_cloudy": ("Cloudy", "Облачно", "Хмарно"),
+    "state_fog": ("Fog", "Туман", "Туман"),
+    "state_hail": ("Hail", "Град", "Град"),
+    "state_lightning": ("Thunderstorm", "Гроза", "Гроза"),
+    "state_lightning-rainy": ("Thunderstorm with rain", "Гроза с дождём", "Гроза з дощем"),
+    "state_partlycloudy": ("Partly cloudy", "Переменная облачность", "Мінлива хмарність"),
+    "state_pouring": ("Heavy rain", "Ливень", "Злива"),
+    "state_rainy": ("Rain", "Дождь", "Дощ"),
+    "state_snowy": ("Snow", "Снег", "Сніг"),
+    "state_snowy-rainy": ("Snow and rain", "Снег с дождём", "Сніг з дощем"),
+    "state_sunny": ("Sunny", "Солнечно", "Сонячно"),
+    "state_windy": ("Windy", "Ветрено", "Вітряно"),
+    "state_windy-variant": ("Windy and cloudy", "Ветрено и облачно", "Вітряно та хмарно"),
+    "state_exceptional": ("Exceptional conditions", "Исключительные условия", "Виняткові умови"),
     "title": ("Home status", "Состояние дома", "Стан дому"),
     "energy": ("Energy readings", "Энергетические показания", "Енергетичні показники"),
     "active": (
@@ -151,7 +170,10 @@ def render(snapshot, language):
             if row["quality"] != "ok":
                 value = t[row["quality"]]
             elif row["value"] is not None:
-                value = f"{row['value']:g} {row['unit']}"
+                value = f"{row['value']:g} {row['unit']}".rstrip()
+            elif row.get("reported_timestamp") is not None:
+                stamp = datetime.fromisoformat(row["reported_timestamp"])
+                value = f"{t['reported']}: {stamp:%Y-%m-%d %H:%M:%S} UTC"
             else:
                 value = f"{t['reported']}: {t['state_' + row['reported_state']]}"
                 if row["active"] is not None:
