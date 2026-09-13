@@ -44,7 +44,7 @@ PREFIXED_DAY = re.compile(
 )
 
 
-def task_details(content, now, timezone):
+def task_details(content, now, timezone, *, allow_empty_title=False):
     """Extract terminal report/deadline slots in either order, rejecting conflicts."""
     remaining = content.strip()
     policies = set()
@@ -91,7 +91,7 @@ def task_details(content, now, timezone):
         if due:
             raise DomainError("invalid_deadline")
         title, due = checked_title, second_due
-    if not title.strip():
+    if not title.strip() and not allow_empty_title:
         raise DomainError("invalid_field", "title")
     payload = {"title": title, "due_at": due}
     if policies:

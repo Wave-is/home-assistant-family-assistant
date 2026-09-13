@@ -484,7 +484,11 @@ async def route(
                     result="\n".join(
                         t["private_saved"].format(id=item["id"])
                         if not private and private_task(item)
-                        else summary(item, view, language)
+                        else (
+                            f"{item['id']} · {summary(item, view, language)}"
+                            if str(item.get("id", "")).startswith("T")
+                            else summary(item, view, language)
+                        )
                         for item in result["items"]
                     )
                 )
@@ -500,6 +504,13 @@ async def route(
     if prior:
         return saved(
             await engine.execute(actor, prior["action"], prior["payload"], operation_id, now)
+        )
+    from .task_batches import parsed as task_batch
+
+    batch = task_batch(engine.snapshot(), view, content, now)
+    if batch is not None:
+        return saved(
+            await commands.execute(engine, actor, content, refs, operation_id, now, "batch", batch)
         )
     head, tail = command_parts(content)
     normalized = normalize(canonical_command(head) if not tail else content)

@@ -168,6 +168,7 @@ to recognized commands; arbitrary fuzzy text is not executed as a slash command.
 | `ps:ACTION:POLL[:OPTION]`, `pr:yes/no:REVIEW` | Private selection, explicit fresh review, canonical poll mutation | `test_telegram_polls.py` |
 | RU/UK/EN availability, help and read expressions | Strict whole-message patterns in `intents.py` / `router.py`; no model needed | `test_telegram.py`, `test_telegram_legacy_parity.py` |
 | Task creation in either member/keyword order | Complete configured multiword name/alias is preferred; equal matches reject; no automatic kinship | `test_telegram_language_audit.py` |
+| Explicit numbered 2–5-task message | Declared count and numbering validated; shared/per-item report, deadline and assignee; one frozen Engine transaction, recipient revisions and current authority. [Grammar and limits](telegram-task-batches.md). | `test_telegram_task_batches.py`, `test_task_multi_create.py` |
 | Natural task report/deadline qualifiers | Terminal RU/UK/EN photo/text/no-report slots in either deadline order; contradictory or negated requirements reject. Bounded `на завтра` / `for tomorrow` prefixes are removed from the exact title. | `test_telegram_creation_grammar.py` |
 | `покажи задачи MEMBER`, `покажи завдання MEMBER`, `show tasks for MEMBER`, `/tasks MEMBER` | Filter the current authorized task view; a child/adult can query only self, parents/owner can query configured members. Group/private/personal restrictions remain. | `test_telegram_creation_grammar.py` |
 | `напомни мне`, `нагадай мені`, `remind me to` | Self-only personal task, deterministic due date, zero penalty | `test_telegram_legacy_parity.py` |
@@ -226,11 +227,13 @@ to recognized commands; arbitrary fuzzy text is not executed as a slash command.
    status; the public route is Kid Control. These are explicit compatibility gaps,
    not successful transfers. Current unambiguous `/approve`, `/buy` and other
    documented canonical commands retain their own contracts.
-8. **Some concrete creation/query grammar remains missing.** Assigned purchases,
-   explicit 2–5-item task messages and contextual same-day penalty correction are
-   not equivalent to the available dashboard/domain operations. The bounded
+8. **Some concrete creation/query grammar remains missing.** Assigned purchases
+   and contextual same-day penalty correction are not equivalent to the available
+   dashboard/domain operations. The bounded
    report/deadline, numeric shopping quantity and named task-list gaps are now
    repaired and tested through the public parser/router/manager contracts below.
+   Explicit numbered 2–5-item task messages now use the separate bounded grammar
+   linked above; arbitrary multi-task prose and inline lists are not claimed.
    See the [workflow-level audit](legacy-parity-audit.md#workflow-level-omissions-confirmed-by-actual-source-comparison)
    for reproduction examples and the exact missing/changed behavior.
 9. Missing memory aliases additionally include `/memory`, `/remember`,

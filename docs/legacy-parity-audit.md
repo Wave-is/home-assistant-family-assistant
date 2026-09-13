@@ -23,8 +23,19 @@ New namespaced card types coexist with previously loaded legacy task/alarm
 elements without replacing them. Seven actual Chromium collision cases passed;
 existing aliases remain compatibility-only and are not advertised as new cards.
 Final combined release/browser inventory gates still apply. Remaining gaps:
-atomic multi-task grammar, assigned purchases, daily rollover/correction policy,
+assigned purchases, daily rollover/correction policy,
 scoped memory/media, household mappings and the other explicitly open rows.
+
+### Numbered-task increment — development branch
+
+The bounded [2–5 numbered-task grammar](telegram-task-batches.md) now validates
+declared counts, per-item recipients and shared/per-item deadline/report settings
+before one Engine batch. Invalid batches cannot fall through to single-command
+or model repair. Recipient revisions and resolved dates are frozen; storage and
+authority races, restart/replay, localized manager failures and task-ID receipts
+have synthetic adapter/domain coverage. This supersedes only the explicit
+numbered-creation gap below. Inline lists, arbitrary multi-task prose, assigned
+purchases and native HA/live bot acceptance for this increment remain open.
 
 - [Source setting inventory](legacy-settings-inventory.json): all 26 original
   Assistant and three Court top-level configuration declarations are accounted
@@ -128,7 +139,7 @@ module/function names; no private settings or source files are shipped here.
 | Same-day parent correction: `controller._same_day_court_correction_source`, `_async_reconcile_court_corrections`, `_handle_contextual_task_penalty_correction` | Generic `court.reverse_source` exists and is tested, but automatic same-day completion reconciliation and its contextual Telegram expression are **missing**. Reversal must target the original penalty and date, retain a retry receipt, and never reverse an unrelated score. |
 | Creation report qualifiers: `task_parser._extract_report_requirement` | **Missing grammar.** `с фотоотчётом`, `нужен фотоотчёт`, `с фото`, `без отчёта` previously set policy and contradictory requirements rejected. Current synthetic `задача child убрать стол на завтра с фотоотчетом` leaves the deadline/report words in the title, with no deadline or report policy. Domain `text/photo/none` and photo transport work; they do not fix creation parsing. |
 | Natural shopping quantities / assigned purchase tasks: `task_parser.split_shopping_quantity` and assigned-purchase parser | **Missing grammar/assignment semantics.** `добавь 2 кг яблок в покупки` currently becomes a name containing the quantity, quantity 1 and no unit; `попроси child купить хлеб` has no deterministic intent. Explicit `/buy NAME \| QUANTITY \| UNIT` works. A separate shopping record needs a reviewed assignment model, not silent conversion to an ordinary task. |
-| Explicit multi-task message and scoped task-list parser: old `task_parser` / atomic controller creation | **Missing Telegram grammar.** Old 2–5-item messages validated declared counts, shared/per-item deadlines and per-item reports/assignees before all-or-nothing creation. Explicit multi-item and `покажи задачи child` probes have no deterministic intent. Dashboard batch operations and model proposals are different entry points. |
+| Explicit multi-task message and scoped task-list parser: old `task_parser` / atomic controller creation | **Bounded grammar repaired; acceptance scoped above.** Explicit 2–5 numbered messages validate declared counts, shared/per-item deadlines and reports/assignees before all-or-nothing Engine creation. Named scoped queries were repaired in the preceding increment. Arbitrary/inline multi-task prose remains unsupported; existing dashboard batches and model proposals remain separate entry points. |
 | Reminder cadence and outage catch-up: old controller reminder dispatcher | **Changed policy.** Old precise deadlines used a one-hour reminder; day-only work used two daily slots and only the latest missed slot after downtime. Public tasks use one configurable reminder offset. Current behavior is not the old slot algorithm. |
 | Reviewer deadline: old task ledger review window / overdue-review event | **Missing live workflow.** Public submission notifies the reviewer and correctly stops child deadline/penalty processing, but does not implement the old separate review deadline and overdue-review reminder. Preserved ledger fields do not schedule that work. |
 

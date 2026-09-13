@@ -22,6 +22,26 @@ See [rc.6 notes](releases/0.2.0-rc.6.md) for scope and remaining work. Historica
 candidate/pending labels in the dated sections below describe their checkpoints,
 not a reason to rerun or revert already verified increments.
 
+## Atomic numbered Telegram tasks — development branch
+
+The bounded [numbered-task grammar](telegram-task-batches.md) declares 2–5 items,
+supports shared/per-item recipient, deadline and report policy, and executes one
+identity-bound Engine batch. Invalid declarations/recipients/qualifiers bypass
+generic model and single-command repair. Results include each created task ID.
+Recipient revision changes, role revocation, storage failure and replay are
+verified through the public parser/router/Engine/manager contracts. This branch
+does not modify household data or claim native HA or live bot acceptance for the
+new grammar.
+
+Local verification on `codex/atomic-telegram-tasks`, based on `b0fca16`: **554
+passed in 18.44s**, including all **85 new numbered-task cases**; release-package
+contracts **22 passed, one platform skip in 3.00s**. Public-tree privacy, Ruff,
+formatting and whitespace checks passed. The exact focused command is recorded
+in the grammar document. AGY performed a bounded read-only public-code review;
+its compound-word concern was independently reproduced with a shopping request
+and fixed. Other reported concerns did not reproduce or described the intentional
+declared-count limit. A preceding timed-out attempt supplied no accepted evidence.
+
 ## Legacy command completion and reviewer windows — 13 September 2026
 
 Current candidate adds bounded RU/UK/EN task report/deadline and shopping quantity
@@ -136,7 +156,7 @@ and the repair order; generic task/court support must not hide these omissions.
 | Multiple households / member administration | Implemented / HA-tested | Config/options, four generic templates, time zone, aliases and bound HA identity |
 | Resumable control-center form drafts | Implemented / unit- and browser-tested | Tab-local family/profile drafts, explicit resume/discard, owner/user/household scopes, 24-hour read-time expiry, stale settings/member/onboarding revision review and no automatic replay after uncertain save; [contract and evidence](panel-drafts.md). Actual-HA/household acceptance of this increment is separate |
 | Separate shopping model | In progress / unit-, browser- and HA-tested | Partial purchase, approvals, recurring items, explicit merge, metadata add/edit review, per-item history and archive; optional exact purchase prices passed authenticated HA/reload. GTIN/manual entry, recurring preservation and local camera scanning unit/browser-tested; authenticated barcode/history/Store reload passed. Native Assist PCM/STT/spoken review passed in alpha.35 candidate. Photo recognition and real speech/camera acceptance pending |
-| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders and private replies. Parent-reviewed bulk completion/cancellation/archive passed actual authenticated HA atomic rollback, replay and reload; released alpha.32; reviewed independent multi-member assignments released alpha.33. Legacy parity and complete media lifecycle pending |
+| Tasks, deadlines, reports and reviews | In progress / unit-, browser- and HA-tested | Checklist/lifecycle/editor, household-zone deadline, text and private verified photo reports, review/return/archive, strict recurring edits; self-only reminders and private replies. Parent-reviewed bulk completion/cancellation/archive passed actual authenticated HA atomic rollback, replay and reload; released alpha.32; reviewed independent multi-member assignments released alpha.33. Bounded numbered Telegram creation now has adapter/domain tests; native HA/live acceptance of that grammar remains pending. Legacy parity and complete media lifecycle pending |
 | Court, rewards, penalties and appeals | In progress / unit-, browser- and HA-tested | Reversible ledger, independent appeals, weekly snapshots; privilege catalog/reservations/parent approval/fulfillment/refund; advanced automatic consequences pending |
 | Alarms and durable fresh challenges | Implemented / unit- and HA-tested | Two stages, renewed siren, fresh nonce, expiry, DST, exceptions, penalty cap; physical sound check pending |
 | Own Telegram bot and onboarding | Implemented / HA-tested with synthetic transport | Options, polling lifecycle, owner-confirmed enrollment, mentions, replay/roles; live Telegram acceptance still pending |
