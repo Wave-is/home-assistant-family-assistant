@@ -142,7 +142,8 @@ test("HTML stays literal and missing coverage does not claim there is no homewor
   expect(await page.evaluate(() => window.calls)).toEqual([]);
 });
 
-test("School assignment and portal clicks open only the approved HTTPS destination without a referrer", async ({ page, context }) => {
+test("School assignment and portal clicks open only the approved HTTPS destination without a referrer", async ({ page, context }, testInfo) => {
+  const fixtureOrigin = new URL(testInfo.project.use.baseURL).origin;
   const fixtureSource = source("en");
   const assignmentHref = fixtureSource.snapshot.lessons[1].links[0];
   const portalHref = fixtureSource.snapshot.source_url;
@@ -158,7 +159,7 @@ test("School assignment and portal clicks open only the approved HTTPS destinati
   await context.route("**/*", async route => {
     const request = route.request();
     const url = request.url();
-    if (new URL(url).origin === "http://127.0.0.1:8329") return route.continue();
+    if (new URL(url).origin === fixtureOrigin) return route.continue();
     if (!approved.has(url) || !request.isNavigationRequest()) {
       unexpected.push(url);
       return route.abort();
@@ -197,10 +198,11 @@ test("School assignment and portal clicks open only the approved HTTPS destinati
 });
 
 for (const revoked of ["household generation", "child revision", "source revision"]) {
-  test(`Captured school assignment and portal links reject a changed ${revoked}`, async ({ page, context }) => {
+  test(`Captured school assignment and portal links reject a changed ${revoked}`, async ({ page, context }, testInfo) => {
+    const fixtureOrigin = new URL(testInfo.project.use.baseURL).origin;
     const externalRequests = [], popups = [];
     await context.route("**/*", route => {
-      if (new URL(route.request().url()).origin === "http://127.0.0.1:8329") return route.continue();
+      if (new URL(route.request().url()).origin === fixtureOrigin) return route.continue();
       externalRequests.push(route.request().url());
       return route.abort();
     });
