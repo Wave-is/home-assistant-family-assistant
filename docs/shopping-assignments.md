@@ -1,12 +1,15 @@
 # Shared shopping assignments — bounded implementation
 
-Current coordinating checkpoint: merged into the rc.7 candidate. Standalone
+Current coordinating checkpoint: included in the published rc.7 prerelease. Standalone
 Python completed 6308 passes; combined acceptance passed 6440 Python, 793 Node
 and 433 Chromium checks. Root's actual isolated HA2026.9.2 verified assignment,
 filters, metadata preservation, another member's partial purchase, stale buyer
 rejection and Store/reload/replay. The exact rc6→rc7 upgrade also passed.
-These results supersede the earlier branch-local pending gates below. Exact-
-commit CI, release and household operation remain separate steps.
+These results supersede the earlier branch-local pending gates below. All ten
+[exact-commit CI jobs](https://github.com/Wave-is/home-assistant-family-assistant/actions/runs/34760567071)
+passed for `02dede051603a15a718fefc9b64fe863f6c47b95`; the
+[prerelease is published](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.2.0-rc.7).
+Actual household message acceptance remains separate from synthetic transport.
 
 Development branch: `codex/shopping-assignments`, based on rc.6 source
 `5c189ba8f992dedf3ad5f30838adb63f403026d0`. This is not a release or household

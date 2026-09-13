@@ -7,37 +7,49 @@ real Telegram delivery, or proof that every possible user expression works.
 
 ## Inventory and reproducibility
 
-### Shared buyer increment — separate local branch after rc.6
+### Current release checkpoint — rc.7
 
-The bounded assigned-purchase gap now has an implementation on
-`codex/shopping-assignments`: strict RU/UK/EN creation, exact S-ID buyer edits,
-self/named filters and verified-shape name correction. Shopping stays a shared
-family model and other members may still help buy it. The prior missing row below
-is historical for these exact forms only; fresh-request duplicate disambiguation,
-arbitrary/multiple-purchase prose and complete legacy parity remain open.
-See [scope, evidence and remaining gates](shopping-assignments.md). No release or
-household acceptance is implied by this local branch.
+[Early release 0.2.0-rc.7](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.2.0-rc.7)
+is published, not a draft. All ten [exact-commit CI jobs](https://github.com/Wave-is/home-assistant-family-assistant/actions/runs/34760567071)
+passed for `02dede051603a15a718fefc9b64fe863f6c47b95`. Combined local acceptance
+passed 6440 Python tests (six skips, 23 subtests), 793 Node checks and 433 Chromium
+scenarios. Actual isolated HA2026.9.2 command/school Store and Options cases, and
+the exact published rc.6-to-rc.7 upgrade, passed. These are software gates, not
+proof of every household expression or physical device behavior.
 
-### Completion increment — candidate after rc.5
+The table below now states current bounded support directly instead of leaving
+repaired workflows labelled missing. Read-only household status and opt-in task
+rollover/correction are separate development streams, **not rc.7 features**.
 
-This paragraph supersedes the affected historical "missing" rows below. Bounded
-natural task report/deadline qualifiers, shopping quantities and named task-list
+### Shared buyer increment — included in rc.7
+
+The bounded assigned-purchase gap is implemented in rc.7: strict RU/UK/EN
+creation, exact S-ID buyer edits, self/named filters and verified-shape name
+correction. Shopping stays a shared family model and other members may still
+help buy it. Fresh-request duplicate disambiguation, arbitrary/multiple-purchase
+prose and complete legacy parity remain open.
+See [scope, evidence and remaining gates](shopping-assignments.md). Deployment
+does not establish unrestricted prose or live-message acceptance.
+
+### Completion increment — included since rc.6
+
+Bounded natural task report/deadline qualifiers, shopping quantities and named task-list
 queries are now implemented (93 grammar regressions). Parent-only optional
 reviewer deadlines have separate durable private reminders with no child penalty
 during review; existing tasks stay off. See [reviewer contract](task-review-deadlines.md).
 Root's actual isolated HA2026.9.2 `command-completion` case passed: grammar,
 authenticated submit/review, real Store/reload, exact command replay and
-cancellation of the completed review's pending reminder. This is not household
-deployment, assigned-shopping support or unrestricted/multi-task prose support.
+cancellation of the completed review's pending reminder. Unrestricted prose
+remains unsupported; assigned shopping and numbered batches have separate scope.
 
 New namespaced card types coexist with previously loaded legacy task/alarm
 elements without replacing them. Seven actual Chromium collision cases passed;
 existing aliases remain compatibility-only and are not advertised as new cards.
-Final combined release/browser inventory gates still apply. Remaining gaps:
-assigned purchases, daily rollover/correction policy,
+The rc.7 combined release/browser gates are recorded above. Remaining gaps:
+daily rollover/correction policy,
 scoped memory/media, household mappings and the other explicitly open rows.
 
-### Numbered-task increment — development branch
+### Numbered-task increment — included in rc.7
 
 The bounded [2–5 numbered-task grammar](telegram-task-batches.md) now validates
 declared counts, per-item recipients and shared/per-item deadline/report settings
@@ -47,7 +59,7 @@ authority races, restart/replay, localized manager failures and task-ID receipts
 have synthetic adapter/domain coverage. This supersedes only the explicit
 numbered-creation gap below. Root's actual isolated HA2026.9.2 command-completion
 case also passed real Store/reload, date-stable replay and authenticated atomic
-rejection. Inline lists, arbitrary multi-task prose, assigned purchases and live
+rejection. Inline lists, arbitrary multi-task prose and live
 bot acceptance for this increment remain open.
 
 - [Source setting inventory](legacy-settings-inventory.json): all 26 original
@@ -150,32 +162,32 @@ module/function names; no private settings or source files are shipped here.
 | --- | --- |
 | Evening unfinished-child-task settlement: `controller._async_settle_missed_child_tasks`; old task/controller runtime tests | Old logic skipped submitted work, applied an exact-source Court penalty, then rolled the due date forward one day; unavailable Court retained a retry. Public `domain/task_events.py` uses due time plus grace, and `domain/penalties.py` deliberately permits one automatic penalty per task. `test_task_events.py` verifies rescheduling does not repeat it. **Changed penalty policy; missing daily rollover.** Do not silently introduce repeated penalties during import. |
 | Same-day parent correction: `controller._same_day_court_correction_source`, `_async_reconcile_court_corrections`, `_handle_contextual_task_penalty_correction` | Generic `court.reverse_source` exists and is tested, but automatic same-day completion reconciliation and its contextual Telegram expression are **missing**. Reversal must target the original penalty and date, retain a retry receipt, and never reverse an unrelated score. |
-| Creation report qualifiers: `task_parser._extract_report_requirement` | **Missing grammar.** `с фотоотчётом`, `нужен фотоотчёт`, `с фото`, `без отчёта` previously set policy and contradictory requirements rejected. Current synthetic `задача child убрать стол на завтра с фотоотчетом` leaves the deadline/report words in the title, with no deadline or report policy. Domain `text/photo/none` and photo transport work; they do not fix creation parsing. |
-| Natural shopping quantities / assigned purchase tasks: `task_parser.split_shopping_quantity` and assigned-purchase parser | **Missing grammar/assignment semantics.** `добавь 2 кг яблок в покупки` currently becomes a name containing the quantity, quantity 1 and no unit; `попроси child купить хлеб` has no deterministic intent. Explicit `/buy NAME \| QUANTITY \| UNIT` works. A separate shopping record needs a reviewed assignment model, not silent conversion to an ordinary task. |
+| Creation report qualifiers: `task_parser._extract_report_requirement` | **Bounded grammar repaired in rc.6.** Natural report/deadline qualifiers produce structured `text/photo/none` and deadlines; contradictory requirements reject before mutation. RU/UK/EN parser and native command-completion cases cover the repaired forms. Arbitrary sentence structure is not claimed. |
+| Natural shopping quantities / assigned purchase tasks: `task_parser.split_shopping_quantity` and assigned-purchase parser | **Bounded grammar repaired in rc.6; shared assignments added in rc.7.** Natural quantities and explicit assigned-purchase forms create one separate S-record, not an ordinary task. Exact buyer edits/filters preserve metadata and helping-purchase permissions. See [forms and exclusions](shopping-assignments.md); arbitrary multi-purchase prose and fresh-request semantic duplicate detection remain open. |
 | Explicit multi-task message and scoped task-list parser: old `task_parser` / atomic controller creation | **Bounded grammar repaired; acceptance scoped above.** Explicit 2–5 numbered messages validate declared counts, shared/per-item deadlines and reports/assignees before all-or-nothing Engine creation. Named scoped queries were repaired in the preceding increment. Arbitrary/inline multi-task prose remains unsupported; existing dashboard batches and model proposals remain separate entry points. |
 | Reminder cadence and outage catch-up: old controller reminder dispatcher | **Changed policy.** Old precise deadlines used a one-hour reminder; day-only work used two daily slots and only the latest missed slot after downtime. Public tasks use one configurable reminder offset. Current behavior is not the old slot algorithm. |
-| Reviewer deadline: old task ledger review window / overdue-review event | **Missing live workflow.** Public submission notifies the reviewer and correctly stops child deadline/penalty processing, but does not implement the old separate review deadline and overdue-review reminder. Preserved ledger fields do not schedule that work. |
+| Reviewer deadline: old task ledger review window / overdue-review event | **Optional workflow repaired in rc.6.** Parent-only `review_minutes` schedules one durable, report-generation-bound private overdue-review notice. Submitted work stays exempt from child penalties. Existing records remain off; series-level configuration and natural-language review-policy editing are not added. [Contract and native/browser evidence](task-review-deadlines.md). |
 
 Old source evidence was checked against its task/parser/controller and memory
 tests. Public counter-evidence is in `test_task_events.py`,
 `test_court_configured_rules.py`, `test_telegram_legacy_parity.py` and the actual
-parser/domain code. Six read-only parser probes used fictional members; they
-exposed gaps, not passing acceptance. No additional omitted Court assessment
+parser/domain code. Six original read-only parser probes used fictional members;
+they exposed the gaps subsequently repaired in the bounded increments above,
+not passing acceptance at the time. No additional omitted Court assessment
 pattern family was identified in this bounded second review.
 
 ### Next repair order and acceptance
 
-1. Deterministic report/deadline and shopping-quantity parsing: exact structured
-   payloads, contradiction/ambiguity rejection, permission checks and frozen retry.
-2. Role-dependent legacy command compatibility, scoped list queries and atomic
-   multi-task grammar: no silent semantic reinterpretation or partial writes.
-3. Reviewer reminders, day-only cadence and explicit rollover/correction policy:
+1. Continue exact regression coverage for the released deterministic report,
+   quantity, assignment, scoped-list, numbered-task and reviewer workflows.
+2. Implement explicit rollover/correction policy and evaluate day-only cadence:
    restart/outage tests, exact source/date correction, no retroactive or repeated
    penalties unless separately reviewed and explicitly enabled.
-4. Scoped memory/web policy, home/energy/forecast mappings and remaining provider
+3. Scoped memory/web policy, home/energy/forecast mappings and remaining provider
    capabilities: separate privacy, effect-authorization and household gates.
 
-The independent online-school branch remains separate from these repairs.
+Online-school integration is included in rc.6/rc.7 with its own provider and
+privacy gates; it does not establish parity for these non-school workflows.
 
 ## Release/cutover gate
 

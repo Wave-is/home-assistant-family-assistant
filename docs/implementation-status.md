@@ -11,9 +11,15 @@ Store editing, plus shared purchase metadata/help/filter/identity/replay and tas
 atomicity. A two-process upgrade from the exact published rc.6 ZIP to rc.7 passed.
 The expanded suite did not use household devices, credentials or real messages.
 
-Exact-commit CI and release/deployment are separate from these local gates. The
-new read-only household/energy module remains a different development stream;
-it is not included in rc.7. [Release scope](releases/0.2.0-rc.7.md).
+All ten [exact-commit CI jobs](https://github.com/Wave-is/home-assistant-family-assistant/actions/runs/34760567071)
+passed for `02dede051603a15a718fefc9b64fe863f6c47b95`, and the
+[rc.7 prerelease](https://github.com/Wave-is/home-assistant-family-assistant/releases/tag/0.2.0-rc.7)
+is published. HACS custom-repository installation and default-catalog acceptance
+are different: [catalog PR 10942](https://github.com/hacs/default/pull/10942)
+remains open at this checkpoint. Household configuration and physical acceptance
+are separate from these public software gates. Read-only household/energy and
+opt-in task rollover/correction remain different development streams, not rc.7
+features. [Release scope](releases/0.2.0-rc.7.md).
 
 ## Shared-shopping buyer increment — local branch, 13 September 2026
 
@@ -173,11 +179,13 @@ records 16 still-missing home/energy mapping keys. This is not a claim of full
 feature parity. Archived settings, functioning current controls, and deployed
 household behavior are separate outcomes. Interface/settings/command inventories
 and fresh exact-commit acceptance are the required evidence for further releases.
-The workflow-level source comparison additionally found missing creation report
-qualifiers, natural shopping quantities, multi-task/scoped-query grammar, reviewer
-deadlines and same-day correction integration. Daily rollover and reminder cadence
-also differ from the old implementation. The linked audit records exact semantics
-and the repair order; generic task/court support must not hide these omissions.
+The workflow-level source comparison found additional omissions. The rc.6/rc.7
+increments repair bounded creation report/deadline qualifiers, shopping quantity
+and assignment forms, numbered-task/scoped-query grammar and optional reviewer
+deadlines. Daily rollover, same-day penalty correction and day-only reminder
+cadence remain open or changed. The linked audit records current exact support
+and exclusions; neither historical missing labels nor generic task/court support
+should obscure the remaining work.
 
 | Requirement | Implementation | Verification / remaining gate |
 | --- | --- | --- |
