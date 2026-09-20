@@ -7,7 +7,7 @@
     "requests": "Exact WS type/action observed through real frontend code. Resolved/rejected describe synthetic fixture promises, not validation by Home Assistant or devices.",
     "gaps": "Source-only sites, registered handlers with empty invoked, and requests without rejected evidence need additional manual/browser/fault scenarios. Native integration links are not followed to real HA. Camera, external providers, real notifications, devices and live legacy parity are not established."
   },
-  "source_sha256": "6c8aff96470ffd9aa4251907e2ee3debe634bc774dde350ecd9a02f7f8886b34",
+  "source_sha256": "ba1e5b83d606fa95a5392d78704636507d09e1a91e3f67687c71a0e05d0747ea",
   "evidence_status": "passed",
   "modules": [
     {
@@ -1177,61 +1177,61 @@
       "id": 53,
       "file": "tests/browser/compact-cards.spec.js",
       "line": 3,
-      "title": "compact tasks card completes and reopens with checkboxes only"
+      "title": "compact tasks card lists only active tasks and completes with checkboxes only"
     },
     {
       "id": 54,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 28,
+      "line": 23,
       "title": "compact alarms card toggles alarms.enable with exact payload"
     },
     {
       "id": 55,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 52,
+      "line": 47,
       "title": "compact editor checkbox emits and removes the compact config flag"
     },
     {
       "id": 56,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 78,
+      "line": 73,
       "title": "active wake-up check forces the full alarms panel despite compact default"
     },
     {
       "id": 57,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel home_status configuration toggle preserves other modules"
+      "title": "control sweep: panel tasks configuration toggle preserves other modules"
     },
     {
       "id": 58,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel tasks configuration toggle preserves other modules"
+      "title": "control sweep: panel home_status configuration toggle preserves other modules"
     },
     {
       "id": 59,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel court configuration toggle preserves other modules"
+      "title": "control sweep: panel school configuration toggle preserves other modules"
     },
     {
       "id": 60,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel school configuration toggle preserves other modules"
+      "title": "control sweep: panel court configuration toggle preserves other modules"
     },
     {
       "id": 61,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel shopping configuration toggle preserves other modules"
+      "title": "control sweep: panel pantry configuration toggle preserves other modules"
     },
     {
       "id": 62,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel pantry configuration toggle preserves other modules"
+      "title": "control sweep: panel shopping configuration toggle preserves other modules"
     },
     {
       "id": 63,
@@ -1261,25 +1261,25 @@
       "id": 67,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel alarms configuration toggle preserves other modules"
+      "title": "control sweep: panel routines configuration toggle preserves other modules"
     },
     {
       "id": 68,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel routines configuration toggle preserves other modules"
+      "title": "control sweep: panel alarms configuration toggle preserves other modules"
     },
     {
       "id": 69,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel calendar configuration toggle preserves other modules"
+      "title": "control sweep: panel conversation configuration toggle preserves other modules"
     },
     {
       "id": 70,
       "file": "tests/browser/control-actions.spec.js",
       "line": 6,
-      "title": "control sweep: panel conversation configuration toggle preserves other modules"
+      "title": "control sweep: panel calendar configuration toggle preserves other modules"
     },
     {
       "id": 71,
@@ -1747,13 +1747,13 @@
       "id": 148,
       "file": "tests/browser/control-routine-actions.spec.js",
       "line": 96,
-      "title": "routine start detached submit cannot bypass fresh role guard"
+      "title": "routine modes detached submit cannot bypass fresh revision guard"
     },
     {
       "id": 149,
       "file": "tests/browser/control-routine-actions.spec.js",
       "line": 96,
-      "title": "routine modes detached submit cannot bypass fresh revision guard"
+      "title": "routine start detached submit cannot bypass fresh role guard"
     },
     {
       "id": 150,
@@ -1771,13 +1771,13 @@
       "id": 152,
       "file": "tests/browser/control-routine-actions.spec.js",
       "line": 96,
-      "title": "routine override detached submit cannot bypass fresh revision guard"
+      "title": "routine cancel detached submit cannot bypass fresh role guard"
     },
     {
       "id": 153,
       "file": "tests/browser/control-routine-actions.spec.js",
       "line": 96,
-      "title": "routine cancel detached submit cannot bypass fresh role guard"
+      "title": "routine override detached submit cannot bypass fresh revision guard"
     },
     {
       "id": 154,
@@ -2641,13 +2641,13 @@
       "id": 297,
       "file": "tests/browser/presence-notifications.spec.js",
       "line": 3,
-      "title": "uk mobile reviewed return-home reminders"
+      "title": "en mobile reviewed return-home reminders"
     },
     {
       "id": 298,
       "file": "tests/browser/presence-notifications.spec.js",
       "line": 3,
-      "title": "en mobile reviewed return-home reminders"
+      "title": "uk mobile reviewed return-home reminders"
     },
     {
       "id": 299,
@@ -2971,13 +2971,13 @@
       "id": 352,
       "file": "tests/browser/school-work.spec.js",
       "line": 295,
-      "title": "table_epoch change revokes a reviewed preparation before dispatch"
+      "title": "table_revision change revokes a reviewed preparation before dispatch"
     },
     {
       "id": 353,
       "file": "tests/browser/school-work.spec.js",
       "line": 295,
-      "title": "table_revision change revokes a reviewed preparation before dispatch"
+      "title": "table_epoch change revokes a reviewed preparation before dispatch"
     },
     {
       "id": 354,
@@ -3199,13 +3199,13 @@
       "id": 390,
       "file": "tests/browser/shopping-barcode.spec.js",
       "line": 69,
-      "title": "late permission cannot outlive cancel"
+      "title": "late permission cannot outlive identity"
     },
     {
       "id": 391,
       "file": "tests/browser/shopping-barcode.spec.js",
       "line": 69,
-      "title": "late permission cannot outlive identity"
+      "title": "late permission cannot outlive cancel"
     },
     {
       "id": 392,
@@ -3475,13 +3475,13 @@
       "id": 436,
       "file": "tests/browser/task-review-deadlines.spec.js",
       "line": 173,
-      "title": "private task editor child: only a parent can alter the reviewer policy"
+      "title": "private task editor owner: only a parent can alter the reviewer policy"
     },
     {
       "id": 437,
       "file": "tests/browser/task-review-deadlines.spec.js",
       "line": 173,
-      "title": "private task editor owner: only a parent can alter the reviewer policy"
+      "title": "private task editor child: only a parent can alter the reviewer policy"
     },
     {
       "id": 438,
@@ -3517,13 +3517,13 @@
       "id": 443,
       "file": "tests/browser/task-settlements.spec.js",
       "line": 21,
-      "title": "settlement en: separate consent creates, edits and disables actual policy"
+      "title": "settlement ru: separate consent creates, edits and disables actual policy"
     },
     {
       "id": 444,
       "file": "tests/browser/task-settlements.spec.js",
       "line": 21,
-      "title": "settlement ru: separate consent creates, edits and disables actual policy"
+      "title": "settlement en: separate consent creates, edits and disables actual policy"
     },
     {
       "id": 445,
@@ -5762,7 +5762,7 @@
     {
       "file": "family-assistant.js",
       "module": "shared",
-      "sha256": "d28c0bfa40e38ae8047d15607e3893fe8f7b41bb9141f816753d36b36412ff31",
+      "sha256": "ebff27c1956799fa56580b13be9db0fc26daae352b29a7a4af7dd1d4e4426c12",
       "sites": [
         {
           "line": 315,
@@ -14428,7 +14428,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         110,
@@ -14461,7 +14461,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         276
@@ -14487,7 +14487,7 @@
         }
       ],
       "registered": [
-        59
+        60
       ],
       "invoked": [],
       "trusted": [],
@@ -14510,7 +14510,7 @@
       ],
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [],
       "trusted": [],
@@ -16358,7 +16358,7 @@
       ],
       "registered": [
         142,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -16388,7 +16388,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -16417,7 +16417,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -17630,7 +17630,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -17703,7 +17703,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -22225,12 +22225,12 @@
       "invoked": [
         170,
         171,
-        390
+        391
       ],
       "trusted": [
         170,
         171,
-        390
+        391
       ],
       "views": [
         "shopping"
@@ -23144,7 +23144,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         443,
         444,
@@ -23500,7 +23500,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         443,
         444,
@@ -25390,7 +25390,7 @@
         283,
         59,
         60,
-        62,
+        61,
         73,
         84
       ],
@@ -25605,7 +25605,7 @@
       ],
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [
         102
@@ -26579,7 +26579,7 @@
         }
       ],
       "registered": [
-        149,
+        148,
         187,
         188,
         189,
@@ -27318,7 +27318,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -27834,7 +27834,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -28837,7 +28837,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         110,
@@ -28864,7 +28864,7 @@
         }
       ],
       "registered": [
-        59
+        60
       ],
       "invoked": [],
       "trusted": [],
@@ -28887,7 +28887,7 @@
       ],
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [],
       "trusted": [],
@@ -31059,19 +31059,19 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
         145,
         151,
-        152
+        153
       ],
       "trusted": [
         144,
         145,
         151,
-        152
+        153
       ],
       "views": [
         "routines"
@@ -31094,17 +31094,17 @@
       ],
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
         146,
-        153,
+        152,
         154
       ],
       "trusted": [
         146,
-        153,
+        152,
         154
       ],
       "views": [
@@ -31909,12 +31909,12 @@
       ],
       "invoked": [
         168,
-        436,
+        437,
         462
       ],
       "trusted": [
         168,
-        436,
+        437,
         462
       ],
       "views": [
@@ -32061,7 +32061,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -32096,7 +32096,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -32110,14 +32110,14 @@
         429,
         430,
         433,
-        437
+        436
       ],
       "trusted": [
         428,
         429,
         430,
         433,
-        437
+        436
       ],
       "views": [
         "tasks"
@@ -32423,7 +32423,7 @@
         }
       ],
       "registered": [
-        149,
+        148,
         187,
         188,
         189,
@@ -33192,7 +33192,7 @@
         276,
         59,
         60,
-        62
+        61
       ],
       "invoked": [
         110
@@ -34509,7 +34509,7 @@
       "registered": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -34543,7 +34543,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -34574,7 +34574,7 @@
       ],
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
@@ -34633,7 +34633,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -39640,7 +39640,7 @@
         125,
         126,
         130,
-        149,
+        148,
         157,
         163,
         164,
@@ -40373,7 +40373,7 @@
         148,
         149,
         150,
-        153,
+        152,
         154,
         158,
         160,
@@ -40645,7 +40645,7 @@
         148,
         149,
         150,
-        153,
+        152,
         154,
         158,
         160,
@@ -42004,7 +42004,6 @@
         464,
         47,
         51,
-        53,
         54,
         74,
         75,
@@ -42060,7 +42059,6 @@
         449,
         450,
         462,
-        53,
         54,
         74,
         82,
@@ -42107,7 +42105,6 @@
         449,
         450,
         462,
-        53,
         54,
         74,
         82,
@@ -43367,7 +43364,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -43472,7 +43469,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -46905,7 +46902,7 @@
         285,
         59,
         60,
-        62,
+        61,
         73,
         84
       ],
@@ -49970,7 +49967,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         110,
@@ -49989,7 +49986,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         276
@@ -50004,7 +50001,7 @@
         110,
         129,
         276,
-        60
+        59
       ],
       "invoked": [
         110,
@@ -50017,7 +50014,7 @@
       "line": 474,
       "column": 12,
       "registered": [
-        59
+        60
       ],
       "invoked": [],
       "trusted": []
@@ -50027,7 +50024,7 @@
       "line": 474,
       "column": 94,
       "registered": [
-        59
+        60
       ],
       "invoked": [],
       "trusted": []
@@ -50038,7 +50035,7 @@
       "column": 12,
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [],
       "trusted": []
@@ -50049,7 +50046,7 @@
       "column": 100,
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [],
       "trusted": []
@@ -50098,7 +50095,7 @@
         283,
         59,
         60,
-        62,
+        61,
         73,
         84
       ],
@@ -50129,7 +50126,7 @@
         283,
         59,
         60,
-        62,
+        61,
         73,
         84
       ],
@@ -50487,7 +50484,7 @@
       "column": 224,
       "registered": [
         102,
-        62
+        61
       ],
       "invoked": [
         102
@@ -50560,7 +50557,7 @@
         276,
         59,
         60,
-        62
+        61
       ],
       "invoked": [
         110,
@@ -52099,7 +52096,7 @@
       "line": 196,
       "column": 10,
       "registered": [
-        149,
+        148,
         187,
         188,
         189,
@@ -52779,7 +52776,7 @@
       "line": 254,
       "column": 3,
       "registered": [
-        149,
+        148,
         187,
         188,
         189,
@@ -60573,12 +60570,12 @@
       "invoked": [
         141,
         147,
-        149
+        148
       ],
       "trusted": [
         141,
         147,
-        149
+        148
       ]
     },
     {
@@ -60588,7 +60585,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -60604,7 +60601,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -60620,7 +60617,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -60636,7 +60633,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -60666,7 +60663,7 @@
       "registered": [
         141,
         147,
-        149
+        148
       ],
       "invoked": [
         141
@@ -61467,13 +61464,13 @@
       "invoked": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "trusted": [
         142,
         143,
-        148,
+        149,
         150
       ]
     },
@@ -61484,7 +61481,7 @@
       "registered": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -61611,7 +61608,7 @@
       "column": 15,
       "registered": [
         142,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -61626,7 +61623,7 @@
       "registered": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -61645,7 +61642,7 @@
       "registered": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -61676,7 +61673,7 @@
       "registered": [
         142,
         143,
-        148,
+        149,
         150
       ],
       "invoked": [
@@ -61730,7 +61727,7 @@
         144,
         145,
         151,
-        152,
+        153,
         334,
         335,
         337
@@ -61739,7 +61736,7 @@
         144,
         145,
         151,
-        152,
+        153,
         334,
         337
       ]
@@ -61789,13 +61786,13 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "trusted": [
         144,
         145,
         151,
-        152
+        153
       ]
     },
     {
@@ -61806,19 +61803,19 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
         145,
         151,
-        152
+        153
       ],
       "trusted": [
         144,
         145,
         151,
-        152
+        153
       ]
     },
     {
@@ -61829,7 +61826,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -61845,19 +61842,19 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
         145,
         151,
-        152
+        153
       ],
       "trusted": [
         144,
         145,
         151,
-        152
+        153
       ]
     },
     {
@@ -61868,7 +61865,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -61887,7 +61884,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -61917,7 +61914,7 @@
         144,
         145,
         151,
-        152
+        153
       ],
       "invoked": [
         144,
@@ -61984,12 +61981,12 @@
       ],
       "invoked": [
         146,
-        153,
+        152,
         154
       ],
       "trusted": [
         146,
-        153,
+        152,
         154
       ]
     },
@@ -61999,17 +61996,17 @@
       "column": 18,
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
         146,
-        153,
+        152,
         154
       ],
       "trusted": [
         146,
-        153,
+        152,
         154
       ]
     },
@@ -62019,17 +62016,17 @@
       "column": 18,
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
         146,
-        153,
+        152,
         154
       ],
       "trusted": [
         146,
-        153,
+        152,
         154
       ]
     },
@@ -62039,7 +62036,7 @@
       "column": 25,
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
@@ -62055,7 +62052,7 @@
       "column": 13,
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
@@ -62085,7 +62082,7 @@
       "column": 17,
       "registered": [
         146,
-        153,
+        152,
         154
       ],
       "invoked": [
@@ -64637,7 +64634,7 @@
         387,
         388,
         39,
-        390,
+        391,
         394,
         396,
         397
@@ -64649,7 +64646,7 @@
         387,
         388,
         39,
-        390,
+        391,
         394,
         396,
         397
@@ -64918,12 +64915,12 @@
       "invoked": [
         170,
         171,
-        390
+        391
       ],
       "trusted": [
         170,
         171,
-        390
+        391
       ]
     },
     {
@@ -64933,7 +64930,7 @@
       "registered": [
         170,
         171,
-        390
+        391
       ],
       "invoked": [],
       "trusted": []
@@ -66218,7 +66215,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -67028,7 +67025,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -68595,7 +68592,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         443,
         444,
@@ -68984,7 +68981,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         443,
         444,
@@ -69215,12 +69212,12 @@
       ],
       "invoked": [
         168,
-        436,
+        437,
         462
       ],
       "trusted": [
         168,
-        436,
+        437,
         462
       ]
     },
@@ -69235,7 +69232,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -69364,7 +69361,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -69387,7 +69384,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -69401,14 +69398,14 @@
         429,
         430,
         433,
-        437
+        436
       ],
       "trusted": [
         428,
         429,
         430,
         433,
-        437
+        436
       ]
     },
     {
@@ -69452,7 +69449,7 @@
         430,
         431,
         433,
-        437,
+        436,
         443,
         444,
         445,
@@ -70374,7 +70371,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -71156,7 +71153,7 @@
         432,
         433,
         434,
-        437,
+        436,
         438,
         439,
         441,
@@ -72830,16 +72827,6 @@
         432,
         447
       ]
-    },
-    {
-      "id": "family_assistant/execute:tasks.reopen",
-      "attempted": [
-        53
-      ],
-      "resolved": [
-        53
-      ],
-      "rejected": []
     },
     {
       "id": "family_assistant/execute:tasks.report_media_purge",

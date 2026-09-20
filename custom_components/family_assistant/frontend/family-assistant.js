@@ -519,8 +519,8 @@ export class FamilyCard extends HTMLElement {
   renderCompact(body) {
     const list=el("ul",null,"compact-list");body.append(list);
     if(this._view==="tasks"){
-      const items=(this._data.tasks||[]).filter(item=>!["cancelled","archived"].includes(item.status))
-        .slice().sort((a,b)=>Number(a.status==="completed")-Number(b.status==="completed")||String(a.due_at||"").localeCompare(String(b.due_at||"")));
+      const items=(this._data.tasks||[]).filter(item=>!["completed","cancelled","archived"].includes(item.status))
+        .slice().sort((a,b)=>String(a.due_at||"").localeCompare(String(b.due_at||"")));
       if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
       for(const item of items)this.renderCompactTask(list,item);
     } else {

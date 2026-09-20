@@ -1,27 +1,22 @@
 import {test,expect} from "./control-audit.js";
 
-test("compact tasks card completes and reopens with checkboxes only",async({page})=>{
+test("compact tasks card lists only active tasks and completes with checkboxes only",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/tests/fixtures/dashboard.html?view=tasks&compact=1");
   const card=page.locator("family-assistant-card");
   await expect(card.locator(".compact-list")).toBeVisible();
   expect(await card.getByRole("button").count()).toBe(0);
   const rows=card.locator(".compact-row");
-  await expect(rows).toHaveCount(2);
-  expect(await rows.locator(".compact-title").allTextContents()).toEqual(["Water the plants","Read the chapter"]);
-  expect(await rows.locator("input[type=checkbox]").nth(0).isChecked()).toBe(false);
-  expect(await rows.locator("input[type=checkbox]").nth(1).isChecked()).toBe(true);
-  await rows.nth(0).locator("input[type=checkbox]").check();
+  await expect(rows).toHaveCount(1);
+  expect(await rows.locator(".compact-title").textContent()).toBe("Water the plants");
+  expect(await rows.locator("input[type=checkbox]").isChecked()).toBe(false);
+  await rows.locator("input[type=checkbox]").click();
   let calls=await page.evaluate(()=>window.calls);
   expect(calls).toHaveLength(1);
   expect(calls[0].action).toBe("tasks.complete");
   expect(calls[0].payload).toEqual({id:"T000001",revision:1});
-  const completed=card.locator(".compact-row").filter({hasText:"Water the plants"});
-  await completed.locator("input[type=checkbox]").uncheck();
-  calls=await page.evaluate(()=>window.calls);
-  expect(calls).toHaveLength(2);
-  expect(calls[1].action).toBe("tasks.reopen");
-  expect(calls[1].payload).toEqual({id:"T000001",revision:2});
+  await expect(card.locator(".compact-row")).toHaveCount(0);
+  await expect(card.locator(".body .empty")).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 

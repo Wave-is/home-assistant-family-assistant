@@ -33,6 +33,19 @@ function state() {
 }
 async function cardFor(view, extra = {}) {
   const calls = [];
+  const data = state();
+  const apply = message => {
+    if (message.action === "alarms.enable") {
+      const alarm = data.alarms.find(item => item.id === message.payload.id);
+      if (alarm && alarm.revision === message.payload.revision) {alarm.enabled = message.payload.enabled; alarm.revision += 1;}
+      return;
+    }
+    const task = data.tasks.find(item => item.id === message.payload.id);
+    if (!task || task.revision !== message.payload.revision) throw new Error("revision_conflict");
+    if (message.action === "tasks.complete") task.status = "completed";
+    if (message.action === "tasks.reopen") task.status = "assigned";
+    task.revision += 1;
+  };
   const card = document.createElement("family-assistant-card");
   card.setConfig({entry_id: "example", view, ...extra});
   document.body.append(card);
@@ -40,8 +53,8 @@ async function cardFor(view, extra = {}) {
     user: {id: "example-owner"}, language: "en",
     callWS: async message => {
       calls.push(clone(message));
-      if (message.type === "family_assistant/view") return clone(state());
-      if (message.type === "family_assistant/execute") return {};
+      if (message.type === "family_assistant/view") return clone(data);
+      if (message.type === "family_assistant/execute") {apply(message); return {};}
       throw new Error("Unexpected endpoint");
     },
   };
@@ -50,21 +63,21 @@ async function cardFor(view, extra = {}) {
 }
 afterEach(() => document.body.replaceChildren());
 
-test("compact tasks card renders checkboxes only, open tasks first by due date", async () => {
+test("compact tasks card renders only active tasks, open tasks first by due date", async () => {
   const {card} = await cardFor("tasks");
   const root = card.shadowRoot;
   assert.equal(root.querySelector(".compact-list"), root.querySelector(".body .compact-list"));
   const titles = [...root.querySelectorAll(".compact-title")].map(node => node.textContent);
-  assert.deepEqual(titles, ["Clean desk", "Water plants", "Read chapter"]);
+  assert.deepEqual(titles, ["Clean desk", "Water plants"]);
   assert.equal(root.querySelectorAll("button").length, 0);
   const boxes = [...root.querySelectorAll(".compact-row input[type=checkbox]")];
-  assert.deepEqual(boxes.map(box => box.checked), [false, false, true]);
-  assert.ok(root.querySelectorAll(".compact-row")[2].classList.contains("done"));
+  assert.deepEqual(boxes.map(box => box.checked), [false, false]);
+  assert.equal(root.querySelector(".compact-row.done"), null);
   assert.match(root.querySelector(".compact-row .compact-meta").textContent, /Child Alpha · 2026-09-20/);
   assert.equal(card.getCardSize(), 4);
 });
 
-test("compact task checkbox sends tasks.complete and tasks.reopen with exact payloads", async () => {
+test("compact task checkbox sends tasks.complete with the exact payload and the task leaves the list", async () => {
   const {card, calls} = await cardFor("tasks", {compact: true});
   const box = card.shadowRoot.querySelector(".compact-row input[type=checkbox]");
   box.checked = true;
@@ -74,14 +87,9 @@ test("compact task checkbox sends tasks.complete and tasks.reopen with exact pay
   assert.deepEqual(complete.payload, {id: "T3", revision: 1});
   assert.equal(complete.entry_id, "example");
   assert.ok(complete.operation_id);
-  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 3 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
-  const doneRow = [...card.shadowRoot.querySelectorAll(".compact-row")].find(row => row.querySelector(".compact-title").textContent === "Read chapter");
-  const doneBox = doneRow.querySelector("input[type=checkbox]");
-  assert.equal(doneBox.checked, true);
-  doneBox.checked = false;
-  doneBox.dispatchEvent(new dom.window.Event("change"));
-  await waitFor(() => calls.some(item => item.type === "family_assistant/execute" && item.action === "tasks.reopen"));
-  assert.deepEqual(calls.find(item => item.action === "tasks.reopen").payload, {id: "T2", revision: 1});
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  const titles = [...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent);
+  assert.deepEqual(titles, ["Water plants"]);
 });
 
 test("compact alarms card toggles alarms.enable per checkbox without buttons", async () => {
