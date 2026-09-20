@@ -303,7 +303,9 @@ class PhotoReports:
                 return
             stored.update(status="failed" if code else "complete", finished_at=ctx.now.isoformat())
             text = (
-                COPY[job["language"]]["error"].format(error=ERRORS[job["language"]].get(code, code))
+                COPY[job["language"]]["error"].format(
+                    error=ERRORS[job["language"]].get(code, code).rstrip(".!?")
+                )
                 if code
                 else COPY_REPORT[job["language"]]["done"].format(id=job["task_id"])
             )

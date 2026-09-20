@@ -476,7 +476,7 @@ class TelegramManager:
                         cancelled = code == "forbidden"
                         diagnostic_code = code
                         response = COPY[job["language"]]["error"].format(
-                            error=ERRORS[job["language"]].get(code, code)
+                            error=ERRORS[job["language"]].get(code, code).rstrip(".!?")
                         )
                     finally:
                         if typing_task is not None:
@@ -716,7 +716,7 @@ class TelegramManager:
                         raise
                     # Codes are bounded and translatable; never echo raw provider errors.
                     response = t["error"].format(
-                        error=ERRORS.get(language, ERRORS["en"]).get(code, code)
+                        error=ERRORS.get(language, ERRORS["en"]).get(code, code).rstrip(".!?")
                     )
                 if response:
                     command_guard(engine.snapshot())

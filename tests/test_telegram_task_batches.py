@@ -345,7 +345,7 @@ async def test_manager_invalid_count_is_localized_without_model_job(manager_modu
     replies = [event for event in state["outbox"].values() if event["key"] == "telegram_reply"]
     assert len(replies) == 1
     assert replies[0]["data"]["text"] == COPY[language]["error"].format(
-        error=ERRORS[language]["invalid_field"]
+        error=ERRORS[language]["invalid_field"].rstrip(".!?")
     )
     assert not state["tasks"] and not state["telegram"].get("plans") and not state["assistant_jobs"]
     assert client.calls == []

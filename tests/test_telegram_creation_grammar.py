@@ -295,7 +295,7 @@ async def test_manager_reports_localized_invalid_qualifier_without_jobs(manager_
     replies = [event for event in state["outbox"].values() if event["key"] == "telegram_reply"]
     assert len(replies) == 1
     assert replies[0]["data"]["text"] == COPY[language]["error"].format(
-        error=ERRORS[language]["invalid_field"]
+        error=ERRORS[language]["invalid_field"].rstrip(".!?")
     )
     assert not state["tasks"] and not state["assistant_jobs"]
     assert client.calls == []
