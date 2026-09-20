@@ -40,7 +40,7 @@ test("late prior-generation command must not clear the newer write lock", async 
 
 function make(overrides = {}) {
   const card = document.createElement("family-tasks-card");
-  card.setConfig({entry_id: "demo", language: "en", ...overrides.config});
+  card.setConfig({entry_id: "demo", language: "en", compact: false, ...overrides.config});
   card._hass = {
     language: "en",
     config: {time_zone: "Pacific/Honolulu"},

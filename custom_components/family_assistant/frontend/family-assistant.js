@@ -297,7 +297,7 @@ export class FamilyCard extends HTMLElement {
   }
   get t() { return COPY[this._config?.language || this._hass?.language?.split("-")[0]] || COPY.en; }
   get parent() { return ["owner","parent"].includes(this._data?.role); }
-  getCardSize() { return this._config?.compact ? 4 : 5; }
+  getCardSize() { return this._config?.compact!==false&&["tasks","alarms"].includes(this._view)?4:5; }
   getGridOptions() { return {columns:12, rows:"auto", min_columns:6}; }
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
@@ -478,7 +478,7 @@ export class FamilyCard extends HTMLElement {
       renderRecipes(this,body);return;
     }
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
-    if(this._config?.compact && (this._view==="tasks"||this._view==="alarms")){this.renderCompact(body);return;}
+    if(this._config?.compact!==false&&(this._view==="tasks"||this._view==="alarms")&&!this._data.alarm_runs?.some(run=>inMemberContext(this,run.member)&&["first","waiting_second","second"].includes(run.stage))){this.renderCompact(body);return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="court"){renderCourt(this,body);renderRewards(this,body);return;}
@@ -741,9 +741,9 @@ class FamilyEditor extends HTMLElement {
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
-    const compactBox=el("input");compactBox.type="checkbox";compactBox.checked=this._config?.compact===true;
+    const compactBox=el("input");compactBox.type="checkbox";compactBox.checked=this._config?.compact!==false;
     const compactWrap=el("label",null,"check");compactWrap.append(compactBox,el("span",t.compact));form.append(compactWrap);
-    compactBox.addEventListener("change",()=>{const config={...this._config};if(compactBox.checked)config.compact=true;else delete config.compact;this._config=config;this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
+    compactBox.addEventListener("change",()=>{const config={...this._config};if(compactBox.checked)delete config.compact;else config.compact=false;this._config=config;this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
   }
 }
 if(!customElements.get("family-assistant-card-editor"))customElements.define("family-assistant-card-editor",FamilyEditor);

@@ -514,7 +514,7 @@ export class FamilyAssistantPanel extends HTMLElement {
   }
   renderWorkspace(view) {
     const host=el("div",null,"panel-workspace");host.addEventListener("input",()=>{this._workspaceDirty=true;});host.addEventListener("change",()=>{this._workspaceDirty=true;});
-    const config={type:"custom:family-assistant-card",entry_id:this._entry,view,...(this._workspaceMember?{member_id:this._workspaceMember.id,...(view==="school"?{school_section:this._workspaceSchoolSection||"all"}:{})}:{})};
+    const config={type:"custom:family-assistant-card",entry_id:this._entry,view,compact:false,...(this._workspaceMember?{member_id:this._workspaceMember.id,...(view==="school"?{school_section:this._workspaceSchoolSection||"all"}:{})}:{})};
     const mount=()=>{
       if(!host.isConnected||!this._hass||!this._entry)return;
       const card=document.createElement("family-assistant-card");card.setConfig(config);card.hass=this._hass;this._embedded=card;host.replaceChildren(card);

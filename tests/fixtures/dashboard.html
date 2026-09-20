@@ -17,7 +17,7 @@ shopping:[{id:"S000001",name:{en:"Apples",ru:"Яблоки",uk:"Яблука"}[l
 tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растения",uk:"Полити рослини"}[language],assignee:"child",status:"assigned",due_at:"2026-09-10T17:00:00Z",revision:1}],
 court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
 data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
-if(query.has("compact")&&view==="tasks")data.tasks.push({id:"T000003",title:{en:"Read the chapter",ru:"Прочитать главу",uk:"Прочитати розділ"}[language],assignee:"child",status:"completed",due_at:null,revision:1,report:"Done"});
+if(query.get("compact")==="1"&&view==="tasks")data.tasks.push({id:"T000003",title:{en:"Read the chapter",ru:"Прочитать главу",uk:"Прочитати розділ"}[language],assignee:"child",status:"completed",due_at:null,revision:1,report:"Done"});
 data.shopping_series=[];
 data.members[0].role="owner";data.members[1].role="child";
 data.members.forEach(member=>member.revision=1);
@@ -45,7 +45,7 @@ if(view==="calendar"){
 }
 window.calls=[];window.shoppingOperations=new Map();window.fixture=data;
 data.shopping.forEach(item=>item.creator="owner");
-const card=document.createElement("family-assistant-card");window.card=card;card.setConfig({view,entry_id:"synthetic",...(query.has("compact")?{compact:true}:{})});
+const card=document.createElement("family-assistant-card");window.card=card;const compactParam=query.get("compact");card.setConfig({view,entry_id:"synthetic",...(compactParam==="1"?{compact:true}:compactParam==="0"?{compact:false}:{})});
 if(view==="mikrotik"){data.network.writable=query.has("write");data.network.plans=[];data.network.inventory.devices[0].leases=[{".id":"*1",address:"198.51.100.10",server:"lan",dynamic:"true",status:"bound",comment:"Existing comment"}];}
 if(query.has("kids")){data.settings.timezone="UTC";data.members[0].role="owner";data.members[1].role="child";data.kid_control={can_manage:data.role!=="child",writable:true,observed_at:"2026-09-06T08:00:00Z",plans:[],profiles:[{member:"child",name:"Child profile",device_names:["Phone"],observed:{disabled:"false",paused:"false",...Object.fromEntries(["mon","tue","wed","thu","fri","sat","sun"].map(d=>[d,"08:00-22:00"]))}}]};}
 if(query.has("kidadoption")){

@@ -51,7 +51,9 @@ test("compact alarms card toggles alarms.enable with exact payload",async({page}
 
 test("compact editor checkbox emits and removes the compact config flag",async({page})=>{
   await page.goto("/tests/fixtures/dashboard.html?view=tasks");
-  await expect(page.locator("family-assistant-card")).toBeVisible();
+  const card=page.locator("family-assistant-card");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".compact-list")).toBeVisible();
   await page.evaluate(()=>{
     window.editorCalls=[];window.configChanges=[];const editor=document.createElement("family-assistant-card-editor");window.editor=editor;
     editor.setConfig({type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title"});
@@ -60,15 +62,23 @@ test("compact editor checkbox emits and removes the compact config flag",async({
   });
   const editor=page.locator("family-assistant-card-editor");
   const compact=editor.locator("label.check",{hasText:"Compact checklist view"}).locator("input[type=checkbox]");
-  expect(await compact.isChecked()).toBe(false);
-  await compact.check();
-  let changes=await page.evaluate(()=>window.configChanges);
-  expect(changes).toEqual([{type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title",compact:true}]);
+  expect(await compact.isChecked()).toBe(true);
   await compact.uncheck();
+  let changes=await page.evaluate(()=>window.configChanges);
+  expect(changes).toEqual([{type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title",compact:false}]);
+  await compact.check();
   changes=await page.evaluate(()=>window.configChanges);
   expect(changes).toEqual([
-    {type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title",compact:true},
+    {type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title",compact:false},
     {type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title"},
   ]);
   expect(await page.evaluate(()=>window.calls)).toEqual([]);
+});
+
+test("active wake-up check forces the full alarms panel despite compact default",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=alarms&ringing=1&compact=1");
+  const card=page.locator("family-assistant-card");
+  expect(await card.locator(".compact-list").count()).toBe(0);
+  await expect(card.getByRole("button",{name:"Stop this wake-up check",exact:true})).toBeVisible();
 });

@@ -237,7 +237,7 @@ test("child can answer only their fresh wake-up check",async({page})=>{
 });
 
 test("physical test has an explicit second step",async({page})=>{
- await page.goto("/tests/fixtures/dashboard.html?view=alarms&lang=en");
+ await page.goto("/tests/fixtures/dashboard.html?view=alarms&lang=en&compact=0");
  await page.getByRole("button",{name:"Test without penalties",exact:true}).click();
  expect(await page.evaluate(()=>window.calls.length)).toBe(0);
  await expect(page.getByText("This test starts the selected siren in strict mode. No penalty will be issued.")).toBeVisible();
@@ -259,7 +259,7 @@ test("notification retry requires consent and a reason",async({page})=>{
 
 test("parent creates a rotating duty using the Russian mobile form",async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru");
+ await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&compact=0");
  await page.getByRole("button",{name:"Добавить регулярную задачу",exact:true}).click();
  await page.getByLabel("Название задачи",{exact:true}).fill("Проверить растения");
  await page.locator('input[name="assignees"][value="child"]').check();
@@ -283,7 +283,7 @@ test("parent creates a rotating duty using the Russian mobile form",async({page}
 });
 
 test("child cannot create a recurring family duty",async({page})=>{
- await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=en&role=child");
+ await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=en&role=child&compact=0");
  await expect(page.getByRole("button",{name:"Add recurring task",exact:true})).toHaveCount(0);
 });
 

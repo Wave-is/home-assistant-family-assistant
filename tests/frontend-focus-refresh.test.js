@@ -112,6 +112,7 @@ async function setup(
     type: `custom:${type}`,
     entry_id: "synthetic-focus",
     language: "en",
+    compact: false,
   });
   document.body.append(card);
   t.after(() => card.remove());

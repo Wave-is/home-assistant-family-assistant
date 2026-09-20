@@ -418,7 +418,7 @@
     };
 
     const card = document.createElement("family-assistant-card");
-    card.setConfig({ view: "tasks", entry_id: "synthetic", language });
+    card.setConfig({ view: "tasks", entry_id: "synthetic", language, compact: false });
     card.hass = makeHass(initialActor);
     document.querySelector("main").append(card);
     window.card = card;
@@ -428,7 +428,7 @@
       await card.refresh();
     };
     window.setEntry = async (entryId) => {
-      card.setConfig({ view: "tasks", entry_id: entryId, language });
+      card.setConfig({ view: "tasks", entry_id: entryId, language, compact: false });
       card.hass = makeHass(initialActor);
       await new Promise((resolve) => setTimeout(resolve));
     };

@@ -161,7 +161,7 @@ test("secondary controls: failed household discovery Retry shows authorized choi
 });
 
 test("secondary controls: task edit, requested-changes note and stale draft dismiss never write",async({page})=>{
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1");const item=page.locator("family-assistant-card .body > ul.list > li.item").first();
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1&compact=0");const item=page.locator("family-assistant-card .body > ul.list > li.item").first();
   await item.getByRole("button",{name:"Edit task",exact:true}).click();await item.locator('[name="title"]').fill("Discard synthetic task rename");await item.getByRole("button",{name:"Cancel",exact:true}).click();
   expect(await page.evaluate(()=>window.fixture.tasks[0].title)).toBe("Water the plants");
   await item.getByRole("button",{name:"Edit task",exact:true}).click();

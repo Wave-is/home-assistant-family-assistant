@@ -51,7 +51,7 @@ async function cardFor(view, extra = {}) {
 afterEach(() => document.body.replaceChildren());
 
 test("compact tasks card renders checkboxes only, open tasks first by due date", async () => {
-  const {card} = await cardFor("tasks", {compact: true});
+  const {card} = await cardFor("tasks");
   const root = card.shadowRoot;
   assert.equal(root.querySelector(".compact-list"), root.querySelector(".body .compact-list"));
   const titles = [...root.querySelectorAll(".compact-title")].map(node => node.textContent);
@@ -111,7 +111,7 @@ test("compact alarms card toggles alarms.enable per checkbox without buttons", a
 });
 
 test("non-compact cards keep the full panel and card size", async () => {
-  const {card} = await cardFor("tasks");
+  const {card} = await cardFor("tasks", {compact: false});
   assert.equal(card.shadowRoot.querySelector(".compact-list"), null);
   assert.equal(card.getCardSize(), 5);
 });
@@ -127,12 +127,12 @@ test("Lovelace editor compact checkbox emits exact config changes", async () => 
   const label = [...editor.shadowRoot.querySelectorAll("label.check")].find(item => /Compact checklist view/.test(item.textContent));
   assert.ok(label, "compact editor checkbox is missing");
   const box = label.querySelector("input[type=checkbox]");
-  assert.equal(box.checked, false);
-  box.checked = true;
-  box.dispatchEvent(new dom.window.Event("change"));
-  assert.equal(emitted.compact, true);
-  assert.equal(emitted.type, "custom:family-tasks-card");
+  assert.equal(box.checked, true);
   box.checked = false;
+  box.dispatchEvent(new dom.window.Event("change"));
+  assert.equal(emitted.compact, false);
+  assert.equal(emitted.type, "custom:family-tasks-card");
+  box.checked = true;
   box.dispatchEvent(new dom.window.Event("change"));
   assert.equal("compact" in emitted, false);
 });

@@ -16,7 +16,7 @@ const fixture={revision:1,actor:"owner",actor_revision:1,role:"owner",
 if(query.get("role")==="child"){fixture.actor="first";fixture.role="child";}
 window.fixture=fixture;window.calls=[];const receipts=new Map();
 const card=document.createElement("family-tasks-card");window.card=card;
-card.setConfig({entry_id:"synthetic-multi",view:"tasks",language});
+card.setConfig({entry_id:"synthetic-multi",view:"tasks",language,compact:false});
 card.hass={language,user:{id:"synthetic-multi-user"},config:{time_zone:"Pacific/Honolulu"},callWS:async message=>{
  if(message.type.endsWith("/households"))return [{entry_id:"synthetic-multi",title:"Synthetic household"}];
  if(message.type.endsWith("/view"))return structuredClone(fixture);

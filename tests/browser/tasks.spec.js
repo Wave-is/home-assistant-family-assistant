@@ -6,7 +6,7 @@ for(const [language,title,more] of [
   ["uk","Попередні звіти","Показати давніші звіти"],
 ])test(`text report history ${language}: parent paging and role revocation`,async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${language}&taskedit=1`);
+  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${language}&taskedit=1&compact=0`);
   await expect(page.locator(".body > ul.list > li.item").first()).toBeVisible();
   await page.evaluate(()=>{
     const card=document.querySelector("family-assistant-card"),task=card._data.tasks[0];
@@ -30,7 +30,7 @@ for(const [lang,label,add,save,done,report] of [
   ["uk","Особисте нагадування — лише для мене","Додати","Зберегти","Підтвердити виконання","Здати звіт"],
 ])test(`personal reminder ${lang}: own-only draft, no report, self completion`,async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${lang}&taskedit=1&role=child`);
+  await page.goto(`/tests/fixtures/dashboard.html?view=tasks&lang=${lang}&taskedit=1&role=child&compact=0`);
   await page.getByRole("button",{name:add,exact:true}).click();
   const form=page.locator("form[data-task-create]");
   await form.locator('input[name="title"]').fill("My private appointment");
@@ -51,7 +51,7 @@ for(const [lang,label,add,save,done,report] of [
 
 test("Russian task editor preserves failed payload, clears deadline and retains progress",async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&taskedit=1");
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&taskedit=1&compact=0");
   const item=page.locator(".body > ul.list > li.item").first();
   await item.getByRole("checkbox").check();
   await item.getByRole("button",{name:"Начать",exact:true}).click();
@@ -78,7 +78,7 @@ test("Russian task editor preserves failed payload, clears deadline and retains 
 
 test("Ukrainian task report goes through review and parent can request changes",async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=uk&taskedit=1&role=child");
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=uk&taskedit=1&role=child&compact=0");
   const item=page.locator(".body > ul.list > li.item").first();
   await item.getByRole("button",{name:"Здати звіт",exact:true}).click();
   await item.getByLabel("Звіт",{exact:true}).fill("Полито всі рослини");
@@ -100,7 +100,7 @@ test("Ukrainian task report goes through review and parent can request changes",
 
 test("new deadline uses household zone and ambiguous time is chosen explicitly",async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&taskedit=1");
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&lang=ru&taskedit=1&compact=0");
   await page.getByRole("button",{name:"Добавить",exact:true}).click();
   const form=page.locator("form[data-task-create]");
   await form.getByLabel("Что нужно сделать?",{exact:true}).fill("Собрать портфель");

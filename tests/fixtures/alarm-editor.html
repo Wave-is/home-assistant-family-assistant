@@ -78,7 +78,7 @@
 
       const card = window.card = document.createElement("family-alarms-card");
       document.querySelector("main").append(card);
-      card.setConfig({ type: "custom:family-alarms-card", entry_id: "synthetic-alarm-editor", language });
+      card.setConfig({ type: "custom:family-alarms-card", entry_id: "synthetic-alarm-editor", language, compact: false });
       card.hass = {
         language,
         config: { time_zone: "Europe/Kyiv" },

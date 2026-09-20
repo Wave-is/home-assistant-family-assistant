@@ -8,7 +8,7 @@ const {PERSONAL_TASK_COPY}=await import("../custom_components/family_assistant/f
 await import("../custom_components/family_assistant/frontend/family-assistant.js");
 const tick=()=>new Promise(r=>setTimeout(r,0));
 function make(){
-  const card=document.createElement("family-tasks-card");card.setConfig({entry_id:"demo",language:"en"});
+  const card=document.createElement("family-tasks-card");card.setConfig({entry_id:"demo",language:"en",compact:false});
   card._hass={language:"en",config:{time_zone:"Pacific/Honolulu"}};
   card._data={actor:"parent",role:"parent",settings:{name:"Demo",timezone:"Europe/Berlin",modules:["tasks"]},
     tasks:[],members:[{id:"parent",name:"Parent",active:true,role:"parent",revision:1},{id:"child",name:"Child",active:true,role:"child",revision:1},{id:"guest",name:"Guest",active:true,role:"guest",revision:1}]};

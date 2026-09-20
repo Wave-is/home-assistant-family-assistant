@@ -13,7 +13,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
 function make({role = "parent", language = "en", task = null} = {}) {
   const card = document.createElement("family-tasks-card");
-  card.setConfig({entry_id: "synthetic", language});
+  card.setConfig({entry_id: "synthetic", language, compact: false});
   card._hass = {language, config: {time_zone: "UTC"}, user: {id: "test-user"}};
   card._data = {
     actor: role === "child" ? "child" : "parent", role,

@@ -36,7 +36,7 @@ test("source controls: unavailable recurring assignee is removed only from the u
 });
 
 test("source controls: Lovelace editor emits exact local config changes and only reads authorized households",async({page})=>{
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks");await expect(page.locator("family-assistant-card")).toBeVisible();
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&compact=0");await expect(page.locator("family-assistant-card")).toBeVisible();
   await page.evaluate(()=>{
     window.editorCalls=[];window.configChanges=[];const editor=document.createElement("family-assistant-card-editor");window.editor=editor;
     editor.setConfig({type:"custom:family-tasks-card",entry_id:"first",title:"Initial synthetic title",member_id:"child"});

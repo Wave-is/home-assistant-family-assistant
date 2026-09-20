@@ -124,8 +124,8 @@ inventory remains available for review.
 
 ## Limits
 
-Final bounded audit snapshot: **468/468 Chromium scenarios passed** (65 suites,
-2.5 minutes, 2 workers). The manifest contains 88 files and 1,230 conservative
+Final bounded audit snapshot: **469/469 Chromium scenarios passed** (65 suites,
+2.6 minutes, 2 workers). The manifest contains 88 files and 1,230 conservative
 source sites; 576 registered handler groups, of which 479 were invoked and 439
 received trusted events. The 97 uninvoked groups remain explicit: three click,
 zero submit, 51 input, 42 change and one keydown. Another 663 source lines have

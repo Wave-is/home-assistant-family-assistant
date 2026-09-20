@@ -149,7 +149,7 @@ async function setup(t, { role = "parent", actor = "parent_1", language = "en", 
 
   const card = document.createElement(real ? "family-tasks-card" : "family-assistant-card");
   assert.ok(card instanceof FamilyCard);
-  card._config = { language };
+  card._config = { language, compact: false };
   card._entry = "entry-test-1";
   card._generation = 1;
   card._data = state;

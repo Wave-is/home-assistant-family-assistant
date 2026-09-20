@@ -111,7 +111,7 @@ function apply(working, action, payload) {
 }
 const card = document.createElement("family-assistant-card");
 window.card = card;
-card.setConfig({entry_id: "synthetic-reviews", view: "tasks", language});
+card.setConfig({entry_id: "synthetic-reviews", view: "tasks", language, compact: false});
 card.hass = {
   language, user: {id: "synthetic-review-user"}, config: {time_zone: "UTC"},
   callWS: async message => {

@@ -22,7 +22,7 @@ const fixture={revision:1,actor:"owner",actor_revision:1,role:"owner",
  ...Array.from({length:22},(_,index)=>task(`T${String(index+7).padStart(6,"0")}`,`Synthetic chore ${index+7}`))],health:{},delivery_issues:[]};
 if(query.get("role")==="child"){fixture.actor="child";fixture.role="child";}
 window.fixture=fixture;window.calls=[];const receipts=new Map();
-const card=document.createElement("family-tasks-card");window.card=card;card.setConfig({view:"tasks",entry_id:"synthetic-batch",language});
+const card=document.createElement("family-tasks-card");window.card=card;card.setConfig({view:"tasks",entry_id:"synthetic-batch",language,compact:false});
 card.hass={language,user:{id:"synthetic-parent-user"},config:{time_zone:"Europe/Kyiv"},callWS:async message=>{
  if(message.type.endsWith("/households"))return [{entry_id:"synthetic-batch",title:"Synthetic household"}];
  if(message.type.endsWith("/view"))return structuredClone(fixture);

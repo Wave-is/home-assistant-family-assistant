@@ -58,7 +58,7 @@ function apply(tasks, action, payload) {
   item.revision++; return item;
 }
 const card = window.card = document.createElement("family-assistant-card");
-card.setConfig({entry_id:"synthetic-settlements",view:"tasks",language});
+card.setConfig({entry_id:"synthetic-settlements",view:"tasks",language,compact:false});
 card.hass = {language,user:{id:"synthetic-settlement-user"},config:{time_zone:"UTC"},callWS:async message => {
   if (message.type.endsWith("/households")) return [{entry_id:"synthetic-settlements",title:"Synthetic family"}];
   if (message.type.endsWith("/view")) return structuredClone(fixture);

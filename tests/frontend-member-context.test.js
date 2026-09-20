@@ -33,7 +33,7 @@ test("reminder subsection has only selected child and identified signed-in recip
   const {card}=await cardFor("school","child-b",state(),{school_section:"reminders"});assert.equal(card.shadowRoot.querySelectorAll(".school-work,.school-section").length,0);assert.equal(card.shadowRoot.querySelector('[data-school-reminder-member]').dataset.schoolReminderMember,"child-b");assert.match(card.shadowRoot.textContent,/Example Owner/);
 });
 test("alarms list, runs and create selector remain within selected member",async()=>{
-  const {card}=await cardFor("alarms");assert.match(card.shadowRoot.textContent,/Wake child-a/);assert.doesNotMatch(card.shadowRoot.textContent,/Wake child-b|Child Bravo/);assert.equal(openAlarmEditor(card),true);assert.deepEqual([...card.shadowRoot.querySelector('[name="member"]').options].map(option=>option.value),["child-a"]);
+  const {card}=await cardFor("alarms","child-a",state(),{compact:false});assert.match(card.shadowRoot.textContent,/Wake child-a/);assert.doesNotMatch(card.shadowRoot.textContent,/Wake child-b|Child Bravo/);assert.equal(openAlarmEditor(card),true);assert.deepEqual([...card.shadowRoot.querySelector('[name="member"]').options].map(option=>option.value),["child-a"]);
 });
 test("command guard rejects sibling targets and reassigning sibling's alarm to selected child",async()=>{
   const {card,calls}=await cardFor("alarms");await card.command("alarms.enable",{id:"A2",revision:1,enabled:false});await card.command("alarms.cancel",{id:"R2",reason:"wrong child"});await card.command("alarms.save",{id:"A2",member:"child-a"});assert.equal(calls.filter(item=>item.type==="family_assistant/execute").length,0);

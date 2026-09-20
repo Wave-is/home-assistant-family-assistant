@@ -37,7 +37,7 @@ test("control sweep: family settings frozen retry, native setup discard refusal 
 });
 
 test("control sweep: task cancellation dismisses safely, retries exact operation and archives history",async({page})=>{
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1");const card=page.locator("family-assistant-card");
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1&compact=0");const card=page.locator("family-assistant-card");
   let item=card.locator(".body > ul.list > li.item").first();
   await item.getByRole("button",{name:"Cancel task",exact:true}).click();await item.getByRole("button",{name:"Cancel",exact:true}).click();
   expect(await page.evaluate(()=>window.calls)).toEqual([]);
@@ -116,13 +116,13 @@ test("control sweep: court reverse retains reason and child cannot reverse",asyn
 });
 
 test("control sweep: alarm enable toggles only configuration and failed retry never tests devices",async({page})=>{
-  await page.goto("/tests/fixtures/dashboard.html?view=alarms");const card=page.locator("family-assistant-card");
+  await page.goto("/tests/fixtures/dashboard.html?view=alarms&compact=0");const card=page.locator("family-assistant-card");
   await page.evaluate(()=>window.failCommand=true);await card.getByRole("button",{name:"Disable",exact:true}).click();await expect(card.getByRole("alert")).toBeVisible();
   await page.evaluate(()=>window.failCommand=false);await card.getByRole("button",{name:"Disable",exact:true}).click();await expect(card.getByRole("button",{name:"Enable",exact:true})).toBeVisible();
   await card.getByRole("button",{name:"Enable",exact:true}).click();await expect(card.getByRole("button",{name:"Disable",exact:true})).toBeVisible();
   const calls=await page.evaluate(()=>window.calls);expect(calls).toHaveLength(3);expect(calls[1]).toEqual(calls[0]);expect(calls.map(item=>item.action)).toEqual(["alarms.enable","alarms.enable","alarms.enable"]);
   expect(calls[0].payload).toEqual({id:"A000001",revision:1,enabled:false});expect(calls[2].payload).toEqual({id:"A000001",revision:2,enabled:true});
-  await page.goto("/tests/fixtures/dashboard.html?view=alarms&role=child");await expect(card.getByRole("button",{name:"Disable",exact:true})).toHaveCount(0);
+  await page.goto("/tests/fixtures/dashboard.html?view=alarms&role=child&compact=0");await expect(card.getByRole("button",{name:"Disable",exact:true})).toHaveCount(0);
 });
 
 test("control sweep: health resolve requires a fresh reason review for an exact repeat without resending",async({page})=>{
@@ -173,7 +173,7 @@ test("control sweep: recognition preview and connection refresh never execute a 
 });
 
 test("control sweep: assignee accepts a task and cancels a draft report without submitting",async({page})=>{
-  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1&role=child");const item=page.locator("family-assistant-card .body > ul.list > li.item").first();
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&taskedit=1&role=child&compact=0");const item=page.locator("family-assistant-card .body > ul.list > li.item").first();
   await item.getByRole("button",{name:"Accept",exact:true}).click();await expect(item.locator(".badge")).toHaveText("Accepted");
   await item.getByRole("button",{name:"Send report",exact:true}).click();await item.getByLabel("Report",{exact:true}).fill("Unsubmitted synthetic draft");
   await item.getByRole("button",{name:"Cancel",exact:true}).click();
