@@ -133,6 +133,27 @@ async def test_alarm_toggle_without_weekdays_targets_whole_plan(engine, now):
     assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
 
 
+async def test_dative_member_name_toggles_whole_plan_without_weekdays(engine, now):
+    # Production regression (2026-09-20 09:31): "Выключи Милене будильники"
+    # must resolve the dative member form and toggle the whole plan, without
+    # asking for explicit weekdays or falling back to the model.
+    await engine.system_update(
+        "name", now, lambda ctx: ctx.state["members"]["child"].update(name="Милена")
+    )
+    await route(engine, "parent", "поставь Милена будильник на будни на 07:00", "create-1", now)
+    await route(
+        engine, "parent", "поставь Милена будильник на выходные на 09:30", "create-2", now
+    )
+    assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
+    await route(engine, "parent", "Выключи Милене будильники", "toggle-off", now)
+    assert all(
+        row["member"] == "child" and not row["enabled"]
+        for row in engine.snapshot()["alarms"].values()
+    )
+    await route(engine, "parent", "включи Милене будильники", "toggle-on", now)
+    assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
+
+
 async def test_alarm_toggle_by_time_targets_single_alarm(engine, now):
     await route(engine, "parent", "поставь Child будильник на будни на 07:00", "create-1", now)
     await route(engine, "parent", "поставь Child будильник на выходные на 09:30", "create-2", now)
