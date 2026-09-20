@@ -123,6 +123,45 @@ async def test_alarm_two_groups_create_update_toggle_and_replay_without_model(en
     assert len(engine.snapshot()["alarms"]) == 2
 
 
+async def test_alarm_toggle_without_weekdays_targets_whole_plan(engine, now):
+    await route(engine, "parent", "поставь Child будильник на будни на 07:00", "create-1", now)
+    await route(engine, "parent", "поставь Child будильник на выходные на 09:30", "create-2", now)
+    assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
+    await route(engine, "parent", "выключи Child будильники", "toggle-off", now)
+    assert not any(row["enabled"] for row in engine.snapshot()["alarms"].values())
+    await route(engine, "parent", "включи будильники Child", "toggle-on", now)
+    assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
+
+
+async def test_alarm_toggle_by_time_targets_single_alarm(engine, now):
+    await route(engine, "parent", "поставь Child будильник на будни на 07:00", "create-1", now)
+    await route(engine, "parent", "поставь Child будильник на выходные на 09:30", "create-2", now)
+    await route(engine, "parent", "выключи будильник Child на 07:00", "off-time", now)
+    rows = engine.snapshot()["alarms"]
+    assert [row["enabled"] for row in rows.values() if row["days"] == list(range(5))] == [False]
+    assert [row["enabled"] for row in rows.values() if row["days"] == [5, 6]] == [True]
+
+
+async def test_alarm_request_beyond_deterministic_grammar_falls_back_to_model(engine, now):
+    async def fallback(actor, content, operation_id, at, refs):
+        return "model-handled"
+
+    await route(engine, "parent", "поставь Child будильник на будни на 07:00", "create-1", now)
+    # No member named and a creation without weekdays are model material.
+    assert (
+        await route(engine, "parent", "выключи будильники", "anon", now, fallback=fallback)
+        == "model-handled"
+    )
+    assert (
+        await route(
+            engine, "parent", "поставь Child будильник на 07:00", "no-days", now, fallback=fallback
+        )
+        == "model-handled"
+    )
+    assert len(engine.snapshot()["alarms"]) == 1
+    assert all(row["enabled"] for row in engine.snapshot()["alarms"].values())
+
+
 @pytest.mark.parametrize(
     "phrase",
     [

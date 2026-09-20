@@ -178,6 +178,56 @@ async def test_guest_assignment_and_duplicate_archive_rejected(engine, now):
 
 
 @pytest.mark.asyncio
+async def test_reopen_returns_completed_task_to_assignee_without_deadline(engine, now):
+    item = await create(engine, now)
+    completed = await engine.execute(
+        "parent", "tasks.complete", {"id": item["id"], "revision": item["revision"]}, "done", now
+    )
+    assert completed["status"] == "completed"
+    reopened = await engine.execute(
+        "parent",
+        "tasks.reopen",
+        {"id": item["id"], "revision": completed["revision"]},
+        "reopen",
+        now + timedelta(hours=1),
+    )
+    assert reopened["status"] == "assigned"
+    assert reopened["due_at"] is None
+    current = engine.snapshot()["tasks"][item["id"]]
+    assert "closed_at" not in current and "deadline_events" not in current
+    assert engine.view("child")["tasks"][0]["id"] == item["id"]
+    # The consumed deadline must not re-trigger overdue incidents or court.
+    await engine.tick(now + timedelta(days=2))
+    assert not engine.snapshot()["court"]
+    assert not engine.snapshot()["incidents"].get(f"task:{item['id']}")
+
+
+@pytest.mark.asyncio
+async def test_reopen_requires_completed_task_and_privilege(engine, now):
+    item = await create(engine, now)
+    with pytest.raises(DomainError, match="forbidden"):
+        await engine.execute(
+            "child", "tasks.reopen", {"id": item["id"], "revision": item["revision"]}, "child", now
+        )
+    with pytest.raises(DomainError, match="invalid_transition"):
+        await engine.execute(
+            "parent", "tasks.reopen", {"id": item["id"], "revision": item["revision"]}, "open", now
+        )
+    completed = await engine.execute(
+        "parent", "tasks.complete", {"id": item["id"], "revision": item["revision"]}, "done", now
+    )
+    with pytest.raises(DomainError, match="conflict"):
+        await engine.execute(
+            "parent",
+            "tasks.reopen",
+            {"id": item["id"], "revision": completed["revision"] + 1},
+            "stale",
+            now,
+        )
+    assert engine.snapshot()["tasks"][item["id"]]["status"] == "completed"
+
+
+@pytest.mark.asyncio
 async def test_edit_storage_failure_keeps_deadline_and_outbox(engine, store, now):
     item = await create(engine, now)
     await engine.tick(now)

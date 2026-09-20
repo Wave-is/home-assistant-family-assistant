@@ -124,24 +124,26 @@ inventory remains available for review.
 
 ## Limits
 
-Final bounded audit snapshot: **426/426 Chromium scenarios passed** (60 suites,
-4.6 minutes). The manifest contains 84 files and 1,206 conservative source sites;
-562 registered handler groups, of which 470 were invoked and 432 received trusted
-events. The 92 uninvoked groups remain explicit: one click, zero submit, 51 input,
-39 change and one keydown. Another 651 source lines have no registered handler
-frame, considering all five collected frames; many are field/helper declarations,
-not individual clickable controls. All 116 observed WS action names have resolved
-synthetic responses; 60 also have rejected-response cases, leaving 56 without that
-failure evidence. These counts do not establish
+Final bounded audit snapshot: **468/468 Chromium scenarios passed** (65 suites,
+2.5 minutes, 2 workers). The manifest contains 88 files and 1,230 conservative
+source sites; 576 registered handler groups, of which 479 were invoked and 439
+received trusted events. The 97 uninvoked groups remain explicit: three click,
+zero submit, 51 input, 42 change and one keydown. Another 663 source lines have
+no registered handler frame, considering all five collected frames; many are
+field/helper declarations, not individual clickable controls. All 120 observed
+WS action names have resolved synthetic responses; 63 also have rejected-response
+cases, leaving 57 without that failure evidence. These counts do not establish
 that every possible button, field combination, role or backend path passed.
 
-The one unrecorded click is the Connections → Configure image providers native-link
-alias (`family-panel.js:557`, caller 551). Its three-language
-`control-provider-connections` scenarios passed and verified the locally intercepted native destination, but
-this full run did not retain that listener's invocation before navigation.
-The browser assertion is retained as separate evidence, not converted into a
-fabricated invocation or trusted-event count. The language-assistant alias and
-Advanced and Telegram native-link paths have recorded invocation evidence.
+The three unrecorded clicks are the Telegram, language-assistant and
+image-providers Connections native-link aliases (`family-panel.js:564`, callers
+538, 548 and 558). Their `final controls: ... opens only intercepted native
+setup boundary` and discard-refusal scenarios passed and verified the locally
+intercepted native destination, but this full run did not retain those
+listeners' invocations before navigation.
+The browser assertions are retained as separate evidence, not converted into a
+fabricated invocation or trusted-event count. The Advanced health-workspace
+native-link path (caller 687) has recorded invocation evidence.
 
 The optional image connection cases also exercise disabled, incomplete,
 initialized-but-unverified and reported-offline states in EN/RU/UK mobile dark
@@ -149,7 +151,7 @@ mode. The connection is absent when its privileged projection is omitted, and
 no image/Options mutation or required readiness change occurs. Native ordered
 provider forms have their own real-HA/synthetic-I/O acceptance in
 [native-settings-audit.md](../docs/native-settings-audit.md); those checks are not
-included in the 426 browser scenarios.
+included in the 468 browser scenarios.
 
 The exact remaining file/line/column identities are `handlers` with an empty
 `invoked` list (or the `--summary` output). Unregistered source sites are not

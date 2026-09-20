@@ -708,7 +708,26 @@ async def route(
     if command == "/alarm" and not tail.strip():
         command = "/alarms"
     alarm_content = f"{command} {tail}" if command == "/alarm" and tail else original_content
-    alarm_intent = alarm_commands.parsed(engine.snapshot(), view, alarm_content)
+    try:
+        alarm_intent = alarm_commands.parsed(engine.snapshot(), view, alarm_content)
+    except DomainError as err:
+        # A recognized alarm request phrased beyond the deterministic grammar
+        # is still model material; explicit /alarm commands stay deterministic.
+        if (
+            fallback is not None
+            and not command.startswith("/")
+            and err.code
+            in {
+                "unknown_member",
+                "ambiguous_command",
+                "ambiguous_member",
+                "context_required",
+                "invalid_alarm_days",
+                "invalid_deadline",
+            }
+        ):
+            return await fallback(actor, original_content, operation_id, now, refs)
+        raise
     if alarm_intent:
         if len(alarm_intent) == 1:
             operation = alarm_intent[0]

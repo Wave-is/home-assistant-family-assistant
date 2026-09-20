@@ -31,7 +31,7 @@ ACTION_FIELDS = {
         "reason",
         "confirmed",
     },
-    **{key: set() for key in ("accept", "start", "complete", "cancel", "archive")},
+    **{key: set() for key in ("accept", "start", "complete", "cancel", "archive", "reopen")},
 }
 
 
@@ -172,6 +172,18 @@ def handle(ctx: Context, action: str, payload: dict) -> dict:
             raise DomainError("invalid_transition")
         item["previous_status"] = item["status"]
         item["status"] = "archived"
+    elif action == "reopen":
+        ctx.require_parent()
+        if item["status"] != "completed":
+            raise DomainError("invalid_transition")
+        # A reopened task goes back to the assignee without a deadline: the
+        # original one has been consumed, and a past deadline must never
+        # re-trigger overdue incidents or penalties on an administrative
+        # undo. A parent can set a fresh deadline via revise if needed.
+        item["status"] = "assigned"
+        item.pop("closed_at", None)
+        item["due_at"] = None
+        item.pop("deadline_events", None)
     elif item["status"] in FINAL:
         raise DomainError("invalid_transition")
     elif action == "revise":

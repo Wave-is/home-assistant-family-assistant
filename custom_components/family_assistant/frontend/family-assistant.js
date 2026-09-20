@@ -86,6 +86,7 @@ const COPY = {
     updated: "Saved", failure: "Could not complete this action.", open: "Open tasks",
     awaiting: "Awaiting approval", balance: "Balance", record: "Record", units: "units",
     refresh: "Refresh", entry: "Household", view: "View", reportLabel: "What did you do?",
+    compact: "Compact checklist view", compactDone: "Done — untick to reopen",
     approved: "Ready to buy", purchased: "Bought", assigned: "Assigned", submitted: "In review",
     completed: "Completed", active: "Active", reversed: "Reversed", in_progress: "In progress",
     accepted: "Accepted", needs_changes: "Needs changes", rejected: "Rejected", archived: "Archived",
@@ -133,6 +134,7 @@ const COPY = {
     updated: "Сохранено", failure: "Не удалось выполнить действие.", open: "Открытые задачи",
     awaiting: "Ждут решения", balance: "Баланс", record: "Записать", units: "позиций",
     refresh: "Обновить", entry: "Семья", view: "Раздел", reportLabel: "Что сделано?",
+    compact: "Компактный список с галочками", compactDone: "Выполнено — снимите галочку, чтобы вернуть",
     approved: "Можно покупать", purchased: "Куплено", assigned: "Назначена", submitted: "На проверке",
     completed: "Выполнена", active: "Действует", reversed: "Отменён", in_progress: "В работе",
     accepted: "Принята", needs_changes: "На доработке", rejected: "Отклонено", archived: "В архиве",
@@ -180,6 +182,7 @@ const COPY = {
     updated: "Збережено", failure: "Не вдалося виконати дію.", open: "Відкриті завдання",
     awaiting: "Чекають рішення", balance: "Баланс", record: "Записати", units: "позицій",
     refresh: "Оновити", entry: "Родина", view: "Розділ", reportLabel: "Що зроблено?",
+    compact: "Компактний список із галочками", compactDone: "Виконано — зніміть галочку, щоб відновити",
     approved: "Можна купувати", purchased: "Куплено", assigned: "Призначено", submitted: "На перевірці",
     completed: "Виконано", active: "Діє", reversed: "Скасовано", in_progress: "У роботі",
     accepted: "Прийнято", needs_changes: "На доопрацюванні", rejected: "Відхилено", archived: "В архіві",
@@ -228,6 +231,14 @@ const STYLES = `
   .meal-plan{border-top:1px solid var(--divider-color,#dfe9e7);padding-top:14px;margin-top:14px}.meal-plan>.actions{margin-top:12px}
   .meal-entry{margin:12px 0;line-height:1.6}.meal-plan>details{margin-top:12px}
   @media(max-width:520px){.ingredient-row{grid-template-columns:minmax(0,1fr)}.meal-entry-editor{grid-template-columns:minmax(0,1fr)}}
+  .compact-list{display:grid;margin:0;padding:0;list-style:none}
+  .compact-row{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid var(--divider-color,#e3ebe9)}
+  .compact-row:last-child{border-bottom:none}
+  .compact-row input[type=checkbox]{cursor:pointer}
+  .compact-row label{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;font-size:15px}
+  .compact-row .compact-title{flex:1;min-width:0;overflow-wrap:anywhere}
+  .compact-row .compact-meta{font-size:12px;color:var(--secondary-text-color,#657d80);white-space:nowrap}
+  .compact-row.done .compact-title{text-decoration:line-through;color:var(--secondary-text-color,#657d80)}
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
@@ -286,7 +297,7 @@ export class FamilyCard extends HTMLElement {
   }
   get t() { return COPY[this._config?.language || this._hass?.language?.split("-")[0]] || COPY.en; }
   get parent() { return ["owner","parent"].includes(this._data?.role); }
-  getCardSize() { return 5; }
+  getCardSize() { return this._config?.compact ? 4 : 5; }
   getGridOptions() { return {columns:12, rows:"auto", min_columns:6}; }
   static getConfigElement() { return document.createElement("family-assistant-card-editor"); }
   static getStubConfig() { return {view:this.defaultView || "today"}; }
@@ -467,6 +478,7 @@ export class FamilyCard extends HTMLElement {
       renderRecipes(this,body);return;
     }
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
+    if(this._config?.compact && (this._view==="tasks"||this._view==="alarms")){this.renderCompact(body);return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="court"){renderCourt(this,body);renderRewards(this,body);return;}
@@ -503,6 +515,48 @@ export class FamilyCard extends HTMLElement {
     if(!list.children.length)body.append(el("div",this.t.empty,"empty"));
     if(this._view==="shopping")renderShoppingArchive(this,body);
     if(this._view==="tasks")renderTaskArchive(this,body);
+  }
+  renderCompact(body) {
+    const list=el("ul",null,"compact-list");body.append(list);
+    if(this._view==="tasks"){
+      const items=(this._data.tasks||[]).filter(item=>!["cancelled","archived"].includes(item.status))
+        .slice().sort((a,b)=>Number(a.status==="completed")-Number(b.status==="completed")||String(a.due_at||"").localeCompare(String(b.due_at||"")));
+      if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
+      for(const item of items)this.renderCompactTask(list,item);
+    } else {
+      const items=(this._data.alarms||[]).filter(item=>inMemberContext(this,item.member));
+      if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
+      for(const item of items)this.renderCompactAlarm(list,item);
+    }
+  }
+  renderCompactTask(list,item) {
+    const row=el("li",null,`compact-row${item.status==="completed"?" done":""}`);
+    const box=el("input");box.type="checkbox";box.checked=item.status==="completed";
+    box.setAttribute("aria-label",this.t.compactDone);
+    box.addEventListener("change",()=>{this.command(box.checked?"tasks.complete":"tasks.reopen",{id:item.id,revision:item.revision});});
+    const label=el("label");
+    label.append(box,el("span",item.title,"compact-title"));
+    const meta=[];
+    const member=this._data.members?.find(m=>m.id===item.assignee);
+    if(this.parent && member)meta.push(member.name);
+    if(item.due_at)meta.push(item.due_at.slice(0,10));
+    if(item.status==="submitted")meta.push(this.t.submitted);
+    if(item.status==="needs_changes")meta.push(this.t.needs_changes);
+    if(meta.length)label.append(el("span",meta.join(" · "),"compact-meta"));
+    row.append(label);list.append(row);
+  }
+  renderCompactAlarm(list,item) {
+    const row=el("li",null,`compact-row${item.enabled?"":" done"}`);
+    const box=el("input");box.type="checkbox";box.checked=!!item.enabled;
+    box.setAttribute("aria-label",`${this.t.alarms} ${item.time}`);
+    box.addEventListener("change",()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:box.checked});});
+    const label=el("label");
+    label.append(box,el("span",item.time,"compact-title"));
+    const names=this.t.dayNames||[];
+    const days=(item.days||[]).slice().sort();
+    const short=days.length===7?this.t.everyday:days.join()===[0,1,2,3,4].join()?this.t.weekdays:days.join()===[5,6].join()?this.t.weekends:days.map(d=>names[d]||String(d)).join(", ");
+    label.append(el("span",short,"compact-meta"));
+    row.append(label);list.append(row);
   }
   renderNetwork(body) {
     renderKids(this,body);
@@ -687,6 +741,9 @@ class FamilyEditor extends HTMLElement {
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
     }
+    const compactBox=el("input");compactBox.type="checkbox";compactBox.checked=this._config?.compact===true;
+    const compactWrap=el("label",null,"check");compactWrap.append(compactBox,el("span",t.compact));form.append(compactWrap);
+    compactBox.addEventListener("change",()=>{const config={...this._config};if(compactBox.checked)config.compact=true;else delete config.compact;this._config=config;this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});
   }
 }
 if(!customElements.get("family-assistant-card-editor"))customElements.define("family-assistant-card-editor",FamilyEditor);

@@ -9,7 +9,7 @@ from .intents import find_member
 _REQUEST = re.compile(
     r"^(поставь|установи|заведи|включи|выключи|отключи|увімкни|вимкни|"
     r"встанови|постав|set|enable|disable|turn\s+on|turn\s+off)\s+"
-    r"(?:(.+?)\s+)?(?:будильник|alarm)\s*(.*)$",
+    r"(?:(.+?)\s+)?(?:будильники|будильник|alarms|alarm)\s*(.*)$",
     re.I,
 )
 _PERIOD = re.compile(
@@ -20,16 +20,52 @@ _PERIOD = re.compile(
 )
 _DAYS = {"weekdays": list(range(5)), "weekends": [5, 6], "daily": list(range(7))}
 _OFF = {"выключи", "отключи", "вимкни", "disable", "turn off"}
+_ON = {"включи", "увімкни", "enable", "turn on"}
 _CONNECTORS = re.compile(r"^(?:(?:и|та|і|and|на|в|у|по|on)\s*|[,;]\s*)*$", re.I)
+_CLOCK = r"\d{1,2}[:.]\d{2}"
 
 
 def _clock(value):
-    if not isinstance(value, str) or not re.fullmatch(r"\d{1,2}[:.]\d{2}", value):
+    if not isinstance(value, str) or not re.fullmatch(_CLOCK, value):
         raise DomainError("invalid_field", "time")
     hour, minute = (int(part) for part in re.split(r"[:.]", value))
     if not 0 <= hour <= 23 or not 0 <= minute <= 59:
         raise DomainError("invalid_field", "time")
     return f"{hour:02d}:{minute:02d}"
+
+
+def _whole_plan_operations(state, view, before, leading, *, enabled):
+    """Enable/disable without explicit weekdays.
+
+    A stated time targets the member's single alarm at that time; otherwise
+    the member's whole wake-up plan is toggled. Creating an alarm still
+    requires explicit weekdays and falls through to the model.
+    """
+    clock_match = re.search(r"(?<![\d:])(\d{1,2}[:.]\d{2})(?![\d:])", leading)
+    clock = _clock(clock_match[1]) if clock_match else None
+    if before:
+        residue = re.sub(rf"(?:(?:на|в|о|at)\s+)?{_CLOCK}", " ", leading, flags=re.I).strip()
+        if not _CONNECTORS.fullmatch(residue):
+            raise DomainError("ambiguous_command")
+        member = find_member(state, before)
+    else:
+        residue = re.sub(rf"(?:(?:на|в|о|at)\s+)?{_CLOCK}", " ", leading, flags=re.I)
+        residue = re.sub(r"\s+(?:на|в|у|по|on)$", "", " ".join(residue.split()), flags=re.I)
+        member = find_member(state, residue)
+    rows = [row for row in view["alarms"] if row["member"] == member]
+    if clock is not None:
+        rows = [row for row in rows if row["time"] == clock]
+        if not rows:
+            raise DomainError("not_found" if not enabled else "context_required")
+        if len(rows) > 1:
+            raise DomainError("ambiguous_command")
+    return [
+        {
+            "action": "alarms.enable",
+            "payload": {"id": row["id"], "revision": row["revision"], "enabled": enabled},
+        }
+        for row in rows
+    ]
 
 
 def _operations(state, view, member, groups, *, enabled):
@@ -86,8 +122,17 @@ def parsed(state, view, content):
         return None
     verb, before, remainder = match.groups()
     periods = list(_PERIOD.finditer(remainder))
-    if not periods or len(periods) > 2:
+    if len(periods) > 2:
         raise DomainError("invalid_alarm_days")
+    enabled = verb.casefold() not in _OFF
+    if not periods:
+        if verb.casefold() not in _ON and verb.casefold() not in _OFF:
+            # Creating an alarm still requires explicit weekdays; a creation
+            # phrased without them is model material, not a silent toggle.
+            raise DomainError("invalid_alarm_days")
+        return _whole_plan_operations(
+            state, view, before, remainder.strip(), enabled=enabled
+        )
     leading = remainder[: periods[0].start()].strip()
     if before:
         if not _CONNECTORS.fullmatch(leading):
@@ -96,7 +141,6 @@ def parsed(state, view, content):
     else:
         member_text = re.sub(r"\s+(?:на|в|у|по|on)$", "", leading, flags=re.I)
     member = find_member(state, member_text)
-    enabled = verb.casefold() not in _OFF
     groups = []
     for index, period in enumerate(periods):
         end = periods[index + 1].start() if index + 1 < len(periods) else len(remainder)
