@@ -32,23 +32,29 @@ test("compact tasks card removes via archive and restores completed tasks from h
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
-test("compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor",async({page})=>{
+test("compact alarms card keeps disabled alarms visible (dimmed) and toggles via alarms.enable",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/tests/fixtures/dashboard.html?view=alarms&compact=1");
   const card=page.locator("family-assistant-card");
   await expect(card.locator(".compact-list")).toBeVisible();
-  const row=card.locator(".compact-row");
-  await expect(row).toHaveCount(1);
-  expect(await row.locator(".compact-title").textContent()).toBe("07:30");
-  expect(await row.locator(".compact-meta").textContent()).toContain("Weekdays");
-  expect(await row.locator("input[type=checkbox]").isChecked()).toBe(true);
-  await row.getByRole("button",{name:"Remove",exact:true}).click();
+  const rows=card.locator(".compact-row");
+  await expect(rows).toHaveCount(2);
+  const active=rows.first();
+  const disabled=rows.last();
+  expect(await active.locator(".compact-title").textContent()).toBe("07:30");
+  expect(await active.locator(".compact-meta").textContent()).toContain("Weekdays");
+  expect(await active.locator("input[type=checkbox]").isChecked()).toBe(true);
+  expect(await disabled.locator(".compact-title").textContent()).toBe("08:00");
+  expect(await disabled.locator(".compact-meta").textContent()).toContain("Weekends");
+  await expect(disabled).toHaveClass(/disabled/);
+  await expect(disabled.locator("input[type=checkbox]")).not.toBeChecked();
+  await active.getByRole("button",{name:"Remove",exact:true}).click();
   let calls=await page.evaluate(()=>window.calls);
   expect(calls).toHaveLength(1);
   expect(calls[0].action).toBe("alarms.enable");
   expect(calls[0].payload).toEqual({id:"A000001",revision:1,enabled:false});
-  await expect(row).toHaveCount(0);
-  await expect(card.locator(".body .empty")).toBeVisible();
+  await expect(active).toHaveClass(/disabled/);
+  await expect(active.locator("input[type=checkbox]")).not.toBeChecked();
   await card.getByRole("button",{name:"Add wake-up schedule",exact:true}).click();
   await expect(card.locator('section.alarm-editor[data-alarm-editor="create"]')).toBeVisible();
 });

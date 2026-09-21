@@ -141,41 +141,44 @@ test("compact tasks card stays compact while an active wake-up check is running"
   assert.deepEqual(titles, ["Clean desk", "Water plants"]);
 });
 
-test("compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor", async () => {
+test("compact alarms card keeps disabled alarms visible (dimmed) and toggles via alarms.enable", async () => {
   const {card, calls} = await cardFor("alarms", {compact: true});
   const root = card.shadowRoot;
+  const rows = () => [...root.querySelectorAll(".compact-row")];
   const buttons = [...root.querySelectorAll("button")].map(node => node.getAttribute("aria-label"));
   assert.deepEqual(buttons, ["Add wake-up schedule", "Remove", "Remove"]);
-  const rows = [...root.querySelectorAll(".compact-row")];
-  assert.deepEqual(rows.map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
-  assert.match(rows[0].querySelector(".compact-meta").textContent, /Weekdays/);
-  assert.match(rows[1].querySelector(".compact-meta").textContent, /Weekends/);
-  assert.deepEqual(rows.map(row => row.querySelector("input[type=checkbox]").checked), [true, true]);
-  const first = rows[0].querySelector("input[type=checkbox]");
+  assert.deepEqual(rows().map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
+  assert.match(rows()[0].querySelector(".compact-meta").textContent, /^Child Alpha · Weekdays$/);
+  assert.match(rows()[1].querySelector(".compact-meta").textContent, /^Child Alpha · Weekends$/);
+  assert.deepEqual(rows().map(row => row.querySelector("input[type=checkbox]").checked), [true, true]);
+  const first = rows()[0].querySelector("input[type=checkbox]");
   first.checked = false;
   first.dispatchEvent(new dom.window.Event("change"));
   await waitFor(() => calls.some(item => item.action === "alarms.enable"));
   const firstWrite = calls.find(item => item.action === "alarms.enable");
   assert.deepEqual(firstWrite.payload, {id: "A1", revision: 1, enabled: false});
-  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
-  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["09:30"]);
-  const second = card.shadowRoot.querySelector(".compact-row input[type=checkbox]");
-  assert.equal(second.checked, true);
+  await waitFor(() => rows().length === 2 && rows()[0].classList.contains("disabled") && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  assert.deepEqual(rows().map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
+  assert.deepEqual(rows().map(row => row.querySelector("input[type=checkbox]").checked), [false, true]);
+  const second = rows()[1].querySelector("input[type=checkbox]");
   second.checked = false;
   second.dispatchEvent(new dom.window.Event("change"));
-  await waitFor(() => calls.filter(item => item.action === "alarms.enable").length === 2 && card.shadowRoot.querySelectorAll(".compact-row").length === 0);
+  await waitFor(() => calls.filter(item => item.action === "alarms.enable").length === 2 && rows().length === 2 && rows()[1].classList.contains("disabled"));
   const secondWrite = calls.filter(item => item.action === "alarms.enable")[1];
   assert.deepEqual(secondWrite.payload, {id: "A2", revision: 1, enabled: false});
-  assert.ok(card.shadowRoot.querySelector(".body .empty"));
+  assert.equal(root.querySelector(".body .empty"), null);
 });
 
-test("compact alarm remove sends alarms.enable false and the alarm disappears from the list", async () => {
+test("compact alarm remove sends alarms.enable false and the row stays dimmed", async () => {
   const {card, calls} = await cardFor("alarms", {compact: true});
   card.shadowRoot.querySelector(".compact-row .compact-remove").click();
   await waitFor(() => calls.some(item => item.action === "alarms.enable"));
   assert.deepEqual(calls.find(item => item.action === "alarms.enable").payload, {id: "A1", revision: 1, enabled: false});
-  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
-  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["09:30"]);
+  await waitFor(() => {
+    const rows = card.shadowRoot.querySelectorAll(".compact-row");
+    return rows.length === 2 && rows[0].classList.contains("disabled") && calls.filter(item => item.type === "family_assistant/view").length >= 2;
+  });
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["07:00", "09:30"]);
 });
 
 test("compact alarms add button opens the wake-up schedule editor", async () => {

@@ -7,7 +7,7 @@
     "requests": "Exact WS type/action observed through real frontend code. Resolved/rejected describe synthetic fixture promises, not validation by Home Assistant or devices.",
     "gaps": "Source-only sites, registered handlers with empty invoked, and requests without rejected evidence need additional manual/browser/fault scenarios. Native integration links are not followed to real HA. Camera, external providers, real notifications, devices and live legacy parity are not established."
   },
-  "source_sha256": "0cd5ce74066283fa3de0f7ae39362c9304985fafb2cb21c6fac2030064229787",
+  "source_sha256": "000d2639d1dab1352f209da63045f813c84aa94f5a83b1987da202a1e02891ea",
   "evidence_status": "passed",
   "modules": [
     {
@@ -492,9 +492,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         182,
         276,
@@ -1186,24 +1183,24 @@
       "id": 54,
       "file": "tests/browser/compact-cards.spec.js",
       "line": 35,
-      "title": "compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor"
+      "title": "compact alarms card keeps disabled alarms visible (dimmed) and toggles via alarms.enable"
     },
     {
       "id": 55,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 56,
+      "line": 62,
       "title": "compact editor checkbox emits and removes the compact config flag"
     },
     {
       "id": 56,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 82,
+      "line": 88,
       "title": "active wake-up check forces the full alarms panel despite compact default"
     },
     {
       "id": 57,
       "file": "tests/browser/compact-cards.spec.js",
-      "line": 90,
+      "line": 96,
       "title": "active wake-up check keeps the compact tasks card compact"
     },
     {
@@ -3854,8 +3851,8 @@
     {
       "file": "family-assistant.js",
       "lines": [
-        851,
-        855
+        857,
+        861
       ],
       "classification": "conditional_control_scenario",
       "detail": "Lovelace editor household/title/view and compact-checklist changes emit exact local config-changed events; they are not integration settings writes.",
@@ -3878,8 +3875,8 @@
     {
       "file": "family-assistant.js",
       "lines": [
-        773,
-        776
+        779,
+        782
       ],
       "classification": "conditional_control_scenario",
       "detail": "Parent Stop for an active alarm run validates reason and retries the same cancellation after a pre-effect failure; no device is present in this fixture.",
@@ -3983,7 +3980,7 @@
         91
       ],
       "classification": "not_reachable_through_published_card_router",
-      "detail": "FamilyCard.render returns its common Retry at family-assistant.js:480 when _error is set, before every availability-shell call. The helper's error Retry is therefore not another reachable published-card button; module/role shells remain covered.",
+      "detail": "FamilyCard.render returns its common Retry at family-assistant.js:481 when _error is set, before every availability-shell call. The helper's error Retry is therefore not another reachable published-card button; module/role shells remain covered.",
       "related_cases": [
         14,
         15,
@@ -3993,12 +3990,12 @@
     {
       "file": "family-assistant.js",
       "lines": [
-        457,
-        811,
-        813
+        458,
+        817,
+        819
       ],
       "classification": "obsolete_generic_routes_not_reachable",
-      "detail": "The generic form has no reachable published use: tasks form returns its specialized editor at 444, shopping uses its editor, court/calendar return specialized renderers at 524-525, and alarms use their dedicated editor. Generic court reversal in renderItem is bypassed by renderCourt. Retained source is not removed or counted as clicked.",
+      "detail": "The generic form has no reachable published use: tasks form returns its specialized editor at 445, shopping uses its editor, court/calendar return specialized renderers at 525-526, and alarms use their dedicated editor. Generic court reversal in renderItem is bypassed by renderCourt. Retained source is not removed or counted as clicked.",
       "related_cases": [
         0,
         1,
@@ -5771,73 +5768,73 @@
     {
       "file": "family-assistant.js",
       "module": "shared",
-      "sha256": "d72b884badb98002a501654308542bda48cffbe17305c64d862b9ff511f47d3c",
+      "sha256": "05dca8e61d98c5ef6c834df973a652eb4f65539d3cfffc24d1c9b7b627f00608",
       "sites": [
         {
-          "line": 338,
+          "line": 339,
           "kinds": [
             "request"
           ],
           "code": "const entries = await this._hass.callWS({type:\"family_assistant/households\"});"
         },
         {
-          "line": 344,
+          "line": 345,
           "kinds": [
             "request"
           ],
           "code": "const data = await this._hass.callWS({type:\"family_assistant/view\",entry_id:this._entry});"
         },
         {
-          "line": 381,
+          "line": 382,
           "kinds": [
             "button"
           ],
           "code": "button(text, action, primary=false) {"
         },
         {
-          "line": 382,
+          "line": 383,
           "kinds": [
             "element"
           ],
           "code": "const button=el(\"button\",text,primary?\"primary\":\"\"); button.type=\"button\";"
         },
         {
-          "line": 384,
+          "line": 385,
           "kinds": [
             "listener"
           ],
           "code": "button.addEventListener(\"click\",action); return button;"
         },
         {
-          "line": 387,
+          "line": 388,
           "kinds": [
             "element"
           ],
           "code": "const button=el(\"button\",null,primary?\"icon-btn primary\":\"icon-btn\"); button.type=\"button\";"
         },
         {
-          "line": 400,
+          "line": 401,
           "kinds": [
             "listener"
           ],
           "code": "button.addEventListener(\"click\",action); return button;"
         },
         {
-          "line": 402,
+          "line": 403,
           "kinds": [
             "field"
           ],
           "code": "input(form,name,label,type=\"text\",value=\"\",required=true) {"
         },
         {
-          "line": 403,
+          "line": 404,
           "kinds": [
             "element"
           ],
           "code": "const wrap=el(\"label\",label); const input=el(\"input\");"
         },
         {
-          "line": 408,
+          "line": 409,
           "kinds": [
             "element",
             "field"
@@ -5845,140 +5842,140 @@
           "code": "const wrap=el(\"label\",this.t.assignee); const select=el(\"select\"); select.name=\"assignee\";"
         },
         {
-          "line": 427,
+          "line": 428,
           "kinds": [
             "request"
           ],
           "code": "const result=await this._hass.callWS({type:\"family_assistant/execute\",entry_id:this._entry,"
         },
         {
-          "line": 445,
+          "line": 446,
           "kinds": [
             "element"
           ],
           "code": "const form=el(\"form\");"
         },
         {
-          "line": 447,
+          "line": 448,
           "kinds": [
             "field"
           ],
           "code": "this.input(form,\"name\",this.t.name);"
         },
         {
-          "line": 449,
+          "line": 450,
           "kinds": [
             "field"
           ],
           "code": "const amount=this.input(fields,\"quantity\",this.t.amount,\"number\",\"1\");amount.min=\"0.001\";amount.step=\"any\";"
         },
         {
-          "line": 450,
+          "line": 451,
           "kinds": [
             "field"
           ],
           "code": "this.input(fields,\"unit\",this.t.unit,\"text\",\"\",false).placeholder=this.t.unitPlaceholder;"
         },
         {
-          "line": 453,
+          "line": 454,
           "kinds": [
             "field"
           ],
           "code": "const points=this.input(form,\"points\",this.t.points,\"number\",\"1\");points.min=\"-100\";points.max=\"100\";points.step=\"1\";"
         },
         {
-          "line": 454,
+          "line": 455,
           "kinds": [
             "field"
           ],
           "code": "this.input(form,\"reason\",this.t.reason);"
         },
         {
-          "line": 456,
+          "line": 457,
           "kinds": [
             "element"
           ],
           "code": "const submit=el(\"button\",this.t.save,\"primary\");submit.type=\"submit\";form.append(submit);"
         },
         {
-          "line": 457,
+          "line": 458,
           "kinds": [
             "listener"
           ],
           "code": "form.addEventListener(\"submit\",event=>{"
         },
         {
-          "line": 459,
+          "line": 460,
           "kinds": [
             "command"
           ],
           "code": "if(this._view===\"shopping\") this.command(\"shopping.add\",{...values,quantity:Number(values.quantity)});"
         },
         {
-          "line": 460,
+          "line": 461,
           "kinds": [
             "command"
           ],
           "code": "if(this._view===\"court\") this.command(\"court.award\",{member:values.assignee,points:Number(values.points),reason:values.reason});"
         },
         {
-          "line": 465,
+          "line": 466,
           "kinds": [
             "field"
           ],
           "code": "const input=this.input(form,key,label,\"number\",String(value));input.min=String(min);input.max=String(max);input.step=\"1\";"
         },
         {
-          "line": 477,
+          "line": 478,
           "kinds": [
             "button"
           ],
           "code": "for(const entry of this._entries || []) body.append(this.button(entry.title,()=>{this._entry=entry.entry_id;this.refresh();}));"
         },
         {
-          "line": 478,
+          "line": 479,
           "kinds": [
             "button"
           ],
           "code": "if(this._error)body.append(this.button(this.t.retry,()=>this.refresh()));return;"
         },
         {
-          "line": 480,
+          "line": 481,
           "kinds": [
             "button"
           ],
           "code": "if(this._error){body.append(this.button(this.t.retry,()=>this.refresh()));return;}"
         },
         {
-          "line": 541,
+          "line": 542,
           "kinds": [
             "button"
           ],
           "code": "toolbar.append(this.icon(\"plus\",copy.add,()=>openAlarmEditor(this),true));"
         },
         {
-          "line": 547,
+          "line": 548,
           "kinds": [
             "button"
           ],
           "code": "toolbar.append(this._form?this.icon(\"back\",this.t.back,toggleForm,true):this.icon(\"plus\",this.t.add,toggleForm,true));"
         },
         {
-          "line": 573,
+          "line": 574,
           "kinds": [
             "button"
           ],
           "code": "toolbar.append(this._form?this.icon(\"back\",this.t.back,toggleForm,true):this.icon(\"plus\",this.t.add,toggleForm,true));"
         },
         {
-          "line": 575,
+          "line": 576,
           "kinds": [
             "button"
           ],
           "code": "if(this.parent)toolbar.append(this.icon(\"history\",this.t.history,()=>{this._taskHistoryOpen=!this._taskHistoryOpen;this.render();}));"
         },
         {
-          "line": 595,
+          "line": 596,
           "kinds": [
             "button",
             "command"
@@ -5986,21 +5983,21 @@
           "code": "const restore=this.icon(\"restore\",this.t.restore,()=>{this.command(\"tasks.reopen\",{id:item.id,revision:item.revision});});"
         },
         {
-          "line": 606,
+          "line": 607,
           "kinds": [
             "button"
           ],
           "code": "toolbar.append(this.icon(\"plus\",copy.add,()=>openAlarmEditor(this),true));"
         },
         {
-          "line": 617,
+          "line": 618,
           "kinds": [
             "element"
           ],
           "code": "const box=el(\"input\");box.type=\"checkbox\";box.checked=item.status===\"completed\";"
         },
         {
-          "line": 619,
+          "line": 620,
           "kinds": [
             "listener",
             "command"
@@ -6008,7 +6005,7 @@
           "code": "box.addEventListener(\"change\",()=>{this.command(\"tasks.complete\",{id:item.id,revision:item.revision});});"
         },
         {
-          "line": 633,
+          "line": 634,
           "kinds": [
             "button",
             "command"
@@ -6016,7 +6013,7 @@
           "code": "const remove=this.icon(\"minus\",this.t.remove,()=>{this.command(\"tasks.archive\",{id:item.id,revision:item.revision});});"
         },
         {
-          "line": 637,
+          "line": 638,
           "kinds": [
             "button",
             "command"
@@ -6024,14 +6021,14 @@
           "code": "const remove=this.icon(\"minus\",this.t.remove,()=>{this.command(\"tasks.cancel\",{id:item.id,revision:item.revision});});"
         },
         {
-          "line": 645,
+          "line": 647,
           "kinds": [
             "element"
           ],
           "code": "const box=el(\"input\");box.type=\"checkbox\";box.checked=!!item.enabled;"
         },
         {
-          "line": 647,
+          "line": 649,
           "kinds": [
             "listener",
             "command"
@@ -6039,7 +6036,7 @@
           "code": "box.addEventListener(\"change\",()=>{this.command(\"alarms.enable\",{id:item.id,revision:item.revision,enabled:box.checked});});"
         },
         {
-          "line": 656,
+          "line": 662,
           "kinds": [
             "button",
             "command"
@@ -6047,35 +6044,35 @@
           "code": "const remove=this.icon(\"minus\",this.t.remove,()=>{this.command(\"alarms.enable\",{id:item.id,revision:item.revision,enabled:false});});"
         },
         {
-          "line": 669,
+          "line": 675,
           "kinds": [
             "button"
           ],
           "code": "body.append(this.button(this.t.networkRefresh,async()=>{"
         },
         {
-          "line": 672,
+          "line": 678,
           "kinds": [
             "request"
           ],
           "code": "try{await this._hass.callWS({type:\"family_assistant/network_refresh\",entry_id:this._entry});if(generation===this._generation)this._actionError=null;}"
         },
         {
-          "line": 679,
+          "line": 685,
           "kinds": [
             "element"
           ],
           "code": "const form=el(\"form\");"
         },
         {
-          "line": 682,
+          "line": 688,
           "kinds": [
             "button"
           ],
           "code": "form.append(this.button(this.t.networkSelectDynamic,()=>{for(const box of form.querySelectorAll('input[name=\"leases\"][data-dynamic=\"true\"]'))if(!box.disabled)box.checked=true;}));"
         },
         {
-          "line": 683,
+          "line": 689,
           "kinds": [
             "listener",
             "command"
@@ -6083,21 +6080,21 @@
           "code": "form.addEventListener(\"submit\",event=>{event.preventDefault();const data=new FormData(form);const leases=data.getAll(\"leases\").map(id=>({id,comment:data.get(\"comment:\"+id),replace_comment:data.get(\"replace:\"+id)===\"on\"}));this.command(\"mikrotik.lease_plan\",{leases});});"
         },
         {
-          "line": 698,
+          "line": 704,
           "kinds": [
             "element"
           ],
           "code": "if(device.suggestions.length){const details=el(\"details\");details.append(el(\"summary\",this.t.networkSuggestions));for(const match of device.suggestions)details.append(el(\"p\",`${match.name}${match.area?\" · \"+match.area:\"\"} — ${match.evidence.map(e=>this.t[e] || e).join(\", \")}`,\"sub\"));item.append(details);}"
         },
         {
-          "line": 701,
+          "line": 707,
           "kinds": [
             "element"
           ],
           "code": "const details=el(\"details\");details.append(el(\"summary\",`${this.t.networkSelect} · ${lease.address} · ${lease.server}`));"
         },
         {
-          "line": 702,
+          "line": 708,
           "kinds": [
             "element",
             "field"
@@ -6105,14 +6102,14 @@
           "code": "const label=el(\"label\",null,\"check\"),check=el(\"input\");check.type=\"checkbox\";check.name=\"leases\";check.value=lease[\".id\"];check.dataset.dynamic=lease.dynamic;check.disabled=!!device.protected || lease.disabled===\"true\" || (lease.dynamic===\"true\" && lease.status!==\"bound\");label.append(check,el(\"span\",this.t.networkSelect));details.append(label);"
         },
         {
-          "line": 703,
+          "line": 709,
           "kinds": [
             "field"
           ],
           "code": "const input=this.input(details,\"comment:\"+lease[\".id\"],this.t.networkComment,\"text\",device.suggested_name || lease.comment || \"\");input.maxLength=255;input.required=false;"
         },
         {
-          "line": 704,
+          "line": 710,
           "kinds": [
             "element",
             "field"
@@ -6120,28 +6117,28 @@
           "code": "const replace=el(\"label\",null,\"check\"),box=el(\"input\");box.type=\"checkbox\";box.name=\"replace:\"+lease[\".id\"];replace.append(box,el(\"span\",this.t.networkReplace));details.append(replace);item.append(details);"
         },
         {
-          "line": 709,
+          "line": 715,
           "kinds": [
             "element"
           ],
           "code": "if(this._data.role===\"owner\"){const button=el(\"button\",this.t.networkPrepare,\"primary\");button.type=\"submit\";form.append(button);}"
         },
         {
-          "line": 715,
+          "line": 721,
           "kinds": [
             "element"
           ],
           "code": "const details=el(\"details\");details.open=plan.status===\"preview\";details.append(el(\"summary\",this.t.networkReview));"
         },
         {
-          "line": 729,
+          "line": 735,
           "kinds": [
             "element"
           ],
           "code": "const form=el(\"form\");"
         },
         {
-          "line": 730,
+          "line": 736,
           "kinds": [
             "element",
             "field"
@@ -6149,14 +6146,14 @@
           "code": "if(plan.requires_dhcp_recovery_consent){const label=el(\"label\",null,\"check\"),check=el(\"input\");check.type=\"checkbox\";check.name=\"dhcp_recovery\";check.required=true;label.append(check,el(\"span\",this.t.networkConsent));form.append(label);}"
         },
         {
-          "line": 731,
+          "line": 737,
           "kinds": [
             "element"
           ],
           "code": "const apply=el(\"button\",this.t.networkApply,\"primary\");apply.type=\"submit\";form.append(apply);"
         },
         {
-          "line": 732,
+          "line": 738,
           "kinds": [
             "listener",
             "command"
@@ -6164,7 +6161,7 @@
           "code": "form.addEventListener(\"submit\",event=>{event.preventDefault();this.command(\"mikrotik.lease_apply\",{id:plan.id,confirmed:true,dhcp_recovery:new FormData(form).get(\"dhcp_recovery\")===\"on\"});});section.append(form);"
         },
         {
-          "line": 734,
+          "line": 740,
           "kinds": [
             "button",
             "command"
@@ -6172,7 +6169,7 @@
           "code": "section.append(this.button(this.t.networkCancel,()=>this.command(\"mikrotik.lease_cancel\",{id:plan.id})));"
         },
         {
-          "line": 752,
+          "line": 758,
           "kinds": [
             "button",
             "command"
@@ -6180,7 +6177,7 @@
           "code": "actions.append(this.button(this.t.confirmPlan,()=>this.command(\"conversation.confirm\",{id:plan.id}),true),this.button(this.t.rejectPlan,()=>this.command(\"conversation.reject\",{id:plan.id})));"
         },
         {
-          "line": 768,
+          "line": 774,
           "kinds": [
             "button",
             "command"
@@ -6188,14 +6185,14 @@
           "code": "for(const answer of run.challenge.choices)choices.append(this.button(String(answer),()=>this.command(\"alarms.answer\",{id:run.id,nonce:run.challenge.nonce,answer}),true));"
         },
         {
-          "line": 773,
+          "line": 779,
           "kinds": [
             "button"
           ],
           "code": "runActions.append(this.icon(\"stop\",this.t.stopAlarm,()=>{"
         },
         {
-          "line": 774,
+          "line": 780,
           "kinds": [
             "element",
             "field"
@@ -6203,14 +6200,14 @@
           "code": "const form=el(\"form\");this.input(form,\"reason\",this.t.reason);"
         },
         {
-          "line": 775,
+          "line": 781,
           "kinds": [
             "element"
           ],
           "code": "const submit=el(\"button\",this.t.stopAlarm);submit.type=\"submit\";form.append(submit);"
         },
         {
-          "line": 776,
+          "line": 782,
           "kinds": [
             "listener",
             "command"
@@ -6218,42 +6215,42 @@
           "code": "form.addEventListener(\"submit\",e=>{e.preventDefault();this.command(\"alarms.cancel\",{id:run.id,...Object.fromEntries(new FormData(form))});});item.append(form);"
         },
         {
-          "line": 797,
+          "line": 803,
           "kinds": [
             "command"
           ],
           "code": "const command=(action,extra={})=>this.command(action,{id:item.id,revision:item.revision,...extra});"
         },
         {
-          "line": 800,
+          "line": 806,
           "kinds": [
             "element"
           ],
           "code": "const enableBox=el(\"input\");enableBox.type=\"checkbox\";enableBox.checked=!!item.enabled;"
         },
         {
-          "line": 803,
+          "line": 809,
           "kinds": [
             "listener"
           ],
           "code": "enableBox.addEventListener(\"change\",()=>command(\"alarms.enable\",{enabled:enableBox.checked}));"
         },
         {
-          "line": 805,
+          "line": 811,
           "kinds": [
             "button"
           ],
           "code": "actions.append(this.icon(\"pencil\",copy.edit,()=>openAlarmEditor(this,item)));"
         },
         {
-          "line": 806,
+          "line": 812,
           "kinds": [
             "button"
           ],
           "code": "actions.append(this.icon(\"flask\",this.t.testAlarm,()=>{"
         },
         {
-          "line": 808,
+          "line": 814,
           "kinds": [
             "button",
             "command"
@@ -6261,14 +6258,14 @@
           "code": "confirm.append(this.button(this.t.startTest,()=>this.command(\"alarms.test\",{id:item.id}),true));actions.replaceChildren(confirm);"
         },
         {
-          "line": 811,
+          "line": 817,
           "kinds": [
             "button"
           ],
           "code": "if(this._view===\"court\" && this.parent && item.status===\"active\")actions.append(this.button(this.t.reverse,()=>{"
         },
         {
-          "line": 812,
+          "line": 818,
           "kinds": [
             "element",
             "field"
@@ -6276,42 +6273,42 @@
           "code": "const form=el(\"form\");this.input(form,\"reason\",this.t.reason);const submit=el(\"button\",this.t.save,\"primary\");submit.type=\"submit\";form.append(submit);"
         },
         {
-          "line": 813,
+          "line": 819,
           "kinds": [
             "listener"
           ],
           "code": "form.addEventListener(\"submit\",event=>{event.preventDefault();command(\"court.reverse\",Object.fromEntries(new FormData(form)));});actions.replaceChildren(form);"
         },
         {
-          "line": 829,
+          "line": 835,
           "kinds": [
             "request"
           ],
           "code": "const entries=await this._hass.callWS({type:\"family_assistant/households\"});"
         },
         {
-          "line": 842,
+          "line": 848,
           "kinds": [
             "field"
           ],
           "code": "const wrap=el(\"label\",label),input=el(name!==\"title\"?\"select\":\"input\");input.name=name;"
         },
         {
-          "line": 851,
+          "line": 857,
           "kinds": [
             "listener"
           ],
           "code": "input.addEventListener(\"change\",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent(\"config-changed\",{detail:{config:this._config},bubbles:true,composed:true}));});"
         },
         {
-          "line": 853,
+          "line": 859,
           "kinds": [
             "element"
           ],
           "code": "const compactBox=el(\"input\");compactBox.type=\"checkbox\";compactBox.checked=this._config?.compact!==false;"
         },
         {
-          "line": 855,
+          "line": 861,
           "kinds": [
             "listener"
           ],
@@ -13379,7 +13376,7 @@
   ],
   "handlers": [
     {
-      "id": "change:article-view.js:432:14|family-assistant.js:740:5",
+      "id": "change:article-view.js:432:14|family-assistant.js:746:5",
       "event": "change",
       "sites": [
         {
@@ -13389,7 +13386,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 740,
+          "line": 746,
           "column": 5
         }
       ],
@@ -13477,7 +13474,7 @@
       "views": []
     },
     {
-      "id": "change:calendar-view.js:332:17|family-assistant.js:525:33",
+      "id": "change:calendar-view.js:332:17|family-assistant.js:526:33",
       "event": "change",
       "sites": [
         {
@@ -13487,7 +13484,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -13500,7 +13497,7 @@
       "views": []
     },
     {
-      "id": "change:calendar-view.js:336:20|family-assistant.js:525:33",
+      "id": "change:calendar-view.js:336:20|family-assistant.js:526:33",
       "event": "change",
       "sites": [
         {
@@ -13510,7 +13507,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -13529,7 +13526,7 @@
       ]
     },
     {
-      "id": "change:calendar-view.js:556:15|family-assistant.js:525:33",
+      "id": "change:calendar-view.js:556:15|family-assistant.js:526:33",
       "event": "change",
       "sites": [
         {
@@ -13539,7 +13536,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -13563,7 +13560,7 @@
       ]
     },
     {
-      "id": "change:calendar-view.js:768:10|family-assistant.js:525:33",
+      "id": "change:calendar-view.js:768:10|family-assistant.js:526:33",
       "event": "change",
       "sites": [
         {
@@ -13573,7 +13570,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -13809,7 +13806,7 @@
       "views": []
     },
     {
-      "id": "change:court-view.js:451:19|family-assistant.js:524:30",
+      "id": "change:court-view.js:451:19|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13819,7 +13816,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13836,7 +13833,7 @@
       ]
     },
     {
-      "id": "change:court-view.js:451:72|family-assistant.js:524:30",
+      "id": "change:court-view.js:451:72|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13846,7 +13843,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13859,7 +13856,7 @@
       "views": []
     },
     {
-      "id": "change:court-view.js:472:13|family-assistant.js:524:30",
+      "id": "change:court-view.js:472:13|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13869,7 +13866,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13890,7 +13887,7 @@
       ]
     },
     {
-      "id": "change:court-view.js:472:69|family-assistant.js:524:30",
+      "id": "change:court-view.js:472:69|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13900,7 +13897,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13919,7 +13916,7 @@
       ]
     },
     {
-      "id": "change:court-view.js:473:67|family-assistant.js:524:30",
+      "id": "change:court-view.js:473:67|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13929,7 +13926,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13950,7 +13947,7 @@
       ]
     },
     {
-      "id": "change:court-view.js:530:15|family-assistant.js:524:30",
+      "id": "change:court-view.js:530:15|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13960,7 +13957,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -13977,7 +13974,7 @@
       ]
     },
     {
-      "id": "change:court-view.js:642:20|family-assistant.js:524:30",
+      "id": "change:court-view.js:642:20|family-assistant.js:525:30",
       "event": "change",
       "sites": [
         {
@@ -13987,7 +13984,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -14003,7 +14000,7 @@
       ]
     },
     {
-      "id": "change:dietary-view.js:521:15|family-assistant.js:516:84",
+      "id": "change:dietary-view.js:521:15|family-assistant.js:517:84",
       "event": "change",
       "sites": [
         {
@@ -14013,7 +14010,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 84
         }
       ],
@@ -14031,7 +14028,7 @@
       ]
     },
     {
-      "id": "change:dietary-view.js:584:16|family-assistant.js:516:84",
+      "id": "change:dietary-view.js:584:16|family-assistant.js:517:84",
       "event": "change",
       "sites": [
         {
@@ -14041,7 +14038,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 84
         }
       ],
@@ -14062,7 +14059,7 @@
       ]
     },
     {
-      "id": "change:digests-view.js:784:16|family-assistant.js:513:7",
+      "id": "change:digests-view.js:784:16|family-assistant.js:514:7",
       "event": "change",
       "sites": [
         {
@@ -14072,7 +14069,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 513,
+          "line": 514,
           "column": 7
         }
       ],
@@ -14099,17 +14096,17 @@
       ]
     },
     {
-      "id": "change:family-assistant.js:619:9|family-assistant.js:582:34",
+      "id": "change:family-assistant.js:620:9|family-assistant.js:583:34",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 619,
+          "line": 620,
           "column": 9
         },
         {
           "file": "family-assistant.js",
-          "line": 582,
+          "line": 583,
           "column": 34
         }
       ],
@@ -14123,17 +14120,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:647:9|family-assistant.js:613:34",
+      "id": "change:family-assistant.js:649:9|family-assistant.js:614:34",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 647,
+          "line": 649,
           "column": 9
         },
         {
           "file": "family-assistant.js",
-          "line": 613,
+          "line": 614,
           "column": 34
         }
       ],
@@ -14146,17 +14143,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:803:17|family-assistant.js:557:229",
+      "id": "change:family-assistant.js:809:17|family-assistant.js:558:229",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 803,
+          "line": 809,
           "column": 17
         },
         {
           "file": "family-assistant.js",
-          "line": 557,
+          "line": 558,
           "column": 229
         }
       ],
@@ -14190,17 +14187,17 @@
       ]
     },
     {
-      "id": "change:family-assistant.js:851:13|family-assistant.js:820:51",
+      "id": "change:family-assistant.js:857:13|family-assistant.js:826:51",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 851,
+          "line": 857,
           "column": 13
         },
         {
           "file": "family-assistant.js",
-          "line": 820,
+          "line": 826,
           "column": 51
         }
       ],
@@ -14220,17 +14217,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:851:13|family-assistant.js:825:44",
+      "id": "change:family-assistant.js:857:13|family-assistant.js:831:44",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 851,
+          "line": 857,
           "column": 13
         },
         {
           "file": "family-assistant.js",
-          "line": 825,
+          "line": 831,
           "column": 44
         }
       ],
@@ -14250,17 +14247,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:851:13|family-assistant.js:831:52",
+      "id": "change:family-assistant.js:857:13|family-assistant.js:837:52",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 851,
+          "line": 857,
           "column": 13
         },
         {
           "file": "family-assistant.js",
-          "line": 831,
+          "line": 837,
           "column": 52
         }
       ],
@@ -14286,17 +14283,17 @@
       ]
     },
     {
-      "id": "change:family-assistant.js:855:16|family-assistant.js:820:51",
+      "id": "change:family-assistant.js:861:16|family-assistant.js:826:51",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 855,
+          "line": 861,
           "column": 16
         },
         {
           "file": "family-assistant.js",
-          "line": 820,
+          "line": 826,
           "column": 51
         }
       ],
@@ -14316,17 +14313,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:855:16|family-assistant.js:825:44",
+      "id": "change:family-assistant.js:861:16|family-assistant.js:831:44",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 855,
+          "line": 861,
           "column": 16
         },
         {
           "file": "family-assistant.js",
-          "line": 825,
+          "line": 831,
           "column": 44
         }
       ],
@@ -14346,17 +14343,17 @@
       "views": []
     },
     {
-      "id": "change:family-assistant.js:855:16|family-assistant.js:831:52",
+      "id": "change:family-assistant.js:861:16|family-assistant.js:837:52",
       "event": "change",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 855,
+          "line": 861,
           "column": 16
         },
         {
           "file": "family-assistant.js",
-          "line": 831,
+          "line": 837,
           "column": 52
         }
       ],
@@ -14968,7 +14965,7 @@
       "views": []
     },
     {
-      "id": "change:maintenance-view.js:1093:58|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:1093:58|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -14978,7 +14975,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15002,7 +14999,7 @@
       ]
     },
     {
-      "id": "change:maintenance-view.js:1100:11|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:1100:11|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -15012,7 +15009,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15032,7 +15029,7 @@
       ]
     },
     {
-      "id": "change:maintenance-view.js:1181:13|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:1181:13|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -15042,7 +15039,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15080,7 +15077,7 @@
       ]
     },
     {
-      "id": "change:maintenance-view.js:845:58|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:845:58|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -15090,7 +15087,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15114,7 +15111,7 @@
       ]
     },
     {
-      "id": "change:maintenance-view.js:847:17|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:847:17|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -15124,7 +15121,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15214,7 +15211,7 @@
       ]
     },
     {
-      "id": "change:maintenance-view.js:994:10|family-assistant.js:501:7",
+      "id": "change:maintenance-view.js:994:10|family-assistant.js:502:7",
       "event": "change",
       "sites": [
         {
@@ -15224,7 +15221,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -15237,7 +15234,7 @@
       "views": []
     },
     {
-      "id": "change:meal-shopping-view.js:469:16|family-assistant.js:516:54",
+      "id": "change:meal-shopping-view.js:469:16|family-assistant.js:517:54",
       "event": "change",
       "sites": [
         {
@@ -15247,7 +15244,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 54
         }
       ],
@@ -15308,7 +15305,7 @@
       ]
     },
     {
-      "id": "change:meals-view.js:702:11|family-assistant.js:516:31",
+      "id": "change:meals-view.js:702:11|family-assistant.js:517:31",
       "event": "change",
       "sites": [
         {
@@ -15318,7 +15315,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 31
         }
       ],
@@ -15340,7 +15337,7 @@
       ]
     },
     {
-      "id": "change:network-admission-view.js:755:22|family-assistant.js:664:5",
+      "id": "change:network-admission-view.js:755:22|family-assistant.js:670:5",
       "event": "change",
       "sites": [
         {
@@ -15350,7 +15347,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 664,
+          "line": 670,
           "column": 5
         }
       ],
@@ -15374,7 +15371,7 @@
       ]
     },
     {
-      "id": "change:network-kids.js:106:269|family-assistant.js:663:5",
+      "id": "change:network-kids.js:106:269|family-assistant.js:669:5",
       "event": "change",
       "sites": [
         {
@@ -15384,7 +15381,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -15404,7 +15401,7 @@
       ]
     },
     {
-      "id": "change:network-kids.js:107:144|family-assistant.js:663:5",
+      "id": "change:network-kids.js:107:144|family-assistant.js:669:5",
       "event": "change",
       "sites": [
         {
@@ -15414,7 +15411,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -15434,7 +15431,7 @@
       ]
     },
     {
-      "id": "change:network-kids.js:107:74|family-assistant.js:663:5",
+      "id": "change:network-kids.js:107:74|family-assistant.js:669:5",
       "event": "change",
       "sites": [
         {
@@ -15444,7 +15441,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -15464,7 +15461,7 @@
       ]
     },
     {
-      "id": "change:network-kids.js:96:21|family-assistant.js:663:5",
+      "id": "change:network-kids.js:96:21|family-assistant.js:669:5",
       "event": "change",
       "sites": [
         {
@@ -15474,7 +15471,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -15492,7 +15489,7 @@
       ]
     },
     {
-      "id": "change:network-watch-view.js:308:16|family-assistant.js:665:5",
+      "id": "change:network-watch-view.js:308:16|family-assistant.js:671:5",
       "event": "change",
       "sites": [
         {
@@ -15502,7 +15499,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 665,
+          "line": 671,
           "column": 5
         }
       ],
@@ -15653,7 +15650,7 @@
       ]
     },
     {
-      "id": "change:polls-view.js:579:16|family-assistant.js:505:7",
+      "id": "change:polls-view.js:579:16|family-assistant.js:506:7",
       "event": "change",
       "sites": [
         {
@@ -15663,7 +15660,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -15683,7 +15680,7 @@
       ]
     },
     {
-      "id": "change:polls-view.js:658:13|family-assistant.js:505:7",
+      "id": "change:polls-view.js:658:13|family-assistant.js:506:7",
       "event": "change",
       "sites": [
         {
@@ -15693,7 +15690,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -15720,7 +15717,7 @@
       ]
     },
     {
-      "id": "change:polls-view.js:735:15|family-assistant.js:505:7",
+      "id": "change:polls-view.js:735:15|family-assistant.js:506:7",
       "event": "change",
       "sites": [
         {
@@ -15730,7 +15727,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -15755,7 +15752,7 @@
       ]
     },
     {
-      "id": "change:presence-notifications-view.js:557:16|family-assistant.js:509:33",
+      "id": "change:presence-notifications-view.js:557:16|family-assistant.js:510:33",
       "event": "change",
       "sites": [
         {
@@ -15765,7 +15762,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 509,
+          "line": 510,
           "column": 33
         }
       ],
@@ -15792,7 +15789,7 @@
       ]
     },
     {
-      "id": "change:presence-view.js:494:16|family-assistant.js:509:7",
+      "id": "change:presence-view.js:494:16|family-assistant.js:510:7",
       "event": "change",
       "sites": [
         {
@@ -15802,7 +15799,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 509,
+          "line": 510,
           "column": 7
         }
       ],
@@ -15910,7 +15907,7 @@
       ]
     },
     {
-      "id": "change:recipes-view.js:913:15|family-assistant.js:517:7",
+      "id": "change:recipes-view.js:913:15|family-assistant.js:518:7",
       "event": "change",
       "sites": [
         {
@@ -15920,7 +15917,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -15945,7 +15942,7 @@
       ]
     },
     {
-      "id": "change:recipes-view.js:959:14|family-assistant.js:517:7",
+      "id": "change:recipes-view.js:959:14|family-assistant.js:518:7",
       "event": "change",
       "sites": [
         {
@@ -15955,7 +15952,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -16335,7 +16332,7 @@
       "views": []
     },
     {
-      "id": "change:rewards-view.js:201:11|family-assistant.js:524:53",
+      "id": "change:rewards-view.js:201:11|family-assistant.js:525:53",
       "event": "change",
       "sites": [
         {
@@ -16345,7 +16342,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -16397,7 +16394,7 @@
       ]
     },
     {
-      "id": "change:rewards-view.js:260:19|family-assistant.js:524:53",
+      "id": "change:rewards-view.js:260:19|family-assistant.js:525:53",
       "event": "change",
       "sites": [
         {
@@ -16407,7 +16404,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -16458,7 +16455,7 @@
       ]
     },
     {
-      "id": "change:routines-view.js:1446:15|family-assistant.js:487:33",
+      "id": "change:routines-view.js:1446:15|family-assistant.js:488:33",
       "event": "change",
       "sites": [
         {
@@ -16468,7 +16465,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -16516,7 +16513,7 @@
       ]
     },
     {
-      "id": "change:routines-view.js:745:12|family-assistant.js:487:33",
+      "id": "change:routines-view.js:745:12|family-assistant.js:488:33",
       "event": "change",
       "sites": [
         {
@@ -16526,7 +16523,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -16546,7 +16543,7 @@
       ]
     },
     {
-      "id": "change:routines-view.js:901:18|family-assistant.js:487:33",
+      "id": "change:routines-view.js:901:18|family-assistant.js:488:33",
       "event": "change",
       "sites": [
         {
@@ -16556,7 +16553,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -16580,7 +16577,7 @@
       "views": []
     },
     {
-      "id": "change:routines-view.js:918:10|family-assistant.js:487:33",
+      "id": "change:routines-view.js:918:10|family-assistant.js:488:33",
       "event": "change",
       "sites": [
         {
@@ -16590,7 +16587,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -16700,7 +16697,7 @@
       ]
     },
     {
-      "id": "change:school-reminders-view.js:335:16|family-assistant.js:492:55",
+      "id": "change:school-reminders-view.js:335:16|family-assistant.js:493:55",
       "event": "change",
       "sites": [
         {
@@ -16710,7 +16707,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 492,
+          "line": 493,
           "column": 55
         }
       ],
@@ -16752,7 +16749,7 @@
       ]
     },
     {
-      "id": "change:school-view.js:1004:12|family-assistant.js:495:65",
+      "id": "change:school-view.js:1004:12|family-assistant.js:496:65",
       "event": "change",
       "sites": [
         {
@@ -16762,7 +16759,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -16780,7 +16777,7 @@
       ]
     },
     {
-      "id": "change:school-view.js:1081:14|family-assistant.js:495:65",
+      "id": "change:school-view.js:1081:14|family-assistant.js:496:65",
       "event": "change",
       "sites": [
         {
@@ -16790,7 +16787,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -16862,7 +16859,7 @@
       ]
     },
     {
-      "id": "change:school-view.js:916:15|family-assistant.js:495:65",
+      "id": "change:school-view.js:916:15|family-assistant.js:496:65",
       "event": "change",
       "sites": [
         {
@@ -16872,7 +16869,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -16909,7 +16906,7 @@
       ]
     },
     {
-      "id": "change:school-view.js:920:18|family-assistant.js:495:65",
+      "id": "change:school-view.js:920:18|family-assistant.js:496:65",
       "event": "change",
       "sites": [
         {
@@ -16919,7 +16916,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -16938,7 +16935,7 @@
       "views": []
     },
     {
-      "id": "change:school-view.js:930:19|family-assistant.js:495:65",
+      "id": "change:school-view.js:930:19|family-assistant.js:496:65",
       "event": "change",
       "sites": [
         {
@@ -16948,7 +16945,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -17089,7 +17086,7 @@
       ]
     },
     {
-      "id": "change:shopping-items.js:377:10|family-assistant.js:537:97",
+      "id": "change:shopping-items.js:377:10|family-assistant.js:538:97",
       "event": "change",
       "sites": [
         {
@@ -17099,7 +17096,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 537,
+          "line": 538,
           "column": 97
         }
       ],
@@ -17493,7 +17490,7 @@
       ]
     },
     {
-      "id": "change:task-form.js:691:12|family-assistant.js:444:36",
+      "id": "change:task-form.js:691:12|family-assistant.js:445:36",
       "event": "change",
       "sites": [
         {
@@ -17503,7 +17500,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 444,
+          "line": 445,
           "column": 36
         }
       ],
@@ -17567,7 +17564,7 @@
       ]
     },
     {
-      "id": "change:task-form.js:891:8|family-assistant.js:444:36",
+      "id": "change:task-form.js:891:8|family-assistant.js:445:36",
       "event": "change",
       "sites": [
         {
@@ -17577,7 +17574,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 444,
+          "line": 445,
           "column": 36
         }
       ],
@@ -17725,7 +17722,7 @@
       ]
     },
     {
-      "id": "change:task-items.js:799:24|family-assistant.js:784:36",
+      "id": "change:task-items.js:799:24|family-assistant.js:790:36",
       "event": "change",
       "sites": [
         {
@@ -17735,7 +17732,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -17760,7 +17757,7 @@
       "views": []
     },
     {
-      "id": "change:task-items.js:872:18|family-assistant.js:784:36",
+      "id": "change:task-items.js:872:18|family-assistant.js:790:36",
       "event": "change",
       "sites": [
         {
@@ -17770,7 +17767,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -17798,7 +17795,7 @@
       "views": []
     },
     {
-      "id": "change:task-items.js:935:23|family-assistant.js:784:36",
+      "id": "change:task-items.js:935:23|family-assistant.js:790:36",
       "event": "change",
       "sites": [
         {
@@ -17808,7 +17805,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -18561,7 +18558,7 @@
       ]
     },
     {
-      "id": "click:conversation-view.js:278:14|family-assistant.js:741:5",
+      "id": "click:conversation-view.js:278:14|family-assistant.js:747:5",
       "event": "click",
       "sites": [
         {
@@ -18571,7 +18568,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 741,
+          "line": 747,
           "column": 5
         }
       ],
@@ -18590,7 +18587,7 @@
       ]
     },
     {
-      "id": "click:conversation-view.js:413:12|family-assistant.js:741:5",
+      "id": "click:conversation-view.js:413:12|family-assistant.js:747:5",
       "event": "click",
       "sites": [
         {
@@ -18600,7 +18597,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 741,
+          "line": 747,
           "column": 5
         }
       ],
@@ -18731,12 +18728,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|alarm-editor.js:377:23",
+      "id": "click:family-assistant.js:385:12|alarm-editor.js:377:23",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18773,12 +18770,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|article-view.js:223:23",
+      "id": "click:family-assistant.js:385:12|article-view.js:223:23",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18813,12 +18810,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:1069:16",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:1069:16",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18849,12 +18846,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:1104:16",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:1104:16",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18882,12 +18879,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:1123:16",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:1123:16",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18916,12 +18913,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:1138:16",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:1138:16",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18950,12 +18947,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:283:25",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:283:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -18985,12 +18982,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:341:28",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:341:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19014,12 +19011,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:349:14",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:349:14",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19043,12 +19040,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:399:10",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:399:10",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19081,12 +19078,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:696:28",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:696:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19119,12 +19116,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:704:12",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:704:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19151,12 +19148,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:951:28",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:951:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19182,12 +19179,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|calendar-view.js:959:12",
+      "id": "click:family-assistant.js:385:12|calendar-view.js:959:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19211,12 +19208,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:375:22",
+      "id": "click:family-assistant.js:385:12|court-view.js:375:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19252,12 +19249,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:452:29",
+      "id": "click:family-assistant.js:385:12|court-view.js:452:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19281,12 +19278,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:458:33",
+      "id": "click:family-assistant.js:385:12|court-view.js:458:33",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19312,12 +19309,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:475:62",
+      "id": "click:family-assistant.js:385:12|court-view.js:475:62",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19349,12 +19346,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:503:22",
+      "id": "click:family-assistant.js:385:12|court-view.js:503:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19396,12 +19393,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:533:61",
+      "id": "click:family-assistant.js:385:12|court-view.js:533:61",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19425,12 +19422,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:596:27",
+      "id": "click:family-assistant.js:385:12|court-view.js:596:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19471,12 +19468,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:604:27",
+      "id": "click:family-assistant.js:385:12|court-view.js:604:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19517,12 +19514,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:615:29",
+      "id": "click:family-assistant.js:385:12|court-view.js:615:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19545,12 +19542,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:628:69",
+      "id": "click:family-assistant.js:385:12|court-view.js:628:69",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19576,12 +19573,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:657:29",
+      "id": "click:family-assistant.js:385:12|court-view.js:657:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19611,12 +19608,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|court-view.js:658:34",
+      "id": "click:family-assistant.js:385:12|court-view.js:658:34",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19642,12 +19639,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|dietary-view.js:331:25",
+      "id": "click:family-assistant.js:385:12|dietary-view.js:331:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19674,12 +19671,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|digests-view.js:564:25",
+      "id": "click:family-assistant.js:385:12|digests-view.js:564:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -19718,17 +19715,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:477:64",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:478:64",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 477,
+          "line": 478,
           "column": 64
         }
       ],
@@ -19746,17 +19743,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:478:39",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:479:39",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 478,
+          "line": 479,
           "column": 39
         }
       ],
@@ -19775,17 +19772,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:480:38",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:481:38",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 480,
+          "line": 481,
           "column": 38
         }
       ],
@@ -19804,17 +19801,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:669:22",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:675:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 669,
+          "line": 675,
           "column": 22
         }
       ],
@@ -19849,17 +19846,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:682:24",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:688:24",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 682,
+          "line": 688,
           "column": 24
         }
       ],
@@ -19888,17 +19885,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:734:29",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:740:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 734,
+          "line": 740,
           "column": 29
         }
       ],
@@ -19917,17 +19914,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:752:118",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:758:118",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 752,
+          "line": 758,
           "column": 118
         }
       ],
@@ -19949,17 +19946,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:752:27",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:758:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 752,
+          "line": 758,
           "column": 27
         }
       ],
@@ -19981,17 +19978,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:768:71",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:774:71",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 768,
+          "line": 774,
           "column": 71
         }
       ],
@@ -20009,17 +20006,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|family-assistant.js:808:29",
+      "id": "click:family-assistant.js:385:12|family-assistant.js:814:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 808,
+          "line": 814,
           "column": 29
         }
       ],
@@ -20037,12 +20034,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|maintenance-view.js:582:25",
+      "id": "click:family-assistant.js:385:12|maintenance-view.js:582:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20102,12 +20099,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|meal-shopping-view.js:211:25",
+      "id": "click:family-assistant.js:385:12|meal-shopping-view.js:211:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20144,12 +20141,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|meals-view.js:224:20",
+      "id": "click:family-assistant.js:385:12|meals-view.js:224:20",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20195,12 +20192,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|network-admission-view.js:354:21",
+      "id": "click:family-assistant.js:385:12|network-admission-view.js:354:21",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20229,12 +20226,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|network-kids.js:47:49",
+      "id": "click:family-assistant.js:385:12|network-kids.js:47:49",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20258,12 +20255,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|network-kids.js:48:27",
+      "id": "click:family-assistant.js:385:12|network-kids.js:48:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20287,12 +20284,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|network-watch-view.js:193:18",
+      "id": "click:family-assistant.js:385:12|network-watch-view.js:193:18",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20324,12 +20321,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|pantry-view.js:146:23",
+      "id": "click:family-assistant.js:385:12|pantry-view.js:146:23",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20362,12 +20359,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|pantry-view.js:148:29",
+      "id": "click:family-assistant.js:385:12|pantry-view.js:148:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20394,12 +20391,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|pantry-view.js:293:25",
+      "id": "click:family-assistant.js:385:12|pantry-view.js:293:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20435,12 +20432,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|polls-view.js:332:24",
+      "id": "click:family-assistant.js:385:12|polls-view.js:332:24",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20480,12 +20477,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|presence-notifications-view.js:373:21",
+      "id": "click:family-assistant.js:385:12|presence-notifications-view.js:373:21",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20517,12 +20514,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|presence-view.js:386:25",
+      "id": "click:family-assistant.js:385:12|presence-view.js:386:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20569,12 +20566,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|recipes-view.js:490:25",
+      "id": "click:family-assistant.js:385:12|recipes-view.js:490:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20609,12 +20606,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:150:26",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:150:26",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20645,12 +20642,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:188:26",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:188:26",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20680,12 +20677,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:190:25",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:190:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20711,12 +20708,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:236:25",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:236:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20753,12 +20750,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:243:25",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:243:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20792,12 +20789,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:272:32",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:272:32",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20821,12 +20818,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:274:29",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:274:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20850,12 +20847,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:339:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:339:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20881,12 +20878,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:340:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:340:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20914,12 +20911,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:341:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:341:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20945,12 +20942,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:343:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:343:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -20974,12 +20971,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:344:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:344:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21003,12 +21000,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:346:30",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:346:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21032,12 +21029,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:349:28",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:349:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21061,12 +21058,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:363:32",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:363:32",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21105,12 +21102,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|rewards-view.js:365:27",
+      "id": "click:family-assistant.js:385:12|rewards-view.js:365:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21139,12 +21136,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|routines-view.js:527:22",
+      "id": "click:family-assistant.js:385:12|routines-view.js:527:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21259,12 +21256,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-reminders-view.js:250:25",
+      "id": "click:family-assistant.js:385:12|school-reminders-view.js:250:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21312,12 +21309,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-view.js:544:25",
+      "id": "click:family-assistant.js:385:12|school-view.js:544:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21391,12 +21388,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-work-view.js:503:23",
+      "id": "click:family-assistant.js:385:12|school-work-view.js:503:23",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21430,12 +21427,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-work-view.js:676:23",
+      "id": "click:family-assistant.js:385:12|school-work-view.js:676:23",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21465,12 +21462,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-work-view.js:797:22",
+      "id": "click:family-assistant.js:385:12|school-work-view.js:797:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21522,12 +21519,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-work-view.js:822:25",
+      "id": "click:family-assistant.js:385:12|school-work-view.js:822:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21558,12 +21555,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|school-work-view.js:846:26",
+      "id": "click:family-assistant.js:385:12|school-work-view.js:846:26",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21634,12 +21631,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-barcode.js:124:21",
+      "id": "click:family-assistant.js:385:12|shopping-barcode.js:124:21",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21682,12 +21679,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-barcode.js:44:22",
+      "id": "click:family-assistant.js:385:12|shopping-barcode.js:44:22",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21742,12 +21739,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:620:12",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:620:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21841,12 +21838,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:696:25",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:696:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21909,12 +21906,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:708:25",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:708:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -21961,12 +21958,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:729:25",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:729:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22017,12 +22014,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:736:27",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:736:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22055,12 +22052,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:737:27",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:737:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22093,12 +22090,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:739:27",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:739:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22128,12 +22125,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-items.js:805:18",
+      "id": "click:family-assistant.js:385:12|shopping-items.js:805:18",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22222,12 +22219,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-series.js:189:28",
+      "id": "click:family-assistant.js:385:12|shopping-series.js:189:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22289,12 +22286,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-series.js:273:30",
+      "id": "click:family-assistant.js:385:12|shopping-series.js:273:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22318,12 +22315,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-series.js:282:32",
+      "id": "click:family-assistant.js:385:12|shopping-series.js:282:32",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22347,12 +22344,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|shopping-series.js:551:26",
+      "id": "click:family-assistant.js:385:12|shopping-series.js:551:26",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22377,12 +22374,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:1039:31",
+      "id": "click:family-assistant.js:385:12|task-items.js:1039:31",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22405,12 +22402,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:1050:30",
+      "id": "click:family-assistant.js:385:12|task-items.js:1050:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22433,12 +22430,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:1067:31",
+      "id": "click:family-assistant.js:385:12|task-items.js:1067:31",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22461,12 +22458,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:1078:30",
+      "id": "click:family-assistant.js:385:12|task-items.js:1078:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22489,12 +22486,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:402:34",
+      "id": "click:family-assistant.js:385:12|task-items.js:402:34",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22517,12 +22514,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:619:31",
+      "id": "click:family-assistant.js:385:12|task-items.js:619:31",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22566,12 +22563,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:656:32",
+      "id": "click:family-assistant.js:385:12|task-items.js:656:32",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22595,12 +22592,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:717:30",
+      "id": "click:family-assistant.js:385:12|task-items.js:717:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22624,12 +22621,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-items.js:947:30",
+      "id": "click:family-assistant.js:385:12|task-items.js:947:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22668,12 +22665,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:384:12|task-media-view.js:425:12",
+      "id": "click:family-assistant.js:385:12|task-media-view.js:425:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 384,
+          "line": 385,
           "column": 12
         },
         {
@@ -22721,17 +22718,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:541:27",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:542:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 541,
+          "line": 542,
           "column": 27
         }
       ],
@@ -22768,17 +22765,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:547:38",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:548:38",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 547,
+          "line": 548,
           "column": 38
         }
       ],
@@ -22819,17 +22816,17 @@
       "views": []
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:547:84",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:548:84",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 547,
+          "line": 548,
           "column": 84
         }
       ],
@@ -22998,17 +22995,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:573:84",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:574:84",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 573,
+          "line": 574,
           "column": 84
         }
       ],
@@ -23022,17 +23019,17 @@
       "views": []
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:575:40",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:576:40",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 575,
+          "line": 576,
           "column": 40
         }
       ],
@@ -23052,17 +23049,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:595:28",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:596:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 595,
+          "line": 596,
           "column": 28
         }
       ],
@@ -23080,17 +23077,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:606:27",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:607:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 606,
+          "line": 607,
           "column": 27
         }
       ],
@@ -23109,17 +23106,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:633:25",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:634:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 633,
+          "line": 634,
           "column": 25
         }
       ],
@@ -23139,17 +23136,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:656:25",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:662:25",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 656,
+          "line": 662,
           "column": 25
         }
       ],
@@ -23168,17 +23165,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:773:32",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:779:32",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 773,
+          "line": 779,
           "column": 32
         }
       ],
@@ -23197,17 +23194,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:805:27",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:811:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 805,
+          "line": 811,
           "column": 27
         }
       ],
@@ -23247,17 +23244,17 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|family-assistant.js:806:27",
+      "id": "click:family-assistant.js:401:12|family-assistant.js:812:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 806,
+          "line": 812,
           "column": 27
         }
       ],
@@ -23291,12 +23288,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:416:28",
+      "id": "click:family-assistant.js:401:12|task-items.js:416:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23393,12 +23390,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:436:27",
+      "id": "click:family-assistant.js:401:12|task-items.js:436:27",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23495,12 +23492,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:456:28",
+      "id": "click:family-assistant.js:401:12|task-items.js:456:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23587,12 +23584,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:479:30",
+      "id": "click:family-assistant.js:401:12|task-items.js:479:30",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23682,12 +23679,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:498:34",
+      "id": "click:family-assistant.js:401:12|task-items.js:498:34",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23726,12 +23723,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:520:26",
+      "id": "click:family-assistant.js:401:12|task-items.js:520:26",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23850,12 +23847,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:567:28",
+      "id": "click:family-assistant.js:401:12|task-items.js:567:28",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -23943,12 +23940,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-items.js:589:29",
+      "id": "click:family-assistant.js:401:12|task-items.js:589:29",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -24035,12 +24032,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-series-view.js:881:12",
+      "id": "click:family-assistant.js:401:12|task-series-view.js:881:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -24073,12 +24070,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-series-view.js:894:14",
+      "id": "click:family-assistant.js:401:12|task-series-view.js:894:14",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -24109,12 +24106,12 @@
       ]
     },
     {
-      "id": "click:family-assistant.js:400:12|task-series-view.js:944:12",
+      "id": "click:family-assistant.js:401:12|task-series-view.js:944:12",
       "event": "click",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 400,
+          "line": 401,
           "column": 12
         },
         {
@@ -24689,9 +24686,6 @@
         131,
         134,
         137,
-        138,
-        139,
-        140,
         141,
         307,
         308,
@@ -24725,9 +24719,6 @@
         131,
         134,
         137,
-        138,
-        139,
-        140,
         141,
         307,
         308,
@@ -26225,9 +26216,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -26265,9 +26253,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -26304,9 +26289,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -26372,9 +26354,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -26735,9 +26714,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -26767,38 +26743,11 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
         85,
         86
-      ],
-      "invoked": [],
-      "trusted": [],
-      "views": []
-    },
-    {
-      "id": "click:family-panel.js:564:10|family-panel.js:558:74",
-      "event": "click",
-      "sites": [
-        {
-          "file": "family-panel.js",
-          "line": 564,
-          "column": 10
-        },
-        {
-          "file": "family-panel.js",
-          "line": 558,
-          "column": 74
-        }
-      ],
-      "registered": [
-        138,
-        139,
-        140
       ],
       "invoked": [],
       "trusted": [],
@@ -27164,7 +27113,7 @@
       ]
     },
     {
-      "id": "click:home-status-view.js:32:11|family-assistant.js:486:37",
+      "id": "click:home-status-view.js:32:11|family-assistant.js:487:37",
       "event": "click",
       "sites": [
         {
@@ -27174,7 +27123,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 486,
+          "line": 487,
           "column": 37
         }
       ],
@@ -27971,7 +27920,7 @@
       ]
     },
     {
-      "id": "click:task-form.js:918:14|family-assistant.js:444:36",
+      "id": "click:task-form.js:918:14|family-assistant.js:445:36",
       "event": "click",
       "sites": [
         {
@@ -27981,7 +27930,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 444,
+          "line": 445,
           "column": 36
         }
       ],
@@ -28172,7 +28121,7 @@
       ]
     },
     {
-      "id": "input:article-view.js:376:11|family-assistant.js:740:5",
+      "id": "input:article-view.js:376:11|family-assistant.js:746:5",
       "event": "input",
       "sites": [
         {
@@ -28182,7 +28131,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 740,
+          "line": 746,
           "column": 5
         }
       ],
@@ -28324,7 +28273,7 @@
       ]
     },
     {
-      "id": "input:calendar-view.js:577:16|family-assistant.js:525:33",
+      "id": "input:calendar-view.js:577:16|family-assistant.js:526:33",
       "event": "input",
       "sites": [
         {
@@ -28334,7 +28283,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -28350,7 +28299,7 @@
       "views": []
     },
     {
-      "id": "input:calendar-view.js:578:16|family-assistant.js:525:33",
+      "id": "input:calendar-view.js:578:16|family-assistant.js:526:33",
       "event": "input",
       "sites": [
         {
@@ -28360,7 +28309,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -28376,7 +28325,7 @@
       "views": []
     },
     {
-      "id": "input:calendar-view.js:579:13|family-assistant.js:525:33",
+      "id": "input:calendar-view.js:579:13|family-assistant.js:526:33",
       "event": "input",
       "sites": [
         {
@@ -28386,7 +28335,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -28402,7 +28351,7 @@
       "views": []
     },
     {
-      "id": "input:calendar-view.js:767:10|family-assistant.js:525:33",
+      "id": "input:calendar-view.js:767:10|family-assistant.js:526:33",
       "event": "input",
       "sites": [
         {
@@ -28412,7 +28361,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -28442,7 +28391,7 @@
       ]
     },
     {
-      "id": "input:calendar-view.js:967:17|family-assistant.js:525:33",
+      "id": "input:calendar-view.js:967:17|family-assistant.js:526:33",
       "event": "input",
       "sites": [
         {
@@ -28452,7 +28401,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -28627,7 +28576,7 @@
       "views": []
     },
     {
-      "id": "input:conversation-view.js:261:9|family-assistant.js:741:5",
+      "id": "input:conversation-view.js:261:9|family-assistant.js:747:5",
       "event": "input",
       "sites": [
         {
@@ -28637,7 +28586,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 741,
+          "line": 747,
           "column": 5
         }
       ],
@@ -28689,7 +28638,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:450:20|family-assistant.js:524:30",
+      "id": "input:court-view.js:450:20|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28699,7 +28648,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28718,7 +28667,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:450:71|family-assistant.js:524:30",
+      "id": "input:court-view.js:450:71|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28728,7 +28677,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28747,7 +28696,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:473:14|family-assistant.js:524:30",
+      "id": "input:court-view.js:473:14|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28757,7 +28706,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28776,7 +28725,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:530:122|family-assistant.js:524:30",
+      "id": "input:court-view.js:530:122|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28786,7 +28735,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28807,7 +28756,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:530:70|family-assistant.js:524:30",
+      "id": "input:court-view.js:530:70|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28817,7 +28766,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28836,7 +28785,7 @@
       ]
     },
     {
-      "id": "input:court-view.js:651:16|family-assistant.js:524:30",
+      "id": "input:court-view.js:651:16|family-assistant.js:525:30",
       "event": "input",
       "sites": [
         {
@@ -28846,7 +28795,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -28873,7 +28822,7 @@
       ]
     },
     {
-      "id": "input:dietary-view.js:520:15|family-assistant.js:516:84",
+      "id": "input:dietary-view.js:520:15|family-assistant.js:517:84",
       "event": "input",
       "sites": [
         {
@@ -28883,7 +28832,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 84
         }
       ],
@@ -29384,9 +29333,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -29461,7 +29407,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:1093:15|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:1093:15|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29471,7 +29417,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29495,7 +29441,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:845:15|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:845:15|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29505,7 +29451,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29553,7 +29499,7 @@
       "views": []
     },
     {
-      "id": "input:maintenance-view.js:944:13|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:944:13|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29563,7 +29509,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29581,7 +29527,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:945:13|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:945:13|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29591,7 +29537,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29609,7 +29555,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:967:12|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:967:12|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29619,7 +29565,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29637,7 +29583,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:992:15|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:992:15|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29647,7 +29593,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29664,7 +29610,7 @@
       ]
     },
     {
-      "id": "input:maintenance-view.js:993:13|family-assistant.js:501:7",
+      "id": "input:maintenance-view.js:993:13|family-assistant.js:502:7",
       "event": "input",
       "sites": [
         {
@@ -29674,7 +29620,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -29730,7 +29676,7 @@
       ]
     },
     {
-      "id": "input:meals-view.js:685:14|family-assistant.js:516:31",
+      "id": "input:meals-view.js:685:14|family-assistant.js:517:31",
       "event": "input",
       "sites": [
         {
@@ -29740,7 +29686,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 31
         }
       ],
@@ -29759,7 +29705,7 @@
       ]
     },
     {
-      "id": "input:network-admission-view.js:622:13|family-assistant.js:664:5",
+      "id": "input:network-admission-view.js:622:13|family-assistant.js:670:5",
       "event": "input",
       "sites": [
         {
@@ -29769,7 +29715,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 664,
+          "line": 670,
           "column": 5
         }
       ],
@@ -29793,7 +29739,7 @@
       ]
     },
     {
-      "id": "input:network-watch-view.js:312:23|family-assistant.js:665:5",
+      "id": "input:network-watch-view.js:312:23|family-assistant.js:671:5",
       "event": "input",
       "sites": [
         {
@@ -29803,7 +29749,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 665,
+          "line": 671,
           "column": 5
         }
       ],
@@ -29954,7 +29900,7 @@
       ]
     },
     {
-      "id": "input:polls-view.js:524:14|family-assistant.js:505:7",
+      "id": "input:polls-view.js:524:14|family-assistant.js:506:7",
       "event": "input",
       "sites": [
         {
@@ -29964,7 +29910,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -30016,7 +29962,7 @@
       ]
     },
     {
-      "id": "input:presence-notifications-view.js:562:19|family-assistant.js:509:33",
+      "id": "input:presence-notifications-view.js:562:19|family-assistant.js:510:33",
       "event": "input",
       "sites": [
         {
@@ -30026,7 +29972,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 509,
+          "line": 510,
           "column": 33
         }
       ],
@@ -30130,7 +30076,7 @@
       ]
     },
     {
-      "id": "input:recipes-view.js:909:15|family-assistant.js:517:7",
+      "id": "input:recipes-view.js:909:15|family-assistant.js:518:7",
       "event": "input",
       "sites": [
         {
@@ -30140,7 +30086,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -31074,7 +31020,7 @@
       "views": []
     },
     {
-      "id": "input:rewards-view.js:199:15|family-assistant.js:524:53",
+      "id": "input:rewards-view.js:199:15|family-assistant.js:525:53",
       "event": "input",
       "sites": [
         {
@@ -31084,7 +31030,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -31109,7 +31055,7 @@
       ]
     },
     {
-      "id": "input:rewards-view.js:199:63|family-assistant.js:524:53",
+      "id": "input:rewards-view.js:199:63|family-assistant.js:525:53",
       "event": "input",
       "sites": [
         {
@@ -31119,7 +31065,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -31140,7 +31086,7 @@
       ]
     },
     {
-      "id": "input:rewards-view.js:200:15|family-assistant.js:524:53",
+      "id": "input:rewards-view.js:200:15|family-assistant.js:525:53",
       "event": "input",
       "sites": [
         {
@@ -31150,7 +31096,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -31171,7 +31117,7 @@
       ]
     },
     {
-      "id": "input:rewards-view.js:200:62|family-assistant.js:524:53",
+      "id": "input:rewards-view.js:200:62|family-assistant.js:525:53",
       "event": "input",
       "sites": [
         {
@@ -31181,7 +31127,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -31202,7 +31148,7 @@
       ]
     },
     {
-      "id": "input:rewards-view.js:268:19|family-assistant.js:524:53",
+      "id": "input:rewards-view.js:268:19|family-assistant.js:525:53",
       "event": "input",
       "sites": [
         {
@@ -31212,7 +31158,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -31374,7 +31320,7 @@
       ]
     },
     {
-      "id": "input:routines-view.js:1693:18|family-assistant.js:487:33",
+      "id": "input:routines-view.js:1693:18|family-assistant.js:488:33",
       "event": "input",
       "sites": [
         {
@@ -31384,7 +31330,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -31408,7 +31354,7 @@
       ]
     },
     {
-      "id": "input:routines-view.js:637:10|family-assistant.js:487:33",
+      "id": "input:routines-view.js:637:10|family-assistant.js:488:33",
       "event": "input",
       "sites": [
         {
@@ -31418,7 +31364,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -31436,7 +31382,7 @@
       ]
     },
     {
-      "id": "input:routines-view.js:874:16|family-assistant.js:487:33",
+      "id": "input:routines-view.js:874:16|family-assistant.js:488:33",
       "event": "input",
       "sites": [
         {
@@ -31446,7 +31392,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -31486,7 +31432,7 @@
       ]
     },
     {
-      "id": "input:routines-view.js:888:15|family-assistant.js:487:33",
+      "id": "input:routines-view.js:888:15|family-assistant.js:488:33",
       "event": "input",
       "sites": [
         {
@@ -31496,7 +31442,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -31641,7 +31587,7 @@
       ]
     },
     {
-      "id": "input:school-view.js:1001:12|family-assistant.js:495:65",
+      "id": "input:school-view.js:1001:12|family-assistant.js:496:65",
       "event": "input",
       "sites": [
         {
@@ -31651,7 +31597,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -31704,7 +31650,7 @@
       ]
     },
     {
-      "id": "input:school-view.js:913:15|family-assistant.js:495:65",
+      "id": "input:school-view.js:913:15|family-assistant.js:496:65",
       "event": "input",
       "sites": [
         {
@@ -31714,7 +31660,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -31780,7 +31726,7 @@
       "views": []
     },
     {
-      "id": "input:semantic-feedback-view.js:65:8|family-assistant.js:754:7",
+      "id": "input:semantic-feedback-view.js:65:8|family-assistant.js:760:7",
       "event": "input",
       "sites": [
         {
@@ -31790,7 +31736,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 754,
+          "line": 760,
           "column": 7
         }
       ],
@@ -31816,7 +31762,7 @@
       ]
     },
     {
-      "id": "input:shopping-items.js:683:15|family-assistant.js:537:65",
+      "id": "input:shopping-items.js:683:15|family-assistant.js:538:65",
       "event": "input",
       "sites": [
         {
@@ -31826,7 +31772,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 537,
+          "line": 538,
           "column": 65
         }
       ],
@@ -31885,7 +31831,7 @@
       ]
     },
     {
-      "id": "input:shopping-items.js:988:16|family-assistant.js:785:33",
+      "id": "input:shopping-items.js:988:16|family-assistant.js:791:33",
       "event": "input",
       "sites": [
         {
@@ -31895,7 +31841,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 785,
+          "line": 791,
           "column": 33
         }
       ],
@@ -31993,7 +31939,7 @@
       ]
     },
     {
-      "id": "input:task-form.js:871:8|family-assistant.js:444:36",
+      "id": "input:task-form.js:871:8|family-assistant.js:445:36",
       "event": "input",
       "sites": [
         {
@@ -32003,7 +31949,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 444,
+          "line": 445,
           "column": 36
         }
       ],
@@ -32108,7 +32054,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:640:21|family-assistant.js:784:36",
+      "id": "input:task-items.js:640:21|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32118,7 +32064,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32139,7 +32085,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:701:17|family-assistant.js:784:36",
+      "id": "input:task-items.js:701:17|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32149,7 +32095,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32170,7 +32116,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:763:18|family-assistant.js:784:36",
+      "id": "input:task-items.js:763:18|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32180,7 +32126,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32218,7 +32164,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:861:16|family-assistant.js:784:36",
+      "id": "input:task-items.js:861:16|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32228,7 +32174,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32260,7 +32206,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:892:21|family-assistant.js:784:36",
+      "id": "input:task-items.js:892:21|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32270,7 +32216,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32298,7 +32244,7 @@
       "views": []
     },
     {
-      "id": "input:task-items.js:902:18|family-assistant.js:784:36",
+      "id": "input:task-items.js:902:18|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32308,7 +32254,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32336,7 +32282,7 @@
       "views": []
     },
     {
-      "id": "input:task-items.js:914:22|family-assistant.js:784:36",
+      "id": "input:task-items.js:914:22|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32346,7 +32292,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32371,7 +32317,7 @@
       "views": []
     },
     {
-      "id": "input:task-items.js:927:21|family-assistant.js:784:36",
+      "id": "input:task-items.js:927:21|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32381,7 +32327,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32420,7 +32366,7 @@
       ]
     },
     {
-      "id": "input:task-items.js:936:16|family-assistant.js:784:36",
+      "id": "input:task-items.js:936:16|family-assistant.js:790:36",
       "event": "input",
       "sites": [
         {
@@ -32430,7 +32376,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -32740,7 +32686,7 @@
       "views": []
     },
     {
-      "id": "submit:alarm-editor.js:561:8|family-assistant.js:529:10",
+      "id": "submit:alarm-editor.js:561:8|family-assistant.js:530:10",
       "event": "submit",
       "sites": [
         {
@@ -32750,7 +32696,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 529,
+          "line": 530,
           "column": 10
         }
       ],
@@ -32783,7 +32729,7 @@
       ]
     },
     {
-      "id": "submit:alarm-editor.js:561:8|family-assistant.js:609:8",
+      "id": "submit:alarm-editor.js:561:8|family-assistant.js:610:8",
       "event": "submit",
       "sites": [
         {
@@ -32793,7 +32739,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 609,
+          "line": 610,
           "column": 8
         }
       ],
@@ -32805,7 +32751,7 @@
       "views": []
     },
     {
-      "id": "submit:article-view.js:398:10|family-assistant.js:740:5",
+      "id": "submit:article-view.js:398:10|family-assistant.js:746:5",
       "event": "submit",
       "sites": [
         {
@@ -32815,7 +32761,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 740,
+          "line": 746,
           "column": 5
         }
       ],
@@ -32845,7 +32791,7 @@
       ]
     },
     {
-      "id": "submit:article-view.js:472:10|family-assistant.js:740:5",
+      "id": "submit:article-view.js:472:10|family-assistant.js:746:5",
       "event": "submit",
       "sites": [
         {
@@ -32855,7 +32801,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 740,
+          "line": 746,
           "column": 5
         }
       ],
@@ -32923,7 +32869,7 @@
       ]
     },
     {
-      "id": "submit:calendar-view.js:357:15|family-assistant.js:525:33",
+      "id": "submit:calendar-view.js:357:15|family-assistant.js:526:33",
       "event": "submit",
       "sites": [
         {
@@ -32933,7 +32879,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -32952,7 +32898,7 @@
       ]
     },
     {
-      "id": "submit:calendar-view.js:770:10|family-assistant.js:525:33",
+      "id": "submit:calendar-view.js:770:10|family-assistant.js:526:33",
       "event": "submit",
       "sites": [
         {
@@ -32962,7 +32908,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -32990,7 +32936,7 @@
       ]
     },
     {
-      "id": "submit:calendar-view.js:971:11|family-assistant.js:525:33",
+      "id": "submit:calendar-view.js:971:11|family-assistant.js:526:33",
       "event": "submit",
       "sites": [
         {
@@ -33000,7 +32946,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 525,
+          "line": 526,
           "column": 33
         }
       ],
@@ -33021,7 +32967,7 @@
       ]
     },
     {
-      "id": "submit:conversation-view.js:362:8|family-assistant.js:741:5",
+      "id": "submit:conversation-view.js:362:8|family-assistant.js:747:5",
       "event": "submit",
       "sites": [
         {
@@ -33031,7 +32977,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 741,
+          "line": 747,
           "column": 5
         }
       ],
@@ -33083,7 +33029,7 @@
       ]
     },
     {
-      "id": "submit:conversation-view.js:379:9|family-assistant.js:741:5",
+      "id": "submit:conversation-view.js:379:9|family-assistant.js:747:5",
       "event": "submit",
       "sites": [
         {
@@ -33093,7 +33039,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 741,
+          "line": 747,
           "column": 5
         }
       ],
@@ -33137,7 +33083,7 @@
       ]
     },
     {
-      "id": "submit:court-view.js:478:12|family-assistant.js:524:30",
+      "id": "submit:court-view.js:478:12|family-assistant.js:525:30",
       "event": "submit",
       "sites": [
         {
@@ -33147,7 +33093,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -33174,7 +33120,7 @@
       ]
     },
     {
-      "id": "submit:court-view.js:536:12|family-assistant.js:524:30",
+      "id": "submit:court-view.js:536:12|family-assistant.js:525:30",
       "event": "submit",
       "sites": [
         {
@@ -33184,7 +33130,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -33203,7 +33149,7 @@
       ]
     },
     {
-      "id": "submit:court-view.js:661:16|family-assistant.js:524:30",
+      "id": "submit:court-view.js:661:16|family-assistant.js:525:30",
       "event": "submit",
       "sites": [
         {
@@ -33213,7 +33159,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 30
         }
       ],
@@ -33238,7 +33184,7 @@
       ]
     },
     {
-      "id": "submit:dietary-view.js:528:12|family-assistant.js:516:84",
+      "id": "submit:dietary-view.js:528:12|family-assistant.js:517:84",
       "event": "submit",
       "sites": [
         {
@@ -33248,7 +33194,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 84
         }
       ],
@@ -33266,7 +33212,7 @@
       ]
     },
     {
-      "id": "submit:dietary-view.js:600:12|family-assistant.js:516:84",
+      "id": "submit:dietary-view.js:600:12|family-assistant.js:517:84",
       "event": "submit",
       "sites": [
         {
@@ -33276,7 +33222,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 84
         }
       ],
@@ -33297,7 +33243,7 @@
       ]
     },
     {
-      "id": "submit:digests-view.js:732:10|family-assistant.js:513:7",
+      "id": "submit:digests-view.js:732:10|family-assistant.js:514:7",
       "event": "submit",
       "sites": [
         {
@@ -33307,7 +33253,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 513,
+          "line": 514,
           "column": 7
         }
       ],
@@ -33328,7 +33274,7 @@
       ]
     },
     {
-      "id": "submit:digests-view.js:793:12|family-assistant.js:513:7",
+      "id": "submit:digests-view.js:793:12|family-assistant.js:514:7",
       "event": "submit",
       "sites": [
         {
@@ -33338,7 +33284,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 513,
+          "line": 514,
           "column": 7
         }
       ],
@@ -33359,17 +33305,17 @@
       ]
     },
     {
-      "id": "submit:family-assistant.js:683:12|family-assistant.js:523:38",
+      "id": "submit:family-assistant.js:689:12|family-assistant.js:524:38",
       "event": "submit",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 683,
+          "line": 689,
           "column": 12
         },
         {
           "file": "family-assistant.js",
-          "line": 523,
+          "line": 524,
           "column": 38
         }
       ],
@@ -33398,17 +33344,17 @@
       ]
     },
     {
-      "id": "submit:family-assistant.js:732:16|family-assistant.js:678:10",
+      "id": "submit:family-assistant.js:738:16|family-assistant.js:684:10",
       "event": "submit",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 732,
+          "line": 738,
           "column": 16
         },
         {
           "file": "family-assistant.js",
-          "line": 678,
+          "line": 684,
           "column": 10
         }
       ],
@@ -33427,12 +33373,12 @@
       ]
     },
     {
-      "id": "submit:family-assistant.js:776:16",
+      "id": "submit:family-assistant.js:782:16",
       "event": "submit",
       "sites": [
         {
           "file": "family-assistant.js",
-          "line": 776,
+          "line": 782,
           "column": 16
         }
       ],
@@ -33602,9 +33548,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -33749,7 +33692,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:1061:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:1061:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33759,7 +33702,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33778,7 +33721,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:1120:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:1120:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33788,7 +33731,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33812,7 +33755,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:1184:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:1184:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33822,7 +33765,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33862,7 +33805,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:930:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:930:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33872,7 +33815,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33896,7 +33839,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:949:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:949:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33906,7 +33849,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33925,7 +33868,7 @@
       ]
     },
     {
-      "id": "submit:maintenance-view.js:971:10|family-assistant.js:501:7",
+      "id": "submit:maintenance-view.js:971:10|family-assistant.js:502:7",
       "event": "submit",
       "sites": [
         {
@@ -33935,7 +33878,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 501,
+          "line": 502,
           "column": 7
         }
       ],
@@ -33953,7 +33896,7 @@
       ]
     },
     {
-      "id": "submit:meal-shopping-view.js:500:12|family-assistant.js:516:54",
+      "id": "submit:meal-shopping-view.js:500:12|family-assistant.js:517:54",
       "event": "submit",
       "sites": [
         {
@@ -33963,7 +33906,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 54
         }
       ],
@@ -33988,7 +33931,7 @@
       ]
     },
     {
-      "id": "submit:meals-view.js:634:10|family-assistant.js:516:31",
+      "id": "submit:meals-view.js:634:10|family-assistant.js:517:31",
       "event": "submit",
       "sites": [
         {
@@ -33998,7 +33941,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 31
         }
       ],
@@ -34021,7 +33964,7 @@
       ]
     },
     {
-      "id": "submit:meals-view.js:716:10|family-assistant.js:516:31",
+      "id": "submit:meals-view.js:716:10|family-assistant.js:517:31",
       "event": "submit",
       "sites": [
         {
@@ -34031,7 +33974,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 516,
+          "line": 517,
           "column": 31
         }
       ],
@@ -34053,7 +33996,7 @@
       ]
     },
     {
-      "id": "submit:network-kids.js:108:10|family-assistant.js:663:5",
+      "id": "submit:network-kids.js:108:10|family-assistant.js:669:5",
       "event": "submit",
       "sites": [
         {
@@ -34063,7 +34006,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -34089,7 +34032,7 @@
       ]
     },
     {
-      "id": "submit:network-kids.js:111:169|family-assistant.js:663:5",
+      "id": "submit:network-kids.js:111:169|family-assistant.js:669:5",
       "event": "submit",
       "sites": [
         {
@@ -34099,7 +34042,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -34123,7 +34066,7 @@
       ]
     },
     {
-      "id": "submit:network-kids.js:97:12|family-assistant.js:663:5",
+      "id": "submit:network-kids.js:97:12|family-assistant.js:669:5",
       "event": "submit",
       "sites": [
         {
@@ -34133,7 +34076,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 663,
+          "line": 669,
           "column": 5
         }
       ],
@@ -34154,7 +34097,7 @@
       ]
     },
     {
-      "id": "submit:network-watch-view.js:323:12|family-assistant.js:665:5",
+      "id": "submit:network-watch-view.js:323:12|family-assistant.js:671:5",
       "event": "submit",
       "sites": [
         {
@@ -34164,7 +34107,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 665,
+          "line": 671,
           "column": 5
         }
       ],
@@ -34185,7 +34128,7 @@
       ]
     },
     {
-      "id": "submit:pantry-view.js:697:10|family-assistant.js:526:31",
+      "id": "submit:pantry-view.js:697:10|family-assistant.js:527:31",
       "event": "submit",
       "sites": [
         {
@@ -34195,7 +34138,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 526,
+          "line": 527,
           "column": 31
         }
       ],
@@ -34220,7 +34163,7 @@
       ]
     },
     {
-      "id": "submit:pantry-view.js:735:10|family-assistant.js:526:31",
+      "id": "submit:pantry-view.js:735:10|family-assistant.js:527:31",
       "event": "submit",
       "sites": [
         {
@@ -34230,7 +34173,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 526,
+          "line": 527,
           "column": 31
         }
       ],
@@ -34249,7 +34192,7 @@
       ]
     },
     {
-      "id": "submit:pantry-view.js:771:10|family-assistant.js:526:31",
+      "id": "submit:pantry-view.js:771:10|family-assistant.js:527:31",
       "event": "submit",
       "sites": [
         {
@@ -34259,7 +34202,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 526,
+          "line": 527,
           "column": 31
         }
       ],
@@ -34277,7 +34220,7 @@
       ]
     },
     {
-      "id": "submit:pantry-view.js:822:10|family-assistant.js:526:31",
+      "id": "submit:pantry-view.js:822:10|family-assistant.js:527:31",
       "event": "submit",
       "sites": [
         {
@@ -34287,7 +34230,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 526,
+          "line": 527,
           "column": 31
         }
       ],
@@ -34305,7 +34248,7 @@
       ]
     },
     {
-      "id": "submit:polls-view.js:607:10|family-assistant.js:505:7",
+      "id": "submit:polls-view.js:607:10|family-assistant.js:506:7",
       "event": "submit",
       "sites": [
         {
@@ -34315,7 +34258,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -34335,7 +34278,7 @@
       ]
     },
     {
-      "id": "submit:polls-view.js:671:10|family-assistant.js:505:7",
+      "id": "submit:polls-view.js:671:10|family-assistant.js:506:7",
       "event": "submit",
       "sites": [
         {
@@ -34345,7 +34288,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -34370,7 +34313,7 @@
       ]
     },
     {
-      "id": "submit:polls-view.js:753:10|family-assistant.js:505:7",
+      "id": "submit:polls-view.js:753:10|family-assistant.js:506:7",
       "event": "submit",
       "sites": [
         {
@@ -34380,7 +34323,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 505,
+          "line": 506,
           "column": 7
         }
       ],
@@ -34405,7 +34348,7 @@
       ]
     },
     {
-      "id": "submit:presence-notifications-view.js:579:12|family-assistant.js:509:33",
+      "id": "submit:presence-notifications-view.js:579:12|family-assistant.js:510:33",
       "event": "submit",
       "sites": [
         {
@@ -34415,7 +34358,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 509,
+          "line": 510,
           "column": 33
         }
       ],
@@ -34436,7 +34379,7 @@
       ]
     },
     {
-      "id": "submit:presence-view.js:503:12|family-assistant.js:509:7",
+      "id": "submit:presence-view.js:503:12|family-assistant.js:510:7",
       "event": "submit",
       "sites": [
         {
@@ -34446,7 +34389,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 509,
+          "line": 510,
           "column": 7
         }
       ],
@@ -34510,7 +34453,7 @@
       ]
     },
     {
-      "id": "submit:recipes-view.js:688:16|family-assistant.js:517:7",
+      "id": "submit:recipes-view.js:688:16|family-assistant.js:518:7",
       "event": "submit",
       "sites": [
         {
@@ -34520,7 +34463,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -34550,7 +34493,7 @@
       ]
     },
     {
-      "id": "submit:recipes-view.js:926:10|family-assistant.js:517:7",
+      "id": "submit:recipes-view.js:926:10|family-assistant.js:518:7",
       "event": "submit",
       "sites": [
         {
@@ -34560,7 +34503,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -34587,7 +34530,7 @@
       ]
     },
     {
-      "id": "submit:recipes-view.js:989:10|family-assistant.js:517:7",
+      "id": "submit:recipes-view.js:989:10|family-assistant.js:518:7",
       "event": "submit",
       "sites": [
         {
@@ -34597,7 +34540,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 517,
+          "line": 518,
           "column": 7
         }
       ],
@@ -34620,7 +34563,7 @@
       ]
     },
     {
-      "id": "submit:rewards-view.js:203:10|family-assistant.js:524:53",
+      "id": "submit:rewards-view.js:203:10|family-assistant.js:525:53",
       "event": "submit",
       "sites": [
         {
@@ -34630,7 +34573,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -34655,7 +34598,7 @@
       ]
     },
     {
-      "id": "submit:rewards-view.js:277:17|family-assistant.js:524:53",
+      "id": "submit:rewards-view.js:277:17|family-assistant.js:525:53",
       "event": "submit",
       "sites": [
         {
@@ -34665,7 +34608,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 524,
+          "line": 525,
           "column": 53
         }
       ],
@@ -34754,7 +34697,7 @@
       ]
     },
     {
-      "id": "submit:routines-view.js:1174:10|family-assistant.js:487:33",
+      "id": "submit:routines-view.js:1174:10|family-assistant.js:488:33",
       "event": "submit",
       "sites": [
         {
@@ -34764,7 +34707,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -34810,7 +34753,7 @@
       ]
     },
     {
-      "id": "submit:routines-view.js:1469:19|family-assistant.js:487:33",
+      "id": "submit:routines-view.js:1469:19|family-assistant.js:488:33",
       "event": "submit",
       "sites": [
         {
@@ -34820,7 +34763,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -34876,7 +34819,7 @@
       ]
     },
     {
-      "id": "submit:routines-view.js:1713:17|family-assistant.js:487:33",
+      "id": "submit:routines-view.js:1713:17|family-assistant.js:488:33",
       "event": "submit",
       "sites": [
         {
@@ -34886,7 +34829,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -34906,7 +34849,7 @@
       ]
     },
     {
-      "id": "submit:routines-view.js:655:12|family-assistant.js:487:33",
+      "id": "submit:routines-view.js:655:12|family-assistant.js:488:33",
       "event": "submit",
       "sites": [
         {
@@ -34916,7 +34859,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -34934,7 +34877,7 @@
       ]
     },
     {
-      "id": "submit:routines-view.js:775:12|family-assistant.js:487:33",
+      "id": "submit:routines-view.js:775:12|family-assistant.js:488:33",
       "event": "submit",
       "sites": [
         {
@@ -34944,7 +34887,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 487,
+          "line": 488,
           "column": 33
         }
       ],
@@ -34964,7 +34907,7 @@
       ]
     },
     {
-      "id": "submit:school-reminders-view.js:341:12|family-assistant.js:492:55",
+      "id": "submit:school-reminders-view.js:341:12|family-assistant.js:493:55",
       "event": "submit",
       "sites": [
         {
@@ -34974,7 +34917,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 492,
+          "line": 493,
           "column": 55
         }
       ],
@@ -35000,7 +34943,7 @@
       ]
     },
     {
-      "id": "submit:school-view.js:1015:10|family-assistant.js:495:65",
+      "id": "submit:school-view.js:1015:10|family-assistant.js:496:65",
       "event": "submit",
       "sites": [
         {
@@ -35010,7 +34953,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -35028,7 +34971,7 @@
       ]
     },
     {
-      "id": "submit:school-view.js:1104:10|family-assistant.js:495:65",
+      "id": "submit:school-view.js:1104:10|family-assistant.js:496:65",
       "event": "submit",
       "sites": [
         {
@@ -35038,7 +34981,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -35077,7 +35020,7 @@
       ]
     },
     {
-      "id": "submit:school-view.js:970:10|family-assistant.js:495:65",
+      "id": "submit:school-view.js:970:10|family-assistant.js:496:65",
       "event": "submit",
       "sites": [
         {
@@ -35087,7 +35030,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 495,
+          "line": 496,
           "column": 65
         }
       ],
@@ -35222,7 +35165,7 @@
       ]
     },
     {
-      "id": "submit:semantic-feedback-view.js:67:8|family-assistant.js:754:7",
+      "id": "submit:semantic-feedback-view.js:67:8|family-assistant.js:760:7",
       "event": "submit",
       "sites": [
         {
@@ -35232,7 +35175,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 754,
+          "line": 760,
           "column": 7
         }
       ],
@@ -35282,7 +35225,7 @@
       ]
     },
     {
-      "id": "submit:shopping-items.js:1023:12|family-assistant.js:785:33",
+      "id": "submit:shopping-items.js:1023:12|family-assistant.js:791:33",
       "event": "submit",
       "sites": [
         {
@@ -35292,7 +35235,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 785,
+          "line": 791,
           "column": 33
         }
       ],
@@ -35354,7 +35297,7 @@
       ]
     },
     {
-      "id": "submit:shopping-items.js:638:10|family-assistant.js:537:65",
+      "id": "submit:shopping-items.js:638:10|family-assistant.js:538:65",
       "event": "submit",
       "sites": [
         {
@@ -35364,7 +35307,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 537,
+          "line": 538,
           "column": 65
         }
       ],
@@ -35529,7 +35472,7 @@
       ]
     },
     {
-      "id": "submit:task-form.js:945:8|family-assistant.js:444:36",
+      "id": "submit:task-form.js:945:8|family-assistant.js:445:36",
       "event": "submit",
       "sites": [
         {
@@ -35539,7 +35482,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 444,
+          "line": 445,
           "column": 36
         }
       ],
@@ -35642,7 +35585,7 @@
       ]
     },
     {
-      "id": "submit:task-items.js:664:14|family-assistant.js:784:36",
+      "id": "submit:task-items.js:664:14|family-assistant.js:790:36",
       "event": "submit",
       "sites": [
         {
@@ -35652,7 +35595,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -35671,7 +35614,7 @@
       ]
     },
     {
-      "id": "submit:task-items.js:725:12|family-assistant.js:784:36",
+      "id": "submit:task-items.js:725:12|family-assistant.js:790:36",
       "event": "submit",
       "sites": [
         {
@@ -35681,7 +35624,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -35700,7 +35643,7 @@
       ]
     },
     {
-      "id": "submit:task-items.js:955:12|family-assistant.js:784:36",
+      "id": "submit:task-items.js:955:12|family-assistant.js:790:36",
       "event": "submit",
       "sites": [
         {
@@ -35710,7 +35653,7 @@
         },
         {
           "file": "family-assistant.js",
-          "line": 784,
+          "line": 790,
           "column": 36
         }
       ],
@@ -39931,7 +39874,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 342,
+      "line": 343,
       "column": 21,
       "registered": [
         168
@@ -39945,7 +39888,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 377,
+      "line": 378,
       "column": 500,
       "registered": [
         0,
@@ -40288,7 +40231,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 377,
+      "line": 378,
       "column": 551,
       "registered": [
         0,
@@ -41208,7 +41151,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 378,
+      "line": 379,
       "column": 239,
       "registered": [
         168,
@@ -41225,7 +41168,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 384,
+      "line": 385,
       "column": 12,
       "registered": [
         0,
@@ -41962,7 +41905,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 400,
+      "line": 401,
       "column": 12,
       "registered": [
         0,
@@ -42200,7 +42143,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 438,
+      "line": 439,
       "column": 29,
       "registered": [
         188,
@@ -42231,7 +42174,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 439,
+      "line": 440,
       "column": 47,
       "registered": [
         0,
@@ -42532,7 +42475,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 444,
+      "line": 445,
       "column": 36,
       "registered": [
         166,
@@ -42633,7 +42576,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 477,
+      "line": 478,
       "column": 64,
       "registered": [
         168
@@ -42647,7 +42590,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 478,
+      "line": 479,
       "column": 39,
       "registered": [
         168,
@@ -42662,7 +42605,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 480,
+      "line": 481,
       "column": 38,
       "registered": [
         363,
@@ -42677,7 +42620,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 484,
+      "line": 485,
       "column": 42,
       "registered": [
         159,
@@ -42703,7 +42646,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 485,
+      "line": 486,
       "column": 32,
       "registered": [
         177,
@@ -42725,7 +42668,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 486,
+      "line": 487,
       "column": 37,
       "registered": [
         227,
@@ -42761,7 +42704,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 487,
+      "line": 488,
       "column": 33,
       "registered": [
         142,
@@ -42866,7 +42809,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 492,
+      "line": 493,
       "column": 55,
       "registered": [
         282,
@@ -42904,7 +42847,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 494,
+      "line": 495,
       "column": 61,
       "registered": [
         340,
@@ -42982,7 +42925,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 495,
+      "line": 496,
       "column": 65,
       "registered": [
         264,
@@ -43068,7 +43011,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 501,
+      "line": 502,
       "column": 7,
       "registered": [
         10,
@@ -43148,7 +43091,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 505,
+      "line": 506,
       "column": 7,
       "registered": [
         15,
@@ -43179,7 +43122,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 509,
+      "line": 510,
       "column": 7,
       "registered": [
         297,
@@ -43216,7 +43159,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 509,
+      "line": 510,
       "column": 33,
       "registered": [
         297,
@@ -43239,7 +43182,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 513,
+      "line": 514,
       "column": 7,
       "registered": [
         211,
@@ -43268,7 +43211,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 516,
+      "line": 517,
       "column": 31,
       "registered": [
         103,
@@ -43305,7 +43248,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 516,
+      "line": 517,
       "column": 54,
       "registered": [
         248,
@@ -43333,7 +43276,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 516,
+      "line": 517,
       "column": 84,
       "registered": [
         207,
@@ -43351,7 +43294,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 517,
+      "line": 518,
       "column": 7,
       "registered": [
         312,
@@ -43377,7 +43320,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 520,
+      "line": 521,
       "column": 66,
       "registered": [
         53,
@@ -43393,7 +43336,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 521,
+      "line": 522,
       "column": 193,
       "registered": [
         183,
@@ -43408,7 +43351,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 522,
+      "line": 523,
       "column": 42,
       "registered": [
         159,
@@ -43479,7 +43422,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 523,
+      "line": 524,
       "column": 38,
       "registered": [
         113,
@@ -43542,7 +43485,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 524,
+      "line": 525,
       "column": 30,
       "registered": [
         101,
@@ -43591,7 +43534,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 524,
+      "line": 525,
       "column": 53,
       "registered": [
         162,
@@ -43632,7 +43575,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 525,
+      "line": 526,
       "column": 33,
       "registered": [
         17,
@@ -43664,7 +43607,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 526,
+      "line": 527,
       "column": 31,
       "registered": [
         186,
@@ -43691,7 +43634,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 528,
+      "line": 529,
       "column": 12,
       "registered": [
         183,
@@ -43709,7 +43652,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 529,
+      "line": 530,
       "column": 10,
       "registered": [
         0,
@@ -43738,7 +43681,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 532,
+      "line": 533,
       "column": 7,
       "registered": [
         114,
@@ -43843,7 +43786,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 534,
+      "line": 535,
       "column": 7,
       "registered": [
         114,
@@ -43958,7 +43901,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 537,
+      "line": 538,
       "column": 33,
       "registered": [
         127,
@@ -44013,7 +43956,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 537,
+      "line": 538,
       "column": 65,
       "registered": [
         127,
@@ -44106,7 +44049,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 537,
+      "line": 538,
       "column": 97,
       "registered": [
         127,
@@ -44163,7 +44106,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 541,
+      "line": 542,
       "column": 27,
       "registered": [
         0,
@@ -44196,7 +44139,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 541,
+      "line": 542,
       "column": 52,
       "registered": [
         1,
@@ -44213,7 +44156,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 545,
+      "line": 546,
       "column": 163,
       "registered": [
         166,
@@ -44314,7 +44257,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 547,
+      "line": 548,
       "column": 38,
       "registered": [
         166,
@@ -44353,7 +44296,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 547,
+      "line": 548,
       "column": 84,
       "registered": [
         114,
@@ -44518,7 +44461,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 551,
+      "line": 552,
       "column": 24,
       "registered": [
         166,
@@ -44619,7 +44562,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 557,
+      "line": 558,
       "column": 229,
       "registered": [
         0,
@@ -44862,7 +44805,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 559,
+      "line": 560,
       "column": 32,
       "registered": [
         170,
@@ -44878,7 +44821,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 560,
+      "line": 561,
       "column": 29,
       "registered": [
         114,
@@ -44912,7 +44855,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 563,
+      "line": 564,
       "column": 34,
       "registered": [
         53,
@@ -44928,7 +44871,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 564,
+      "line": 565,
       "column": 15,
       "registered": [
         183,
@@ -44943,7 +44886,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 573,
+      "line": 574,
       "column": 84,
       "registered": [
         53,
@@ -44955,7 +44898,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 575,
+      "line": 576,
       "column": 40,
       "registered": [
         53,
@@ -44971,7 +44914,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 575,
+      "line": 576,
       "column": 125,
       "registered": [
         53
@@ -44981,7 +44924,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 582,
+      "line": 583,
       "column": 34,
       "registered": [
         53,
@@ -44997,7 +44940,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 583,
+      "line": 584,
       "column": 35,
       "registered": [
         53
@@ -45011,7 +44954,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 595,
+      "line": 596,
       "column": 28,
       "registered": [
         53
@@ -45025,7 +44968,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 606,
+      "line": 607,
       "column": 27,
       "registered": [
         183,
@@ -45040,7 +44983,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 609,
+      "line": 610,
       "column": 8,
       "registered": [
         54
@@ -45050,7 +44993,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 613,
+      "line": 614,
       "column": 34,
       "registered": [
         183,
@@ -45065,7 +45008,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 619,
+      "line": 620,
       "column": 9,
       "registered": [
         53,
@@ -45077,7 +45020,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 633,
+      "line": 634,
       "column": 25,
       "registered": [
         53,
@@ -45093,7 +45036,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 647,
+      "line": 649,
       "column": 9,
       "registered": [
         183,
@@ -45104,7 +45047,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 656,
+      "line": 662,
       "column": 25,
       "registered": [
         183,
@@ -45115,86 +45058,86 @@
       ],
       "trusted": [
         54
-      ]
-    },
-    {
-      "file": "family-assistant.js",
-      "line": 663,
-      "column": 5,
-      "registered": [
-        116,
-        117,
-        121,
-        122,
-        123,
-        125,
-        31
-      ],
-      "invoked": [
-        116,
-        117,
-        121,
-        122,
-        123,
-        125,
-        31
-      ],
-      "trusted": [
-        116,
-        117,
-        121,
-        122,
-        123,
-        125,
-        31
-      ]
-    },
-    {
-      "file": "family-assistant.js",
-      "line": 664,
-      "column": 5,
-      "registered": [
-        258,
-        259,
-        260
-      ],
-      "invoked": [
-        258,
-        259,
-        260
-      ],
-      "trusted": [
-        258,
-        259,
-        260
-      ]
-    },
-    {
-      "file": "family-assistant.js",
-      "line": 665,
-      "column": 5,
-      "registered": [
-        113,
-        261,
-        262,
-        263
-      ],
-      "invoked": [
-        113,
-        261,
-        262,
-        263
-      ],
-      "trusted": [
-        113,
-        261,
-        262,
-        263
       ]
     },
     {
       "file": "family-assistant.js",
       "line": 669,
+      "column": 5,
+      "registered": [
+        116,
+        117,
+        121,
+        122,
+        123,
+        125,
+        31
+      ],
+      "invoked": [
+        116,
+        117,
+        121,
+        122,
+        123,
+        125,
+        31
+      ],
+      "trusted": [
+        116,
+        117,
+        121,
+        122,
+        123,
+        125,
+        31
+      ]
+    },
+    {
+      "file": "family-assistant.js",
+      "line": 670,
+      "column": 5,
+      "registered": [
+        258,
+        259,
+        260
+      ],
+      "invoked": [
+        258,
+        259,
+        260
+      ],
+      "trusted": [
+        258,
+        259,
+        260
+      ]
+    },
+    {
+      "file": "family-assistant.js",
+      "line": 671,
+      "column": 5,
+      "registered": [
+        113,
+        261,
+        262,
+        263
+      ],
+      "invoked": [
+        113,
+        261,
+        262,
+        263
+      ],
+      "trusted": [
+        113,
+        261,
+        262,
+        263
+      ]
+    },
+    {
+      "file": "family-assistant.js",
+      "line": 675,
       "column": 22,
       "registered": [
         113,
@@ -45225,7 +45168,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 674,
+      "line": 680,
       "column": 69,
       "registered": [
         35
@@ -45235,7 +45178,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 674,
+      "line": 680,
       "column": 128,
       "registered": [
         35
@@ -45245,7 +45188,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 678,
+      "line": 684,
       "column": 10,
       "registered": [
         124,
@@ -45262,7 +45205,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 682,
+      "line": 688,
       "column": 24,
       "registered": [
         116,
@@ -45287,7 +45230,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 683,
+      "line": 689,
       "column": 12,
       "registered": [
         116,
@@ -45312,7 +45255,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 732,
+      "line": 738,
       "column": 16,
       "registered": [
         124,
@@ -45327,7 +45270,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 734,
+      "line": 740,
       "column": 29,
       "registered": [
         124,
@@ -45342,7 +45285,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 740,
+      "line": 746,
       "column": 5,
       "registered": [
         5,
@@ -45368,7 +45311,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 741,
+      "line": 747,
       "column": 5,
       "registered": [
         159,
@@ -45431,7 +45374,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 752,
+      "line": 758,
       "column": 27,
       "registered": [
         159,
@@ -45449,7 +45392,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 752,
+      "line": 758,
       "column": 118,
       "registered": [
         159,
@@ -45467,7 +45410,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 754,
+      "line": 760,
       "column": 7,
       "registered": [
         159,
@@ -45489,7 +45432,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 768,
+      "line": 774,
       "column": 71,
       "registered": [
         44
@@ -45503,7 +45446,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 773,
+      "line": 779,
       "column": 32,
       "registered": [
         183,
@@ -45518,7 +45461,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 776,
+      "line": 782,
       "column": 16,
       "registered": [
         183
@@ -45532,7 +45475,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 784,
+      "line": 790,
       "column": 36,
       "registered": [
         114,
@@ -45688,7 +45631,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 785,
+      "line": 791,
       "column": 33,
       "registered": [
         168,
@@ -45768,7 +45711,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 803,
+      "line": 809,
       "column": 17,
       "registered": [
         0,
@@ -45798,7 +45741,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 805,
+      "line": 811,
       "column": 27,
       "registered": [
         0,
@@ -45834,7 +45777,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 805,
+      "line": 811,
       "column": 55,
       "registered": [
         0,
@@ -45857,7 +45800,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 806,
+      "line": 812,
       "column": 27,
       "registered": [
         0,
@@ -45887,7 +45830,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 808,
+      "line": 814,
       "column": 29,
       "registered": [
         45
@@ -45901,7 +45844,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 820,
+      "line": 826,
       "column": 51,
       "registered": [
         181,
@@ -45919,7 +45862,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 825,
+      "line": 831,
       "column": 44,
       "registered": [
         181,
@@ -45937,7 +45880,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 831,
+      "line": 837,
       "column": 52,
       "registered": [
         181,
@@ -45961,7 +45904,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 851,
+      "line": 857,
       "column": 13,
       "registered": [
         181,
@@ -45983,7 +45926,7 @@
     },
     {
       "file": "family-assistant.js",
-      "line": 855,
+      "line": 861,
       "column": 16,
       "registered": [
         181,
@@ -46393,9 +46336,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         182,
         276,
@@ -46454,9 +46394,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         276,
         277,
@@ -46584,9 +46521,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         276,
         277,
@@ -46645,9 +46579,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         276,
         277,
@@ -46851,9 +46782,6 @@
         135,
         136,
         137,
-        138,
-        139,
-        140,
         141,
         182,
         276,
@@ -47018,9 +46946,6 @@
         134,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         281,
         307,
@@ -47396,7 +47321,6 @@
         307,
         308,
         309,
-        74,
         85
       ],
       "trusted": [
@@ -47405,7 +47329,6 @@
         307,
         308,
         309,
-        74,
         85
       ]
     },
@@ -48177,9 +48100,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         281,
         86
@@ -48431,17 +48351,11 @@
         86
       ],
       "invoked": [
-        138,
-        139,
-        140,
         307,
         308,
         309
       ],
       "trusted": [
-        138,
-        139,
-        140,
         307,
         308,
         309
@@ -48817,9 +48731,6 @@
         131,
         134,
         137,
-        138,
-        139,
-        140,
         141,
         307,
         308,
@@ -48853,9 +48764,6 @@
         131,
         134,
         137,
-        138,
-        139,
-        140,
         141,
         307,
         308,
@@ -48894,9 +48802,6 @@
         131,
         134,
         137,
-        138,
-        139,
-        140,
         141,
         307,
         308,
@@ -51296,9 +51201,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -51322,9 +51224,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -51342,9 +51241,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -51378,9 +51274,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -51439,9 +51332,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -51459,9 +51349,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -51478,18 +51365,6 @@
     },
     {
       "file": "family-panel.js",
-      "line": 558,
-      "column": 74,
-      "registered": [
-        138,
-        139,
-        140
-      ],
-      "invoked": [],
-      "trusted": []
-    },
-    {
-      "file": "family-panel.js",
       "line": 564,
       "column": 10,
       "registered": [
@@ -51498,9 +51373,6 @@
         134,
         135,
         137,
-        138,
-        139,
-        140,
         141,
         278,
         281,
@@ -51523,9 +51395,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -51570,9 +51439,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -51603,9 +51469,6 @@
         112,
         135,
         137,
-        138,
-        139,
-        140,
         278,
         281,
         85,
@@ -73140,7 +73003,6 @@
         71,
         72,
         73,
-        74,
         85
       ],
       "rejected": [

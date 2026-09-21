@@ -241,6 +241,7 @@ const STYLES = `
   .compact-row .compact-title{flex:1;min-width:0;overflow-wrap:anywhere}
   .compact-row .compact-meta{font-size:12px;color:var(--secondary-text-color,#657d80);white-space:nowrap}
   .compact-row.done .compact-title{text-decoration:line-through;color:var(--secondary-text-color,#657d80)}
+  .compact-row.disabled{opacity:.55}
   .compact-row .compact-remove{margin-left:auto}
   .compact-history{margin-top:16px}
   [hidden]{display:none!important}
@@ -608,7 +609,7 @@ export class FamilyCard extends HTMLElement {
     }
     if(renderAlarmEditor(this,body))return;
     const list=el("ul",null,"compact-list");body.append(list);
-    const items=(this._data.alarms||[]).filter(item=>inMemberContext(this,item.member)&&item.enabled);
+    const items=(this._data.alarms||[]).filter(item=>inMemberContext(this,item.member));
     if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
     for(const item of items)this.renderCompactAlarm(list,item);
   }
@@ -642,6 +643,7 @@ export class FamilyCard extends HTMLElement {
   }
   renderCompactAlarm(list,item) {
     const row=el("li",null,"compact-row");
+    if(!item.enabled)row.classList.add("disabled");
     const box=el("input");box.type="checkbox";box.checked=!!item.enabled;
     box.setAttribute("aria-label",`${this.t.alarms} ${item.time}`);
     box.addEventListener("change",()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:box.checked});});
@@ -650,7 +652,11 @@ export class FamilyCard extends HTMLElement {
     const names=this.t.dayNames||[];
     const days=(item.days||[]).slice().sort();
     const short=days.length===7?this.t.everyday:days.join()===[0,1,2,3,4].join()?this.t.weekdays:days.join()===[5,6].join()?this.t.weekends:days.map(d=>names[d]||String(d)).join(", ");
-    label.append(el("span",short,"compact-meta"));
+    const meta=[];
+    const member=this._data.members?.find(m=>m.id===item.member);
+    if(this.parent && member)meta.push(member.name);
+    meta.push(short);
+    label.append(el("span",meta.join(" · "),"compact-meta"));
     row.append(label);
     if(this.parent){
       const remove=this.icon("minus",this.t.remove,()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:false});});
