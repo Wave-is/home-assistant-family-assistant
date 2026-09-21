@@ -6,7 +6,7 @@ import {renderKids} from "./network-kids.js";
 import {renderShoppingSeries} from "./shopping-series.js";
 import {renderShoppingItem,renderShoppingArchive,renderShoppingEditor,reconcileShoppingEditorRefresh,disposeShoppingEditor,renderShoppingFilter,shoppingFilterItems} from "./shopping-items.js";
 import {stopBarcodeCamera} from "./shopping-barcode.js";
-import {renderTaskItem,renderTaskArchive} from "./task-items.js";
+import {renderTaskItem,renderTaskArchive,TASK_ITEM_COPY,openTaskItemEdit} from "./task-items.js";
 import {renderTaskForm,reconcileTaskFormRefresh,disposeTaskForm} from "./task-form.js";
 import {renderTaskBatch,reconcileTaskBatchRefresh,disposeTaskBatch} from "./task-batch-view.js";
 import {reconcileTaskMediaRefresh,disposeTaskMedia} from "./task-media-view.js";
@@ -192,7 +192,8 @@ const COPY = {
 const STYLES = `
   :host {display:block;color:var(--primary-text-color,#182c32);font-family:var(--paper-font-body1_-_font-family,system-ui)}
   *{box-sizing:border-box} ha-card{display:block;overflow:hidden;border-radius:22px;background:var(--ha-card-background,var(--card-background-color,#fff));border:1px solid var(--divider-color,#dfe9e7)}
-  header{padding:24px 24px 18px;background:linear-gradient(135deg,rgba(19,146,127,.13),rgba(76,167,222,.04))}
+  header{display:flex;align-items:flex-start;gap:16px;padding:24px 24px 18px;background:linear-gradient(135deg,rgba(19,146,127,.13),rgba(76,167,222,.04))}
+  .header-actions{margin-left:auto;display:flex;gap:4px;flex:0 0 auto;padding-top:6px}
   .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--secondary-text-color,#657d80)}
   h2{font-size:24px;line-height:1.2;margin:8px 0 0;font-weight:650;letter-spacing:-.03em}
   .body{padding:18px 24px 24px}.row{display:flex;align-items:center;gap:10px}.grow{flex:1;min-width:0}.sub{font-size:12px;color:var(--secondary-text-color,#657d80);margin-top:6px}
@@ -238,6 +239,7 @@ const STYLES = `
   .compact-row:last-child{border-bottom:none}
   .compact-row input[type=checkbox]{cursor:pointer}
   .compact-row label{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;font-size:15px}
+  .compact-row .compact-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
   .compact-row .compact-title{flex:1;min-width:0;overflow-wrap:anywhere}
   .compact-row .compact-meta{font-size:12px;color:var(--secondary-text-color,#657d80);white-space:nowrap}
   .compact-row.done .compact-title{text-decoration:line-through;color:var(--secondary-text-color,#657d80)}
@@ -470,7 +472,7 @@ export class FamilyCard extends HTMLElement {
     if(this._error || !this._data || this._data.read_only || this._view!=="shopping")stopBarcodeCamera(this);
     const root=this.shadowRoot;root.replaceChildren(el("style",STYLES));
     const card=el("ha-card");root.append(card);
-    const header=el("header");header.append(el("div",(!this._error && this._data?.settings.name) || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));card.append(header);
+    const header=el("header");const head=el("div");head.append(el("div",(!this._error && this._data?.settings.name) || "Family Assistant","eyebrow"),el("h2",this._config?.title || this.t[this._view]));header.append(head);card.append(header);
     const body=el("div",null,"body");card.append(body);
     if(this._actionError || this._error) {const language=this._config?.language || this._hass?.language?.split("-")[0],errors=ERRORS[language] || ERRORS.en,code=this._actionError || this._error;const routineText=this._view==="routines" && Object.values(ROUTINES_COPY[language] || ROUTINES_COPY.en).includes(code)?code:null;const notice=el("div",errors[code] || routineText || this.t.failure,"notice");notice.setAttribute("role","alert");body.append(notice);}
     if(!this._data) {
@@ -518,8 +520,8 @@ export class FamilyCard extends HTMLElement {
       renderRecipes(this,body);return;
     }
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
-    if(this._config?.compact!==false&&this._view==="tasks"){this.renderCompact(body);return;}
-    if(this._config?.compact!==false&&this._view==="alarms"&&!this._data.alarm_runs?.some(run=>inMemberContext(this,run.member)&&["first","waiting_second","second"].includes(run.stage))){this.renderCompact(body);return;}
+    if(this._config?.compact!==false&&this._view==="tasks"&&!this._taskItemAction){this.renderCompact(body,header);return;}
+    if(this._config?.compact!==false&&this._view==="alarms"&&!this._data.alarm_runs?.some(run=>inMemberContext(this,run.member)&&["first","waiting_second","second"].includes(run.stage))){this.renderCompact(body,header);return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="court"){renderCourt(this,body);renderRewards(this,body);return;}
@@ -560,12 +562,12 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="shopping")renderShoppingArchive(this,body);
     if(this._view==="tasks")renderTaskArchive(this,body);
   }
-  renderCompact(body) {
-    if(this._view==="tasks")this.renderCompactTasks(body);
-    else this.renderCompactAlarms(body);
+  renderCompact(body,header) {
+    if(this._view==="tasks")this.renderCompactTasks(body,header);
+    else this.renderCompactAlarms(body,header);
   }
-  renderCompactTasks(body) {
-    const toolbar=el("div",null,"toolbar");
+  renderCompactTasks(body,header) {
+    const toolbar=el("div",null,"header-actions");
     if(this._data.role!=="guest"){
       const toggleForm=()=>{
         if(this._form && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
@@ -574,7 +576,7 @@ export class FamilyCard extends HTMLElement {
       toolbar.append(this._form?this.icon("back",this.t.back,toggleForm,true):this.icon("plus",this.t.add,toggleForm,true));
     }
     if(this.parent)toolbar.append(this.icon("history",this.t.history,()=>{this._taskHistoryOpen=!this._taskHistoryOpen;this.render();}));
-    if(toolbar.children.length)body.append(toolbar);
+    if(toolbar.children.length)header.append(toolbar);
     if(this._form){body.append(this.form());return;}
     const list=el("ul",null,"compact-list");body.append(list);
     const items=(this._data.tasks||[]).filter(item=>!["completed","cancelled","archived"].includes(item.status))
@@ -599,13 +601,13 @@ export class FamilyCard extends HTMLElement {
       list.append(row);
     }
   }
-  renderCompactAlarms(body) {
+  renderCompactAlarms(body,header) {
     if(this.parent){
       const language=this._config?.language || this._hass?.language?.split("-")[0];
       const copy=ALARM_EDITOR_COPY[language] || ALARM_EDITOR_COPY.en;
-      const toolbar=el("div",null,"toolbar");
+      const toolbar=el("div",null,"header-actions");
       toolbar.append(this.icon("plus",copy.add,()=>openAlarmEditor(this),true));
-      body.append(toolbar);
+      header.append(toolbar);
     }
     if(renderAlarmEditor(this,body))return;
     const list=el("ul",null,"compact-list");body.append(list);
@@ -619,16 +621,24 @@ export class FamilyCard extends HTMLElement {
     box.setAttribute("aria-label",this.t.compactDone);
     box.addEventListener("change",()=>{this.command("tasks.complete",{id:item.id,revision:item.revision});});
     const label=el("label");
-    label.append(box,el("span",item.title,"compact-title"));
+    const text=el("span",null,"compact-text");
+    text.append(el("span",item.title,"compact-title"));
     const meta=[];
     const member=this._data.members?.find(m=>m.id===item.assignee);
     if(this.parent && member)meta.push(member.name);
     if(item.due_at)meta.push(item.due_at.slice(0,10));
     if(item.status==="submitted")meta.push(this.t.submitted);
     if(item.status==="needs_changes")meta.push(this.t.needs_changes);
-    if(meta.length)label.append(el("span",meta.join(" · "),"compact-meta"));
+    if(meta.length)text.append(el("span",meta.join(" · "),"compact-meta"));
+    label.append(box,text);
     row.append(label);
     const actor=this._data.actor;
+    const isFinal=["completed","cancelled","archived"].includes(item.status);
+    const canEdit=item.managed_by!=="school"&&this._data.role!=="guest"&&!isFinal&&item.status!=="submitted"&&(this.parent||(item.creator===actor&&item.assignee===actor));
+    if(canEdit){
+      const copy=TASK_ITEM_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || TASK_ITEM_COPY.en;
+      row.append(this.icon("pencil",copy.action_edit,()=>openTaskItemEdit(this,item)));
+    }
     const personal=item.delivery_scope==="personal";
     if(this.parent||personal){
       const remove=this.icon("minus",this.t.remove,()=>{this.command("tasks.archive",{id:item.id,revision:item.revision});});
@@ -659,6 +669,9 @@ export class FamilyCard extends HTMLElement {
     label.append(el("span",meta.join(" · "),"compact-meta"));
     row.append(label);
     if(this.parent){
+      const language=this._config?.language || this._hass?.language?.split("-")[0];
+      const copy=ALARM_EDITOR_COPY[language] || ALARM_EDITOR_COPY.en;
+      row.append(this.icon("pencil",copy.edit,()=>openAlarmEditor(this,item)));
       const remove=this.icon("minus",this.t.remove,()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:false});});
       remove.classList.add("compact-remove");
       row.append(remove);

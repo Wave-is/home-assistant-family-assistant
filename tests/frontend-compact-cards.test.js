@@ -73,7 +73,7 @@ test("compact tasks card renders only active tasks with add, history and remove 
   const titles = [...root.querySelectorAll(".compact-list:not(.compact-history) .compact-title")].map(node => node.textContent);
   assert.deepEqual(titles, ["Clean desk", "Water plants"]);
   const buttons = [...root.querySelectorAll("button")].map(node => node.getAttribute("aria-label"));
-  assert.deepEqual(buttons, ["Add", "History", "Remove", "Remove"]);
+  assert.deepEqual(buttons, ["Add", "History", "Edit task", "Remove", "Edit task", "Remove"]);
   const boxes = [...root.querySelectorAll(".compact-row input[type=checkbox]")];
   assert.deepEqual(boxes.map(box => box.checked), [false, false]);
   assert.match(root.querySelector(".compact-row .compact-meta").textContent, /Child Alpha · 2026-09-20/);
@@ -133,6 +133,19 @@ test("compact task checkbox sends tasks.complete with the exact payload and the 
   assert.deepEqual(titles, ["Water plants"]);
 });
 
+test("compact task pencil opens the edit form in the expanded panel and cancel returns to compact", async () => {
+  const {card} = await cardFor("tasks", {compact: true});
+  const pencil = [...card.shadowRoot.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === "Edit task");
+  pencil.click();
+  await waitFor(() => card.shadowRoot.querySelector('form[data-task-edit="true"]'));
+  assert.equal(card.shadowRoot.querySelector(".compact-list"), null);
+  const titleInput = card.shadowRoot.querySelector('form[data-task-edit="true"] input[name="title"]');
+  assert.equal(titleInput.value, "Clean desk");
+  const cancel = [...card.shadowRoot.querySelectorAll('form[data-task-edit="true"] button')].find(node => node.textContent === "Cancel");
+  cancel.click();
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 2 && !card.shadowRoot.querySelector("form"));
+});
+
 test("compact tasks card stays compact while an active wake-up check is running", async () => {
   const {card} = await cardFor("tasks", {}, {alarm_runs: [{id: "W1", member: "child-a", stage: "first", siren_desired: false}]});
   const root = card.shadowRoot;
@@ -146,7 +159,7 @@ test("compact alarms card keeps disabled alarms visible (dimmed) and toggles via
   const root = card.shadowRoot;
   const rows = () => [...root.querySelectorAll(".compact-row")];
   const buttons = [...root.querySelectorAll("button")].map(node => node.getAttribute("aria-label"));
-  assert.deepEqual(buttons, ["Add wake-up schedule", "Remove", "Remove"]);
+  assert.deepEqual(buttons, ["Add wake-up schedule", "Edit schedule", "Remove", "Edit schedule", "Remove"]);
   assert.deepEqual(rows().map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
   assert.match(rows()[0].querySelector(".compact-meta").textContent, /^Child Alpha · Weekdays$/);
   assert.match(rows()[1].querySelector(".compact-meta").textContent, /^Child Alpha · Weekends$/);

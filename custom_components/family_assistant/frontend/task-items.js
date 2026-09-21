@@ -227,6 +227,66 @@ async function executeCardCommand(card, action, payload, generationAtStart) {
   }
 }
 
+// Opens the in-item edit form for a task, revalidating rights and the live
+// projection at click time (shared by the full panel and compact rows).
+export function openTaskItemEdit(card, item) {
+  const startGeneration = card._generation;
+  const isParent = Boolean(card.parent);
+  const isGuest = card._data?.role === "guest";
+  const actorId = card._data?.actor;
+  const originalRole = card._data?.role, originalZone = getHouseholdZone(card);
+  const originalRevision = item.revision, originalStatus = item.status;
+  if (!baseCanInteract(card, startGeneration)) return;
+  const current = card._data?.tasks?.find(task => task.id === item.id);
+  if (!current || !card._data?.settings?.modules?.includes("tasks")) return;
+  if (card._data?.actor !== actorId || card._data.role !== originalRole) return;
+  if (isGuest || getHouseholdZone(card) !== originalZone) return;
+  if (current.revision !== originalRevision || current.status !== originalStatus) return;
+  const isFinal = FINAL_STATUSES.has(item.status);
+  const isSubmitted = item.status === "submitted";
+  const canEdit = item.managed_by !== "school" && !isGuest && !isFinal && !isSubmitted && (isParent || (item.creator === actorId && item.assignee === actorId));
+  if (!canEdit) return;
+  const zone = getHouseholdZone(card);
+  let initialWall = "";
+  let initialFold = null;
+  if (item.due_at) {
+    try {
+      initialWall = wallTime(item.due_at, zone);
+      const candidates = wallTimeCandidates(initialWall, zone);
+      if (candidates.length === 2) {
+        const idx = candidates.findIndex(candidate => Math.floor(Date.parse(candidate)/60000) === Math.floor(Date.parse(item.due_at)/60000));
+        if (idx !== -1) initialFold = idx;
+      }
+    } catch {
+      initialWall = "";
+    }
+  }
+  card._taskItemAction = {
+    type: "edit",
+    itemId: item.id,
+    targetRevision: item.revision,
+    targetStatus: item.status,
+    targetAssignee: item.assignee,
+    targetCreator: item.creator,
+    draftTitle: item.title || "",
+    draftAssignee: item.assignee || "",
+    draftWallTime: initialWall,
+    originalDueAt: item.due_at || null,
+    originalWallTime: initialWall,
+    draftFold: initialFold,
+    foldChanged: false,
+    draftReminder: item.deadline_policy?.reminder_minutes ?? 60,
+    draftGrace: item.deadline_policy?.grace_minutes ?? 30,
+    draftPenalty: item.deadline_policy?.penalty ?? 0,
+    draftReviewMinutes: item.review_minutes ?? 0,
+    draftMissedPolicy: item.missed_policy,
+    frozenPayload: null,
+    generation: startGeneration
+  };
+  card._actionError = null;
+  card.render();
+}
+
 export function renderTaskItem(card, list, item) {
   const row = el("li", null, "item");
   if (list && typeof list.append === "function") {
@@ -517,48 +577,7 @@ export function renderTaskItem(card, list, item) {
 
   // 5. Edit / Revise: Parents or Creator (for own-assigned tasks), when not submitted
   if (canEdit) {
-    const editBtn = card.icon("pencil", copy.action_edit, () => {
-      if (!canInteract(card, startGeneration)) return;
-      const zone = getHouseholdZone(card);
-      let initialWall = "";
-      let initialFold = null;
-      if (item.due_at) {
-        try {
-          initialWall = wallTime(item.due_at, zone);
-          const candidates = wallTimeCandidates(initialWall, zone);
-          if (candidates.length === 2) {
-            const idx = candidates.findIndex(candidate => Math.floor(Date.parse(candidate)/60000) === Math.floor(Date.parse(item.due_at)/60000));
-            if (idx !== -1) initialFold = idx;
-          }
-        } catch {
-          initialWall = "";
-        }
-      }
-      card._taskItemAction = {
-        type: "edit",
-        itemId: item.id,
-        targetRevision: item.revision,
-        targetStatus: item.status,
-        targetAssignee: item.assignee,
-        targetCreator: item.creator,
-        draftTitle: item.title || "",
-        draftAssignee: item.assignee || "",
-        draftWallTime: initialWall,
-        originalDueAt: item.due_at || null,
-        originalWallTime: initialWall,
-        draftFold: initialFold,
-        foldChanged: false,
-        draftReminder: item.deadline_policy?.reminder_minutes ?? 60,
-        draftGrace: item.deadline_policy?.grace_minutes ?? 30,
-        draftPenalty: item.deadline_policy?.penalty ?? 0,
-        draftReviewMinutes: item.review_minutes ?? 0,
-        draftMissedPolicy: item.missed_policy,
-        frozenPayload: null,
-        generation: startGeneration
-      };
-      card._actionError = null;
-      card.render();
-    });
+    const editBtn = card.icon("pencil", copy.action_edit, () => openTaskItemEdit(card, item));
     actionsEl.append(editBtn);
   }
 
@@ -754,6 +773,7 @@ export function renderTaskItem(card, list, item) {
     // Form C: Edit / Revise Task
     if (actionState.type === "edit") {
       const form = el("form");
+      form.setAttribute("data-task-edit", "true");
       const isInputFrozen = Boolean(actionState.frozenPayload);
       const zone = getHouseholdZone(card);
 

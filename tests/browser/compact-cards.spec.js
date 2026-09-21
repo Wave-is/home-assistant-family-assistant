@@ -11,6 +11,11 @@ test("compact tasks card removes via archive and restores completed tasks from h
   await expect(row).toHaveCount(1);
   expect(await row.locator(".compact-title").textContent()).toBe("Water the plants");
   expect(await row.locator("input[type=checkbox]").isChecked()).toBe(false);
+  await row.getByRole("button",{name:"Edit task",exact:true}).click();
+  await expect(card.locator(".compact-list")).toHaveCount(0);
+  await expect(card.locator('form[data-task-edit="true"] input[name="title"]')).toHaveValue("Water the plants");
+  await card.locator('form[data-task-edit="true"]').getByRole("button",{name:"Cancel",exact:true}).click();
+  await expect(card.locator(".compact-row")).toHaveCount(1);
   await row.getByRole("button",{name:"Remove",exact:true}).click();
   let calls=await page.evaluate(()=>window.calls);
   expect(calls).toHaveLength(1);
@@ -57,6 +62,15 @@ test("compact alarms card keeps disabled alarms visible (dimmed) and toggles via
   await expect(active.locator("input[type=checkbox]")).not.toBeChecked();
   await card.getByRole("button",{name:"Add wake-up schedule",exact:true}).click();
   await expect(card.locator('section.alarm-editor[data-alarm-editor="create"]')).toBeVisible();
+});
+
+test("compact alarm pencil opens the schedule editor for that alarm",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=alarms&compact=1");
+  const card=page.locator("family-assistant-card");
+  const row=card.locator(".compact-row").first();
+  await row.getByRole("button",{name:"Edit schedule",exact:true}).click();
+  await expect(card.locator('section.alarm-editor[data-alarm-editor="edit"]')).toBeVisible();
 });
 
 test("compact editor checkbox emits and removes the compact config flag",async({page})=>{
