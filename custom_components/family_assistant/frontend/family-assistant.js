@@ -201,7 +201,7 @@ const STYLES = `
   .item strong{font-size:15px}.badge{display:inline-block;border-radius:8px;background:rgba(19,146,127,.09);padding:3px 6px;margin:5px 4px 0 0;font-size:11px}
   button,input,select,textarea{font:inherit} button{border:1px solid var(--divider-color,#dfe9e7);border-radius:10px;padding:9px 12px;cursor:pointer;background:var(--ha-card-background,#fff);color:inherit;min-height:40px}
   button:hover{background:rgba(19,146,127,.1)}button.primary{background:#087f70;color:white;border-color:#087f70}button:disabled{opacity:.5;cursor:wait}
-  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:0;padding:0;flex:0 0 auto}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:0;padding:0;flex:0 0 auto;color:#111}
   .icon-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #55bcba;outline-offset:2px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{padding:28px 8px;text-align:center;color:var(--secondary-text-color,#657d80)}
