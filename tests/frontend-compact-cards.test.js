@@ -31,9 +31,10 @@ function state() {
     alarms: [alarm("A1", "07:00", [0, 1, 2, 3, 4], true), alarm("A2", "09:30", [5, 6], true)],
   };
 }
-async function cardFor(view, extra = {}) {
+async function cardFor(view, extra = {}, extraData = null) {
   const calls = [];
   const data = state();
+  if (extraData) Object.assign(data, extraData);
   const apply = message => {
     if (message.action === "alarms.enable") {
       const alarm = data.alarms.find(item => item.id === message.payload.id);
@@ -130,6 +131,14 @@ test("compact task checkbox sends tasks.complete with the exact payload and the 
   await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
   const titles = [...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent);
   assert.deepEqual(titles, ["Water plants"]);
+});
+
+test("compact tasks card stays compact while an active wake-up check is running", async () => {
+  const {card} = await cardFor("tasks", {}, {alarm_runs: [{id: "W1", member: "child-a", stage: "first", siren_desired: false}]});
+  const root = card.shadowRoot;
+  assert.ok(root.querySelector(".compact-list"));
+  const titles = [...root.querySelectorAll(".compact-title")].map(node => node.textContent);
+  assert.deepEqual(titles, ["Clean desk", "Water plants"]);
 });
 
 test("compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor", async () => {

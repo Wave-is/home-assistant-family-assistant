@@ -86,3 +86,13 @@ test("active wake-up check forces the full alarms panel despite compact default"
   expect(await card.locator(".compact-list").count()).toBe(0);
   await expect(card.getByRole("button",{name:"Stop this wake-up check",exact:true})).toBeVisible();
 });
+
+test("active wake-up check keeps the compact tasks card compact",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/tests/fixtures/dashboard.html?view=tasks&ringing=1&compact=1");
+  const card=page.locator("family-assistant-card");
+  await expect(card.locator(".compact-list")).toBeVisible();
+  const rows=card.locator(".compact-row");
+  await expect(rows).toHaveCount(1);
+  expect(await rows.locator(".compact-title").textContent()).toBe("Water the plants");
+});

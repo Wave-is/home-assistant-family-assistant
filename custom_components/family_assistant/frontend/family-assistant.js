@@ -480,7 +480,8 @@ export class FamilyCard extends HTMLElement {
       renderRecipes(this,body);return;
     }
     if(!this._data.settings.modules?.includes(this._view)){body.append(el("div",this.t.moduleOff,"empty"));return;}
-    if(this._config?.compact!==false&&(this._view==="tasks"||this._view==="alarms")&&!this._data.alarm_runs?.some(run=>inMemberContext(this,run.member)&&["first","waiting_second","second"].includes(run.stage))){this.renderCompact(body);return;}
+    if(this._config?.compact!==false&&this._view==="tasks"){this.renderCompact(body);return;}
+    if(this._config?.compact!==false&&this._view==="alarms"&&!this._data.alarm_runs?.some(run=>inMemberContext(this,run.member)&&["first","waiting_second","second"].includes(run.stage))){this.renderCompact(body);return;}
     if(this._view==="conversation"){this.renderConversation(body);return;}
     if(this._view==="mikrotik"){this.renderNetwork(body);return;}
     if(this._view==="court"){renderCourt(this,body);renderRewards(this,body);return;}
