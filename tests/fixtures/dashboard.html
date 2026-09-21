@@ -16,8 +16,9 @@ members:[{id:"owner",name:{en:"Parent 1",ru:"Родитель 1",uk:"Батьк�
 shopping:[{id:"S000001",name:{en:"Apples",ru:"Яблоки",uk:"Яблука"}[language],quantity:3,purchased:1,unit:"kg",status:"approved",revision:1},{id:"S000002",name:{en:"Watercolour set",ru:"Набор акварели",uk:"Набір акварелі"}[language],quantity:1,purchased:0,unit:"",status:"pending",revision:1}],
 tasks:[{id:"T000001",title:{en:"Water the plants",ru:"Полить растения",uk:"Полити рослини"}[language],assignee:"child",status:"assigned",due_at:"2026-09-10T17:00:00Z",revision:1}],
 court:[{id:"C000001",member:"child",reason:{en:"Helped with dinner",ru:"Помог с ужином",uk:"Допоміг з вечерею"}[language],points:2,status:"active",revision:1}]};
-data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1}];
+data.alarms=[{id:"A000001",member:"child",name:"",time:"07:30",timezone:"Europe/Berlin",days:[0,1,2,3,4],profile:"strict",enabled:true,revision:1,second_min:12,second_max:18,recheck_grace:60,penalty:0,exceptions:[]}];
 if(query.get("compact")==="1"&&view==="tasks")data.tasks.push({id:"T000003",title:{en:"Read the chapter",ru:"Прочитать главу",uk:"Прочитати розділ"}[language],assignee:"child",status:"completed",due_at:null,revision:1,report:"Done"});
+if(query.get("compact")==="1"&&view==="alarms")data.alarms.push({id:"A000002",member:"child",name:"",time:"08:00",timezone:"Europe/Berlin",days:[5,6],profile:"gentle",enabled:false,revision:1,second_min:12,second_max:18,recheck_grace:60,penalty:0,exceptions:[]});
 data.shopping_series=[];
 data.members[0].role="owner";data.members[1].role="child";
 data.members.forEach(member=>member.revision=1);

@@ -86,7 +86,7 @@ const COPY = {
     updated: "Saved", failure: "Could not complete this action.", open: "Open tasks",
     awaiting: "Awaiting approval", balance: "Balance", record: "Record", units: "units",
     refresh: "Refresh", entry: "Household", view: "View", reportLabel: "What did you do?",
-    compact: "Compact checklist view", compactDone: "Done — untick to reopen",
+    compact: "Compact checklist view", compactDone: "Done — untick to reopen", history: "History", restore: "Restore", remove: "Remove",
     approved: "Ready to buy", purchased: "Bought", assigned: "Assigned", submitted: "In review",
     completed: "Completed", active: "Active", reversed: "Reversed", in_progress: "In progress",
     accepted: "Accepted", needs_changes: "Needs changes", rejected: "Rejected", archived: "Archived",
@@ -134,7 +134,7 @@ const COPY = {
     updated: "Сохранено", failure: "Не удалось выполнить действие.", open: "Открытые задачи",
     awaiting: "Ждут решения", balance: "Баланс", record: "Записать", units: "позиций",
     refresh: "Обновить", entry: "Семья", view: "Раздел", reportLabel: "Что сделано?",
-    compact: "Компактный список с галочками", compactDone: "Выполнено — снимите галочку, чтобы вернуть",
+    compact: "Компактный список с галочками", compactDone: "Выполнено — снимите галочку, чтобы вернуть", history: "История", restore: "Вернуть", remove: "Убрать",
     approved: "Можно покупать", purchased: "Куплено", assigned: "Назначена", submitted: "На проверке",
     completed: "Выполнена", active: "Действует", reversed: "Отменён", in_progress: "В работе",
     accepted: "Принята", needs_changes: "На доработке", rejected: "Отклонено", archived: "В архиве",
@@ -182,7 +182,7 @@ const COPY = {
     updated: "Збережено", failure: "Не вдалося виконати дію.", open: "Відкриті завдання",
     awaiting: "Чекають рішення", balance: "Баланс", record: "Записати", units: "позицій",
     refresh: "Оновити", entry: "Родина", view: "Розділ", reportLabel: "Що зроблено?",
-    compact: "Компактний список із галочками", compactDone: "Виконано — зніміть галочку, щоб відновити",
+    compact: "Компактний список із галочками", compactDone: "Виконано — зніміть галочку, щоб відновити", history: "Історія", restore: "Повернути", remove: "Прибрати",
     approved: "Можна купувати", purchased: "Куплено", assigned: "Призначено", submitted: "На перевірці",
     completed: "Виконано", active: "Діє", reversed: "Скасовано", in_progress: "У роботі",
     accepted: "Прийнято", needs_changes: "На доопрацюванні", rejected: "Відхилено", archived: "В архіві",
@@ -239,6 +239,8 @@ const STYLES = `
   .compact-row .compact-title{flex:1;min-width:0;overflow-wrap:anywhere}
   .compact-row .compact-meta{font-size:12px;color:var(--secondary-text-color,#657d80);white-space:nowrap}
   .compact-row.done .compact-title{text-decoration:line-through;color:var(--secondary-text-color,#657d80)}
+  .compact-row .compact-remove{margin-left:auto}
+  .compact-history{margin-top:16px}
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
@@ -274,7 +276,7 @@ export class FamilyCard extends HTMLElement {
     this._homeStatusRequested=true;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
     this._shoppingItemAction=null;this._shoppingEditorDraft=null;this._pending=null;this._actionError=null;this._form=null;this._seriesForm=null;
-    this._taskItemAction=null;this._taskCreateDraft=null;this._taskSeriesDraft=null;this._alarmEditorDraft=null;
+    this._taskItemAction=null;this._taskCreateDraft=null;this._taskSeriesDraft=null;this._alarmEditorDraft=null;this._taskHistoryOpen=null;
     this._courtAction=null;this._courtDraft=null;this._courtConfigOpen=false;
     this._rewardDraft=null;this._calendarDraft=null;this._routineDraft=null;this._pantryDraft=null;this._mealsDraft=null;this._mealShoppingDraft=null;
     this._dietaryDraft=null;this._recipesDraft=null;this._schoolDraft=null;this._maintenanceDraft=null;this._schoolWorkDraft=null;this._schoolReminderDraft=null;this._pollsDraft=null;this._presenceDraft=null;this._digestsDraft=null;
@@ -517,23 +519,60 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="tasks")renderTaskArchive(this,body);
   }
   renderCompact(body) {
+    if(this._view==="tasks")this.renderCompactTasks(body);
+    else this.renderCompactAlarms(body);
+  }
+  renderCompactTasks(body) {
+    const toolbar=el("div",null,"toolbar");
+    if(this._data.role!=="guest")toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{
+      if(this._form && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
+      this._form=!this._form;this.render();
+    },true));
+    if(this.parent)toolbar.append(this.button(this.t.history,()=>{this._taskHistoryOpen=!this._taskHistoryOpen;this.render();}));
+    if(toolbar.children.length)body.append(toolbar);
+    if(this._form){body.append(this.form());return;}
     const list=el("ul",null,"compact-list");body.append(list);
-    if(this._view==="tasks"){
-      const items=(this._data.tasks||[]).filter(item=>!["completed","cancelled","archived"].includes(item.status))
-        .slice().sort((a,b)=>String(a.due_at||"").localeCompare(String(b.due_at||"")));
-      if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
-      for(const item of items)this.renderCompactTask(list,item);
-    } else {
-      const items=(this._data.alarms||[]).filter(item=>inMemberContext(this,item.member));
-      if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
-      for(const item of items)this.renderCompactAlarm(list,item);
+    const items=(this._data.tasks||[]).filter(item=>!["completed","cancelled","archived"].includes(item.status))
+      .slice().sort((a,b)=>String(a.due_at||"").localeCompare(String(b.due_at||"")));
+    if(!items.length)body.append(el("div",this.t.empty,"empty"));
+    for(const item of items)this.renderCompactTask(list,item);
+    if(this._taskHistoryOpen)this.renderCompactTaskHistory(body);
+  }
+  renderCompactTaskHistory(body) {
+    const list=el("ul",null,"compact-list compact-history");body.append(list);
+    const items=(this._data.tasks||[]).filter(item=>["completed","cancelled","archived"].includes(item.status)).slice().reverse();
+    if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
+    for(const item of items){
+      const row=el("li",null,"compact-row");
+      const label=el("label");
+      label.append(el("span",item.title,"compact-title"),el("span",[this.t[item.status]||item.status,item.due_at?item.due_at.slice(0,10):null].filter(Boolean).join(" · "),"compact-meta"));
+      row.append(label);
+      if(this.parent && item.status==="completed"){
+        const restore=this.button(this.t.restore,()=>{this.command("tasks.reopen",{id:item.id,revision:item.revision});});
+        row.append(restore);
+      }
+      list.append(row);
     }
   }
+  renderCompactAlarms(body) {
+    if(this.parent){
+      const language=this._config?.language || this._hass?.language?.split("-")[0];
+      const copy=ALARM_EDITOR_COPY[language] || ALARM_EDITOR_COPY.en;
+      const toolbar=el("div",null,"toolbar");
+      toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
+      body.append(toolbar);
+    }
+    if(renderAlarmEditor(this,body))return;
+    const list=el("ul",null,"compact-list");body.append(list);
+    const items=(this._data.alarms||[]).filter(item=>inMemberContext(this,item.member)&&item.enabled);
+    if(!items.length){body.append(el("div",this.t.empty,"empty"));return;}
+    for(const item of items)this.renderCompactAlarm(list,item);
+  }
   renderCompactTask(list,item) {
-    const row=el("li",null,`compact-row${item.status==="completed"?" done":""}`);
+    const row=el("li",null,"compact-row");
     const box=el("input");box.type="checkbox";box.checked=item.status==="completed";
     box.setAttribute("aria-label",this.t.compactDone);
-    box.addEventListener("change",()=>{this.command(box.checked?"tasks.complete":"tasks.reopen",{id:item.id,revision:item.revision});});
+    box.addEventListener("change",()=>{this.command("tasks.complete",{id:item.id,revision:item.revision});});
     const label=el("label");
     label.append(box,el("span",item.title,"compact-title"));
     const meta=[];
@@ -543,10 +582,22 @@ export class FamilyCard extends HTMLElement {
     if(item.status==="submitted")meta.push(this.t.submitted);
     if(item.status==="needs_changes")meta.push(this.t.needs_changes);
     if(meta.length)label.append(el("span",meta.join(" · "),"compact-meta"));
-    row.append(label);list.append(row);
+    row.append(label);
+    const actor=this._data.actor;
+    const personal=item.delivery_scope==="personal";
+    if(this.parent||personal){
+      const remove=this.button(this.t.remove,()=>{this.command("tasks.archive",{id:item.id,revision:item.revision});});
+      remove.classList.add("compact-remove");
+      row.append(remove);
+    } else if(item.creator===actor&&item.assignee===actor){
+      const remove=this.button(this.t.remove,()=>{this.command("tasks.cancel",{id:item.id,revision:item.revision});});
+      remove.classList.add("compact-remove");
+      row.append(remove);
+    }
+    list.append(row);
   }
   renderCompactAlarm(list,item) {
-    const row=el("li",null,`compact-row${item.enabled?"":" done"}`);
+    const row=el("li",null,"compact-row");
     const box=el("input");box.type="checkbox";box.checked=!!item.enabled;
     box.setAttribute("aria-label",`${this.t.alarms} ${item.time}`);
     box.addEventListener("change",()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:box.checked});});
@@ -556,7 +607,13 @@ export class FamilyCard extends HTMLElement {
     const days=(item.days||[]).slice().sort();
     const short=days.length===7?this.t.everyday:days.join()===[0,1,2,3,4].join()?this.t.weekdays:days.join()===[5,6].join()?this.t.weekends:days.map(d=>names[d]||String(d)).join(", ");
     label.append(el("span",short,"compact-meta"));
-    row.append(label);list.append(row);
+    row.append(label);
+    if(this.parent){
+      const remove=this.button(this.t.remove,()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:false});});
+      remove.classList.add("compact-remove");
+      row.append(remove);
+    }
+    list.append(row);
   }
   renderNetwork(body) {
     renderKids(this,body);

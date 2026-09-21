@@ -18,7 +18,7 @@ const members = [
   {id: "child-a", name: "Child Alpha", role: "child", active: true, revision: 2},
 ];
 const task = (id, title, status, due_at = null) => ({id, title, status, revision: 1, assignee: "child-a", due_at, checklist: []});
-const alarm = (id, time, days, enabled) => ({id, member: "child-a", revision: 1, time, days, enabled, exceptions: [], penalty: 0});
+const alarm = (id, time, days, enabled) => ({id, member: "child-a", name: "", revision: 1, time, days, enabled, exceptions: [], second_min: 12, second_max: 18, profile: "gentle", recheck_grace: 60, penalty: 0, timezone: "UTC"});
 function state() {
   return {
     revision: 1, role: "owner", actor: "owner", members: clone(members),
@@ -28,7 +28,7 @@ function state() {
       task("T2", "Read chapter", "completed"),
       task("T3", "Clean desk", "assigned", "2026-09-20T08:00:00+00:00"),
     ],
-    alarms: [alarm("A1", "07:00", [0, 1, 2, 3, 4], true), alarm("A2", "09:30", [5, 6], false)],
+    alarms: [alarm("A1", "07:00", [0, 1, 2, 3, 4], true), alarm("A2", "09:30", [5, 6], true)],
   };
 }
 async function cardFor(view, extra = {}) {
@@ -44,6 +44,7 @@ async function cardFor(view, extra = {}) {
     if (!task || task.revision !== message.payload.revision) throw new Error("revision_conflict");
     if (message.action === "tasks.complete") task.status = "completed";
     if (message.action === "tasks.reopen") task.status = "assigned";
+    if (message.action === "tasks.archive") task.status = "archived";
     task.revision += 1;
   };
   const card = document.createElement("family-assistant-card");
@@ -63,18 +64,57 @@ async function cardFor(view, extra = {}) {
 }
 afterEach(() => document.body.replaceChildren());
 
-test("compact tasks card renders only active tasks, open tasks first by due date", async () => {
+test("compact tasks card renders only active tasks with add, history and remove controls", async () => {
   const {card} = await cardFor("tasks");
   const root = card.shadowRoot;
   assert.equal(root.querySelector(".compact-list"), root.querySelector(".body .compact-list"));
-  const titles = [...root.querySelectorAll(".compact-title")].map(node => node.textContent);
+  assert.equal(root.querySelector(".compact-history"), null);
+  const titles = [...root.querySelectorAll(".compact-list:not(.compact-history) .compact-title")].map(node => node.textContent);
   assert.deepEqual(titles, ["Clean desk", "Water plants"]);
-  assert.equal(root.querySelectorAll("button").length, 0);
+  const buttons = [...root.querySelectorAll("button")].map(node => node.textContent);
+  assert.deepEqual(buttons, ["Add", "History", "Remove", "Remove"]);
   const boxes = [...root.querySelectorAll(".compact-row input[type=checkbox]")];
   assert.deepEqual(boxes.map(box => box.checked), [false, false]);
-  assert.equal(root.querySelector(".compact-row.done"), null);
   assert.match(root.querySelector(".compact-row .compact-meta").textContent, /Child Alpha · 2026-09-20/);
   assert.equal(card.getCardSize(), 4);
+});
+
+test("compact task remove sends tasks.archive and the task leaves the list", async () => {
+  const {card, calls} = await cardFor("tasks", {compact: true});
+  card.shadowRoot.querySelectorAll(".compact-row .compact-remove")[0].click();
+  await waitFor(() => calls.some(item => item.action === "tasks.archive"));
+  assert.deepEqual(calls.find(item => item.action === "tasks.archive").payload, {id: "T3", revision: 1});
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["Water plants"]);
+});
+
+test("compact task history shows closed tasks and restore reopens a completed task", async () => {
+  const {card, calls} = await cardFor("tasks", {compact: true});
+  const history = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "History");
+  history.click();
+  await waitFor(() => card.shadowRoot.querySelector(".compact-history"));
+  const historyRoot = card.shadowRoot.querySelector(".compact-history");
+  assert.deepEqual([...historyRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["Read chapter"]);
+  assert.match(historyRoot.querySelector(".compact-meta").textContent, /Completed/);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-list:not(.compact-history) .compact-title")].map(node => node.textContent), ["Clean desk", "Water plants"]);
+  historyRoot.querySelector("button").click();
+  await waitFor(() => calls.some(item => item.action === "tasks.reopen"));
+  assert.deepEqual(calls.find(item => item.action === "tasks.reopen").payload, {id: "T2", revision: 1});
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-list:not(.compact-history) .compact-row").length === 3 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  const restoredTitles = [...card.shadowRoot.querySelectorAll(".compact-list:not(.compact-history) .compact-row")].map(row => row.querySelector(".compact-title").textContent);
+  assert.deepEqual(restoredTitles, ["Read chapter", "Clean desk", "Water plants"]);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-history .compact-title")].map(node => node.textContent), []);
+});
+
+test("compact tasks add button opens the create form and back returns to the list", async () => {
+  const {card} = await cardFor("tasks", {compact: true});
+  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Add");
+  add.click();
+  await waitFor(() => card.shadowRoot.querySelector('form[data-task-create="true"]'));
+  assert.equal(card.shadowRoot.querySelector(".compact-list"), null);
+  const back = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Back");
+  back.click();
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 2 && !card.shadowRoot.querySelector("form"));
 });
 
 test("compact task checkbox sends tasks.complete with the exact payload and the task leaves the list", async () => {
@@ -92,30 +132,48 @@ test("compact task checkbox sends tasks.complete with the exact payload and the 
   assert.deepEqual(titles, ["Water plants"]);
 });
 
-test("compact alarms card toggles alarms.enable per checkbox without buttons", async () => {
+test("compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor", async () => {
   const {card, calls} = await cardFor("alarms", {compact: true});
   const root = card.shadowRoot;
-  assert.equal(root.querySelectorAll("button").length, 0);
+  const buttons = [...root.querySelectorAll("button")].map(node => node.textContent);
+  assert.deepEqual(buttons, ["Add wake-up schedule", "Remove", "Remove"]);
   const rows = [...root.querySelectorAll(".compact-row")];
-  assert.deepEqual([...root.querySelectorAll(".compact-title")].map(node => node.textContent), ["07:00", "09:30"]);
+  assert.deepEqual(rows.map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
   assert.match(rows[0].querySelector(".compact-meta").textContent, /Weekdays/);
   assert.match(rows[1].querySelector(".compact-meta").textContent, /Weekends/);
+  assert.deepEqual(rows.map(row => row.querySelector("input[type=checkbox]").checked), [true, true]);
   const first = rows[0].querySelector("input[type=checkbox]");
-  assert.equal(first.checked, true);
   first.checked = false;
   first.dispatchEvent(new dom.window.Event("change"));
-  await waitFor(() => calls.some(item => item.type === "family_assistant/execute" && item.action === "alarms.enable"));
+  await waitFor(() => calls.some(item => item.action === "alarms.enable"));
   const firstWrite = calls.find(item => item.action === "alarms.enable");
   assert.deepEqual(firstWrite.payload, {id: "A1", revision: 1, enabled: false});
-  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 2 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
-  const secondRow = [...card.shadowRoot.querySelectorAll(".compact-row")].find(row => row.querySelector(".compact-title").textContent === "09:30");
-  const second = secondRow.querySelector("input[type=checkbox]");
-  assert.equal(second.checked, false);
-  second.checked = true;
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["09:30"]);
+  const second = card.shadowRoot.querySelector(".compact-row input[type=checkbox]");
+  assert.equal(second.checked, true);
+  second.checked = false;
   second.dispatchEvent(new dom.window.Event("change"));
-  await waitFor(() => calls.filter(item => item.type === "family_assistant/execute" && item.action === "alarms.enable").length === 2);
+  await waitFor(() => calls.filter(item => item.action === "alarms.enable").length === 2 && card.shadowRoot.querySelectorAll(".compact-row").length === 0);
   const secondWrite = calls.filter(item => item.action === "alarms.enable")[1];
-  assert.deepEqual(secondWrite.payload, {id: "A2", revision: 1, enabled: true});
+  assert.deepEqual(secondWrite.payload, {id: "A2", revision: 1, enabled: false});
+  assert.ok(card.shadowRoot.querySelector(".body .empty"));
+});
+
+test("compact alarm remove sends alarms.enable false and the alarm disappears from the list", async () => {
+  const {card, calls} = await cardFor("alarms", {compact: true});
+  card.shadowRoot.querySelector(".compact-row .compact-remove").click();
+  await waitFor(() => calls.some(item => item.action === "alarms.enable"));
+  assert.deepEqual(calls.find(item => item.action === "alarms.enable").payload, {id: "A1", revision: 1, enabled: false});
+  await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 1 && calls.filter(item => item.type === "family_assistant/view").length >= 2);
+  assert.deepEqual([...card.shadowRoot.querySelectorAll(".compact-title")].map(node => node.textContent), ["09:30"]);
+});
+
+test("compact alarms add button opens the wake-up schedule editor", async () => {
+  const {card} = await cardFor("alarms", {compact: true});
+  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Add wake-up schedule");
+  add.click();
+  await waitFor(() => card.shadowRoot.querySelector('.alarm-editor[data-alarm-editor="create"]'));
 });
 
 test("non-compact cards keep the full panel and card size", async () => {
