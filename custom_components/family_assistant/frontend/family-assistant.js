@@ -200,6 +200,8 @@ const STYLES = `
   .item strong{font-size:15px}.badge{display:inline-block;border-radius:8px;background:rgba(19,146,127,.09);padding:3px 6px;margin:5px 4px 0 0;font-size:11px}
   button,input,select,textarea{font:inherit} button{border:1px solid var(--divider-color,#dfe9e7);border-radius:10px;padding:9px 12px;cursor:pointer;background:var(--ha-card-background,#fff);color:inherit;min-height:40px}
   button:hover{background:rgba(19,146,127,.1)}button.primary{background:#087f70;color:white;border-color:#087f70}button:disabled{opacity:.5;cursor:wait}
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:0;padding:0;flex:0 0 auto}
+  .icon-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #55bcba;outline-offset:2px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{padding:28px 8px;text-align:center;color:var(--secondary-text-color,#657d80)}
   form{display:grid;gap:12px;margin:0 0 18px}label{display:grid;gap:5px;font-size:12px;color:var(--secondary-text-color,#657d80)}
@@ -244,6 +246,25 @@ const STYLES = `
   [hidden]{display:none!important}
   @media(max-width:400px){header{padding:20px 16px 16px}.body{padding:16px}.fields{grid-template-columns:1fr}h2{font-size:21px}}
 `;
+
+const ICONS = {
+  plus: ["M12 5v14", "M5 12h14"],
+  minus: ["M5 12h14"],
+  back: ["M19 12H5", "M12 19l-7-7 7-7"],
+  history: ["M3 3v5h5", "M3.05 13A9 9 0 1 0 6 5.3L3 8", "M12 7v5l4 2"],
+  restore: ["M1 4v6h6", "M3.51 15a9 9 0 1 0 2.13-9.36L1 10"],
+  pencil: ["M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"],
+  flask: ["M9 3v6L4.5 18.5A2 2 0 0 0 6.4 21h11.2a2 2 0 0 0 1.9-2.5L15 9V3", "M7.5 3h9", "M6.5 15h11"],
+  stop: ["M7 7h10v10H7z"],
+  check: ["M20 6L9 17l-5-5"],
+  checkCheck: ["M2 12.5l4 4L14 8.5", "M9.5 17.5l2 2L22 10"],
+  play: ["M8 5v14l11-7z"],
+  file: ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6", "M16 13H8", "M16 17H8"],
+  x: ["M18 6L6 18", "M6 6l12 12"],
+  archive: ["M21 8v13H3V8", "M1 3h22v5H1z", "M10 12h4"],
+  power: ["M18.36 6.64a9 9 0 1 1-12.73 0", "M12 2v10"],
+  sendBack: ["M9 14L4 9l5-5", "M20 20v-7a4 4 0 0 0-4-4H4"]
+};
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -359,6 +380,22 @@ export class FamilyCard extends HTMLElement {
   }
   button(text, action, primary=false) {
     const button=el("button",text,primary?"primary":""); button.type="button";
+    button.disabled=!!this._writing;
+    button.addEventListener("click",action); return button;
+  }
+  icon(name, label, action, primary=false) {
+    const button=el("button",null,primary?"icon-btn primary":"icon-btn"); button.type="button";
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("viewBox","0 0 24 24");
+    svg.setAttribute("aria-hidden","true");
+    for(const d of ICONS[name]||[]) {
+      const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+      path.setAttribute("d",d);
+      svg.append(path);
+    }
+    button.append(svg);
+    button.title=label;
+    button.setAttribute("aria-label",label);
     button.disabled=!!this._writing;
     button.addEventListener("click",action); return button;
   }
@@ -501,11 +538,14 @@ export class FamilyCard extends HTMLElement {
     const toolbar=this._view==="shopping"?null:el("div",null,"toolbar");if(toolbar)toolbar.append(el("span",`${(this._data[this._view]||[]).filter(item=>this._view!=="alarms"||inMemberContext(this,item.member)).length} ${this.t.units}`,"sub"));
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
-      toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
-    } else if(toolbar && this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)) toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{
-      if(this._form && this._view==="tasks" && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
-      this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();
-    },true));
+      toolbar.append(this.icon("plus",copy.add,()=>openAlarmEditor(this),true));
+    } else if(toolbar && this._view!=="alarms" && this._data.role!=="guest" && (this._view!=="court" || this.parent)){
+      const toggleForm=()=>{
+        if(this._form && this._view==="tasks" && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
+        this._form=!this._form;this._seriesForm=false;this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;this.render();
+      };
+      toolbar.append(this._form?this.icon("back",this.t.back,toggleForm,true):this.icon("plus",this.t.add,toggleForm,true));
+    }
     if(toolbar)body.append(toolbar);
     if(this._form && this._view!=="shopping"){
       body.append(this.form());
@@ -525,11 +565,14 @@ export class FamilyCard extends HTMLElement {
   }
   renderCompactTasks(body) {
     const toolbar=el("div",null,"toolbar");
-    if(this._data.role!=="guest")toolbar.append(this.button(this._form?this.t.back:this.t.add,()=>{
-      if(this._form && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
-      this._form=!this._form;this.render();
-    },true));
-    if(this.parent)toolbar.append(this.button(this.t.history,()=>{this._taskHistoryOpen=!this._taskHistoryOpen;this.render();}));
+    if(this._data.role!=="guest"){
+      const toggleForm=()=>{
+        if(this._form && this._taskCreateDraft && !this._taskCreateDraft.pending)this._taskCreateDraft.confirmed=false;
+        this._form=!this._form;this.render();
+      };
+      toolbar.append(this._form?this.icon("back",this.t.back,toggleForm,true):this.icon("plus",this.t.add,toggleForm,true));
+    }
+    if(this.parent)toolbar.append(this.icon("history",this.t.history,()=>{this._taskHistoryOpen=!this._taskHistoryOpen;this.render();}));
     if(toolbar.children.length)body.append(toolbar);
     if(this._form){body.append(this.form());return;}
     const list=el("ul",null,"compact-list");body.append(list);
@@ -549,7 +592,7 @@ export class FamilyCard extends HTMLElement {
       label.append(el("span",item.title,"compact-title"),el("span",[this.t[item.status]||item.status,item.due_at?item.due_at.slice(0,10):null].filter(Boolean).join(" · "),"compact-meta"));
       row.append(label);
       if(this.parent && item.status==="completed"){
-        const restore=this.button(this.t.restore,()=>{this.command("tasks.reopen",{id:item.id,revision:item.revision});});
+        const restore=this.icon("restore",this.t.restore,()=>{this.command("tasks.reopen",{id:item.id,revision:item.revision});});
         row.append(restore);
       }
       list.append(row);
@@ -560,7 +603,7 @@ export class FamilyCard extends HTMLElement {
       const language=this._config?.language || this._hass?.language?.split("-")[0];
       const copy=ALARM_EDITOR_COPY[language] || ALARM_EDITOR_COPY.en;
       const toolbar=el("div",null,"toolbar");
-      toolbar.append(this.button(copy.add,()=>openAlarmEditor(this),true));
+      toolbar.append(this.icon("plus",copy.add,()=>openAlarmEditor(this),true));
       body.append(toolbar);
     }
     if(renderAlarmEditor(this,body))return;
@@ -587,11 +630,11 @@ export class FamilyCard extends HTMLElement {
     const actor=this._data.actor;
     const personal=item.delivery_scope==="personal";
     if(this.parent||personal){
-      const remove=this.button(this.t.remove,()=>{this.command("tasks.archive",{id:item.id,revision:item.revision});});
+      const remove=this.icon("minus",this.t.remove,()=>{this.command("tasks.archive",{id:item.id,revision:item.revision});});
       remove.classList.add("compact-remove");
       row.append(remove);
     } else if(item.creator===actor&&item.assignee===actor){
-      const remove=this.button(this.t.remove,()=>{this.command("tasks.cancel",{id:item.id,revision:item.revision});});
+      const remove=this.icon("minus",this.t.remove,()=>{this.command("tasks.cancel",{id:item.id,revision:item.revision});});
       remove.classList.add("compact-remove");
       row.append(remove);
     }
@@ -610,7 +653,7 @@ export class FamilyCard extends HTMLElement {
     label.append(el("span",short,"compact-meta"));
     row.append(label);
     if(this.parent){
-      const remove=this.button(this.t.remove,()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:false});});
+      const remove=this.icon("minus",this.t.remove,()=>{this.command("alarms.enable",{id:item.id,revision:item.revision,enabled:false});});
       remove.classList.add("compact-remove");
       row.append(remove);
     }
@@ -725,11 +768,15 @@ export class FamilyCard extends HTMLElement {
         for(const answer of run.challenge.choices)choices.append(this.button(String(answer),()=>this.command("alarms.answer",{id:run.id,nonce:run.challenge.nonce,answer}),true));
         item.append(choices);
       }
-      if(this.parent)item.append(this.button(this.t.stopAlarm,()=>{
-        const form=el("form");this.input(form,"reason",this.t.reason);
-        const submit=el("button",this.t.stopAlarm);submit.type="submit";form.append(submit);
-        form.addEventListener("submit",e=>{e.preventDefault();this.command("alarms.cancel",{id:run.id,...Object.fromEntries(new FormData(form))});});item.append(form);
-      }));
+      if(this.parent){
+        const runActions=el("div",null,"actions");
+        runActions.append(this.icon("stop",this.t.stopAlarm,()=>{
+          const form=el("form");this.input(form,"reason",this.t.reason);
+          const submit=el("button",this.t.stopAlarm);submit.type="submit";form.append(submit);
+          form.addEventListener("submit",e=>{e.preventDefault();this.command("alarms.cancel",{id:run.id,...Object.fromEntries(new FormData(form))});});item.append(form);
+        }));
+        item.append(runActions);
+      }
       body.append(item);
     }
   }
@@ -750,9 +797,13 @@ export class FamilyCard extends HTMLElement {
     const command=(action,extra={})=>this.command(action,{id:item.id,revision:item.revision,...extra});
     if(this._view==="alarms" && this.parent){
       const copy=ALARM_EDITOR_COPY[this._config?.language || this._hass?.language?.split("-")[0]] || ALARM_EDITOR_COPY.en;
-      actions.append(this.button(copy.edit,()=>openAlarmEditor(this,item)));
-      actions.append(this.button(item.enabled?this.t.disable:this.t.enable,()=>command("alarms.enable",{enabled:!item.enabled})));
-      actions.append(this.button(this.t.testAlarm,()=>{
+      const enableBox=el("input");enableBox.type="checkbox";enableBox.checked=!!item.enabled;
+      enableBox.setAttribute("aria-label",`${this.t.alarms} ${item.time}`);
+      enableBox.disabled=!!this._writing;
+      enableBox.addEventListener("change",()=>command("alarms.enable",{enabled:enableBox.checked}));
+      actions.append(enableBox);
+      actions.append(this.icon("pencil",copy.edit,()=>openAlarmEditor(this,item)));
+      actions.append(this.icon("flask",this.t.testAlarm,()=>{
         const confirm=el("div",this.t.testAlarmWarning,"notice");
         confirm.append(this.button(this.t.startTest,()=>this.command("alarms.test",{id:item.id}),true));actions.replaceChildren(confirm);
       }));

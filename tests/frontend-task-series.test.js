@@ -210,7 +210,7 @@ async function setup(
 }
 function clickText(root, text) {
   const button = [...root.querySelectorAll("button")].find(
-    (item) => item.textContent === text,
+    (item) => item.textContent === text || item.getAttribute("aria-label") === text,
   );
   assert.ok(button, `button ${text}`);
   button.click();

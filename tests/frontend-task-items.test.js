@@ -89,6 +89,16 @@ function createMockCard(overrides = {}) {
       btn.addEventListener("click", action);
       return btn;
     },
+    icon(name, label, action, primary = false) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = primary ? "icon-btn primary" : "icon-btn";
+      btn.title = label;
+      btn.setAttribute("aria-label", label);
+      btn.disabled = Boolean(this._writing);
+      btn.addEventListener("click", action);
+      return btn;
+    },
     input(form, name, label, type = "text", value = "", required = true) {
       const wrap = document.createElement("label");
       wrap.textContent = label;
@@ -126,7 +136,7 @@ test("School homework keeps lifecycle controls but cannot open generic edit", ()
     checklist: [{ text: "Read chapter", done: false }],
   };
   renderTaskItem(card, list, item);
-  const labels = [...list.querySelectorAll("button")].map(button => button.textContent);
+  const labels = [...list.querySelectorAll("button")].map(button => button.textContent || button.getAttribute("aria-label"));
   assert.ok(!labels.includes(TASK_ITEM_COPY.en.action_edit));
   assert.ok(labels.includes(TASK_ITEM_COPY.en.action_cancel));
   assert.match(list.textContent, /School card/);
@@ -236,7 +246,7 @@ test("non-parent creator cannot edit or cancel unless they are also the current 
   };
 
   renderTaskItem(childCard, ul, otherAssigneeItem);
-  const buttons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent);
+  const buttons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent || b.getAttribute("aria-label"));
   assert.ok(!buttons.includes("Edit task"));
   assert.ok(!buttons.includes("Cancel task"));
 
@@ -251,7 +261,7 @@ test("non-parent creator cannot edit or cancel unless they are also the current 
   };
   ul.replaceChildren();
   renderTaskItem(childCard, ul, ownAssignedItem);
-  const ownButtons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent);
+  const ownButtons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent || b.getAttribute("aria-label"));
   assert.ok(ownButtons.includes("Edit task"));
   assert.ok(ownButtons.includes("Cancel task"));
 });
@@ -276,7 +286,7 @@ test("report submission: text uses tasks.submit, photo opens the private media w
   };
 
   renderTaskItem(card, ul, item);
-  const reportBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Send report");
+  const reportBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Send report" || b.getAttribute("aria-label") === "Send report");
   reportBtn.click();
 
   assert.equal(card._taskItemAction.type, "submit_report");
@@ -334,14 +344,14 @@ test("parent controls: complete, request changes with note, cancel, and archive 
   };
 
   renderTaskItem(card, ul, item);
-  const buttons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent);
+  const buttons = Array.from(ul.querySelectorAll("button")).map(b => b.textContent || b.getAttribute("aria-label"));
   assert.ok(buttons.includes("Confirm done"));
   assert.ok(buttons.includes("Request changes"));
   assert.ok(buttons.includes("Cancel task"));
   assert.ok(buttons.includes("Archive"));
 
   // Request changes form flow
-  const reqBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Request changes");
+  const reqBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Request changes" || b.getAttribute("aria-label") === "Request changes");
   reqBtn.click();
   assert.equal(card._taskItemAction.type, "request_changes");
 
@@ -365,7 +375,7 @@ test("parent controls: complete, request changes with note, cancel, and archive 
   card._taskItemAction = null;
   ul.replaceChildren();
   renderTaskItem(card, ul, item);
-  const archiveBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Archive");
+  const archiveBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Archive" || b.getAttribute("aria-label") === "Archive");
   archiveBtn.click();
 
   assert.equal(card._taskItemAction.type, "confirm_archive");
@@ -396,7 +406,7 @@ test("inactive current assignee is preserved and rendered explicitly in assignee
   };
 
   renderTaskItem(card, ul, item);
-  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task");
+  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task" || b.getAttribute("aria-label") === "Edit task");
   editBtn.click();
 
   ul.replaceChildren();
@@ -431,7 +441,7 @@ test("daylight saving time fold handling: explicit placeholder, prevents silent 
   };
 
   renderTaskItem(card, ul, item);
-  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task");
+  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task" || b.getAttribute("aria-label") === "Edit task");
   editBtn.click();
 
   ul.replaceChildren();
@@ -488,7 +498,7 @@ test("stale form detection: rejects stale form when revision, status, or permiss
   };
 
   renderTaskItem(card, ul, item);
-  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task");
+  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task" || b.getAttribute("aria-label") === "Edit task");
   editBtn.click();
 
   // Task on server has now been updated to revision 4
@@ -532,7 +542,7 @@ test("deadline policy respects domain ranges (reminder 0..10080, grace 0..1440, 
   };
 
   renderTaskItem(card, ul, item);
-  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task");
+  const editBtn = Array.from(ul.querySelectorAll("button")).find(b => b.textContent === "Edit task" || b.getAttribute("aria-label") === "Edit task");
   editBtn.click();
 
   ul.replaceChildren();
@@ -555,7 +565,7 @@ test("focused editor rejects newly fetched revisions without needing DOM rerende
   const card=createMockCard(),ul=document.createElement("ul");
   const item={id:"Tfresh",revision:1,title:"Task",status:"assigned",assignee:"child_1",creator:"parent_1"};
   renderTaskItem(card,ul,item);
-  [...ul.querySelectorAll("button")].find(b=>b.textContent==="Edit task").click();
+  [...ul.querySelectorAll("button")].find(b=>b.textContent==="Edit task"||b.getAttribute("aria-label")==="Edit task").click();
   ul.replaceChildren();renderTaskItem(card,ul,item);
   card._data.tasks=[{...item,revision:2,title:"New server title"}];
   ul.querySelector("form").dispatchEvent(new dom.window.Event("submit"));
@@ -566,7 +576,7 @@ test("editing title retains exact deadline seconds and omits unchanged inactive 
   const card=createMockCard(),ul=document.createElement("ul");
   const item={id:"Texact",revision:1,title:"Task",status:"in_progress",assignee:"inactive_1",creator:"parent_1",due_at:"2026-09-07T13:15:47.123456+03:00"};
   renderTaskItem(card,ul,item);
-  [...ul.querySelectorAll("button")].find(b=>b.textContent==="Edit task").click();
+  [...ul.querySelectorAll("button")].find(b=>b.textContent==="Edit task"||b.getAttribute("aria-label")==="Edit task").click();
   ul.replaceChildren();renderTaskItem(card,ul,item);
   ul.querySelector('input[name="title"]').value="Edited";
   ul.querySelector("form").dispatchEvent(new dom.window.Event("submit"));

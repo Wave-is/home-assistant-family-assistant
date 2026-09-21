@@ -37,7 +37,7 @@ const STYLE = `
   .task-series-review dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.task-series-review dt{font-weight:600}.task-series-warning{padding:8px;border-inline-start:4px solid var(--warning-color,#d97706)}
   .task-series-unavailable{display:flex;gap:8px;align-items:center;justify-content:space-between}.task-series-unavailable button{flex:0 0 auto}
   .task-series .recurrence-fieldset{display:block;min-width:0}.task-series .recurrence-fieldset>*+*{margin-top:10px}.task-series .recurrence-row,.task-series .recurrence-weekdays{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
-  @media(max-width:560px){.task-series-fields,.task-series-review dl{grid-template-columns:minmax(0,1fr)}.task-series-fields>.wide{grid-column:auto}.task-series-review dd{margin-bottom:5px}.task-series-actions>button{width:100%}.task-series-unavailable{align-items:stretch;flex-direction:column}}
+  @media(max-width:560px){.task-series-fields,.task-series-review dl{grid-template-columns:minmax(0,1fr)}.task-series-fields>.wide{grid-column:auto}.task-series-review dd{margin-bottom:5px}.task-series-actions>button:not(.icon-btn){width:100%}.task-series-unavailable{align-items:stretch;flex-direction:column}}
 `;
 
 function language(card) {
@@ -878,7 +878,7 @@ function row(card, item) {
   if (PARENTS.has(card._data?.role)) {
     const actions = node("div", null, "task-series-actions");
     actions.append(
-      button(card, c.edit, () => {
+      card.icon("pencil", c.edit, () => {
         if (
           !result.isConnected ||
           card._writing ||
@@ -891,7 +891,7 @@ function row(card, item) {
     );
     if (item.enabled || item.current === true)
       actions.append(
-        button(card, item.enabled ? c.disable : c.enable, () => {
+        card.icon("power", item.enabled ? c.disable : c.enable, () => {
           if (
             !result.isConnected ||
             card._writing ||
@@ -941,8 +941,8 @@ export function renderTaskSeries(card, body) {
   }
   if (PARENTS.has(card._data?.role))
     section.append(
-      button(
-        card,
+      card.icon(
+        "plus",
         c.add,
         () => {
           if (!section.isConnected || card._writing || !access(card)) return;

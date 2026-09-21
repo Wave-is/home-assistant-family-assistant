@@ -117,12 +117,13 @@ test("control sweep: court reverse retains reason and child cannot reverse",asyn
 
 test("control sweep: alarm enable toggles only configuration and failed retry never tests devices",async({page})=>{
   await page.goto("/tests/fixtures/dashboard.html?view=alarms&compact=0");const card=page.locator("family-assistant-card");
-  await page.evaluate(()=>window.failCommand=true);await card.getByRole("button",{name:"Disable",exact:true}).click();await expect(card.getByRole("alert")).toBeVisible();
-  await page.evaluate(()=>window.failCommand=false);await card.getByRole("button",{name:"Disable",exact:true}).click();await expect(card.getByRole("button",{name:"Enable",exact:true})).toBeVisible();
-  await card.getByRole("button",{name:"Enable",exact:true}).click();await expect(card.getByRole("button",{name:"Disable",exact:true})).toBeVisible();
+  const toggle=card.locator("li.item").first().getByRole("checkbox");
+  await page.evaluate(()=>window.failCommand=true);await toggle.click();await expect(card.getByRole("alert")).toBeVisible();
+  await page.evaluate(()=>window.failCommand=false);await toggle.click();await expect(toggle).not.toBeChecked();
+  await toggle.click();await expect(toggle).toBeChecked();
   const calls=await page.evaluate(()=>window.calls);expect(calls).toHaveLength(3);expect(calls[1]).toEqual(calls[0]);expect(calls.map(item=>item.action)).toEqual(["alarms.enable","alarms.enable","alarms.enable"]);
   expect(calls[0].payload).toEqual({id:"A000001",revision:1,enabled:false});expect(calls[2].payload).toEqual({id:"A000001",revision:2,enabled:true});
-  await page.goto("/tests/fixtures/dashboard.html?view=alarms&role=child&compact=0");await expect(card.getByRole("button",{name:"Disable",exact:true})).toHaveCount(0);
+  await page.goto("/tests/fixtures/dashboard.html?view=alarms&role=child&compact=0");await expect(card.getByRole("checkbox")).toHaveCount(0);
 });
 
 test("control sweep: health resolve requires a fresh reason review for an exact repeat without resending",async({page})=>{

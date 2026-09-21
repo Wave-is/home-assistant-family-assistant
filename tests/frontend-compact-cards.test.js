@@ -72,7 +72,7 @@ test("compact tasks card renders only active tasks with add, history and remove 
   assert.equal(root.querySelector(".compact-history"), null);
   const titles = [...root.querySelectorAll(".compact-list:not(.compact-history) .compact-title")].map(node => node.textContent);
   assert.deepEqual(titles, ["Clean desk", "Water plants"]);
-  const buttons = [...root.querySelectorAll("button")].map(node => node.textContent);
+  const buttons = [...root.querySelectorAll("button")].map(node => node.getAttribute("aria-label"));
   assert.deepEqual(buttons, ["Add", "History", "Remove", "Remove"]);
   const boxes = [...root.querySelectorAll(".compact-row input[type=checkbox]")];
   assert.deepEqual(boxes.map(box => box.checked), [false, false]);
@@ -91,7 +91,7 @@ test("compact task remove sends tasks.archive and the task leaves the list", asy
 
 test("compact task history shows closed tasks and restore reopens a completed task", async () => {
   const {card, calls} = await cardFor("tasks", {compact: true});
-  const history = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "History");
+  const history = [...card.shadowRoot.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === "History");
   history.click();
   await waitFor(() => card.shadowRoot.querySelector(".compact-history"));
   const historyRoot = card.shadowRoot.querySelector(".compact-history");
@@ -109,11 +109,11 @@ test("compact task history shows closed tasks and restore reopens a completed ta
 
 test("compact tasks add button opens the create form and back returns to the list", async () => {
   const {card} = await cardFor("tasks", {compact: true});
-  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Add");
+  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === "Add");
   add.click();
   await waitFor(() => card.shadowRoot.querySelector('form[data-task-create="true"]'));
   assert.equal(card.shadowRoot.querySelector(".compact-list"), null);
-  const back = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Back");
+  const back = [...card.shadowRoot.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === "Back");
   back.click();
   await waitFor(() => card.shadowRoot.querySelectorAll(".compact-row").length === 2 && !card.shadowRoot.querySelector("form"));
 });
@@ -144,7 +144,7 @@ test("compact tasks card stays compact while an active wake-up check is running"
 test("compact alarms card hides disabled alarms, removes via alarms.enable and adds via the editor", async () => {
   const {card, calls} = await cardFor("alarms", {compact: true});
   const root = card.shadowRoot;
-  const buttons = [...root.querySelectorAll("button")].map(node => node.textContent);
+  const buttons = [...root.querySelectorAll("button")].map(node => node.getAttribute("aria-label"));
   assert.deepEqual(buttons, ["Add wake-up schedule", "Remove", "Remove"]);
   const rows = [...root.querySelectorAll(".compact-row")];
   assert.deepEqual(rows.map(row => row.querySelector(".compact-title").textContent), ["07:00", "09:30"]);
@@ -180,7 +180,7 @@ test("compact alarm remove sends alarms.enable false and the alarm disappears fr
 
 test("compact alarms add button opens the wake-up schedule editor", async () => {
   const {card} = await cardFor("alarms", {compact: true});
-  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.textContent === "Add wake-up schedule");
+  const add = [...card.shadowRoot.querySelectorAll("button")].find(node => node.getAttribute("aria-label") === "Add wake-up schedule");
   add.click();
   await waitFor(() => card.shadowRoot.querySelector('.alarm-editor[data-alarm-editor="create"]'));
 });

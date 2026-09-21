@@ -59,7 +59,7 @@ function task(extra = {}) {
 }
 function edit(card, language = "en") {
   [...card.shadowRoot.querySelectorAll("button")]
-    .find(button => button.textContent === TASK_ITEM_COPY[language].action_edit).click();
+    .find(button => button.textContent === TASK_ITEM_COPY[language].action_edit || button.getAttribute("aria-label") === TASK_ITEM_COPY[language].action_edit).click();
 }
 
 for (const language of ["en", "ru", "uk"]) {

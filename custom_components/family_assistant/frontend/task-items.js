@@ -413,7 +413,7 @@ export function renderTaskItem(card, list, item) {
     }
   }
   if (canPerformAssigneeOps && (item.status === "assigned" || item.status === "needs_changes")) {
-    const acceptBtn = card.button(copy.action_accept, () => {
+    const acceptBtn = card.icon("check", copy.action_accept, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
       card._taskItemAction = {
@@ -433,7 +433,7 @@ export function renderTaskItem(card, list, item) {
 
   // 2. Start button: status is 'assigned', 'accepted', or 'needs_changes'
   if (canPerformAssigneeOps && (item.status === "assigned" || item.status === "accepted" || item.status === "needs_changes")) {
-    const startBtn = card.button(copy.action_start, () => {
+    const startBtn = card.icon("play", copy.action_start, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
       card._taskItemAction = {
@@ -453,7 +453,7 @@ export function renderTaskItem(card, list, item) {
 
   // 3. Submit report button: status !== 'submitted' and not final
   if (canPerformAssigneeOps && !isSubmitted && item.report_type !== "photo" && !isPersonal) {
-    const reportBtn = card.button(copy.action_submit_report, () => {
+    const reportBtn = card.icon("file", copy.action_submit_report, () => {
       if (!canInteract(card, startGeneration)) return;
       card._taskItemAction = {
         type: "submit_report",
@@ -476,7 +476,7 @@ export function renderTaskItem(card, list, item) {
   // 4. Parent controls: Complete & Request Changes (note)
   if ((isParent || personalOwner) && !isFinal) {
     // Complete
-    const completeBtn = card.button(copy.action_complete, () => {
+    const completeBtn = card.icon("checkCheck", copy.action_complete, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
       card._taskItemAction = {
@@ -495,7 +495,7 @@ export function renderTaskItem(card, list, item) {
 
     // Request changes: allowed when status is 'submitted'
     if (isSubmitted && !isPersonal) {
-      const reqChangesBtn = card.button(copy.action_request_changes, () => {
+      const reqChangesBtn = card.icon("sendBack", copy.action_request_changes, () => {
         if (!canInteract(card, startGeneration)) return;
         card._taskItemAction = {
           type: "request_changes",
@@ -517,7 +517,7 @@ export function renderTaskItem(card, list, item) {
 
   // 5. Edit / Revise: Parents or Creator (for own-assigned tasks), when not submitted
   if (canEdit) {
-    const editBtn = card.button(copy.action_edit, () => {
+    const editBtn = card.icon("pencil", copy.action_edit, () => {
       if (!canInteract(card, startGeneration)) return;
       const zone = getHouseholdZone(card);
       let initialWall = "";
@@ -564,7 +564,7 @@ export function renderTaskItem(card, list, item) {
 
   // 6. Cancel: Parents or Creator (for own-assigned tasks)
   if (canCancel) {
-    const cancelBtn = card.button(copy.action_cancel, () => {
+    const cancelBtn = card.icon("x", copy.action_cancel, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
       card._taskItemAction = {
@@ -586,7 +586,7 @@ export function renderTaskItem(card, list, item) {
 
   // 7. Archive: Parents only, explicit review
   if ((isParent || personalOwner) && item.status !== "archived") {
-    const archiveBtn = card.button(copy.action_archive, () => {
+    const archiveBtn = card.icon("archive", copy.action_archive, () => {
       if (!canInteract(card, startGeneration)) return;
       const payload = { id: item.id, revision: item.revision };
       card._taskItemAction = {
