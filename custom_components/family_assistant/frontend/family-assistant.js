@@ -206,7 +206,7 @@ const STYLES = `
   button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #55bcba;outline-offset:2px}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{padding:28px 8px;text-align:center;color:var(--secondary-text-color,#657d80)}
   form{display:grid;gap:12px;margin:0 0 18px}label{display:grid;gap:5px;font-size:12px;color:var(--secondary-text-color,#657d80)}
-  input,select,textarea{width:100%;min-width:0;border:1px solid var(--divider-color,#d3dfdd);border-radius:10px;padding:10px;background:var(--ha-card-background,#fff);color:var(--primary-text-color,#182c32);font-size:14px}textarea{resize:vertical}
+  input,select,textarea{width:100%;min-width:0;border:1px solid var(--divider-color,#d3dfdd);border-radius:10px;padding:10px;background:#fff;color:#182c32;font-size:14px}input::placeholder,select::placeholder,textarea::placeholder{color:#5a6b70}textarea{resize:vertical}
   .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
   .metric{background:rgba(19,146,127,.07);padding:14px 8px;border-radius:14px;text-align:center}.metric b{display:block;font-size:25px}.metric span{font-size:11px}
   .notice{padding:12px;border-radius:12px;margin-bottom:12px;background:rgba(238,150,60,.14);font-size:13px}

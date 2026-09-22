@@ -7,7 +7,7 @@
     "requests": "Exact WS type/action observed through real frontend code. Resolved/rejected describe synthetic fixture promises, not validation by Home Assistant or devices.",
     "gaps": "Source-only sites, registered handlers with empty invoked, and requests without rejected evidence need additional manual/browser/fault scenarios. Native integration links are not followed to real HA. Camera, external providers, real notifications, devices and live legacy parity are not established."
   },
-  "source_sha256": "0b4c0e8845c0478f2af70e643c548e63f47efecc35fd32f1cf14f9797f61f86f",
+  "source_sha256": "24af95fccd0efec7aa6809c0d0382be8069d2727285342cc5b93dc3f7d5c60ef",
   "evidence_status": "passed",
   "modules": [
     {
@@ -5779,7 +5779,7 @@
     {
       "file": "family-assistant.js",
       "module": "shared",
-      "sha256": "e4346a1514a925c6de1858f7d736c0b6d9e8957bdc45e1d29b690bc862a1f827",
+      "sha256": "533b622fa95477017f5a8a3de2eded8e8f01e4ec94a0f5a4345304f728264187",
       "sites": [
         {
           "line": 341,
@@ -26902,15 +26902,9 @@
         140,
         141
       ],
-      "invoked": [
-        140
-      ],
-      "trusted": [
-        140
-      ],
-      "views": [
-        "panel"
-      ]
+      "invoked": [],
+      "trusted": [],
+      "views": []
     },
     {
       "id": "click:family-panel.js:564:10|family-panel.js:687:65",
@@ -48381,7 +48375,6 @@
         113,
         136,
         138,
-        140,
         282,
         87
       ],
@@ -48389,7 +48382,6 @@
         113,
         136,
         138,
-        140,
         282,
         87
       ]
@@ -51680,12 +51672,8 @@
         140,
         141
       ],
-      "invoked": [
-        140
-      ],
-      "trusted": [
-        140
-      ]
+      "invoked": [],
+      "trusted": []
     },
     {
       "file": "family-panel.js",
@@ -51708,11 +51696,9 @@
         87
       ],
       "invoked": [
-        140,
         75
       ],
       "trusted": [
-        140,
         75
       ]
     },
