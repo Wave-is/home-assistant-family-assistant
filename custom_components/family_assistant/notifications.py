@@ -91,6 +91,10 @@ def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
         return current_pantry_expiry_event(state, event, now)
     if event.get("key") == SCHOOL_REMINDER_KEY:
         return school_reminder_delivery_allowed(state, event, now)
+    if event.get("key") == "task_evening_reminder":
+        from .domain.task_delivery import current_evening_reminder
+
+        return current_evening_reminder(state, event, now)
     if event.get("key") in TASK_EVENTS:
         return current_task_event(state, event)
     return True

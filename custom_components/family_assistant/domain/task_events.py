@@ -1,13 +1,20 @@
 """Deadline reminders and opt-in penalties are persisted with the task transition."""
 
 from copy import deepcopy
-from datetime import timedelta
+from datetime import date, time, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ..const import PRIVILEGED
-from . import penalties, task_access, task_settlements
+from . import penalties, task_access, task_delivery, task_settlements
 from .context import Context
 from .incidents import close_incident, open_incident
 from .validation import DomainError, timestamp
+
+# Daily local-time checkpoint after which each member gets one reminder listing
+# every task that is still open, including tasks without a due date.
+EVENING_CHECK = time(20, 0)
+EVENING_RETENTION_DAYS = 7
+EVENING_MAX_TASKS = 20
 
 
 def policy(ctx, payload, previous=None):
@@ -221,11 +228,86 @@ def close(ctx, item, *, assignment=False):
     )
 
 
+def evening_check(ctx: Context) -> None:
+    """Once per member per local day, remind about every task still open.
+
+    Unlike the one-shot deadline events, this repeats daily while tasks stay
+    open and covers tasks without a due date, which can never reach a
+    deadline window.
+    """
+    if "tasks" not in ctx.state["settings"]["modules"]:
+        return
+    try:
+        zone = ZoneInfo(ctx.state["settings"].get("timezone", "UTC"))
+        local_now = timestamp(ctx.now, "now").astimezone(zone)
+    except (DomainError, ValueError, ZoneInfoNotFoundError, OverflowError):
+        return
+    if local_now.time() < EVENING_CHECK:
+        return
+    day = local_now.date().isoformat()
+    reminders = ctx.state.setdefault("task_evening_reminders", {})
+    if not isinstance(reminders, dict):
+        return
+    cutoff = local_now.date() - timedelta(days=EVENING_RETENTION_DAYS)
+    for key in list(reminders):
+        marker = reminders[key]
+        try:
+            marker_date = date.fromisoformat(key.rsplit(":", 1)[0])
+        except ValueError:
+            marker_date = None
+        if not isinstance(marker, dict) or marker_date is None or marker_date < cutoff:
+            reminders.pop(key, None)
+    by_member = {}
+    for item in ctx.state["tasks"].values():
+        if not isinstance(item, dict) or item.get("status") not in task_delivery.OPEN:
+            continue
+        if task_access.personal_task(item):
+            continue
+        member_id = item.get("assignee")
+        member = ctx.state["members"].get(member_id, {})
+        if not member.get("active") or member.get("role") == "guest":
+            continue
+        if not task_access.current_assignee(ctx.state, item):
+            continue
+        by_member.setdefault(member_id, []).append(item)
+    for member_id in sorted(by_member):
+        marker_key = f"{day}:{member_id}"
+        if marker_key in reminders:
+            continue
+        items = sorted(
+            by_member[member_id],
+            key=lambda item: (
+                item.get("due_at") is None,
+                item.get("due_at") or "",
+                item.get("id") or "",
+            ),
+        )
+        task_ids = [item["id"] for item in items[:EVENING_MAX_TASKS]]
+        notification_ctx = Context(
+            ctx.state, ctx.actor, ctx.now, f"task-evening:{member_id}:{day}"
+        )
+        event_id = notification_ctx.notify(
+            member_id,
+            "task_evening_reminder",
+            {
+                "date": day,
+                "tasks": task_ids,
+                # A delayed transport must not deliver a stale "evening" list
+                # after local midnight.
+                "expires_at": local_now.replace(
+                    hour=23, minute=59, second=59, microsecond=0
+                ).isoformat(),
+            },
+        )
+        reminders[marker_key] = {"at": ctx.now.isoformat(), "event_id": event_id}
+
+
 def tick(ctx: Context):
     if "tasks" not in ctx.state["settings"]["modules"]:
         for item in ctx.state["tasks"].values():
             close(ctx, item)
         return
+    evening_check(ctx)
     for item in ctx.state["tasks"].values():
         tick_review(ctx, item)
         if not task_access.current_assignee(ctx.state, item):

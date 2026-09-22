@@ -39,6 +39,7 @@ MESSAGES = {
         ),
         "task_reminder": "📋 Task due soon: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Personal reminder: {id} · {title} · {due_at}",
+        "task_evening_reminder": "🌙 Evening task check:\n{list}",
         "task_overdue": "⚠️ {member}: task overdue: {id} · {title}. Parent review is needed.",
         "task_rollover": (
             "📅 {id} · {title}: deadline moved to {due_at}. Points for this settlement: {points}. "
@@ -102,6 +103,7 @@ MESSAGES = {
         "task_review_overdue": "📋 Истёк срок проверки: {id} · {title}. Проверьте сданный отчёт.",
         "task_reminder": "📋 Скоро срок задачи: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Личное напоминание: {id} · {title} · {due_at}",
+        "task_evening_reminder": "🌙 Вечерняя проверка задач:\n{list}",
         "task_overdue": "⚠️ {member}: просрочена задача {id} · {title}. Нужна проверка родителя.",
         "task_rollover": (
             "📅 {id} · {title}: срок перенесён на {due_at}. Баллы за этот перенос: {points}. "
@@ -162,6 +164,7 @@ MESSAGES = {
         "task_review_overdue": "📋 Минув термін перевірки: {id} · {title}. Перевірте зданий звіт.",
         "task_reminder": "📋 Скоро термін завдання: {id} · {title} · {due_at}",
         "task_personal_due": "🔒 Особисте нагадування: {id} · {title} · {due_at}",
+        "task_evening_reminder": "🌙 Вечірня перевірка завдань:\n{list}",
         "task_rollover": (
             "📅 {id} · {title}: термін перенесено на {due_at}. Бали за це перенесення: {points}. "
             "Виконання не підтверджено."
@@ -433,6 +436,52 @@ def render(event, target, state, *, now=None):
         if template is None:
             raise DeliveryError("notification_template_missing")
         data.update(_school_reminder_content(event, target, state, language))
+        result = {"chat_id": target["id"], "text": template.format(**data)[:4000]}
+    elif event["key"] == "task_evening_reminder":
+        from datetime import UTC, datetime
+        from zoneinfo import ZoneInfo
+
+        from ..domain.task_access import current_assignee
+        from ..domain.task_delivery import OPEN
+
+        template = t.get(event["key"])
+        if template is None:
+            raise DeliveryError("notification_template_missing")
+        if not isinstance(data.get("tasks"), list):
+            raise DeliveryError("delivery_revoked")
+        now = now if now is not None else datetime.now(UTC)
+        zone = ZoneInfo(state["settings"].get("timezone", "UTC"))
+        overdue_label = {"en": "overdue", "ru": "просрочена", "uk": "просрочена"}[language]
+        due_label = {"en": "due ", "ru": "срок ", "uk": "термін "}[language]
+        lines = []
+        for task_id in data["tasks"]:
+            task = state.get("tasks", {}).get(task_id)
+            if (
+                not isinstance(task, dict)
+                or task.get("status") not in OPEN
+                or not current_assignee(state, task)
+            ):
+                continue
+            line = f"• {task.get('title') or task_id}"
+            due = task.get("due_at")
+            if isinstance(due, str):
+                try:
+                    due_at = datetime.fromisoformat(due)
+                except ValueError:
+                    due_at = None
+                if due_at is not None:
+                    if due_at <= now:
+                        line += f" — {overdue_label}"
+                    else:
+                        line += (
+                            " — "
+                            + due_label
+                            + due_at.astimezone(zone).strftime("%d.%m.%Y %H:%M")
+                        )
+            lines.append(line)
+        if not lines:
+            raise DeliveryError("delivery_revoked")
+        data["list"] = "\n".join(lines)
         result = {"chat_id": target["id"], "text": template.format(**data)[:4000]}
     else:
         template = t.get(event["key"])

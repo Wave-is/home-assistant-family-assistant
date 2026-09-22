@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ..const import PRIVILEGED
 from .task_access import current_assignee, personal_task
+from .validation import DomainError, timestamp
 
 TASK_EVENTS = frozenset(
     {
@@ -224,4 +225,40 @@ def current_task_event(state: dict, event: dict) -> bool:
             and incident.get("recipient") == recipient
         )
     except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+
+def current_evening_reminder(state: dict, event: dict, now) -> bool:
+    """The daily list stays current until its day ends or every task closes.
+
+    A member can close tasks between the evening tick and transport; once none
+    of the listed tasks is still open for the recipient the reminder is
+    revoked instead of delivering a stale list.
+    """
+    try:
+        if not _mapping(state) or not _mapping(event):
+            return False
+        if event.get("key") != "task_evening_reminder":
+            return False
+        data = event.get("data")
+        if not _mapping(data) or not isinstance(data.get("tasks"), list) or not data["tasks"]:
+            return False
+        if timestamp(now, "now") >= timestamp(data.get("expires_at"), "expires_at"):
+            return False
+        tasks = state.get("tasks")
+        if not _mapping(tasks):
+            return False
+        recipient = event.get("recipient")
+        for task_id in data["tasks"]:
+            task = tasks.get(task_id)
+            if not _mapping(task):
+                continue
+            if (
+                task.get("status") in OPEN
+                and task.get("assignee") == recipient
+                and current_assignee(state, task)
+            ):
+                return True
+        return False
+    except (KeyError, TypeError, ValueError, AttributeError, DomainError, OverflowError):
         return False
