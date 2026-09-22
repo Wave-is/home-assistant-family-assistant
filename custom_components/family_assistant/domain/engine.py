@@ -77,7 +77,8 @@ BUCKETS = (
     "shopping_series",
     "tasks",
     "task_series",
-    "task_evening_reminders",
+    "task_afternoon_reminders",
+    "task_evening_settlements",
     "incidents",
     "court",
     "court_reports",
@@ -178,7 +179,8 @@ class Engine:
             raise DomainError("migration_shadow_invalid")
         self._state.setdefault("task_series", {})
         self._state.setdefault("shopping_series", {})
-        self._state.setdefault("task_evening_reminders", {})
+        self._state.setdefault("task_afternoon_reminders", {})
+        self._state.setdefault("task_evening_settlements", {})
         self._state.setdefault("incidents", {})
         self._state.setdefault("court_reports", {})
         self._state.setdefault("rewards", {})

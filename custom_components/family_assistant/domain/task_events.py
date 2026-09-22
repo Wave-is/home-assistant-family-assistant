@@ -10,11 +10,13 @@ from .context import Context
 from .incidents import close_incident, open_incident
 from .validation import DomainError, timestamp
 
-# Daily local-time checkpoint after which each member gets one reminder listing
-# every task that is still open, including tasks without a due date.
-EVENING_CHECK = time(20, 0)
-EVENING_RETENTION_DAYS = 7
-EVENING_MAX_TASKS = 20
+# Daily local checkpoints ported from the old Family Court flow: one personal
+# reminder at 16:00 and one family "evening court session" at 20:00 that
+# charges each open child task, while the Friday report stays court_weekly.
+AFTERNOON_CHECK = time(16, 0)
+EVENING_SETTLEMENT = time(20, 0)
+CHECK_RETENTION_DAYS = 7
+CHECK_MAX_TASKS = 20
 
 
 def policy(ctx, payload, previous=None):
@@ -228,8 +230,8 @@ def close(ctx, item, *, assignment=False):
     )
 
 
-def evening_check(ctx: Context) -> None:
-    """Once per member per local day, remind about every task still open.
+def afternoon_check(ctx: Context) -> None:
+    """Once per member per local day at 16:00, remind about every open task.
 
     Unlike the one-shot deadline events, this repeats daily while tasks stay
     open and covers tasks without a due date, which can never reach a
@@ -242,13 +244,13 @@ def evening_check(ctx: Context) -> None:
         local_now = timestamp(ctx.now, "now").astimezone(zone)
     except (DomainError, ValueError, ZoneInfoNotFoundError, OverflowError):
         return
-    if local_now.time() < EVENING_CHECK:
+    if local_now.time() < AFTERNOON_CHECK:
         return
     day = local_now.date().isoformat()
-    reminders = ctx.state.setdefault("task_evening_reminders", {})
+    reminders = ctx.state.setdefault("task_afternoon_reminders", {})
     if not isinstance(reminders, dict):
         return
-    cutoff = local_now.date() - timedelta(days=EVENING_RETENTION_DAYS)
+    cutoff = local_now.date() - timedelta(days=CHECK_RETENTION_DAYS)
     for key in list(reminders):
         marker = reminders[key]
         try:
@@ -282,18 +284,18 @@ def evening_check(ctx: Context) -> None:
                 item.get("id") or "",
             ),
         )
-        task_ids = [item["id"] for item in items[:EVENING_MAX_TASKS]]
+        task_ids = [item["id"] for item in items[:CHECK_MAX_TASKS]]
         notification_ctx = Context(
-            ctx.state, ctx.actor, ctx.now, f"task-evening:{member_id}:{day}"
+            ctx.state, ctx.actor, ctx.now, f"task-afternoon:{member_id}:{day}"
         )
         event_id = notification_ctx.notify(
             member_id,
-            "task_evening_reminder",
+            "task_afternoon_reminder",
             {
                 "date": day,
                 "tasks": task_ids,
-                # A delayed transport must not deliver a stale "evening" list
-                # after local midnight.
+                # A delayed transport must not deliver a stale list after
+                # local midnight.
                 "expires_at": local_now.replace(
                     hour=23, minute=59, second=59, microsecond=0
                 ).isoformat(),
@@ -302,12 +304,135 @@ def evening_check(ctx: Context) -> None:
         reminders[marker_key] = {"at": ctx.now.isoformat(), "event_id": event_id}
 
 
+def evening_settlement(ctx: Context) -> None:
+    """The 20:00 local "evening court session": −1 per open child task.
+
+    The once-daily session charges each open child task with one idempotent
+    court record ``task:{id}:missed:{local_date}`` (the old Family Court
+    source key) and posts one tally message to the family chat.  Tasks under
+    an explicit opt-in settlement keep their own receipt flow, tasks with an
+    explicit per-deadline penalty keep their one-shot flow, a task that
+    already received its active one-shot deadline penalty is not charged
+    twice, and work created after the session starts is left to the next
+    day's session.  The marker is written only when the session charges or
+    would charge a task, so an idle tick stays inert.
+    """
+    settings = ctx.state["settings"]
+    if "tasks" not in settings["modules"] or "court" not in settings["modules"]:
+        return
+    try:
+        zone = ZoneInfo(settings.get("timezone", "UTC"))
+        local_now = timestamp(ctx.now, "now").astimezone(zone)
+    except (DomainError, ValueError, ZoneInfoNotFoundError, OverflowError):
+        return
+    if local_now.time() < EVENING_SETTLEMENT:
+        return
+    day = local_now.date().isoformat()
+    settlements = ctx.state.setdefault("task_evening_settlements", {})
+    if not isinstance(settlements, dict):
+        return
+    cutoff = local_now.date() - timedelta(days=CHECK_RETENTION_DAYS)
+    for key in list(settlements):
+        marker = settlements[key]
+        try:
+            marker_date = date.fromisoformat(str(key))
+        except (TypeError, ValueError):
+            marker_date = None
+        if not isinstance(marker, dict) or marker_date is None or marker_date < cutoff:
+            settlements.pop(key, None)
+    if day in settlements:
+        return
+    court = ctx.state["court"]
+    members = ctx.state["members"]
+    session_start = local_now.replace(
+        hour=EVENING_SETTLEMENT.hour,
+        minute=EVENING_SETTLEMENT.minute,
+        second=0,
+        microsecond=0,
+    )
+    awarded = []
+    saw_candidate = False
+    for item in sorted(
+        ctx.state["tasks"].values(),
+        key=lambda item: (
+            str(item.get("assignee") or ""),
+            item.get("due_at") is None,
+            item.get("due_at") or "",
+            str(item.get("id") or ""),
+        ),
+    ):
+        if len(awarded) >= CHECK_MAX_TASKS:
+            break
+        if not isinstance(item, dict) or item.get("status") not in task_delivery.OPEN:
+            continue
+        if task_access.personal_task(item) or task_settlements.managed(item):
+            continue
+        if (item.get("deadline_policy") or {}).get("penalty", 0) != 0:
+            continue  # Explicit per-deadline penalties keep their own one-shot flow.
+        if item.get("missed_receipts"):
+            continue  # Settled work keeps its receipts; the session does not re-charge it.
+        if timestamp(item["created_at"], "created_at").astimezone(zone) >= session_start:
+            continue  # Born after this session started; the next day's session covers it.
+        one_shot = court.get(f"task:{item.get('id')}")
+        if isinstance(one_shot, dict) and one_shot.get("status") == "active":
+            continue
+        member = members.get(item.get("assignee"), {})
+        if not member.get("active") or member.get("role") != "child":
+            continue
+        if not task_access.current_assignee(ctx.state, item):
+            continue
+        source_id = f"{item['id']}:missed:{day}"
+        if f"task:{source_id}" in court:
+            continue
+        saw_candidate = True
+        if penalties.award(
+            ctx,
+            source="task",
+            source_id=source_id,
+            member=item["assignee"],
+            points=-1,
+            reason_key="task_missed",
+            reason_data={
+                "task_id": item["id"],
+                "due_at": item.get("due_at"),
+                "settlement_date": day,
+            },
+            timezone=settings.get("timezone", "UTC"),
+        ):
+            awarded.append(
+                {
+                    "member_id": item["assignee"],
+                    "member_name": member.get("name") or item["assignee"],
+                    "task_id": item["id"],
+                    "title": str(item.get("title") or item["id"])[:160],
+                    "due_at": item.get("due_at"),
+                }
+            )
+    event_id = None
+    if awarded:
+        notification_ctx = Context(ctx.state, ctx.actor, ctx.now, f"task-settlement:{day}")
+        event_id = notification_ctx.notify(
+            "family",
+            "task_evening_settlement",
+            {
+                "date": day,
+                "awards": awarded,
+                "expires_at": local_now.replace(
+                    hour=23, minute=59, second=59, microsecond=0
+                ).isoformat(),
+            },
+        )
+    if awarded or saw_candidate:
+        settlements[day] = {"at": ctx.now.isoformat(), "event_id": event_id}
+
+
 def tick(ctx: Context):
     if "tasks" not in ctx.state["settings"]["modules"]:
         for item in ctx.state["tasks"].values():
             close(ctx, item)
         return
-    evening_check(ctx)
+    afternoon_check(ctx)
+    evening_settlement(ctx)
     for item in ctx.state["tasks"].values():
         tick_review(ctx, item)
         if not task_access.current_assignee(ctx.state, item):

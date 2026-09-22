@@ -228,17 +228,17 @@ def current_task_event(state: dict, event: dict) -> bool:
         return False
 
 
-def current_evening_reminder(state: dict, event: dict, now) -> bool:
+def current_afternoon_reminder(state: dict, event: dict, now) -> bool:
     """The daily list stays current until its day ends or every task closes.
 
-    A member can close tasks between the evening tick and transport; once none
-    of the listed tasks is still open for the recipient the reminder is
+    A member can close tasks between the afternoon tick and transport; once
+    none of the listed tasks is still open for the recipient the reminder is
     revoked instead of delivering a stale list.
     """
     try:
         if not _mapping(state) or not _mapping(event):
             return False
-        if event.get("key") != "task_evening_reminder":
+        if event.get("key") != "task_afternoon_reminder":
             return False
         data = event.get("data")
         if not _mapping(data) or not isinstance(data.get("tasks"), list) or not data["tasks"]:
@@ -260,5 +260,25 @@ def current_evening_reminder(state: dict, event: dict, now) -> bool:
             ):
                 return True
         return False
+    except (KeyError, TypeError, ValueError, AttributeError, DomainError, OverflowError):
+        return False
+
+
+def current_evening_settlement(state: dict, event: dict, now) -> bool:
+    """The 20:00 session report stays deliverable until the local day ends.
+
+    The minuses were already applied when the event was created, so closing a
+    task afterwards does not revoke the truthful report; reversals remain a
+    separate explicit parent action.
+    """
+    try:
+        if not _mapping(state) or not _mapping(event):
+            return False
+        if event.get("key") != "task_evening_settlement":
+            return False
+        data = event.get("data")
+        if not _mapping(data) or not isinstance(data.get("awards"), list) or not data["awards"]:
+            return False
+        return timestamp(now, "now") < timestamp(data.get("expires_at"), "expires_at")
     except (KeyError, TypeError, ValueError, AttributeError, DomainError, OverflowError):
         return False
