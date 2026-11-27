@@ -77,3 +77,5 @@ Python 3.11 without Home Assistant. Create a virtual environment, install
 
 Runtime code is under `custom_components/family_assistant`. Tests use synthetic
 households only and never connect to a real Telegram bot or router.
+
+Optional development module: [Academy](docs/academy.md) (independent learning; not a release).

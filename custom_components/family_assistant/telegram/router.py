@@ -439,6 +439,14 @@ async def route(
         # an unrelated rule after migration.
         return t["forget_scope"]
 
+    from .academy import route as academy_route
+
+    academy_reply = await academy_route(
+        engine, actor, content, operation_id, now, private=private, language=language
+    )
+    if academy_reply is not None:
+        return academy_reply
+
     from ..online_school.messages import query as school_query
 
     school_reply = school_query(engine, actor, content, now, private=private, language=language)

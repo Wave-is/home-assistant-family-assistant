@@ -1,5 +1,6 @@
 /* Family Assistant cards. User data is inserted only through textContent. */
 import {ERRORS} from "./errors.js";
+import {renderAcademy} from "./academy-view.js";
 import {cardView,registerCards} from "./card-registry.js";
 import {renderShadow} from "./shadow-view.js";
 import {renderKids} from "./network-kids.js";
@@ -45,6 +46,7 @@ import {MEMBER_CONTEXT_VIEWS,memberContextId,inMemberContext,memberContextComman
 import "./family-panel.js";
 const COPY = {
   en: {
+    academy: "Academy",
     home_status: "Home status",
     networkWriteHint:"Only selected, reviewed plans can change the router. Inventory reading makes no changes.",
     networkLeaseOnly:"DHCP inventory. Reading makes no changes; Kid Control is configured separately.",networkLeaseWriteOff:"DHCP lease writes are disabled. This does not disable separately authorized Kid Control commands.",
@@ -92,6 +94,7 @@ const COPY = {
     cancelled: "Cancelled", unitPlaceholder: "kg, l, pcs", revision: "Revision",
   },
   ru: {
+    academy: "Academy",
     home_status: "Состояние дома",
     networkWriteHint:"Роутер меняют только выбранные и подтверждённые планы. Чтение инвентаря ничего не меняет.",
     networkLeaseOnly:"Инвентарь DHCP. Чтение ничего не меняет; Kid Control настраивается отдельно.",networkLeaseWriteOff:"Изменение лизов DHCP выключено. Это не отключает отдельно разрешённые команды Kid Control.",
@@ -139,6 +142,7 @@ const COPY = {
     cancelled: "Отменена", unitPlaceholder: "кг, л, шт", revision: "Версия",
   },
   uk: {
+    academy: "Academy",
     home_status: "Стан дому",
     networkWriteHint:"Роутер змінюють лише вибрані й підтверджені плани. Читання інвентарю нічого не змінює.",
     networkLeaseOnly:"Інвентар DHCP. Читання нічого не змінює; Kid Control налаштовується окремо.",networkLeaseWriteOff:"Зміну лізів DHCP вимкнено. Це не вимикає окремо дозволені команди Kid Control.",
@@ -252,13 +256,14 @@ export class FamilyCard extends HTMLElement {
     disposeAssetDocuments(this);
     this._config = {...config};
     this._view = config.view || this.constructor.defaultView || "today";
-    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status"].includes(this._view)) throw new Error("Unknown Family Assistant view");
+    if (!["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status","academy"].includes(this._view)) throw new Error("Unknown Family Assistant view");
     this._generation = (this._generation || 0) + 1;
     // Requests from the previous configuration are fenced by generation. They
     // must not keep the replacement household/view locked until their response.
     this._loading=false;this._writing=false;this._error=null;this._entries=null;
     this._entry = config.entry_id;
     this._data = null;
+    this._academy = null;
     clearHomeStatus(this);
     this._homeStatusRequested=true;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
@@ -315,6 +320,12 @@ export class FamilyCard extends HTMLElement {
         await refreshHomeStatus(this,current);
         if(!current())return;
       }else clearHomeStatus(this);
+      this._academy=null;
+      if(this._view==="academy" && !data.read_only && data.settings.modules?.includes("academy") && ["owner","parent","child"].includes(data.role)){
+        const academy=await this._hass.callWS({type:"family_assistant/academy",entry_id:this._entry});
+        if(!current())return;
+        this._academy=academy;
+      }
       const taskFormForce = reconcileTaskFormRefresh(this,previousData);
       const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
@@ -433,6 +444,7 @@ export class FamilyCard extends HTMLElement {
     if(this._view==="today") {renderToday(this,body);return;}
     if(memberContextId(this)===null)this.renderProposals(body);
     if(this._view==="health") {renderHealth(this,body);return;}
+    if(this._view==="academy") {renderAcademy(this,body);return;}
     if(this._view==="home_status") {renderHomeStatus(this,body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
@@ -682,7 +694,7 @@ class FamilyEditor extends HTMLElement {
         for(const entry of this._entries || []){const option=el("option",entry.title);option.value=entry.entry_id;input.append(option);}
         input.disabled=!this._entries?.length;
       }
-      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status"]){const option=el("option",t[view]);option.value=view;input.append(option);}
+      if(name==="view")for(const view of ["today","shopping","tasks","court","alarms","health","conversation","mikrotik","calendar","routines","pantry","meals","school","maintenance","polls","presence","digests","home_status","academy"]){const option=el("option",t[view]);option.value=view;input.append(option);}
       const defaultView=cardView(this._config?.type);
       input.value=this._config?.[name] || (name==="view"?defaultView:"");wrap.append(input);form.append(wrap);
       input.addEventListener("change",()=>{this._config={...this._config,[name]:input.value};this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:this._config},bubbles:true,composed:true}));});

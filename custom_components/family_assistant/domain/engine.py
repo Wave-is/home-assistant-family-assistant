@@ -14,6 +14,7 @@ from ..const import DEFAULT_MODULES, LANGUAGES, MODULES, PRIVILEGED, SCHEMA_VERS
 from ..network import kid_plans
 from ..network import plans as network_plans
 from . import (
+    academy,
     alarms,
     court,
     court_weekly,
@@ -51,6 +52,7 @@ from .context import Context
 from .validation import DomainError, enum, fields, text, timestamp
 
 HANDLERS = {
+    "academy": academy.handle,
     "settings": settings.handle,
     "members": members.handle,
     "shopping": shopping.handle,
@@ -72,6 +74,7 @@ HANDLERS = {
     "price_watch": price_watch.handle,
 }
 BUCKETS = (
+    "academy",
     "members",
     "shopping",
     "shopping_series",
@@ -175,6 +178,7 @@ class Engine:
         self._shadow = shadow.validate(self._state)
         if not self._shadow and state.get("schema_version") == shadow.SCHEMA:
             raise DomainError("migration_shadow_invalid")
+        self._state.setdefault("academy", {})
         self._state.setdefault("task_series", {})
         self._state.setdefault("shopping_series", {})
         self._state.setdefault("incidents", {})
@@ -692,6 +696,11 @@ class Engine:
                 action.split(".", 1)[1],
                 payload,
                 result,
+            )
+        elif module == "academy":
+            academy.authorize_replay(
+                Context(self._state, self._actor(actor_id), now, "academy-replay"),
+                action.split(".", 1)[1], payload, result,
             )
         elif module == "maintenance":
             maintenance.authorize_replay(

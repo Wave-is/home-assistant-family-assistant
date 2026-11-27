@@ -2033,3 +2033,11 @@ combines later control-center work. Exact evidence and limitations are recorded 
   and production provider settings were not changed.
 - Test every frontend/API flow with actual HA WebSocket transport, not only fixtures.
 - All original vision modules and acceptance scenarios remain the goal.
+
+## Academy development increment
+
+| Requirement | Evidence / status |
+|---|---|
+| Local mathematics assignments, grading, spaced review, private parent/child views | Implemented; synthetic domain tests added, not yet run |
+| HA card and private Telegram commands | Implemented; runtime and browser acceptance pending |
+| Full curriculum, Telegram Mini App, AI tutor, verified videos, scheduled reporting | Not implemented |
