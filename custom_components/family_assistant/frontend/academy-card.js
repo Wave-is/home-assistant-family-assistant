@@ -1,3 +1,4 @@
+import {renderShadow} from "./shadow-view.js";
 /* Private Academy card. No answer keys, external requests or persistent browser data. */
 const tag = "family-assistant-academy-card";
 const labels = {
@@ -18,12 +19,16 @@ export class AcademyCard extends HTMLElement {
   static getStubConfig(){return {type:`custom:${tag}`};}
   getCardSize(){return 5;}
   set hass(value){const changed=this._hass?.user?.id!==value?.user?.id;this._hass=value;if(changed){this.reset();this.refresh();}else if(!this.data&&!this.busy&&!this.error)this.refresh();}
-  connectedCallback(){this.timer=setInterval(()=>this.refresh(),10000);this.refresh();}
-  disconnectedCallback(){clearInterval(this.timer);this.reset();}
-  reset(){this.generation++;this.entry=this.config?.entry_id;this.member=null;this.entries=null;this.data=null;this.error=null;this.feedback="";this.pending=null;this.busy=false;this.render();}
+  connectedCallback(){this.detached=false;this.timer=setInterval(()=>this.refresh(),10000);this.refresh();}
+  disconnectedCallback(){this.detached=true;clearInterval(this.timer);this.reset();this.detached=true;}
+  reset(){this.generation++;this.shadowData=null;this.detached=false;this.entry=this.config?.entry_id;this.member=null;this.entries=null;this.data=null;this.error=null;this.feedback="";this.pending=null;this.busy=false;this.render();}
   async read(payload={}){return this._hass.callWS({type:"family_assistant/academy",entry_id:this.entry,action:"read",payload});}
-  async refresh(){if(!this._hass||!this.config||this.busy||!this.isConnected)return;const g=this.generation;this.busy=true;try{
+  async refresh(){if(!this._hass||!this.config||this.busy||this.detached)return;const g=this.generation;this.busy=true;try{
     if(!this.entry){const entries=await this._hass.callWS({type:"family_assistant/households"});if(g!==this.generation)return;this.entries=entries;if(entries.length===1)this.entry=entries[0].entry_id;else{this.render();return;}}
+    const household=await this._hass.callWS({type:"family_assistant/view",entry_id:this.entry});
+    if(g!==this.generation)return;
+    if(household.read_only){this.shadowData=household;this.data=null;this.pending=null;this.render();return;}
+    this.shadowData=null;
     const list=await this.read();if(g!==this.generation)return;let data=list;
     if(list.role==="parent"&&list.students?.some(s=>s.id===this.member)){const member=this.member;const selected=await this.read({member_id:member});if(g!==this.generation||member!==this.member)return;data={...list,selected};}else this.member=null;
     const previous=this.data?.student;const next=data.student;if(previous&&(!next||previous.epoch!==next.epoch||previous.member_revision!==next.member_revision||!next.enrolled)){this.feedback="";this.pending=null;}
@@ -37,7 +42,7 @@ export class AcademyCard extends HTMLElement {
     this.feedback=result.status==="hint"?result.text:result.status==="invalid"?this.t.invalid:result.status==="no_work"?this.t.noWork:result.solution?(result.correct?this.t.correct:this.t.wrong)+" "+result.solution:result.status==="recorded"?this.t.recorded:"";
   }catch(e){if(g!==this.generation)return;this.data=null;this.error=e?.code||"unavailable";if(e?.code&&e.code!=="storage_error")this.pending=null;this.feedback=this.t.pending;}
   finally{if(g===this.generation){this.busy=false;this.render();await this.refresh();}}}
-  render(){const t=this.t,root=this.shadowRoot;if(!root)return;const style=el("style",css),card=el("ha-card");root.replaceChildren(style,card);card.append(el("h2",t.title));
+  render(){const t=this.t,root=this.shadowRoot;if(!root)return;const style=el("style",css),card=el("ha-card");root.replaceChildren(style,card);if(this.shadowData){renderShadow({_config:this.config,_hass:this._hass,_data:this.shadowData,t:{tasks:"Tasks",shopping:"Shopping",court:"Court",alarms:"Alarms"}},card);return;}card.append(el("h2",t.title));
     if(this.pending){const retry=button(t.retry,()=>this.retry());retry.disabled=false;card.append(retry);}
     if(!this.entry&&this.entries){card.append(el("p",t.choose));for(const entry of this.entries)card.append(button(entry.title,()=>{this.entry=entry.entry_id;this.refresh();}));return;}
     if(this.feedback){const status=el("p",this.feedback,"status");status.setAttribute("role","status");card.append(status);}

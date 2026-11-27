@@ -49,7 +49,7 @@ def check(executable):
         for width in (390, 1024):
             page = browser.new_page(viewport={"width": width, "height": 850})
             errors = []
-            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.on("pageerror", lambda error, errors=errors: errors.append(str(error)))
             page.route("http*://**/*", lambda route: route.abort())
             page.set_content("<!doctype html><html><body></body></html>")
             page.add_script_tag(content=CARD.read_text().replace("export class", "class"))

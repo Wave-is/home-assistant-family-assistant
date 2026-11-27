@@ -110,7 +110,10 @@ def _runtime_inventory(root: Path, component: Path) -> dict[str, tuple[Path, tup
             if stat.S_ISDIR(value.st_mode):
                 pending.append(path)
                 continue
-            if not stat.S_ISREG(value.st_mode) or path.suffix not in SUFFIXES:
+            allowed_html = path.relative_to(component).as_posix() == "frontend/academy-mini.html"
+            if not stat.S_ISREG(value.st_mode) or (
+                path.suffix not in SUFFIXES and not allowed_html
+            ):
                 raise ValueError("unexpected_runtime_file")
             if value.st_size > MAX_FILE:
                 raise ValueError("runtime_file_too_large")

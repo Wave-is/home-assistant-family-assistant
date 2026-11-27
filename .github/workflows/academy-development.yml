@@ -1,0 +1,34 @@
+name: Academy development diagnostics
+on:
+  push:
+    branches: [codex/family-academy]
+permissions:
+  contents: read
+jobs:
+  format-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements-dev.txt
+      - name: Generate reviewable formatting changes
+        run: |
+          ruff check --fix . || true
+          ruff format .
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          for name in subprocess.check_output(['git','diff','--name-only'], text=True).splitlines():
+              if name.endswith('.py'):
+                  print('ACADEMY_FORMAT '+json.dumps({'path':name,'content':Path(name).read_text(encoding='utf-8')},ensure_ascii=True))
+          PY
+      - name: Remaining lint
+        run: ruff check .
+        if: always()
+      - name: Focused domain and package tests
+        if: always()
+        run: pytest -q tests/test_academy*.py tests/test_release_package.py

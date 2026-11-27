@@ -26,14 +26,14 @@ def catalog():
 def _lessons(group):
     if group not in GROUPS:
         raise AcademyError("invalid_field")
-    return [l for l in catalog()["lessons"] if group == "all" or l["group"] == group
-            or (group == "math7" and l["grade"] == 7)]
+    return [lesson for lesson in catalog()["lessons"] if group == "all" or lesson["group"] == group
+            or (group == "math7" and lesson["grade"] == 7)]
 
 
 def index(group="all"):
     return {"version": catalog()["version"], "status": catalog()["status"],
-            "lessons": [{k: l[k] for k in ("id", "grade", "group", "assessment", "title")}
-                        for l in _lessons(group)]}
+            "lessons": [{k: lesson[k] for k in ("id", "grade", "group", "assessment", "title")}
+                        for lesson in _lessons(group)]}
 
 
 def _lesson(lesson_id):
@@ -81,7 +81,7 @@ def preview(payload):
     selected = ids[first:last+1]
     if len(available) < len(selected):
         raise AcademyError("course_plan_too_short")
-    return [{"lesson": lesson, "day": day.isoformat()} for lesson, day in zip(selected, available)]
+    return [{"lesson": lesson, "day": day.isoformat()} for lesson, day in zip(selected, available, strict=False)]
 
 
 def _grade(expected, answer):
@@ -114,6 +114,8 @@ def _plan(record, child):
 def _public(plan, today, *, parent=False):
     if plan is None:
         return None
+    if plan.get("catalog_version") != catalog()["version"]:
+        raise AcademyError("conflict")
     result = {k: deepcopy(plan[k]) for k in ("version", "config", "schedule", "results")}
     result["completed"] = len(plan["results"])
     result["total"] = len(plan["schedule"])
@@ -198,7 +200,8 @@ def action(state, actor, now, payload):
         raise AcademyError("invalid_field")
     child, record = learner_stamp(state, actor, payload["epoch"])
     plan = _plan(record, child)
-    if not plan or type(payload["version"]) is not int or payload["version"] != plan["version"]:
+    if (not plan or plan.get("catalog_version") != catalog()["version"]
+            or type(payload["version"]) is not int or payload["version"] != plan["version"]):
         raise AcademyError("conflict")
     op = payload["operation_id"]
     if type(op) is not str or not 1 <= len(op) <= 80 or not op.isprintable():
@@ -208,7 +211,8 @@ def action(state, actor, now, payload):
         previous = plan["receipts"][op]
         if previous["payload"] != payload:
             raise AcademyError("conflict")
-        return deepcopy(previous["result"])
+        return {"status":previous["result"]["status"],"feedback":previous["result"]["feedback"],
+                "plan":_public(plan,_date(state,now))}
     if len(plan["receipts"]) >= MAX_REQUESTS:
         raise AcademyError("course_capacity")
     cmd, today = payload["command"], _date(state, now)
@@ -276,10 +280,11 @@ def action(state, actor, now, payload):
                             "missed":[r["id"] for r in rows if r["independent"] and not r["correct"]],
                             "review_due":(_day(today)+timedelta(days=1)).isoformat(),"review_step":0}
                     feedback = {"review":[{"correct":r["correct"],"explanation":q["e"][lang]}
-                                         for r,q in zip(rows,lesson["questions"])]}
+                                         for r,q in zip(rows,lesson["questions"],strict=True)]}
                     plan["session"] = None
         else:
             raise AcademyError("conflict")
     result = {"status":"ok","feedback":feedback,"plan":_public(plan,today)}
-    plan["receipts"][op] = {"payload":deepcopy(payload),"result":deepcopy(result)}
+    plan["receipts"][op] = {"payload":deepcopy(payload),
+                            "result":{"status":result["status"],"feedback":deepcopy(feedback)}}
     return result

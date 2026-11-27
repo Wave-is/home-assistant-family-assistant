@@ -23,7 +23,8 @@ def review(state,actor,now,payload):
         raise AcademyError("invalid_field")
     child,record,student = courses._row(state,actor,payload["member_id"],parent=True)
     plan = courses._plan(record,child)
-    if (not plan or payload["epoch"] != student["epoch"] or payload["version"] != plan["version"]
+    if (not plan or type(payload["epoch"]) is not int or type(payload["version"]) is not int
+            or payload["epoch"] != student["epoch"] or payload["version"] != plan["version"]
             or payload["decision"] not in {"excuse","confirm_missed"}
             or type(payload["confirmed_available"]) is not bool):
         raise AcademyError("conflict")

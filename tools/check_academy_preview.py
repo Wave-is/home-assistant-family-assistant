@@ -12,7 +12,7 @@ def check(path: Path, executable: str | None = None) -> None:
         for width in (390, 1024):
             page = browser.new_page(viewport={"width": width, "height": 850})
             errors = []
-            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.on("pageerror", lambda error, errors=errors: errors.append(str(error)))
             page.route("http*://**/*", lambda route: route.abort())
             page.set_content(path.read_text(encoding="utf-8"))
             assert page.locator("#equivalence").inner_text() == "2/4 = 4/8"

@@ -9,6 +9,7 @@ import re
 from urllib.parse import urlsplit
 
 from .household import AcademyError
+from ..domain.validation import DomainError
 from . import courses
 
 SCHEMA = {"type":"object","properties":{"explanation":{"type":"string","maxLength":1400},
@@ -106,7 +107,7 @@ async def tutor(runtime,state,actor,now,question,guard):
                 any("http://" in v or "https://" in v for v in result.values())):
             return fallback
         return {**result,"source":"local_tutor","scored":False}
-    except (TimeoutError,ValueError,OSError,TypeError,AttributeError):
+    except (TimeoutError,ValueError,OSError,TypeError,AttributeError,DomainError):
         guard()
         return fallback
 
@@ -130,15 +131,21 @@ async def videos(http,state,actor,now,guard):
                 timeout=aiohttp.ClientTimeout(total=8),allow_redirects=False) as response:
                 if response.status != 200:
                     continue
-                raw = await response.content.read(200001)
-                if len(raw) > 200000:
+                raw = bytearray()
+                async for chunk in response.content.iter_chunked(8192):
+                    raw.extend(chunk)
+                    if len(raw)>200000:
+                        break
+                if len(raw)>200000:
                     continue
                 import json
                 body = json.loads(raw)
         except (aiohttp.ClientError,TimeoutError,ValueError):
             continue
         guard()
-        for item in body.get("items",[])[:3]:
+        if not isinstance(body,dict) or not isinstance(body.get("items"),list):
+            continue
+        for item in body["items"][:3]:
             try:
                 vid = item["id"]["videoId"]
                 snippet = item["snippet"]
@@ -151,6 +158,6 @@ async def videos(http,state,actor,now,guard):
                 if not any(v["id"]==vid for v in results):
                     results.append({"id":vid,"title":title[:160],
                                     "url":"https://www.youtube.com/watch?v="+vid})
-            except (KeyError,TypeError,ValueError):
+            except (KeyError,TypeError,ValueError,AttributeError):
                 continue
     return results[:6]

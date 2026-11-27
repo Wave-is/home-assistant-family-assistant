@@ -93,6 +93,8 @@ def member_for(state,user_id):
     if len(candidates) != 1 or candidates[0].get("role") != "child":
         raise AcademyError("forbidden")
     member = candidates[0]
+    if user_id == state.get("telegram",{}).get("group_id"):
+        raise AcademyError("forbidden")
     record = state.get("academy",{}).get(member["id"],{})
     learner_stamp(state,member["id"],record.get("epoch"))
     return member,record

@@ -1,3 +1,4 @@
+import {renderShadow} from "./shadow-view.js";
 /* Academy course planning and local learner fallback. All user values are text nodes. */
 const tag="family-assistant-academy-course-card";
 const el=(name,text,cls)=>{const n=document.createElement(name);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
@@ -17,20 +18,24 @@ export class AcademyCourseCard extends HTMLElement{
  getCardSize(){return 8}
  setConfig(config){this.config={...config};this.reset();this.load()}
  set hass(hass){const changed=this._hass?.user?.id!==hass?.user?.id;this._hass=hass;if(changed){this.reset();this.load()}else if(!this.data&&!this.busy&&!this.error)this.load()}
- connectedCallback(){this.load()}
- disconnectedCallback(){this.reset()}
- reset(){this.generation++;this.data=null;this.detail=null;this.catalog=null;this.settings=null;this.member=null;this.pending=null;this.entry=this.config?.entry_id;this.error="";this.notice="";this.busy=false;this.render()}
+ connectedCallback(){this.detached=false;this.load()}
+ disconnectedCallback(){this.detached=true;this.reset()}
+ reset(){this.generation++;this.shadowData=null;this.detached=false;this.data=null;this.detail=null;this.catalog=null;this.settings=null;this.member=null;this.pending=null;this.entry=this.config?.entry_id;this.error="";this.notice="";this.busy=false;this.render()}
  ws(action,payload={},legacy=false){return this._hass.callWS({type:legacy?"family_assistant/academy":"family_assistant/academy_course",entry_id:this.entry,action,payload})}
- async load(){if(!this.isConnected||!this._hass||!this.config||this.busy)return;const g=this.generation;this.busy=true;try{
+ async load(){if(this.detached||!this._hass||!this.config||this.busy)return;const g=this.generation;this.busy=true;try{
  if(!this.entry){const entries=await this._hass.callWS({type:"family_assistant/households"});if(g!==this.generation)return;this.entries=entries;if(entries.length!==1){this.render();return}this.entry=entries[0].entry_id}
- const data=await this.ws("read",{},true);if(g!==this.generation)return;this.data=data;this.error="";
+ const household=await this._hass.callWS({type:"family_assistant/view",entry_id:this.entry});
+    if(g!==this.generation)return;
+    if(household.read_only){this.shadowData=household;this.data=null;this.pending=null;this.render();return;}
+    this.shadowData=null;
+    const data=await this.ws("read",{},true);if(g!==this.generation)return;this.data=data;this.error="";
  if(data.role==="parent"){this.member=data.students.some(x=>x.id===this.member)?this.member:data.students[0]?.id;this.catalog=await this.ws("catalog");if(g!==this.generation)return;try{this.settings=await this.ws("settings")}catch{this.settings=null}if(g!==this.generation)return;const student=data.students.find(x=>x.id===this.member);this.detail=student?.enrolled?await this.ws("read",{member_id:student.id}):null}
  else this.detail=data.student.enrolled?await this.ws("read"):null;
  if(g!==this.generation)return;this.render();
  }catch(e){if(g===this.generation){this.error=e?.code||"unavailable";this.data=null;this.detail=null;this.settings=null;this.pending=null;this.render()}}finally{if(g===this.generation)this.busy=false}}
  button(text,fn,primary=false){const n=el("button",text,primary?"primary":"");n.type="button";n.onclick=fn;return n}
  async write(action,payload,legacy=false,refresh=true){if(this.busy)return;const g=this.generation;this.busy=true;try{const r=await this.ws(action,payload,legacy);if(g!==this.generation)return;this.notice="Saved";if(!refresh)return r;}catch(e){if(g===this.generation){this.notice=e?.code||"Request failed";this.render()}}finally{if(g===this.generation){this.busy=false;if(refresh)await this.load()}}}
- render(){const root=this.shadowRoot;if(!root)return;const card=el("ha-card");root.replaceChildren(el("style",styles),card);card.append(el("h2","🎓 Family Academy"),this.button("Refresh",()=>this.load()));if(this.notice)card.append(el("p",this.notice));if(this.error){card.append(el("p","Academy unavailable: "+this.error));return}
+ render(){const root=this.shadowRoot;if(!root)return;const card=el("ha-card");root.replaceChildren(el("style",styles),card);if(this.shadowData){renderShadow({_config:this.config,_hass:this._hass,_data:this.shadowData,t:{tasks:"Tasks",shopping:"Shopping",court:"Court",alarms:"Alarms"}},card);return;}card.append(el("h2","🎓 Family Academy"),this.button("Refresh",()=>this.load()));if(this.notice)card.append(el("p",this.notice));if(this.error){card.append(el("p","Academy unavailable: "+this.error));return}
  if(!this.entry&&this.entries){for(const e of this.entries)card.append(this.button(e.title,()=>{this.entry=e.entry_id;this.load()}));return}
  if(!this.data){card.append(el("p","Loading…"));return}
  if(this.data.role==="parent"){this.parent(card);return}this.learner(card)}

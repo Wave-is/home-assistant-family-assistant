@@ -30,13 +30,14 @@ def state():
 def test_catalog_all_keys_and_svg():
     data = catalog()
     assert len(data["lessons"]) == 45
-    assert sum(len(l["questions"]) for l in data["lessons"]) == 194
+    assert sum(len(lesson["questions"]) for lesson in data["lessons"]) == 194
     assert len(index()["lessons"]) == 45
     for lesson in data["lessons"]:
         for q in lesson["questions"]:
             assert _grade(q["answer"],q["answer"]) == "correct"
         for d in lesson["diagrams"].values():
-            root = ET.fromstring("<svg>"+d["s"]+"</svg>")
+            assert "<!" not in d["s"]  # Checked-in static fixture, no entities/DTD.
+            root = ET.fromstring("<svg>"+d["s"]+"</svg>")  # noqa: S314
             for node in root.iter():
                 assert node.tag in {"svg","text","rect","line","path","polygon","circle"}
                 assert not any(k.startswith("on") or "href" in k for k in node.attrib)

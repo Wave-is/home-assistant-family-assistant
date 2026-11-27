@@ -44,7 +44,7 @@ def _scope(request,entry_id):
     manager = runtime.telegram
     manager._manager_guard()
     config = mini_auth.policy(engine.snapshot())
-    if request.host != urlsplit(config["origin"]).netloc:
+    if request.scheme != "https" or request.host != urlsplit(config["origin"]).netloc:
         raise AcademyError("forbidden")
     return hass,entry,runtime,engine,manager,config
 
@@ -133,7 +133,10 @@ class AcademyMiniView(HomeAssistantView):
                     raise AcademyError("forbidden")
                 result = {"session":self.sessions.issue(entry_id,stamp,now_sec)}
             else:
-                token = request.headers.get("X-Academy-Session")
+                tokens = request.headers.getall("X-Academy-Session",[])
+                if len(tokens)!=1:
+                    raise AcademyError("forbidden")
+                token = tokens[0]
                 stamp = self.sessions.check(token,entry_id,engine.snapshot(),bot_id,now_sec)
                 actor = stamp["actor"]
 
