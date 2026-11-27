@@ -1,6 +1,7 @@
 """Native Telegram command catalog, with no household names or identifiers."""
 
 COMMANDS = (
+    ("academy", "Open private Academy", "Открыть личную академию", "Відкрити особисту академію"),
     ("commands", "Command help", "Все команды", "Усі команди"),
     ("ping", "Check the bot", "Проверить бота", "Перевірити бота"),
     ("tasks", "Available tasks", "Доступные задачи", "Доступні завдання"),

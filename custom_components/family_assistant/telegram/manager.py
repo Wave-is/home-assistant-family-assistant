@@ -20,7 +20,7 @@ from ..const import DOMAIN
 from ..domain.validation import DomainError
 from ..notifications import DeliveryError, Notifications
 from .admission import AdmissionReply
-from .context import PersonalReply, reply_quote, reply_refs, result_refs
+from .context import PersonalReply, _reply_event, reply_quote, reply_refs, result_refs
 from .enrollment import Enrollment
 from .errors import ERRORS
 from .messages import render, targets
@@ -198,6 +198,10 @@ class TelegramManager:
         if (
             event["key"] in {"telegram_reply", "telegram_poll_reply"}
             and event["data"].get("bot_id") != self.bot["id"]
+        ):
+            return []
+        if event["key"] == "academy_message" and event["data"].get("bot_id") not in (
+            None, self.bot["id"]
         ):
             return []
         return [{**target, "bot_id": self.bot["id"]} for target in targets(event, state)]
@@ -559,7 +563,30 @@ class TelegramManager:
                 t = COPY.get(language, COPY["en"])
                 response = None
                 try:
-                    if callback:
+                    from ..academy import telegram as academy
+
+                    academy_content = (callback.get("data", "") if callback else
+                                       addressed(message, self.bot, language=language))
+                    quoted = _reply_event(state, message, self.bot) if message else None
+                    academy_quote = (quoted["data"] if quoted and
+                                     quoted.get("key") == academy.KEY else None)
+                    # Consume Academy messages before any generic commands or model route.
+                    # A forwarded/unknown Academy quote is never trusted as a task token.
+                    quoted_text = (message or {}).get("reply_to_message", {}).get("text", "")
+                    academy_marker = isinstance(quoted_text, str) and (
+                        "Family Academy ·" in quoted_text or "/academy_answer " in quoted_text
+                    )
+                    if academy.recognizes(academy_content) or academy_quote is not None or academy_marker:
+                        if private and academy_content is not None:
+                            if academy_quote is None and not academy.recognizes(academy_content):
+                                academy_content = "/academy"
+                            def academy_change(ctx):
+                                academy.handle(ctx.state, self.entry.entry_id, actor, now,
+                                               bot_id, update_id, academy_content, private=True,
+                                               quoted=academy_quote)
+                            await scoped_engine.background_update("academy_telegram", now, academy_change)
+                            self.runtime.updated()
+                    elif callback:
                         content = callback.get("data", "")
                         if not isinstance(content, str) or len(content.encode()) > 64:
                             raise DomainError("invalid_field")

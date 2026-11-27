@@ -71,6 +71,10 @@ def _delivery_current(state: dict, event: dict, now: datetime) -> bool:
         from .network.watch import current
 
         return current(state, event, now)
+    if event.get("key") == "academy_message":
+        from .academy.telegram import current as academy_current
+
+        return academy_current(state, event, now)
     if event.get("key") == "family_digest":
         from .domain.digests import delivery_allowed
 

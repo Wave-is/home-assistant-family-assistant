@@ -284,6 +284,11 @@ def targets(event, state):
         from .watch_messages import targets as watch_targets
 
         return watch_targets(state, event)
+    if key == "academy_message":
+        from ..academy.telegram import target as academy_target
+
+        selected = academy_target(state, event, event.get("created_at"))
+        return [selected] if selected is not None else []
     if key == "family_digest":
         from ..domain.digests import target as digest_target
 
@@ -364,6 +369,15 @@ def targets(event, state):
 
 
 def render(event, target, state, *, now=None):
+    if event.get("key") == "academy_message":
+        from datetime import UTC, datetime
+
+        from ..academy.telegram import render as render_academy
+
+        result = render_academy(state, event, target, now if now is not None else datetime.now(UTC))
+        if result is None:
+            raise DeliveryError("delivery_revoked")
+        return result
     if event.get("key") == "online_school_notice":
         from datetime import UTC, datetime
 

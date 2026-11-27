@@ -410,6 +410,30 @@ remain unverified. No release or NAS changes made. Large-journal replay
 performance, data deletion/retention policy, full localization, full grade
 6–7 course, notifications and tutor/voice remain open.
 
+### A6 checkpoint — Telegram transport and schedule
+
+Private `/academy`, `/academy_start`, `/academy_answer TOKEN ANSWER`,
+`/academy_schedule ID mon,tue,... HH:MM`, `/academy_skip ID YYYY-MM-DD`,
+and `/academy_reports ID fri HH:MM` (or ID off) use the existing bot,
+guarded Engine transaction and durable outbox. Inline hint/reveal/pause/resume
+buttons and reply-to-message answers bind to the current task token. Group
+commands are consumed without lesson data; ordinary model context does not
+receive Academy quote text. Enrollment and current identity are rechecked
+during delivery. Schedule reminders use household local time, expire after
+30 minutes, skip DST gaps, and deduplicate by local day/ISO week; missed
+windows do not create a backlog. The current weekly report is a seven-day
+summary of completed missions and independent answers, not a full analytics
+dashboard. Reminders/reports are opt-in and quiet-hour handling uses the
+existing outbox. Delivery uncertain after transport begins is not retried
+blindly by the existing Notifications engine.
+
+Evidence: 120 focused Python cases passed in the isolated Python 3.13.5
+scratch tree (105 previous + 15 Telegram cases); the two new domain/test blob
+hashes match GitHub. Native manager/Engine/outbox wiring was added by
+source inspection and is not yet executed with HA. Full CI, lint,
+transport/restart smoke and exact native tests remain required. The text
+interface is fallback, not the primary Mini App. No NAS deployment.
+
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and
 review due next day. Test on an isolated HA installation before expanding the

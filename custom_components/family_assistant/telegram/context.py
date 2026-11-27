@@ -70,7 +70,7 @@ def _reply_event(state, message, bot):
 
 def reply_refs(state, message, bot):
     event = _reply_event(state, message, bot)
-    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest"}:
+    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest", "academy_message"}:
         return ()
     data = event.get("data", {})
     if not isinstance(data, dict):
@@ -92,7 +92,7 @@ def reply_quote(state, message, bot):
     if sender_id != bot_id:
         return value[:MAX_QUOTED_TEXT]
     event = _reply_event(state, message, bot)
-    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest"}:
+    if event is None or event.get("key") in {"telegram_poll_reply", "family_digest", "academy_message"}:
         return ""
     if _personal_event(state, event):
         return ""

@@ -2,6 +2,11 @@
 
 ## Family Academy — isolated development branch
 
+A6: private Telegram commands, task-bound replies/buttons, personal schedule,
+opt-in weekly summaries and existing outbox integration. 120 focused isolated
+Python cases passed; native manager/Engine/outbox/HA integration not yet run.
+See the [Academy contract](academy.md). No live deployment.
+
 A5 partial: optional default-off module, parent enrollment/identity epochs,
 private canonical Store transaction adapter, authenticated WebSocket command
 and first Academy card. 105 focused scratch-tree Python tests and two

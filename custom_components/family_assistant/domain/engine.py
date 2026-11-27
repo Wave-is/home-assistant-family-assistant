@@ -866,6 +866,9 @@ class Engine:
             polls.tick(ctx)
             poll_reviews.prune(ctx)
             digests.tick(ctx)
+            from ..academy.telegram import tick as academy_tick
+
+            academy_tick(ctx.state, now)
             from ..network import watch
 
             watch.tick(ctx)
