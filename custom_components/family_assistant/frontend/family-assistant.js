@@ -321,6 +321,7 @@ export class FamilyCard extends HTMLElement {
         await refreshHomeStatus(this,current);
         if(!current())return;
       }else clearHomeStatus(this);
+      const previousAcademy=this._academy;
       this._academy=null;
       if(this._view==="academy" && !data.read_only && data.settings.modules?.includes("academy") && ["owner","parent","child"].includes(data.role)){
         const academy=await this._hass.callWS({type:"family_assistant/academy",entry_id:this._entry});
@@ -328,6 +329,8 @@ export class FamilyCard extends HTMLElement {
         this._academy=academy;
         if(this._academyHint && !academy.assignments.some(row=>row.id===this._academyHint.id && row.revision===this._academyHint.revision))this._academyHint=null;
       }
+      if(!this._academy)this._academyHint=null;
+      const academyForce=this._view==="academy" && JSON.stringify(previousAcademy)!==JSON.stringify(this._academy);
       const taskFormForce = reconcileTaskFormRefresh(this,previousData);
       const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
       const dietaryForce = reconcileDietaryRefresh(this,previousData);
@@ -353,7 +356,7 @@ export class FamilyCard extends HTMLElement {
       const faultPhotoForce = reconcileFaultPhotos(this);
       const documentForce = reconcileAssetDocuments(this);
       // Avoid destroying a form that the user is currently filling out.
-      if (taskFormForce || taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
+      if (academyForce || taskFormForce || taskBatchForce || documentForce || networkWatchForce || admissionForce || dietaryForce || recipesForce || schoolForce || schoolWorkForce || schoolReminderForce || maintenanceForce || pollsForce || presenceForce || presenceNotificationsForce || digestsForce || healthForce || alarmEditorForce || taskSeriesForce || articleForce || conversationForce || shoppingEditorForce || routineForce || mediaForce || faultPhotoForce || !this.shadowRoot.activeElement?.closest("form")) renderWithFocusRefresh(this,focusSnapshot,()=>this.render());
     } catch(error) { if (current()) { clearHomeStatus(this); disposeTaskMedia(this,{keepDraft:true}); disposeFaultPhotos(this,{keepDraft:true}); disposeAssetDocuments(this,{keepDraft:true}); this._error=error.code || this.t.failure; this.render(); } }
     finally { if (current()) this._loading = false; }
   }
