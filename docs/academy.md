@@ -24,19 +24,32 @@ does not authorize deployment, external providers, or publication.
 ## 2. Delivery surfaces
 
 A single learning engine serves an authenticated Home Assistant Academy
-card/panel (child and parent views) and the existing private Telegram bot.
-Use existing identity binding, command router, scheduler, outbox and current
-role checks. Do not create a second Telegram polling process. The card is the
-first full interactive surface. Telegram starts/resumes lessons, handles
-simple exercises and sends opt-in private reminders. Do not depend on a
-Telegram group, Telegram, or an external HTTPS endpoint for core learning.
+card/panel and the existing private Telegram bot. **Telegram Mini App is
+the primary target learner surface**, with responsive interactive HTML
+lessons opening inside Telegram; HA remains the primary parent/admin surface
+and a local learner fallback. Chat commands, buttons and voice complement
+the lesson rather than replacing it. Use existing identity binding, command
+router, scheduler, outbox and current role checks. Do not create a second
+Telegram polling process.
 
-An optional later Telegram Mini App reuses the same learner UI/API only after
-a distinct security review: a trusted HTTPS origin reachable by the client,
-server validation of Telegram initData signature and age, replay protection,
-short-lived scoped sessions, current personal-chat member binding and
-revocation. Never expose HA admin, access tokens, or the entire HA API to make
-the Mini App work. Browser/HA access remains usable without it.
+For access away from home, the Mini App requires a trusted HTTPS origin
+reachable by the child. Use a dedicated narrowly scoped Academy gateway,
+not public HA administration or generic HA WebSocket/service access.
+Validate Telegram initData on the server (signature, age, bot and current
+private member binding); protect replay, issue short-lived scoped sessions,
+check current enrollment/identity on every request, revoke stale sessions
+and use strict origin and content security policies. Never put a bot token,
+HA token or grading key in HTML. Serve reviewed first-party lesson assets
+without a third-party script dependency. External gateway and provider
+activation require explicit owner configuration and isolated end-to-end
+security testing. Native HA learning remains usable locally without them.
+
+The learner UI should preserve current lesson, visual state where useful,
+and unsent-answer state across reconnects without retaining sensitive
+history in browser storage. Server-acknowledged progress is canonical.
+A disconnected or unavailable installation never counts as missed work.
+Remote learning during travel must be verified from outside the home LAN;
+the current HA card alone does not satisfy that acceptance gate.
 
 ## 3. Module boundaries
 
@@ -70,7 +83,9 @@ misconception hints, optional facts, independent practice, transfer task and
 exit check. A task has template_id/version, deterministic seed, parameters,
 answer type, validator ID, expected answer (server only), hints, solution,
 difficulty, skill IDs and locale text. No executable code from content packs.
-No unreviewed model-generated task enters a scored assessment.
+No unreviewed model-generated task enters a scored assessment. The tutor may
+ask adaptive unscored follow-up questions, grade explanations provisionally
+against a reviewed rubric, and request a fresh validated independent task.
 
 Initial curriculum inventory (provisional, to map to the school's selected
 MОН model program and current textbook edition before full course acceptance):
@@ -173,7 +188,8 @@ disable/revocation, and expiration. No old reminder backlog on restart.
 Start with deterministic curated explanations and progressive hints. Optional
 LLM receives only the current objective, verified task, permitted hint level,
 and minimal learning context; no household history, school credentials, device
-access, external search or general HA tools. Validate typed outputs and fail
+access, unrestricted external search or general HA tools. Educational video
+search is a separately scoped broker with topic-only queries (see section 11). Validate typed outputs and fail
 back to curated content if unavailable, malformed or inconsistent. In learning
 mode prefer a guiding question to giving the answer; a child may explicitly
 reveal the solution, marking practice as assisted. Independent assessment mode
@@ -202,7 +218,10 @@ XP, levels, optional quests and progress map celebrate effort, corrections and
 knowledge. XP is separate from skill evidence. No negative points for errors,
 streak penalties, public rankings, compulsory rewards or device restrictions.
 Any link to existing family Rewards is separately opt-in, capped and
-idempotent; do not use Tasks/Court penalties for learning.
+idempotent. An optional family Tasks/Court bridge tracks explicitly assigned
+attendance/completion commitments separately from academic performance.
+Never penalize mistakes, low scores, requests for help or learning speed.
+See section 11 for the missed-commitment review contract.
 
 Parent dashboard shows last session, independent accuracy with denominators,
 skills with evidence and uncertainty, due reviews, trend by skill and next
@@ -227,7 +246,8 @@ card; native HA and full-repository acceptance remain pending.
 | A5 | HA integration and learner/parent UI | Default off, current role authorization, versioned Store, native HA restart, frontend keyboard/mobile and browser end-to-end |
 | A6 | Private Telegram and scheduler | No second poller, exact callback/recipient scope, dedup, quiet hours/DST, revocation, no group disclosure |
 | A7 | Tutor and voice adapters | Explicit opt-in, bounded no-tools model, fallbacks, no grade override, no audio retention by default |
-| A8 | Motivation, reporting, optional Mini App | Idempotent rewards, protected reports, verified Mini App authentication if enabled |
+| A8 | Motivation, reporting, optional Tasks/Court bridge | Idempotent rewards, protected reports, separate reviewed attendance commitments |
+| A5b | Telegram Mini App learner surface and scoped gateway (prioritized) | Verified initData/expiry/revocation, server grading, remote/mobile E2E, no HA admin exposure |
 | A9 | Release and pilot | Exact-commit CI, privacy/package, unit/frontend/HA/upgrade gates, rollback, explicit owner consent for live test, child feedback and independent progress check |
 
 ### Verification checkpoint: rational validator
@@ -399,12 +419,115 @@ live household. Do not claim full course or production readiness for this slice.
 
 Actual school curriculum/textbook edition, child's English reading level,
 actual days/time and maximum daily workload; existing HA version and private
-bot installation; optional RocketTTS endpoint and supported locales; whether
-remote Mini App access is necessary; consent for providers, data retention and
-family rewards. The defaults above are proposed and can be changed without
+bot installation; optional RocketTTS endpoint and supported locales; remote Mini App hostname/gateway configuration; consent for providers, video
+sources, data retention, and any family Tasks/Court policy. The defaults above are proposed and can be changed without
 hard-coding household data. Until then work uses synthetic fixtures only.
 
 References within project: [vision](vision.md), [school](school.md),
 [implementation status](implementation-status.md), [release](release.md),
 [rollback](rollback.md). Existing online school records are not automatically
 imported into tutor context.
+
+
+## 11. Product clarification: living courses, travel, recovery and accountability
+
+Owner direction: select a study program and have the teacher guide the child
+through it inside Telegram. Interactive HTML lessons, adaptive agent questions
+and parent reporting are central, not optional polish. Two primary goals:
+continue a portion of the school curriculum independently during a month away
+from home; refresh previously learned material when it has been forgotten.
+
+### Course modes and planning
+
+- Curriculum continuation: choose grade, subject, reviewed curriculum/version,
+  start and end topics, date range and available days/minutes. New concepts
+  require actual explanations, worked examples and practice, not just testing.
+  Produce a feasible plan for a selected portion of the curriculum; do not
+  promise a whole school year in one month. Report unmet objectives honestly.
+- Knowledge recovery: diagnostic baseline, prerequisite-aware skill map,
+  adaptive practice, transfer tasks and delayed independent rechecks.
+- On-demand AI tutor: select a topic or ask a question; guide the learner back
+  to a verified course skill and offer a short comprehension check.
+- Course selection and parent plan preview are distinct from activation.
+  Enrollments pin curriculum and policy versions. Plan dates, exceptions,
+  travel pauses, catch-up choices, duration and actual attendance are separate
+  from mastery. Propose changes when pace differs from plan; parents can review
+  and adjust, without accumulating punitive backlog.
+
+Recommended starting plans (configurable): recovery 15–25 min, continuation
+30–45 min, on-demand flexible. A session has due review, explanation, optional
+video, visual lab, guided practice, agent follow-ups and independent exit
+check; fit total duration to the configured limit instead of forcing all
+components every day. Provide break/shorten/resume and a non-video fallback.
+
+### Live tutor and video discovery
+
+The tutor orchestrates reviewed lesson blocks and can rephrase, ask why,
+identify misconceptions, adjust language and difficulty, provide progressive
+hints, and request extra evidence. It receives only scoped learning context;
+the deterministic math engine is authoritative for objective answers.
+Open explanations/proofs use a reviewed rubric, confidence/needs-review and
+support parent review. Agent-generated follow-ups are unscored unless
+instantiated and checked against an approved validator/template; never let
+the model overwrite objective evidence, invoke family controls, or invent
+mastery. English is the initial instruction language; Ukrainian support and
+Russian fallback are configurable independently of the UI language.
+
+Video discovery: separate topic-only search broker (e.g. YouTube Data API
+when configured), rank Ukrainian/English first with Russian fallback, prefer
+age-appropriate teacher channels, exact curriculum topic, language, duration,
+captions and pedagogical quality. Store candidate IDs/metadata, review state
+and fallback text. Explicitly approved trusted sources or parent-reviewed
+items are eligible for child display; no automatic arbitrary links or
+algorithmic feed, no search queries containing names, school account data,
+grades or answers. Respect provider quota, unavailable/blocked videos,
+copyright, embedding restrictions and parent opt-in. Use official links or
+permitted embeds only, no downloading/rehosting. Do not treat video playback
+or time spent as mastery; every video segment has original comprehension
+questions, interactive practice and an independent transfer check. The
+system still functions without YouTube.
+
+### Parent dashboard and family accountability
+
+Show course/grade/subject, planned vs completed objectives, calendar with
+excused/missed/paused/completed states, independent accuracy with denominators,
+skill evidence and delayed retention, mistakes and misconceptions, actual
+time, next lesson, plan risk and weekly trend. Separate participation,
+academic evidence and family points. Weekly summaries use authorized private
+recipients only. Never publish a child's educational data to group chat.
+
+Optional Tasks/Court integration: parents may explicitly assign a learning
+commitment (e.g. complete a scheduled session by a stated deadline), with
+visible terms, grace period, permitted skip/reschedule and a clear points
+policy. Default off; no retroactive commitments or automatic negative points
+for weak academic results. Missing a commitment is a separate evidence state,
+not a knowledge score. If module/bot/network is unavailable, notification
+delivery is uncertain, child is excused, or evidence is incomplete, mark
+unverified/excused and do not propose a sanction. A missed commitment may
+generate a parent-review proposal through existing authorized Tasks/Court
+workflow; apply only a confirmed decision, with existing appeal/reversal,
+caps and a stable obligation ID that prevents duplicates after restart,
+replay or rescheduling. No general tutor access to Court/Tasks mutations.
+No live policy enabled or points posted by this document.
+
+### Revised implementation order and pilot
+
+1. Finish the durable Telegram notification/schedule/reply integration and
+   verify against native Engine/Store and the existing outbox.
+2. Add course catalog, dated plans and full lesson state, then implement the
+   reusable HTML learner surface and scoped Telegram Mini App gateway.
+3. Deliver a complete end-to-end pilot for fractions: course selection,
+   visual lesson inside Telegram, validated questions, adaptive tutor,
+   reconnect/resume, private report and parent dashboard; exercise from
+   outside the LAN on a test household.
+4. Expand validated grade 6–7 curriculum, bilingual support, video broker,
+   voice and varied interactive labs. Verify no-provider fallbacks.
+5. Add full parent analytics and separately opt-in attendance/Court workflow;
+   test outages, excused absences, duplicate/reversal behavior and access
+   revocation before a household pilot.
+
+These are revised requirements and proposed defaults, not implemented
+features or a release. As of the preceding committed A5 checkpoint, the
+Telegram Mini App, video discovery, course catalog, live tutor, complete
+curriculum and Tasks/Court bridge are not implemented. No external services,
+real student data, or live NAS configuration changed.
