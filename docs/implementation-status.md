@@ -1,5 +1,14 @@
 # Implementation and acceptance matrix
 
+## Family Academy — isolated development branch
+
+Stage A2 fraction templates and a standalone offline Fraction Lab preview are
+implemented in `codex/family-academy`. Focused scratch-tree tests: 25 pytest
+cases and two Chromium viewport smoke scenarios (HTML injection, not file URL).
+No HA registration, persistence, Telegram integration, release or household
+activation. Full repository and packaging gates remain pending. See the
+[Academy contract and evidence](academy.md).
+
 ## Combined rc.8 — candidate under verification
 
 Home-status, opt-in dated task settlement/correction and independent static chat

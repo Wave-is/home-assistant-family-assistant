@@ -214,7 +214,8 @@ derived data. No telemetry.
 ## 9. Implementation and acceptance matrix
 
 A1 specification is recorded; source mapping and review remain open. A2 is
-in progress. All later rows are pending.
+in progress with a first standalone lesson preview; A3/A5 are not complete.
+All remaining production acceptance gates are pending.
 
 | Stage | Deliverable | Acceptance gate |
 |---|---|---|
@@ -238,6 +239,40 @@ for this increment. The parser accepts signed integers, decimal dot/comma,
 and numerator/positive-denominator fractions; limits each digit component to
 12 and total input to 80 characters. Mixed-number syntax, units, algebra,
 generation and skill evidence remain pending. No runtime registration yet.
+
+### Verification checkpoint: Fraction Lab (stage A2, first A3/A5 preview)
+
+Added four versioned deterministic templates (read a fraction bar, equivalent
+fractions, addition, fraction of a quantity), three levels, and a seven-task
+lesson plan (four practice and three fresh exit questions). Learner task
+projection excludes answer keys, solutions and hints. Exact rational grading
+reuses the existing validator. The finite seed space can repeat parameters
+across sessions; cross-session deduplication is not implemented.
+
+The offline preview uses original responsive fraction bars, sliders, English
+explanations, Ukrainian glossary, two hints per practice item, and an exit
+check without hints or feedback until completion. The demo intentionally embeds
+keys and has no persistence, account or trusted assessment; do not ship it as
+the authenticated learner surface. Build from the repository root:
+
+```sh
+python -m tools.build_academy_preview /tmp/fractions.html --seed 19 --level 2
+python -m pytest -q tests/test_academy_fractions.py
+# Optional smoke test (requires Python Playwright and Chromium):
+python -m tools.check_academy_preview /tmp/fractions.html --chromium /usr/bin/chromium
+```
+
+Evidence: 25 focused pytest cases passed in an isolated Python 3.13.5 scratch
+tree, exercising 6,012 template/level/seed combinations and 300 lesson plans.
+Two Chromium smoke scenarios (390px and 1024px) passed with the generated HTML
+injected using set_content because file:// navigation was blocked by the
+environment; HTTP requests were blocked. Checked keyboard slider interaction,
+invalid input, assisted practice, hidden exit hints, deferred feedback, result
+counts and restart. The five new source blob hashes match the tested files.
+Full repository pytest, Ruff, CI, HA compatibility, package/release and actual
+file navigation remain unverified. No live setup or private data touched.
+Fractions subtraction, multiplication, division, mixed numbers, source mapping,
+persistent session/evidence, provider and HA/Telegram integration remain open.
 
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and
