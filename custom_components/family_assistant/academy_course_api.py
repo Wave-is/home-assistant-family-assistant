@@ -62,7 +62,8 @@ async def academy_course(hass,connection,msg):
                     if set(payload)!={"kind","args"} or type(payload["args"]) is not list:
                         raise AcademyError("invalid_field")
                     telegram.configure(ctx.state,msg["entry_id"],scope.actor,now,
-                                       payload["kind"],payload["args"])
+                                       payload["kind"],payload["args"],
+                                       bot_id=getattr(scope.runtime.telegram,"bot",{}).get("id"))
                     return {"saved":True}
                 if action == "skip":
                     if set(payload)!={"args"} or type(payload["args"]) is not list:

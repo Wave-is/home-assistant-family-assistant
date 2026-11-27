@@ -57,12 +57,15 @@ def _day(raw):
 
 def preview(payload):
     required = {"group", "mode", "first", "last", "start", "end", "days", "language"}
-    if (not required <= set(payload) <= required | {"commitment"} or payload["mode"] not in MODES
+    if (not required <= set(payload) <= required | {"commitment","minutes"} or payload["mode"] not in MODES
             or payload["language"] not in {"en", "uk"}):
         raise AcademyError("invalid_field")
     from .accountability import policy
 
     policy(payload)
+    minutes = payload.get("minutes",25)
+    if type(minutes) is not int or not 15 <= minutes <= 60:
+        raise AcademyError("invalid_field")
     rows = _lessons(payload["group"])
     ids = [row["id"] for row in rows]
     if payload["first"] not in ids or payload["last"] not in ids:
@@ -119,6 +122,7 @@ def _public(plan, today, *, parent=False):
     result["due_unfinished"] = sum(x["day"] <= today and x["lesson"] not in plan["results"]
                                    for x in plan["schedule"])
     result["needs_review"] = [k for k,r in plan["results"].items() if r["correct"] < r["total"]]
+    result["review_due"] = [k for k,r in plan["results"].items() if r.get("review_due","9999-12-31") <= today]
     result["active"] = plan["session"] is not None
     if parent or plan["session"] is None:
         return result
@@ -133,11 +137,12 @@ def _public(plan, today, *, parent=False):
     session["fact"] = lesson["fact"][lang]
     session["diagram"] = lesson["diagrams"][lang]
     session["count"] = len(lesson["questions"])
+    session["review"] = s.get("review",False)
     if s["phase"] == "questions":
         q = lesson["questions"][s["position"]]
         session["question"] = {"id": q["id"], "text": q["q"][lang],
                                "boolean": q["answer"] in {"yes","no"}}
-        session["independent"] = _independent(plan, lesson, s["position"])
+        session["independent"] = not s.get("review",False) and _independent(plan, lesson, s["position"])
         if s["hinted"] and not session["independent"]:
             session["hint"] = q["h"][lang]
         if session["independent"]:
@@ -175,6 +180,8 @@ def save_plan(state, actor, now, payload):
         raise AcademyError("course_review_required")
     config = deepcopy(payload["config"])
     schedule = preview(config)
+    if config.get("commitment",{}).get("enabled") and config["start"] < _date(state,now):
+        raise AcademyError("invalid_field")  # no retroactive commitments
     if old and old["session"] is not None:
         raise AcademyError("course_session_active")
     plan = {"version": payload["version"]+1, "catalog_version": catalog()["version"],
@@ -208,16 +215,21 @@ def action(state, actor, now, payload):
     base = {"epoch","version","operation_id","command"}
     session = plan["session"]
     feedback = None
-    if cmd == "start":
-        if set(payload) != base or session is not None:
+    if cmd in {"start","review"}:
+        if set(payload) != (base | {"lesson_id"} if cmd=="review" else base) or session is not None:
             raise AcademyError("conflict")
-        lesson_id = next((x["lesson"] for x in plan["schedule"] if x["lesson"] not in plan["results"]), None)
+        if cmd=="review":
+            lesson_id = payload["lesson_id"]
+            if lesson_id not in plan["results"]:
+                raise AcademyError("conflict")
+        else:
+            lesson_id = next((x["lesson"] for x in plan["schedule"] if x["lesson"] not in plan["results"]), None)
         if lesson_id is None:
             return {"status":"completed","plan":_public(plan,today)}
         plan["session"] = {"id":op,"lesson":lesson_id,"position":0,
-                           "phase":"questions" if plan["config"]["mode"] == "recovery" or
-                           _lesson(lesson_id)["assessment"] else "explore",
-                           "hinted":False,"rows":[]}
+                           "phase":"questions" if cmd=="start" and (plan["config"]["mode"] == "recovery" or
+                           _lesson(lesson_id)["assessment"]) else "explore",
+                           "review":cmd=="review","hinted":False,"rows":[]}
     else:
         expected = base | {"session_id","position"}
         if cmd == "answer":
@@ -232,7 +244,7 @@ def action(state, actor, now, payload):
         elif cmd == "cancel":
             plan["session"] = None
         elif session["phase"] == "questions" and cmd in {"hint","answer"}:
-            independent = _independent(plan,lesson,session["position"])
+            independent = not session.get("review",False) and _independent(plan,lesson,session["position"])
             question = lesson["questions"][session["position"]]
             if cmd == "hint":
                 if independent:
@@ -252,10 +264,17 @@ def action(state, actor, now, payload):
                     feedback = {"correct":row["correct"],"explanation":question["e"][lang]}
                 if session["position"] == len(lesson["questions"]):
                     rows = session["rows"]
-                    plan["results"][lesson["id"]] = {"day":today,
-                        "correct":sum(r["independent"] and r["correct"] for r in rows),
-                        "total":sum(r["independent"] for r in rows),
-                        "missed":[r["id"] for r in rows if r["independent"] and not r["correct"]]}
+                    if session.get("review",False):
+                        previous = plan["results"][lesson["id"]]
+                        step = min(4,previous.get("review_step",0)+1) if all(r["correct"] for r in rows) else 0
+                        previous.update(review_step=step,last_review=today,
+                                        review_due=(_day(today)+timedelta(days=(1,3,7,14,30)[step])).isoformat())
+                    else:
+                        plan["results"][lesson["id"]] = {"day":today,
+                            "correct":sum(r["independent"] and r["correct"] for r in rows),
+                            "total":sum(r["independent"] for r in rows),
+                            "missed":[r["id"] for r in rows if r["independent"] and not r["correct"]],
+                            "review_due":(_day(today)+timedelta(days=1)).isoformat(),"review_step":0}
                     feedback = {"review":[{"correct":r["correct"],"explanation":q["e"][lang]}
                                          for r,q in zip(rows,lesson["questions"])]}
                     plan["session"] = None

@@ -87,7 +87,7 @@ def _policy_key(kind, actor, member):
     return _hash(kind, actor if kind == "report" else "", member)
 
 
-def configure(state, household, actor, now, kind, args):
+def configure(state, household, actor, now, kind, args, *, bot_id=None):
     """Explicit parent consent; schedule CHILD mon,tue HH:MM, reports CHILD fri HH:MM."""
     approver = _person(state, actor, PARENTS)
     if kind not in {"reminder", "report"} or len(args) not in (2, 3):
@@ -112,7 +112,7 @@ def configure(state, household, actor, now, kind, args):
     clock = _clock(args[2])
     target = _person(state, recipient, {"child"} if kind == "reminder" else PARENTS)
     record = {"kind": kind, "household": household, "actor": actor,
-              "actor_revision": approver["revision"], "recipient": recipient,
+              "actor_revision": approver["revision"], "recipient": recipient, "bot_id": bot_id,
               "recipient_revision": target["revision"], "chat_id": target["telegram_id"],
               "member": member, "member_revision": student["member_revision"],
               "epoch": student["epoch"], "enabled": True, "days": sorted(set(days), key=DAYS.index),
@@ -145,6 +145,10 @@ def disable(state):
     for policy in state.get("academy_policies", {}).values():
         if policy["enabled"]:
             policy.update(enabled=False, version=policy["version"] + 1)
+    if config := state.get("academy_mini"):
+        config.update(enabled=False,revision=config["revision"]+1)
+    if providers := state.get("academy_providers"):
+        providers.update(tutor=False,video=False,revision=providers["revision"]+1)
 
 
 def _policy_current(state, policy):
@@ -184,6 +188,7 @@ def tick(state, now):
         actor = policy["recipient"]
         data = {**_stamp(state, actor), "kind": policy["kind"], "policy": key,
                 "version": policy["version"], "period": period, "day": day.isoformat(),
+                "epoch":policy["epoch"],"bot_id":policy.get("bot_id"),
                 "timezone": zone, "expires_at": (due + WINDOW).isoformat()}
         _put(state, "academy:scheduled:" + _hash(key, period), actor, now, data)
         policy["last_period"] = period
@@ -227,7 +232,7 @@ def handle(state, household, actor, now, bot_id, update_id, content, *, private,
                 pass
             elif command in ("/academy_schedule", "/academy_reports"):
                 configure(state, household, actor, now,
-                          "reminder" if command == "/academy_schedule" else "report", rest.split())
+                          "reminder" if command == "/academy_schedule" else "report", rest.split(), bot_id=bot_id)
                 feedback = "Schedule saved."
             elif command == "/academy_skip":
                 skip(state, actor, rest.split())

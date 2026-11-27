@@ -55,6 +55,7 @@ def review(state,actor,now,payload):
                      and e.get("state")=="sent" and e.get("data",{}).get("kind")=="reminder"
                      and e["data"].get("day")==lesson["day"]
                      and e["data"].get("revision")==child["revision"]
+                     and e["data"].get("epoch")==student["epoch"]
                      for e in state.get("outbox",{}).values())
         if not notice:
             raise AcademyError("unverified_notice")
