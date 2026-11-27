@@ -213,9 +213,9 @@ derived data. No telemetry.
 
 ## 9. Implementation and acceptance matrix
 
-A1 specification is recorded; source mapping and review remain open. A2 is
-in progress with a first standalone lesson preview; A3/A5 are not complete.
-All remaining production acceptance gates are pending.
+A1 specification is recorded; source mapping and review remain open. A2 and
+A4 have a partial fractions-only domain implementation and focused tests;
+A3/A5 are not complete. Production acceptance gates remain pending.
 
 | Stage | Deliverable | Acceptance gate |
 |---|---|---|
@@ -273,6 +273,58 @@ Full repository pytest, Ruff, CI, HA compatibility, package/release and actual
 file navigation remain unverified. No live setup or private data touched.
 Fractions subtraction, multiplication, division, mixed numbers, source mapping,
 persistent session/evidence, provider and HA/Telegram integration remain open.
+
+### Verification checkpoint: adaptive fractions domain (A2/A4 partial)
+
+Implemented `academy/fraction_extensions.py`, `academy/adaptive.py` and
+`tests/test_academy_adaptive.py`. The four original v1 templates and the
+standalone HTML preview are unchanged. Eleven additional deterministic
+templates cover subtraction, multiplication, division, mixed/improper numbers,
+and transfer problems; the existing part-of-whole template remains available
+but is not a separate tracked skill in this increment. The adaptive planner
+uses 14 templates in six skills. Mixed-number form is explicitly graded,
+with exact rational comparison and bounded input.
+
+The pure per-binding engine has a versioned JSON event journal, deterministic
+planning with prerequisite gates, pause/resume, hint/reveal tracking, exact
+request replay and stale-task rejection. Independent answers affect skill
+evidence; assisted answers do not establish mastery. Equivalent operands
+and numeric duplicates are excluded across sessions. Provisional mastery
+requires three unique independent correct items, two forms and a transfer
+task. A fresh correct review on or after the next local calendar day confirms
+retention. Review intervals are 1, 3, 7, 14, 30 days; independent errors reset
+the streak, reduce level and schedule next-day review. Unknown accuracy is
+null, not zero. The planner caps work at two due reviews and three focus
+questions per session; this is not a daily session cap or actual clock-based
+scheduling. Valid wrong practice answers advance with an explanation rather
+than permitting retry within the same item.
+
+`apply_and_save` stages state, awaits an injected atomic save callback and
+returns the new state only on successful save; the caller must hold a
+per-binding lock, provide trusted local dates and authorize the current member
+revision. JSON reload rebuilds sessions and evidence from the journal. This
+is not yet a registered HA Store adapter, durable live household installation,
+authenticated endpoint or Telegram command. The journal is private and
+contains submitted answers; do not expose it or parent projections to
+learners. Replay depends on stable v1 rules; future policy/template changes
+require a versioned replay implementation/migration. The finite template
+pool and 20,000-event bound can eventually require fresh content or journal
+compaction; no automatic eviction, cancellation, enrollment management or
+data deletion is implemented in this increment.
+
+Verification: 87 focused pytest cases passed in Python 3.13.5 isolated
+scratch tree (35 existing rational cases, 25 existing Fraction Lab cases,
+27 adaptive/extended cases). The extension tests exercise 5,418
+template/level/seed combinations, including max seed. Scenarios cover
+provisional and retained mastery, all review intervals, per-session review
+cap, wrong review, assistance, invalid answer, delayed assessment feedback,
+stale actions, identity revision, file roundtrip, async save failure and
+idempotent replay. The three new source blobs match the locally tested files.
+Command: `python -m pytest -q tests/test_academy*.py` (isolated scratch tree).
+Full repository tests, Ruff, exact-commit CI, native HA, browser, packaging
+and upgrade tests have not run for this increment. Full diagnostic baseline,
+curriculum/source mapping, persistent HA adapter, frontend, actual scheduling,
+role authorization and Telegram remain open.
 
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and

@@ -2,6 +2,13 @@
 
 ## Family Academy — isolated development branch
 
+Stage A4 partial: six fraction skills, 14 planner templates, deterministic
+sessions and adaptive mastery/review evidence, private JSON replay and an
+injected atomic save boundary. 87 focused scratch-tree Python cases passed
+(27 new), source blob hashes matched. No real HA Store, roles/API, browser
+changes, notifications, CI, release or household activation. See the
+[adaptive domain checkpoint](academy.md#verification-checkpoint-adaptive-fractions-domain-a2a4-partial).
+
 Stage A2 fraction templates and a standalone offline Fraction Lab preview are
 implemented in `codex/family-academy`. Focused scratch-tree tests: 25 pytest
 cases and two Chromium viewport smoke scenarios (HTML injection, not file URL).
