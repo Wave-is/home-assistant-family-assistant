@@ -434,6 +434,56 @@ source inspection and is not yet executed with HA. Full CI, lint,
 transport/restart smoke and exact native tests remain required. The text
 interface is fallback, not the primary Mini App. No NAS deployment.
 
+### A7–A8 development candidate — course classroom and parent planning
+
+The existing illustrated English/Ukrainian revision material is now packaged as
+a server-side versioned draft catalog (45 lessons, 194 fixed questions, 45 diagrams
+per locale). Curriculum alignment and independent pedagogical review are still
+required; this is not a complete professionally reviewed school-year replacement.
+A parent explicitly accepts draft status when assigning a dated plan. The plan
+supports a selected grade/group/topic range, continuation or diagnostic/recovery,
+start/end, weekdays, target minutes, practice/independent phases, exact numeric
+and yes/no grading, original independent evidence, repeat practice with review
+dates, course progress and a private plan archive. Repeat practice does not
+increase first-pass academic accuracy. The original adaptive fractions engine
+remains available separately; its evidence and fixed-bank course scores are not
+merged into a single mastery estimate.
+
+The registered course WebSocket API and HA card provide enrollment, plan preview,
+assignment, parent metrics, schedule/skip/report preferences, Mini App and
+provider settings, and a local learner fallback. The Mini App HTTP boundary is
+default-off and requires an owner-approved dedicated HTTPS origin, current
+Telegram manager, signed initData, one-use durable launch hash, bounded
+process-local session, current enrollment/role and explicit origin checks.
+The Telegram classroom button is sent only to an enrolled child privately.
+HTML/CSS/JS are served from the integration; no answer key is included. The
+existing durable outbox delivers reminders and summaries including course counts.
+The optional tutor calls only a direct local-IP Ollama provider without family
+tools; it is unscored, bounded, and has a deterministic explanation fallback.
+Optional YouTube Data API lookup is topic-only, owner-approved channel IDs,
+no child identifiers, no automatic arbitrary links. Browser speech synthesis
+is an optional client-side aid, not a RocketTTS implementation. Provider data
+and keys stay in private Store/configuration; assess actual diagnostic/backup
+and logging boundaries before live use.
+
+Optional prospective attendance commitments are separate from academic
+results, default-off; a parent must review a missed date after its grace period,
+confirm availability and notice, and the stored outbox must show a sent
+reminder matching identity/epoch. Court writes use existing manual award with
+the household cap and stable lesson/revision receipt. No automated penalties
+for wrong answers, outages, or unverified delivery.
+
+Evidence: previously 120 focused pure-domain Python cases passed in the
+isolated scratch tree before the final course/Mini App changes. Independently
+reconstructed catalog matched Git blob c9d8418371cdfff55a1108777544b740970b909d;
+45 lessons, 194 answer formats and 90 locale diagrams were checked for schema,
+parseable exact keys and bounded SVG tags. This does not prove pedagogical
+correctness. New course and Mini App auth test files are included; final exact
+commit tests, Ruff formatting/lint, browser/HA/native delivery, release packaging,
+security and upgrade tests have not been executed here. No live changes, release
+or publication. See [academy-nas.md](academy-nas.md) for the mandatory Codex
+handoff and acceptance checklist.
+
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and
 review due next day. Test on an isolated HA installation before expanding the

@@ -2,6 +2,8 @@
 
 ## Family Academy — isolated development branch
 
+Development candidate: bilingual draft course catalog, dated course plans, parent planning card, private Telegram Mini App, scoped local tutor, approved-channel video lookup, reviewed attendance/Court bridge. 120 earlier isolated Python cases and catalog structural checks; final new code is not yet tested natively or release-ready. See [NAS handoff](academy-nas.md) and [Academy contract](academy.md).
+
 A6: private Telegram commands, task-bound replies/buttons, personal schedule,
 opt-in weekly summaries and existing outbox integration. 120 focused isolated
 Python cases passed; native manager/Engine/outbox/HA integration not yet run.
