@@ -57,8 +57,12 @@ def _day(raw):
 
 def preview(payload):
     required = {"group", "mode", "first", "last", "start", "end", "days", "language"}
-    if set(payload) != required or payload["mode"] not in MODES or payload["language"] not in {"en", "uk"}:
+    if (not required <= set(payload) <= required | {"commitment"} or payload["mode"] not in MODES
+            or payload["language"] not in {"en", "uk"}):
         raise AcademyError("invalid_field")
+    from .accountability import policy
+
+    policy(payload)
     rows = _lessons(payload["group"])
     ids = [row["id"] for row in rows]
     if payload["first"] not in ids or payload["last"] not in ids:
@@ -151,8 +155,11 @@ def _independent(plan, lesson, position):
 
 def read(state, actor, now, member=None):
     child, record, summary = _row(state, actor, member)
-    return {"student": summary, "plan": _public(_plan(record, child), _date(state, now),
+    result = {"student": summary, "plan": _public(_plan(record, child), _date(state, now),
                                                 parent=actor != child["id"])}
+    if actor != child["id"]:
+        result["commitments"] = deepcopy(record.get("commitment_receipts",{}))
+    return result
 
 
 def save_plan(state, actor, now, payload):

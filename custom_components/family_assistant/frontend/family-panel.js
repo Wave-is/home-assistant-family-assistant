@@ -507,14 +507,14 @@ export class FamilyAssistantPanel extends HTMLElement {
   }
   renderWorkspace(view) {
     const host=el("div",null,"panel-workspace");host.addEventListener("input",()=>{this._workspaceDirty=true;});host.addEventListener("change",()=>{this._workspaceDirty=true;});
-    const tag=view==="academy"?"family-assistant-academy-card":"family-assistant-card";
+    const tag=view==="academy"?"family-assistant-academy-course-card":"family-assistant-card";
     const config=view==="academy"?{type:`custom:${tag}`,entry_id:this._entry,language:this.lang}:{type:"custom:family-assistant-card",entry_id:this._entry,view,...(this._workspaceMember?{member_id:this._workspaceMember.id,...(view==="school"?{school_section:this._workspaceSchoolSection||"all"}:{})}:{})};
     const mount=()=>{
       if(!host.isConnected||!this._hass||!this._entry)return;
       const card=document.createElement(tag);card.setConfig(config);card.hass=this._hass;this._embedded=card;host.replaceChildren(card);
     };
     if(customElements.get(tag))queueMicrotask(mount);
-    else {host.append(this.notice(this.t.loading));import(view==="academy"?"./academy-card.js":"./family-assistant.js").then(()=>mount()).catch(()=>{if(host.isConnected)host.replaceChildren(this.notice(this.t.failure,true));});}
+    else {host.append(this.notice(this.t.loading));import(view==="academy"?"./academy-course-card.js":"./family-assistant.js").then(()=>mount()).catch(()=>{if(host.isConnected)host.replaceChildren(this.notice(this.t.failure,true));});}
     return host;
   }
   renderConnections() {

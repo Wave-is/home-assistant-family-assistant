@@ -135,6 +135,9 @@ async def _async_setup_runtime(hass, entry) -> bool:
         from .media_http import async_register_media
 
         async_register_media(hass)
+        from .academy_mini_http import async_register_mini
+
+        async_register_mini(hass)
 
         async def execute(call):
             from .command_scope import capture

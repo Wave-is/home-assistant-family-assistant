@@ -43,6 +43,7 @@ import {renderConversation,reconcileConversationRefresh,disposeConversation} fro
 import {appendProposalFeedback} from "./semantic-feedback-view.js";
 import {MEMBER_CONTEXT_VIEWS,memberContextId,inMemberContext,memberContextCommandAllowed,renderMemberContext} from "./panel-member-context.js";
 import "./academy-card.js";
+import "./academy-course-card.js";
 import "./family-panel.js";
 const COPY = {
   en: {

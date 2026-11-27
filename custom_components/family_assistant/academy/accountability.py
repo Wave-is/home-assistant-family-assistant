@@ -1,6 +1,7 @@
 """Explicitly reviewed learning commitments; never grade knowledge with Court points."""
 from datetime import date,timedelta
 from zoneinfo import ZoneInfo
+from datetime import datetime
 
 from . import courses
 from .household import AcademyError
@@ -63,7 +64,7 @@ def review(state,actor,now,payload):
         spent = sum(-r["points"] for r in state.get("court",{}).values()
                     if r.get("member")==child["id"] and r.get("status")=="active"
                     and r.get("points",0)<0 and
-                    date.fromisoformat(r["created_at"][:10])==now.astimezone(zone).date())
+                    datetime.fromisoformat(r["created_at"]).astimezone(zone).date()==now.astimezone(zone).date())
         points = min(cfg["points"],max(0,settings.get("daily_penalty_cap",0)-spent))
         if points:
             result = court.handle(Context(state,state["members"][actor],now,"academy:"+key),

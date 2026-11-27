@@ -326,7 +326,15 @@ def _weekly(state, policy, day):
     correct = sum(r["independent_correct"] for r in reports)
     total = sum(r["independent_total"] for r in reports)
     due = sum(s["status"] == "review_due" for s in engine.knowledge(day).values())
-    return f"Weekly Academy · {child['name']}\n{start} – {day}\nCompleted missions: {len(reports)}\nIndependent answers: {correct}/{total}\nSkills due for review: {due}"
+    text = f"Weekly Academy · {child['name']}\n{start} – {day}\nCompleted missions: {len(reports)}\nIndependent answers: {correct}/{total}\nSkills due for review: {due}"
+    record = _record(state, child["id"])
+    plan = record.get("course_plans",{}).get(str(child["revision"]))
+    if plan:
+        rows = [r for r in plan["results"].values() if start <= r["day"] <= day]
+        text += (f"\nCourse lessons this week: {len(rows)}"
+                 f"\nCourse independent answers: {sum(r['correct'] for r in rows)}/{sum(r['total'] for r in rows)}"
+                 f"\nCourse plan: {len(plan['results'])}/{len(plan['schedule'])}")
+    return text
 
 
 def render(state, event, destination, now):
@@ -380,6 +388,14 @@ def render(state, event, destination, now):
         text = data["feedback"] + "\n\n" + text
     payload = {"chat_id": selected["id"], "text": text[:1900],
                "link_preview_options": {"is_disabled": True}}
+    if data["role"] == "child":
+        from .mini_auth import launch_url
+
+        household = (data["household"] if data["kind"] == "reply" else
+                     state["academy_policies"][data["policy"]]["household"])
+        if url := launch_url(state, household):
+            if _student(state,data["actor"])["enrolled"]:
+                buttons.insert(0,[{"text":"Open Academy classroom","web_app":{"url":url}}])
     if buttons:
         payload["reply_markup"] = {"inline_keyboard": buttons}
     return payload
