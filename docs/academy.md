@@ -1,6 +1,7 @@
 # Family Academy — implementation contract
 
-Status: proposed extension, stage 1; no runtime implementation or release implied.
+Status: proposed extension, stage 1 recorded; stage 2 started with isolated
+rational validation. No HA runtime integration or release implied.
 Scope: a local-first optional Family Assistant module, with the first course
 covering revision of Ukrainian grades 6–7 mathematics taught in English.
 This document complements the existing product vision; approval of a branch
@@ -212,7 +213,8 @@ derived data. No telemetry.
 
 ## 9. Implementation and acceptance matrix
 
-All rows are pending; this document is planning evidence only.
+A1 specification is recorded; source mapping and review remain open. A2 is
+in progress. All later rows are pending.
 
 | Stage | Deliverable | Acceptance gate |
 |---|---|---|
@@ -225,6 +227,17 @@ All rows are pending; this document is planning evidence only.
 | A7 | Tutor and voice adapters | Explicit opt-in, bounded no-tools model, fallbacks, no grade override, no audio retention by default |
 | A8 | Motivation, reporting, optional Mini App | Idempotent rewards, protected reports, verified Mini App authentication if enabled |
 | A9 | Release and pilot | Exact-commit CI, privacy/package, unit/frontend/HA/upgrade gates, rollback, explicit owner consent for live test, child feedback and independent progress check |
+
+### Verification checkpoint: rational validator
+
+Implemented `academy/rational.py` and `tests/test_academy_rational.py`.
+35 focused cases passed in an isolated Python 3.13.5 scratch tree without HA.
+The GitHub blob hashes of both files match the locally tested files. Full
+repository pytest, Ruff, CI, HA integration and packaging have not been run
+for this increment. The parser accepts signed integers, decimal dot/comma,
+and numerator/positive-denominator fractions; limits each digit component to
+12 and total input to 80 characters. Mixed-number syntax, units, algebra,
+generation and skill evidence remain pending. No runtime registration yet.
 
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and
