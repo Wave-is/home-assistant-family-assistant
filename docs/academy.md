@@ -215,7 +215,8 @@ derived data. No telemetry.
 
 A1 specification is recorded; source mapping and review remain open. A2 and
 A4 have a partial fractions-only domain implementation and focused tests;
-A3/A5 are not complete. Production acceptance gates remain pending.
+A3/A5 are not complete. A5 now has an optional household adapter and first
+card; native HA and full-repository acceptance remain pending.
 
 | Stage | Deliverable | Acceptance gate |
 |---|---|---|
@@ -325,6 +326,69 @@ Full repository tests, Ruff, exact-commit CI, native HA, browser, packaging
 and upgrade tests have not run for this increment. Full diagnostic baseline,
 curriculum/source mapping, persistent HA adapter, frontend, actual scheduling,
 role authorization and Telegram remain open.
+
+### Verification checkpoint: Academy household adapter and card (A5 partial)
+
+Academy is now registered as an optional, default-off household module in
+Config Flow/Options, control center and the localized module labels. The
+existing owner-controlled settings transaction enables it; a separate
+parent/owner action explicitly enrolls each active child. The card type is
+`custom:family-assistant-academy-card`. It is registered by the existing
+frontend resource and can also be opened from Modules → Academy → daily use.
+For an individual dashboard add the card in YAML, optionally setting
+`entry_id` and `language: en` (or `uk`, `ru`).
+
+The authenticated `family_assistant/academy` WebSocket endpoint accepts read,
+enroll, start, answer, hint, reveal, pause and resume. It captures the existing
+HA command scope and checks it before mutation, under the canonical Engine
+transaction and after persistence. Child commands never accept a target
+member ID; sibling, ordinary adult and guest access is denied. Parents can
+select active child summaries, enroll, pause enrollment and explicitly rebind
+a changed member revision, but cannot submit answers as the child. A fresh
+enrollment epoch rejects stale actions. Rebinding starts a separate journal
+and retains the old journal privately; disabling a module or enrollment
+retains progress. Existing sessions resume after re-enabling the same member
+revision. Enrollment conflicts are resolved by read-back, not by silently
+repeating a stale edit.
+
+The private `academy` bucket is added lazily to the existing household Store
+via `Engine.system_update`, using its lock, backup barrier and persist-before-
+publish behavior. No separate database, browser storage, scheduler, external
+provider, or new HA entity is required. Day is derived server-side from the
+household timezone. Lost learner responses retry the same operation ID and
+original date, including after midnight. The child projection hides the
+knowledge map during an active assessment and the report until completion;
+no journal, raw answer keys or pending assessment solutions are returned.
+Parent summaries and the card do not expose old-revision journals.
+
+The integrated card has a visual fraction-bar exercise, text submission,
+practice hints/reveal, pause/resume, progress, parent enrollment selection
+and skill summaries. EN/UK/RU control labels are available; prompts, skill
+labels and solution explanations remain English in this first slice.
+The card is separate from the offline preview and does not contain the
+preview answer keys. It rechecks access on refresh and fences responses
+after configuration/user changes. This is an initial integrated practice
+interface, not the full interactive theory course or a Telegram Mini App.
+
+Verification: 105 focused Python cases passed in the isolated Python 3.13.5
+scratch tree (87 previous Academy tests and 18 new household-boundary
+tests); two Chromium scenarios at 390px and 1024px passed against a
+synthetic WebSocket adapter. The browser test caught a disabled retry button;
+it was corrected and both scenarios rerun. Verified role boundaries,
+explicit enrollment, revocation, identity revision, local day, JSON
+roundtrip, hidden active evidence, stale actions, replay, fraction bar,
+hint, pause/resume, lost response retry, report and revoked-access display.
+The five new locally checked source blobs were verified against the Git
+tree. Run `python -m pytest -q tests/test_academy*.py` in the full repository
+and `python -m tools.check_academy_card --chromium /usr/bin/chromium` for
+the standalone card smoke test. A separate canonical Engine/Store contract
+test is included for full-repository verification; it was not executed in
+the scratch tree. The HA API file passed Python compilation, but native HA
+WebSocket registration, live Store/backup/reload, full repository tests,
+Ruff, exact-commit CI, panel integration and upgrade/packaging acceptance
+remain unverified. No release or NAS changes made. Large-journal replay
+performance, data deletion/retention policy, full localization, full grade
+6–7 course, notifications and tutor/voice remain open.
 
 First vertical slice: one synthetic child, fraction diagnostic and interactive
 fraction lesson, independent exit check, stored evidence, parent summary and

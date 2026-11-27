@@ -42,6 +42,7 @@ import {renderArticle,reconcileArticleRefresh,disposeArticle} from "./article-vi
 import {renderConversation,reconcileConversationRefresh,disposeConversation} from "./conversation-view.js";
 import {appendProposalFeedback} from "./semantic-feedback-view.js";
 import {MEMBER_CONTEXT_VIEWS,memberContextId,inMemberContext,memberContextCommandAllowed,renderMemberContext} from "./panel-member-context.js";
+import "./academy-card.js";
 import "./family-panel.js";
 const COPY = {
   en: {

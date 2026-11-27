@@ -174,7 +174,7 @@ def capabilities(state, services, health, members):
     for module in MODULES:
         issues = []
         ready = module in enabled
-        if ready and module == "home_status":
+        if ready and module in {"home_status", "academy"}:
             # Enabling a read-on-request module proves neither configured sources
             # nor current ACL/freshness. The dedicated card performs the read.
             ready = None

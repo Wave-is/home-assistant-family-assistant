@@ -2,6 +2,14 @@
 
 ## Family Academy — isolated development branch
 
+A5 partial: optional default-off module, parent enrollment/identity epochs,
+private canonical Store transaction adapter, authenticated WebSocket command
+and first Academy card. 105 focused scratch-tree Python tests and two
+synthetic-WebSocket Chromium scenarios passed. A canonical Engine/Store
+contract test is included but not yet executed in the full repository.
+Native HA, exact-commit CI, panel integration, package/upgrade, release and
+NAS activation are not verified. See the [A5 checkpoint](academy.md).
+
 Stage A4 partial: six fraction skills, 14 planner templates, deterministic
 sessions and adaptive mastery/review evidence, private JSON replay and an
 injected atomic save boundary. 87 focused scratch-tree Python cases passed

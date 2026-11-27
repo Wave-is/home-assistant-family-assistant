@@ -31,7 +31,8 @@
           "polls": "Family polls",
           "presence": "Family presence",
           "digests": "Private family digests",
-          "home_status": "Home status"
+          "home_status": "Home status",
+          "academy": "Family Academy"
         }
       }
     },
@@ -370,7 +371,8 @@
           "polls": "Family polls",
           "presence": "Family presence",
           "digests": "Private family digests",
-          "home_status": "Home status"
+          "home_status": "Home status",
+          "academy": "Family Academy"
         }
       },
       "alarm_device_settings": {

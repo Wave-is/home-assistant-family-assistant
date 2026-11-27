@@ -31,6 +31,7 @@ CONFIGURABLE_MODULES = (
     "presence",
     "digests",
     "home_status",
+    "academy",
 )
 
 
