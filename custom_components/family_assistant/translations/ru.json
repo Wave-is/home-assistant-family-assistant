@@ -31,7 +31,8 @@
           "polls": "Семейные голосования",
           "presence": "Присутствие семьи",
           "digests": "Личные семейные дайджесты",
-          "home_status": "Состояние дома"
+          "home_status": "Состояние дома",
+          "academy": "Academy"
         }
       }
     },
@@ -370,7 +371,8 @@
           "polls": "Семейные голосования",
           "presence": "Присутствие семьи",
           "digests": "Личные семейные дайджесты",
-          "home_status": "Состояние дома"
+          "home_status": "Состояние дома",
+          "academy": "Academy"
         }
       },
       "alarm_device_settings": {

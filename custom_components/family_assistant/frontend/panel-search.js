@@ -1,6 +1,7 @@
 /* Local search over public labels; no family identities or runtime data. */
 import {PANEL_COPY, PANEL_MODULES, moduleCopy} from "./panel-copy.js";
 const synonyms = {
+  academy:["обучение", "репетитор", "математика", "навчання", "уроки", "learning", "tutor", "math"],
   court:["штраф", "минус", "баллы", "суд", "поощрение", "штрафи", "бали", "penalty", "points", "reward"],
   school:["уроки", "расписание", "рюкзак", "розклад", "нагадування", "school", "homework", "reminder"],
   shopping:["покупки", "магазин", "shopping", "groceries"], pantry:["еда", "продукты", "сроки", "їжа", "запаси", "expiry", "stock"],
