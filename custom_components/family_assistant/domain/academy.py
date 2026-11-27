@@ -1,13 +1,13 @@
 """Academy: local assignments, deterministic grading and spaced review."""
 
+import re
 from copy import deepcopy
 from datetime import timedelta
 from fractions import Fraction
-import re
 
 from ..const import PRIVILEGED
 from . import academy_curriculum as curriculum
-from .validation import DomainError, enum, fields, revision, text
+from .validation import DomainError, enum, fields, revision, text, timestamp
 
 PASS_STREAK = 3
 MAX_ASSIGNMENTS = 200
@@ -46,9 +46,9 @@ def _next(record, now):
     # Prioritize overdue review, then unfinished topics in the selected course order.
     due = [key for key in record["topics"]
            if record["progress"][key]["due"] is not None
-           and record["progress"][key]["due"] <= now.isoformat()]
+           and timestamp(record["progress"][key]["due"], "due") <= now]
     if due:
-        return min(due, key=lambda key: record["progress"][key]["due"])
+        return min(due, key=lambda key: timestamp(record["progress"][key]["due"], "due"))
     return next((key for key in record["topics"]
                  if not record["progress"][key]["mastered"]), None)
 
@@ -72,7 +72,7 @@ def handle(ctx, command, payload):
     if command == "assign":
         ctx.require_parent()
         required = {"member", "member_revision", "grade", "language"}
-        fields(payload, required | {"topics"}, required)
+        fields(payload, required | {"topics", "allow_ai"}, required)
         child = ctx.member(payload["member"])
         if child["role"] != "child":
             raise DomainError("invalid_field", "member")
@@ -82,6 +82,9 @@ def handle(ctx, command, payload):
         if type(grade) is not int or grade not in (6, 7):
             raise DomainError("invalid_field", "grade")
         language = enum(payload["language"], ("uk", "en"), "language")
+        allow_ai = payload.get("allow_ai", False)
+        if type(allow_ai) is not bool:
+            raise DomainError("invalid_field", "allow_ai")
         available = [row[0] for row in curriculum.TOPICS if row[1] == grade]
         topics = payload.get("topics", available)
         if (not isinstance(topics, list) or not topics or len(topics) > len(available)
@@ -99,6 +102,7 @@ def handle(ctx, command, payload):
             "id": record_id, "member": child["id"], "member_revision": child["revision"],
             "grade": grade, "language": language, "topics": topics[:],
             "curriculum_version": curriculum.VERSION, "active": True, "revision": 1,
+            "allow_ai": allow_ai,
             "created_at": ctx.now.isoformat(), "sequence": 0, "history": [],
             "progress": {key: {"attempts": 0, "correct": 0, "streak": 0,
                                "mastered": False, "review": 0, "due": None} for key in topics},
@@ -170,6 +174,7 @@ def project(state, actor, now):
             continue
         data = deepcopy(row)
         data["bound"] = _bound(state, row)
+        data["allow_ai"] = row.get("allow_ai", False)
         data["mastered"] = sum(item["mastered"] for item in row["progress"].values())
         data["attempts"] = sum(item["attempts"] for item in row["progress"].values())
         data["correct"] = sum(item["correct"] for item in row["progress"].values())

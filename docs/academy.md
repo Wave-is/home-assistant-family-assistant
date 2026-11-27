@@ -3,7 +3,10 @@
 Separate opt-in module, independent of School. Local practice for Ukrainian
 grade 6/7 mathematics, with original Ukrainian and English lesson explanations.
 The initial catalog is a **sample**, not a certified or complete school curriculum.
-No external model or additional service is needed.
+No external model or additional service is needed for grading. Parents may
+explicitly opt into an existing conversation provider for hints on one assignment.
+The provider sees only generated exercise text, lesson rule and language; no
+submitted answers or family history. Local hints remain available without AI.
 
 Enable Academy in household modules. Add `custom:family-assistant-academy-card`
 to Lovelace. Parents assign a grade, language and topic subset, review per-topic
@@ -21,7 +24,7 @@ State resides in the canonical family engine and uses its atomic persistence,
 revision checks and operation idempotency. Lesson answer keys are not returned by
 the API. No automatic LLM export, rewards, penalties, device control or public
 student identifiers. The initial interface does not implement Telegram Mini App,
-AI tutoring, diagnostics, custom curricula, reminders, reports by schedule,
+multi-turn AI tutoring, diagnostics, custom curricula, reminders, reports by schedule,
 retention policy, or visual learning content. The 12-topic sample needs educational
 review and expansion. Do not treat this development increment as a release.
 

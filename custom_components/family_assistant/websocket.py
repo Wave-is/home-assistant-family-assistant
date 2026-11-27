@@ -11,6 +11,7 @@ from .domain.validation import DomainError
 
 
 def async_register_api(hass):
+    from .academy_api import hint as academy_hint
     from .academy_api import read as academy_read
     from .assistant.article_api import article
     from .assistant.chat_api import chat
@@ -41,6 +42,7 @@ def async_register_api(hass):
         digest_preview,
         home_status_read,
         academy_read,
+        academy_hint,
         school_calendar_preview,
         developer_report,
         panel,

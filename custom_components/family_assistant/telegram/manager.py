@@ -757,6 +757,11 @@ class TelegramManager:
                                 "text": "" if hasattr(response, "descriptor") else response,
                                 "private_context": isinstance(response, PersonalReply),
                                 **(
+                                    {"academy_context": response.academy_scope}
+                                    if hasattr(response, "academy_scope")
+                                    else {}
+                                ),
+                                **(
                                     {
                                         "home_status": response.descriptor,
                                         "expires_at": (now + timedelta(minutes=5)).isoformat(),

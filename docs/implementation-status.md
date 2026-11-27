@@ -2040,4 +2040,5 @@ combines later control-center work. Exact evidence and limitations are recorded 
 |---|---|
 | Local mathematics assignments, grading, spaced review, private parent/child views | Implemented; synthetic domain tests added, not yet run |
 | HA card and private Telegram commands | Implemented; runtime and browser acceptance pending |
-| Full curriculum, Telegram Mini App, AI tutor, verified videos, scheduled reporting | Not implemented |
+| Optional single-turn AI hints | Implemented using configured provider, parent opt-in; acceptance pending |
+| Full curriculum, Telegram Mini App, multi-turn AI tutor, verified videos, scheduled reporting | Not implemented |

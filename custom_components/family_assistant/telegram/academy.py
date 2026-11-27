@@ -1,8 +1,32 @@
 """Private deterministic Academy commands; never forward them to a model."""
 
-from ..domain import academy
+from ..domain import academy, shadow
 from ..domain.validation import DomainError
 from .context import PersonalReply
+
+
+class AcademyReply(PersonalReply):
+    """Bind a queued private reply to its exact authorized projection."""
+
+    def __new__(cls, value, scope):
+        instance = super().__new__(cls, value)
+        instance.academy_scope = scope
+        return instance
+
+
+def reply_current(state, data, now):
+    try:
+        actor = state["members"][data["actor"]]
+        result = academy.project(state, actor, now)
+        return data["academy_context"] == _scope(result)
+    except (DomainError, KeyError, TypeError, ValueError):
+        return False
+
+
+def _scope(result):
+    return [[row["id"], row["revision"], row["bound"],
+             row["question"]["topic"] if row["question"] else None]
+            for row in result["assignments"]]
 
 
 async def route(engine, actor, content, operation_id, now, *, private, language):
@@ -11,10 +35,10 @@ async def route(engine, actor, content, operation_id, now, *, private, language)
     if command not in {"/academy", "/academyanswer"}:
         return None
     if not private:
-        return PersonalReply("Academy: private chat only / Лише приватний чат")
-    if engine.shadow_mode:
-        raise DomainError("migration_shadow_read_only")
+        return "Academy: private chat only / Лише приватний чат"
     state = engine.snapshot()
+    if shadow.validate(state):
+        raise DomainError("migration_shadow_read_only")
     if command == "/academyanswer":
         parts = [part.strip() for part in tail.split("|")]
         if len(parts) != 4 or not parts[1].isdigit() or len(parts[1]) > 16:
@@ -38,4 +62,4 @@ async def route(engine, actor, content, operation_id, now, *, private, language)
             break
     if len(lines) == 1:
         lines.append("No assignments / Немає призначень")
-    return PersonalReply("\n".join(lines)[:3500])
+    return AcademyReply("\n".join(lines)[:3500], _scope(result))

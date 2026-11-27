@@ -50,6 +50,7 @@ class Runtime:
     options_lock: Any = field(default_factory=asyncio.Lock)
     module_signature: Any = None
     module_task: Any = None
+    academy_hint_active: set = field(default_factory=set)
 
     @callback
     def updated(self) -> None:

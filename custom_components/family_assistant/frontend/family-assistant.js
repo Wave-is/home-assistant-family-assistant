@@ -264,6 +264,7 @@ export class FamilyCard extends HTMLElement {
     this._entry = config.entry_id;
     this._data = null;
     this._academy = null;
+    this._academyHint = null;
     clearHomeStatus(this);
     this._homeStatusRequested=true;
     this._shoppingSeriesFormOpen=false;this._shoppingSeriesEditingItem=null;this._shoppingSeriesDraft=null;
@@ -325,6 +326,7 @@ export class FamilyCard extends HTMLElement {
         const academy=await this._hass.callWS({type:"family_assistant/academy",entry_id:this._entry});
         if(!current())return;
         this._academy=academy;
+        if(this._academyHint && !academy.assignments.some(row=>row.id===this._academyHint.id && row.revision===this._academyHint.revision))this._academyHint=null;
       }
       const taskFormForce = reconcileTaskFormRefresh(this,previousData);
       const taskBatchForce = reconcileTaskBatchRefresh(this,previousData);
@@ -442,9 +444,9 @@ export class FamilyCard extends HTMLElement {
     if(this._data.read_only){renderShadow(this,body);return;}
     if(!renderMemberContext(this,body))return;
     if(this._view==="today") {renderToday(this,body);return;}
+    if(this._view==="academy") {renderAcademy(this,body);return;}
     if(memberContextId(this)===null)this.renderProposals(body);
     if(this._view==="health") {renderHealth(this,body);return;}
-    if(this._view==="academy") {renderAcademy(this,body);return;}
     if(this._view==="home_status") {renderHomeStatus(this,body);return;}
     if(this._view==="routines"){renderRoutines(this,body);if(!this._data.settings.modules?.includes("routines"))body.append(el("div",this.t.moduleOff,"empty"));return;}
     if(this._view==="school"){
